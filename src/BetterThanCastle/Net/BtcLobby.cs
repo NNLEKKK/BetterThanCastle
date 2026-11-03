@@ -84,6 +84,12 @@ public static class BtcLobby
 		{
 			result = new Color(a[num] / 255f, a[num + 1] / 255f, a[num + 2] / 255f, 1f);
 		}
+		// Rainbow (k 3, formerly Black) must stay bright on the minimap, scarves and capture bar: a dark saved value (old Black
+		// default 28,28,32 in host presets) falls back to the bright default.
+		if (k == 3 && Mathf.Max(result.r, Mathf.Max(result.g, result.b)) < 0.35f)
+		{
+			result = new Color((float)BtcLobby.DefRgb[9] / 255f, (float)BtcLobby.DefRgb[10] / 255f, (float)BtcLobby.DefRgb[11] / 255f, 1f);
+		}
 		return result;
 	}
 
@@ -165,8 +171,10 @@ public static class BtcLobby
 						{
 							Color color = BtcLobby.ExtraColor(l);
 							Asset_Gamemode.FactionPrototype item = src[num];
-							num2++;
-							item.uid = num2;
+							// Stable uid per colour NAME (max gamemode uid + 1 + table index), not "next free": identical on every
+							// machine even if a name is skipped (gamemode already has it) or the 8-cap cuts the list. Conquest/sandbox:
+							// Purple 7, Pink 8, Cyan 9, Rainbow 10 (ids >= 8 need TrackingRegistryPatches + BtcFactionCap).
+							item.uid = num2 + 1 + l;
 							item.name = BtcLobby.ColName[l];
 							item.colour = BtcLobby.ToUint(color);
 							item.flagIcon = BtcLobby.Flag(l, color);
@@ -384,6 +392,21 @@ public static class BtcLobby
 		}
 	}
 
+	/// <summary>Local-only visuals (not synced by vanilla) of an extended colour by faction name; false for vanilla names.</summary>
+	public static bool ExtraVisuals(string name, out CrystalVisuals.CrystalColorEnum crystal, out Sprite flag)
+	{
+		crystal = CrystalVisuals.CrystalColorEnum.Neutral;
+		flag = null;
+		for (int i = 0; i < BtcLobby.ColName.Length; i++)
+		{
+			if (name != BtcLobby.ColName[i]) continue;
+			crystal = BtcLobby.ColCrystal[i];
+			try { flag = BtcLobby.Flag(i, BtcLobby.ExtraColor(i)); } catch (Exception) { flag = null; }
+			return true;
+		}
+		return false;
+	}
+
 	public static Color ScarfColor(string name)
 	{
 		for (int i = 0; i < BtcLobby.ColName.Length; i++)
@@ -580,7 +603,7 @@ public static class BtcLobby
 				UnityEngine.Object.Destroy(sprite.texture);
 				UnityEngine.Object.Destroy(sprite);
 			}
-			sprite = BtcLobby.MakeFlag(c);
+			sprite = BtcLobby.MakeFlag(c, BtcLobby.ColName[k] == "Rainbow");
 			BtcLobby._flags[k] = sprite;
 			BtcLobby._flagCol[k] = num;
 			result = sprite;
@@ -599,6 +622,12 @@ public static class BtcLobby
 	}
 
 	private static Sprite MakeFlag(Color target)
+	{
+		return BtcLobby.MakeFlag(target, false);
+	}
+
+	// rainbow: coloured pixels of the vanilla flag get a bright diagonal rainbow instead of the target hue.
+	private static Sprite MakeFlag(Color target, bool rainbow)
 	{
 		try
 		{
@@ -634,6 +663,11 @@ public static class BtcLobby
 					{
 						float a = pixels[i].a;
 						Color color = Color.HSVToRGB(h, Mathf.Clamp01(num6 * (num3 / 0.7f)), Mathf.Clamp01(num7 * (num4 / 0.9f)));
+						if (rainbow)
+						{
+							float rh = ((float)(i % num) + (float)(i / num) * 0.6f) / ((float)num * 1.6f);
+							color = Color.HSVToRGB(rh - Mathf.Floor(rh), 1f, Mathf.Max(num7, 0.85f));
+						}
 						color.a = a;
 						pixels[i] = color;
 					}
@@ -647,7 +681,7 @@ public static class BtcLobby
 		catch (Exception)
 		{
 		}
-		return BtcLobby.MakeDisc(target);
+		return BtcLobby.MakeDisc(rainbow ? new Color(1f, 0.2f, 0.6f, 1f) : target);
 	}
 
 	private static Sprite MakeDisc(Color c)
@@ -676,7 +710,7 @@ public static class BtcLobby
 			{
 				"Pink",
 				"Cyan",
-				"Black"
+				"Rainbow"
 			};
 			IconKey[] array2 = new IconKey[]
 			{
@@ -766,7 +800,7 @@ public static class BtcLobby
 		"Purple",
 		"Pink",
 		"Cyan",
-		"Black"
+		"Rainbow"
 	};
 
 	public static readonly string[] ColRu = new string[]
@@ -774,7 +808,7 @@ public static class BtcLobby
 		"Фиолетовый",
 		"Розовый",
 		"Бирюзовый",
-		"Чёрный"
+		"Радужный"
 	};
 
 	public static readonly string[] ColEn = BtcLobby.ColName;
@@ -790,9 +824,9 @@ public static class BtcLobby
 		0,
 		229,
 		238,
-		28,
-		28,
-		32
+		255,
+		255,
+		255
 	};
 
 	private static readonly CrystalVisuals.CrystalColorEnum[] ColCrystal;

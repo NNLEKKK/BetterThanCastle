@@ -1,5 +1,5 @@
 # STATUS (read first; keep <=60 lines; update at the end of every session)
-Updated: 2026-11-02 morning (LuminaZero u360 with attack/defence roles beats Chosen 36/39 in the real game; installed). Branch refactor/main.
+Updated: 2026-11-03 (orders from any distance; public GitHub repo + v0.2.0 release with installer). Branch refactor/main.
 
 ## Done (code committed; user confirmed in game: hotkeys, input lock, menu look, thumbnail scale, handicap dmg/hp/income/penalty, symmetry crystal)
 - Port complete (125 patches after Anim Sync removal), net core, replay, ResourcePackManager menu, perf fixes (see git log).
@@ -9,12 +9,12 @@ Updated: 2026-11-02 morning (LuminaZero u360 with attack/defence roles beats Cho
 - Rules warning: BtcGameplay.IsRule shared predicate; Players/gcol/recipes warn; non-blocking banner (yellow, red EditorWarn); logs moved to cfg Logging; Movement subtab single.
 - Handicap: income/dmg/HP/death-penalty(flat energy) work; start workers via Lua SetAsHomeCrystal wrap (Patches/AssetGamemodeStartWorkersPatches.cs, conquest/sandbox only, BC ON, can only LOWER vanilla); cap hook exists but user reports no effect: check `[Handicap] cap` log line (missing = For(nest.faction) null).
 - Session 2 (BC ON only, NOT tested in MP yet): editor panel for everyone (gen.editor, Net/BtcEditorShare.cs msg 67, Patches/LuaFactoryPatches.cs), spawn selection (Features/BtcSpawnPick.cs, UI/BtcSpawnPickUI.cs, msgs 65/66), auto replay to clients (Replay/BtcReplayAuto.cs msgs 68/69, cfg Replay/AutoShare), Animation Sync removed (msg 90 unused), extended colours/teams in vanilla lobby menu (Patches/LobbyTeamInfosPatches.cs; custom picker removed), call-to-arms fallback (Patches/CallToArmsPatches.cs, logs `[CallToArms]` line), rainbow-safe reconnect identity (BtcSpectate K()).
-- Updater: Features/BtcUpdater.cs + scripts/release.ps1 written, updater OFF while BtcUpdater.Repo = "OWNER/BetterThanCastle".
 
-## GitHub setup (PAUSED by user; network was blocked after command spam)
-1. `gh` 2.103.3 installed at C:\Program Files\GitHub CLI (not in bash PATH of old sessions). Not logged in: user runs `! "/c/Program Files/GitHub CLI/gh.exe" auth login --hostname github.com --git-protocol https --web`.
-2. Then: set BtcUpdater.Repo to <login>/BetterThanCastle; write README (RU/EN), LICENSE (ask, default MIT), CHANGELOG.md; create PUBLIC repo (sources without ref/ game/ BTClogs/ dist/ *.dll; history verified clean of ref/game/dll); add remote; push ONLY after user says "пушим"; first release via `scripts/release.ps1 -Version 0.2.0 -Notes ... -Publish`; test updater with a pre-release first.
-3. Git identity is set in the local repo config (user.name BTC).
+## GitHub + releases (LIVE since 2026-11-03)
+- Public repo https://github.com/lokillFamalli/BetterThanCastle (gh logged in as lokillFamalli). Local branch `public` = snapshot chain (scripts/public-snapshot.ps1: HEAD minus CLAUDE.md, .claude, .mcp.json, docs/gen, docs/proposed-claude-config; noreply author) pushed as `main`; refactor/main history is NEVER pushed; tags point at public commits.
+- Release: `scripts/release.ps1 -Version x.y.z -Notes ... [-Publish]` (bumps Plugin.cs + csproj, Release + verify-dist, scripts/build-setup.ps1 -> dist-setup/BetterThanCastle-Setup.exe = BepInEx 5.4.23.5 zip (sha pinned) + DLL, commit, snapshot, tag). Auto mode denies git push: user runs the push / gh release lines with `!`. Needs a clean tree (stash tests/scenarios/duel-par*.txt).
+- v0.2.0 released (DLL + Setup). Updater (BtcUpdater, off in DEV builds) reads sha256 from the release body only; first real updater test = next release 0.2.1. Installer tested on a fake folder only (GUI + Steam detection untested).
+- Git identity in local repo config; never put the email into tracked files.
 
 ## Agent test automation (DEV only, see docs/perf/MASTER.md, docs/RUNBOOK.md)
 - Hidden game via scripts/run-game.ps1 / scenario.ps1 (`-Visible`). `scripts/scenario.ps1 -Name X [-Clients 1] [-Bc 0]`; results BTClogs/prof-*.txt, engine.txt, agent.log. Scenarios: replay-stress, match-basic, match-stress, match-conquest (original only), engine-ab, engine-spike, engine-cull, mp-basic. smoke.ps1 skips if the game is running.
@@ -29,7 +29,7 @@ Updated: 2026-11-02 morning (LuminaZero u360 with attack/defence roles beats Cho
 ## NEXT
 1. User: test MP (2 players, BC ON): lobby colours 5-8 + teams E-H, call-to-arms on custom colours (send `[CallToArms]` log line), editor panel for client, spawn selection, replay auto-delivery; docs/test-plans.md sections F, G.
 2. Handicap cap: send `[Handicap] cap`/`start workers` log lines if still wrong. Opt: menu checkbox for Replay/AutoShare (cfg only now). Profile checkbox shape confirmed square? (unchecked).
-3. GitHub/updater setup (section above). Release build + verify-dist before every release.
+3. Releases: test updater with 0.2.1; installer GUI test on the real game. Release build + verify-dist before every release.
 4. Perf backlog: MP hard pauses on level load; match load time; replay x4 cost; new Performance tab.
 5. Unexplained: replay errors (NRE, Unknown message ID 56); BtcNetManager pendingReconnectUsers is FIFO without name check; open-questions #1/#2.
 

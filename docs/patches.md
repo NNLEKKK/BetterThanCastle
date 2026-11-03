@@ -6,6 +6,7 @@
 | AssetGamemodePatches.cs | typeof(Asset_Gamemode), "ApplyPresetSettingsToScript" |
 | AssetGamemodePatches.cs | typeof(Asset_Gamemode), "Disk_LoadGamemode" |
 | AssetGamemodePatches.cs | typeof(Asset_Gamemode), "Disk_ReadFactionPrototypes" |
+| AssetGamemodeStartWorkersPatches.cs | typeof(Asset_Gamemode), "Disk_LoadGamemode" |
 | AssetMapPatches.cs | typeof(Asset_Map), "Disk_WriteThumbnail" |
 | BlocLibrePatches.cs | typeof(BlocLibre), "Initialize" |
 | BuildGoalPatches.cs | typeof(BuildGoal), "OnBlueprintStateChanged" |
@@ -19,11 +20,19 @@
 | CameraScriptPatches.cs | typeof(CameraScript), "DisableEditorCamera" |
 | CorpsePatches.cs | typeof(Corpse), "GetRefundEnergy" |
 | CorruptronPatches.cs | typeof(Minitron), "CanMakeWay" |
+| CrystalVisualsPatches.cs | typeof(CrystalVisuals), "FactionChanged" |
+| CrystalVisualsPatches.cs | typeof(CrystalVisuals), "StartTransition" |
+| CrystalVisualsPatches.cs | typeof(CrystalVisuals), "EndTransition" |
+| CrystalVisualsPatches.cs | typeof(CrystalDriver), "Start" |
 | DamagedTreePatches.cs | typeof(DamagedTree), "RpcFallingLogsPostprocess" |
 | DeepLayerPatches.cs | typeof(DeepLayer), "GetDeepType" |
 | DestinationRepathSearchPatches.cs | typeof(DestinationRepathSearch), "Search" |
 | DestinationResolverPatches.cs | typeof(DestinationResolver), "GetRepathDestination" |
 | DestinationResolverPatches.cs | typeof(DestinationResolver), "RepathMoveNext", new Type[] { typeof(bool), typeof(bool) } |
+| DuelPatches.cs | [HarmonyPatch(typeof(BricktronDamageReceiver), "ApplyDamage", |
+| DuelPatches.cs | typeof(AttackInfo), "Strike" |
+| DuelPatches.cs | typeof(Labor), "SendOrder" |
+| DuelPatches.cs | typeof(AttackInfo), "NextFrame" |
 | ExplosionGameplayPatches.cs | typeof(ExplosionGameplay), "Explosion" |
 | ExplosionGameplayPatches.cs | typeof(ExplosionGameplay), "GetIntensity" |
 | ExplosionGameplayPatches.cs | typeof(ExplosionGameplay), "ApplyTerrainDammage" |
@@ -60,13 +69,22 @@
 | LuaFactoryPatches.cs | typeof(LuaFactory), "InstantiateFromCLR" |
 | LuaFactoryPatches.cs | typeof(Toolbag), "lua_EquipTool" |
 | LuaMenuComponentPatches.cs | typeof(LuaMenuComponent), "Load" |
+| MatchStatsPatches.cs | typeof(BricktronDamageReceiver), "_Kill" |
+| MatchStatsPatches.cs | [HarmonyPatch(typeof(BricktronDamageReceiver), "ApplyDamage", |
+| MatchStatsPatches.cs | typeof(Blueprint), "MorphToObject" |
+| MatchStatsPatches.cs | typeof(CraftingLabor), "FinishRecipe" |
+| MatchStatsPatches.cs | typeof(Recipe), "SpawnAll" |
+| MatchStatsPatches.cs | typeof(Recepteur), "AddObject", new Type[] { typeof(GameObject), typeof(bool) } |
+| MatchStatsPatches.cs | typeof(ExplodeOnDeath), "Explode" |
 | MeleeAttackPatches.cs | typeof(MeleeAttack), "Apply", new Type[] { typeof(IDamageReceiver) } |
 | NavigateOrderDataPatches.cs | typeof(Navigation.NavigateOrderData), "InitSearch" |
 | NavigationNodesPatches.cs | typeof(NavigationNodes), "RunToExactly", new Type[] { typeof(Labor), typeof(Location) } |
 | NavigationNodesPatches.cs | typeof(NavigationNodes), "RunToward", new Type[] { typeof(Labor), typeof(Location), typeof(bool), typeof(bool) } |
+| OverheadDisplayDriverPatches.cs | typeof(OverheadDisplayDriver), "BrixUpdate" |
 | PathUnrollPatches.cs | typeof(PathUnroll), "RemoveInvalidNodes" |
 | PickerOrderGiverPatches.cs | typeof(PickerOrderGiver), "DirectOrder", new Type[] { typeof(List<GameObject>), typeof(Vector3) } |
 | PickerOrderGiverPatches.cs | typeof(PickerOrderGiver), "DirectOrder", new Type[] { typeof(List<GameObject>), typeof(GameObject) } |
+| PickingPatches.cs | typeof(Picking), "OnUpdate" |
 | ProfessionPatches.cs | typeof(Profession), nameof(Profession.CharacterLevel), MethodType.Setter |
 | ProfessionPatches.cs | typeof(Profession), "CanPassThrough" |
 | ProfessionPatches.cs | typeof(Profession), "SetHpBonus" |
@@ -76,11 +94,15 @@
 | ProjectileAimingPatches.cs | typeof(ProjectileAiming), "CanReachWithProjectile" |
 | ProjectileAimingPatches.cs | typeof(ProjectileAiming), "IsArcheryTargetFarEnough" |
 | ProjectileAttackPatches.cs | typeof(ProjectileAttack), "Apply", new Type[] { typeof(IDamageReceiver) } |
+| RadialLayoutGroupPatches.cs | typeof(RadialLayoutGroup), "SetCreationTime" |
 | SharedFactionVisionPatches.cs | typeof(SharedFactionVision), "AddToRegularTracking" |
 | SharedFactionVisionPatches.cs | typeof(SharedFactionVision), "RemoveFromRegularTracking" |
 | SimpleHostScriptPatches.cs | typeof(SimpleHostScript), "Run" |
+| SimpleHostScriptPatches.cs | typeof(SimpleHostScript), "PopulateFactionsLocally" |
 | TaskPatches.cs | typeof(Task), "OnPathFailed" |
 | ToolPatches.cs | typeof(Tool), "DropFrom" |
+| TrackingRegistryPatches.cs | typeof(TrackingRegistry.TrackingGroup), MethodType.Constructor |
+| TrackingRegistryPatches.cs | typeof(TrackingRegistry.TrackingGroup), "ResetObject" |
 | UIGameObserverPatches.cs | typeof(UIGameObserver), "lua_SetModeVictoryTextureAsync" |
 | UIGameObserverPatches.cs | typeof(UIGameObserver), "lua_SetModeDefeatTextureAsync" |
 | UIGameObserverPatches.cs | typeof(UIGameObserver), "Start" |

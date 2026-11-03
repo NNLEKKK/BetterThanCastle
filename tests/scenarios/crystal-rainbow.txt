@@ -1,0 +1,17 @@
+# Verify the rainbow crystal: owner + creep rainbow, read twice (hue must move), off.
+newgame
+waitgame 240
+wait 5
+crystaltint Rainbow
+wait 1
+crystalread
+wait 2
+crystalread
+crystaltint Rainbow creep
+wait 1
+crystalread
+crystaltint off
+crystaltint off creep
+wait 2
+crystalread
+quit

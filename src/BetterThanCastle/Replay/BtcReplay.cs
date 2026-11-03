@@ -44,7 +44,7 @@ public static class BtcReplay
 	{
 		get
 		{
-			return (BtcReplay.mode == BtcReplay.State.Recording) ? (Time.unscaledTime - BtcReplay.recT0) : 0f;
+			return (BtcReplay.mode == BtcReplay.State.Recording) ? BtcReplay.RecClock() : 0f;
 		}
 	}
 
@@ -488,6 +488,7 @@ public static class BtcReplay
 					stringBuilder.Append("mode=").Append((GameParam.Gamemode != null) ? BtcReplay.Esc(GameParam.Gamemode.codename) : "").Append('\n');
 					stringBuilder.Append("preset=").Append((GameParam.Preset != null) ? BtcReplay.Esc(GameParam.Preset.codename) : "").Append('\n');
 					stringBuilder.Append("mp=").Append(Neo.multiplayer ? "1" : "0").Append('\n');
+					stringBuilder.Append("clock=").Append(Neo.multiplayer ? "wall" : "game").Append('\n');
 					stringBuilder.Append("ticks=").Append(DateTime.Now.Ticks.ToString(BtcReplay.Inv)).Append('\n');
 					stringBuilder.Append("scene=").Append(BtcReplay.Esc(NetworkManager.networkSceneName)).Append('\n');
 					stringBuilder.Append("keyMin=").Append(BtcReplay.KeyMinutes.ToString(BtcReplay.Inv)).Append('\n');
@@ -550,6 +551,8 @@ public static class BtcReplay
 					BtcReplay.kfId = 0;
 					BtcReplay.kfConn = null;
 					BtcReplay.recT0 = Time.unscaledTime;
+					BtcReplay.recGameClock = !Neo.multiplayer;
+					BtcReplay.recG0 = Time.time;
 					BtcReplay.mode = BtcReplay.State.Recording;
 					BtcReplay.wThread = new Thread(new ThreadStart(BtcReplay.WriterLoop));
 					BtcReplay.wThread.IsBackground = true;
@@ -627,7 +630,7 @@ public static class BtcReplay
 					thread.Join(15000);
 				}
 				BtcReplay.PollSnapshot();
-				BtcReplay.footDur = Time.unscaledTime - BtcReplay.recT0;
+				BtcReplay.footDur = BtcReplay.RecClock();
 				BtcReplay.footPackets = BtcReplay.packets;
 				BtcReplay.footRaw = BtcReplay.rawBytes;
 				BtcReplay.footKf = BtcReplay.kfCount;
@@ -1188,9 +1191,22 @@ public static class BtcReplay
 		BtcReplay.buf[BtcReplay.bufLen++] = (byte)v;
 	}
 
+	/// <summary>Recording timeline in seconds. MP: wall clock (vanilla MP cannot pause or change speed, so wall time == game time).
+	/// SP: game time (Time.time), so the SP clock (pause, x1.5/x2/x5, focus-loss pause) does not stretch or squeeze the replay:
+	/// the stream then plays back at the speed the world really moved, like an MP replay.</summary>
+	private static float RecClock()
+	{
+		return BtcReplay.recGameClock ? (Time.time - BtcReplay.recG0) : (Time.unscaledTime - BtcReplay.recT0);
+	}
+
 	private static uint Dt()
 	{
-		uint num = (uint)((Time.unscaledTime - BtcReplay.recT0) * 1000f);
+		float t = BtcReplay.RecClock();
+		uint num = (t > 0f) ? (uint)(t * 1000f) : 0U;
+		if (num < BtcReplay.lastMs)
+		{
+			num = BtcReplay.lastMs;
+		}
 		uint result = num - BtcReplay.lastMs;
 		BtcReplay.lastMs = num;
 		return result;
@@ -5362,6 +5378,10 @@ public static class BtcReplay
 	private static string curPath;
 
 	private static float recT0;
+
+	private static float recG0;
+
+	private static bool recGameClock;
 
 	private static int logLines;
 

@@ -1,0 +1,7 @@
+# Dump what the crystal animator drives (BTClogs/crystal-dump.txt).
+newgame
+waitgame 240
+wait 5
+crystaldump
+wait 2
+quit

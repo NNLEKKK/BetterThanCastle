@@ -632,6 +632,7 @@ public static class BtcReplayUI
 		}
 		else
 		{
+			BtcReplayUI.Hidden = false;
 			bool flag8 = BtcReplay.Mode != BtcReplay.State.Recording || !BtcReplay.GetShowIndicator();
 			bool flag9 = !flag8;
 			bool flag10 = flag9;
@@ -666,6 +667,14 @@ public static class BtcReplayUI
 				GUI.contentColor = contentColor;
 			}
 		}
+	}
+
+	/// <summary>Replay player panel hidden (Hide UI button / F8); reset when playback ends.</summary>
+	public static bool Hidden;
+
+	public static void ToggleHidden()
+	{
+		BtcReplayUI.Hidden = !BtcReplayUI.Hidden;
 	}
 
 	static BtcReplayUI()
@@ -762,6 +771,15 @@ public static class BtcReplayUI
 			if (flag13)
 			{
 				BtcReplay.StopReplay();
+			}
+		}
+		else if (BtcReplayUI.Hidden)
+		{
+			// Replay panel hidden (button or F8): only a faint corner button brings it back; the game UI is untouched.
+			Rect rb = new Rect((float)num * 0.5f, (float)Screen.height - num2 * 1.2f, (float)num * 8f, num2);
+			if (BtcReplayUI.Button(rb, BtcReplayUI.T("Show UI (F8)", "Показать UI (F8)"), new Color(1f, 1f, 1f, 0.35f)))
+			{
+				BtcReplayUI.ToggleHidden();
 			}
 		}
 		else
@@ -966,14 +984,9 @@ public static class BtcReplayUI
 		float num3 = (float)fs * 0.4f;
 		float num4 = (float)fs * 2f;
 		float num5 = r.x + num3;
-		string text = BtcPov.UiHidden ? BtcReplayUI.T("Show UI", "Показать UI") : BtcReplayUI.T("Hide UI", "Скрыть UI");
-		bool flag = BtcReplayUI.Button(new Rect(num5, num2 + 2f, (float)fs * 5.5f, num - 4f), text, new Color(1f, 1f, 1f, 0.85f));
-		bool flag2 = flag;
-		bool flag3 = flag2;
-		bool flag4 = flag3;
-		if (flag4)
+		if (BtcReplayUI.Button(new Rect(num5, num2 + 2f, (float)fs * 5.5f, num - 4f), BtcReplayUI.T("Hide UI", "Скрыть UI"), new Color(1f, 1f, 1f, 0.85f)))
 		{
-			BtcPov.ToggleUi();
+			BtcReplayUI.ToggleHidden();
 		}
 		num5 += (float)fs * 6f;
 		bool flag5 = BtcReplayUI.Button(new Rect(num5, num2 + 2f, num4, num - 4f), "<", new Color(1f, 1f, 1f, 0.85f));

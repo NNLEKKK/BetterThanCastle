@@ -21,7 +21,7 @@ namespace BetterThanCastle.Dev
         private float _t0;
         private string _cmdFile;
         private float _lastReadyLog;
-        private string _newMap, _newMode, _newPreset, _menuAct, _joinIp, _joinPort, _file;
+        private string _newMap, _newMode, _newPreset, _menuAct, _replayWant, _joinIp, _joinPort, _file;
         private int _n;
         private float _stable;
 
@@ -93,6 +93,7 @@ namespace BetterThanCastle.Dev
                 if (_menuAct == "host") BtcDevNet.Host(_newMap, _newMode, _newPreset);
                 else if (_menuAct == "join") BtcDevNet.Join(_joinIp, _joinPort);
                 else if (_menuAct == "duel") BtcDuel.Launch();
+                else if (_menuAct == "replay") StartReplay(_replayWant);
                 else BtcDevMatch.NewGame(_newMap, _newMode, _newPreset);
                 return true;
             }
@@ -126,7 +127,7 @@ namespace BetterThanCastle.Dev
             BtcLog.Info("Cmd", "t=" + (int)(now - _t0) + " " + line);
             switch (c)
             {
-                case "replay": StartReplay(p.Length > 1 ? p[1] : "latest"); break;
+                case "replay": _menuAct = "replay"; _replayWant = p.Length > 1 ? p[1] : "latest"; _wait = "menu"; _waitUntil = now + 120f; break; // waits for the menu: a replay started before the factories are ready never loads
                 case "host": _menuAct = "host"; _newMap = p.Length > 1 ? p[1] : null; _newMode = p.Length > 2 ? p[2] : null; _newPreset = p.Length > 3 ? p[3] : null; _wait = "menu"; _waitUntil = now + 120f; break;
                 case "join": _menuAct = "join"; _joinIp = p.Length > 1 ? p[1] : "127.0.0.1"; _joinPort = p.Length > 2 ? p[2] : null; _wait = "menu"; _waitUntil = now + 120f; break;
                 case "waitclients": _n = (int)F(p, 1, 1f); _wait = "clients"; _waitUntil = now + F(p, 2, 120f); break;
@@ -176,6 +177,21 @@ namespace BetterThanCastle.Dev
                     }
                 case "seek": BtcReplay.SeekTo(F(p, 1, 0f)); break;
                 case "timescale": Time.timeScale = F(p, 1, 1f); break;
+                case "clock": // SP game clock like the player uses it: clock pause|default|fast|veryfast|double
+                    {
+                        string ck = p.Length > 1 ? p[1] : "default";
+                        if (ck == "pause") ClockConfig.Paused = true;
+                        else
+                        {
+                            if (ClockConfig.Paused) ClockConfig.Paused = false;
+                            ClockConfig.SetClockSpeed(ck == "fast" ? ClockConfig.ClockSpeed.Fast : ck == "veryfast" ? ClockConfig.ClockSpeed.VeryFast : ck == "double" ? ClockConfig.ClockSpeed.Double : ClockConfig.ClockSpeed.Default);
+                        }
+                        BtcLog.Info("Cmd", "clock " + ck + " timeScale=" + Time.timeScale);
+                        break;
+                    }
+                case "recsp": BtcReplay.GetRecordSingleplayer(); BtcReplay.RecordSingleplayer = F(p, 1, 1f) > 0.5f; break; // in memory only, cfg untouched
+                case "rsync": BtcDevReplaySync.Set(F(p, 1, 1f) > 0.5f); break;
+                case "rpause": BtcReplay.TogglePause(); break;
                 case "prof":
                     {
                         string a = p.Length > 1 ? p[1] : "start";
@@ -193,6 +209,9 @@ namespace BetterThanCastle.Dev
                 case "ecobpcost": BtcDevEcoOps.BpCost(p); _wait = "eco"; _waitUntil = now + 600f; break;
                 case "ecoplay": BtcDevEcoOps.Play(p); break;
                 case "waitecoplay": _wait = "eco"; _waitUntil = now + F(p, 1, 600f); break;
+                case "crystaldump": BtcDevCrystal.Dump(); break;
+                case "crystaltint": BtcDevCrystal.Tint(p); break;
+                case "crystalread": BtcDevCrystal.Read(); break;
                 case "dump": BtcDevProf.Dump(p.Length > 1 ? p[1] : "cmd"); break;
                 case "done":
                     File.WriteAllText(Path.Combine(BtcDevPaths.LogDir, "done.txt"), DateTime.Now.ToString("HH:mm:ss"));

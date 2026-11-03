@@ -1,0 +1,16 @@
+# Verify BtcCrystalTint: owner tint Cyan, read, creep tint, off, read.
+newgame
+waitgame 240
+wait 5
+crystalread
+crystaltint Cyan
+wait 2
+crystalread
+crystaltint Cyan creep
+wait 1
+crystalread
+crystaltint off
+crystaltint off creep
+wait 2
+crystalread
+quit
