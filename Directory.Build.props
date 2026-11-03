@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <!-- Game install used for references and Debug deploy. Override: dotnet build -p:GameDir=... -->
+    <GameDir Condition="'$(GameDir)' == ''">$(MSBuildThisFileDirectory)game\csmod\</GameDir>
+    <ManagedDir>$(GameDir)Castle Story_Data\Managed\</ManagedDir>
+    <BepInExCoreDir>$(GameDir)BepInEx\core\</BepInExCoreDir>
+  </PropertyGroup>
+</Project>

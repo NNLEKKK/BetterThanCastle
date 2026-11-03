@@ -1,0 +1,23 @@
+duelunits 4 6 6
+duelskip 1
+duelheal 0
+duelarena 1
+duelplayerbot 1 1 4
+duel
+waitduel 240
+waitduelover 150
+duelrematch
+wait 4
+waitduelover 150
+duelrematch
+wait 4
+waitduelover 150
+duelrematch
+wait 4
+waitduelover 150
+duelrematch
+wait 4
+waitduelover 150
+duelrematch
+wait 4
+waitduelover 150

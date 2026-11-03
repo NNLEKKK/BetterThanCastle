@@ -1,0 +1,9 @@
+# LuminaBuild: load the training map in sandbox, dump voxels/entities, 20 s trace sample.
+newgame L0 sandbox
+waitgame 240
+wait 5
+ecotrace 1
+ecodump
+wait 20
+ecotrace 0
+quit

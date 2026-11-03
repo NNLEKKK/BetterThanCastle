@@ -1,0 +1,77 @@
+UNetManager:Update  # per-frame transport pump, network main loop
+UNetManager:SendMapToClients  # map send to all clients, freeze risk
+UNetManager:SendFiles  # file read and send per connection
+UNetFileTransferMessageHandler:FileDataReceivedMessageReceived  # map chunk receive, per-packet work
+UnetDeblocMessageHandler:ReceivedDeblocBatchData  # batch deserialize, large payloads
+UNetLuaMessageHandler:ReceivedLuaDataMessage  # lua data receive and apply
+UNetAnimator:OnDeserialize  # animator state decode per sync
+UNetAnimator:OnSerialize  # animator state encode per sync
+LobbyPlayer:OnDeserialize  # lobby state decode per sync
+BtcNetManager:Tick  # mod per-frame net state machine
+BtcNetManager:SendPings  # ping send loop per peer
+BtcNetOverlay:OnGUI  # per-frame IMGUI net overlay
+BtcNetManager:DrawOverlay  # overlay string build each frame
+BtcGameplay:Tick  # likely per-frame gameplay sync tick
+BtcGameplay:SendState  # full gameplay state serialize per connection
+BtcNetDiag:Flush  # reflection field dump and file writes
+BtcReplay:Tick  # per-frame replay driver
+BtcReplay:PlayTick  # per-frame playback step, state apply
+BtcReplay:SeekTo  # seek entry, may rebuild world
+BtcReplay:SeekStep  # seek loop step, freeze risk
+BtcReplay:ApplyMap  # map apply on replay load
+BtcReplay:LoadNatureTolerant  # nature load at replay start
+BtcReplay:ReadFully  # stream read loop, file IO
+BtcReplayAnchor:Tick  # per-frame anchor sync during playback
+BtcReplayAnchor:ApplyTerrain  # terrain blob decode and apply
+BtcReplayAnchor:ApplyState  # per-state apply, seek cost
+BtcReplayAnchor:ApplyWorld  # full world apply on seek
+BtcReplayShare:Load  # share file load, IO and decode
+BtcLzma:Decode  # LZMA decompress, CPU heavy on load
+BtcPng:Decode  # PNG decode for thumbnails, CPU heavy
+LuaMenuComponent:Update  # per-frame menu lua poll
+LuaMenuComponent:Load  # lua script execution on menu open
+LuaMenuComponent:Refresh  # lua menu rebuild
+UIGameObserver:ResetAll  # full observer reset on scene change
+UIGameObserver:CountOfOccupation  # linear labor scan per query
+ResourcePackManager:Update  # per-frame RPM update
+ResourcePackManager:LateUpdate  # per-frame RPM late update
+ResourcePackManager:OnGUI  # per-frame IMGUI menu and overlays
+ResourcePackManager:DrawHpRows  # 2500-line IMGUI row draw per frame
+ResourcePackManager:DrawStatNumbers  # per-frame stat labels
+ResourcePackManager:DrawBuildingNumbers  # per-frame building labels
+ResourcePackManager:DrawBombNumbers  # per-frame bomb labels
+ResourcePackManager:DrawPaths  # per-frame path drawing on camera
+ResourcePackManager:UpdateBombMap  # full map rebuild, spiky
+ResourcePackManager:UpdateEnemyTextures  # enemy texture sweep per update
+ResourcePackManager:UpdateAlwaysRings  # ring update sweep, allocations
+ResourcePackManager:UpdateCrystalTimers  # crystal timer sweep per update
+ResourcePackManager:ScanCrystals  # full scene scan
+ResourcePackManager:ScanBarrels  # full scene scan
+ResourcePackManager:ScanAutoRings  # scene scan per observer
+ResourcePackManager:ProcessTexture  # texture decode on load
+ResourcePackManager:DumpTextures  # texture dump to disk, stalls
+BtcOverlays:Tick  # 20Hz scan dispatcher
+BtcOverlays:ScanMages  # FindObjectsOfType at 20Hz
+BtcOverlays:ScanBombs  # FindObjectsOfType at 20Hz
+BtcOverlays:ScanSmash  # FindObjectsOfType Labor at 20Hz
+BtcOverlays:Render  # per-camera line mesh build
+BtcOverlays:OnGUI  # per-frame labels
+BtcOverlays:BuildCircle  # circle geometry allocation per call
+BtcPlateImg:Tick  # per-frame image plate animation
+BtcPlateImg:Paint  # per-frame texture paint
+BtcPlateImg:BuildView  # view rebuild, texture allocations
+BtcAvatar:Tick  # per-frame avatar update
+BtcAvatar:BuildView  # view rebuild, texture allocations
+BtcNick:OnGUI  # per-frame nick IMGUI
+BtcNick:Compose  # rich text rebuild, string alloc
+BtcGameplayUI:OnGUI  # per-frame gameplay UI IMGUI
+Architecte:Update  # per-frame voxel update loop
+Architecte:UpdateJardinier  # per-frame gardener voxel queue
+Architecte:AppliquerChangements  # bulk voxel change apply
+Architecte:SurfaceInBounds  # bounds scan over voxels
+Architecte:TopAndBottomInBounds  # vertical bounds scan
+TestPathfinding:Update  # per-frame pathfinding init poll
+TestPathfinding:Read  # terrain node load entry
+TestPathfinding:GetObstaclesAt  # per-voxel obstacle query during load
+TestPathfinding:OnDeserialize  # network deserialize of pathfinding state
+GameParam:ReadAndApplyNetworkParams  # network params apply on join

@@ -1,0 +1,18 @@
+# Self-play: Chosen bot (side 1) vs naive bot (side 0), 5v5 halberdiers, skips allowed, no heal. 3 matches via rematch.
+prof start
+duelunits 4 5 5
+duelskip 1
+duelheal 0
+duelplayerbot 0
+duel
+waitduel 240
+waitduelover 150
+duelrematch
+wait 4
+waitduelover 150
+duelrematch
+wait 4
+waitduelover 150
+wait 1
+dump basic
+quit

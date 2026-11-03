@@ -1,0 +1,49 @@
+Labor:ClosestResource  # per-labor resource search, rebinds cache each call
+Labor:FindOneResource  # knowledge pickup search per resource
+Labor:BestRecepteurToStore  # storage target search per item
+Labor:BestRecepteurToStoreInventory  # storage search via Slinq First
+Knowledge:ClosestObjectToPickup  # nearest-object search over interesting resources
+Knowledge:ClosestStorageWithRoomFor  # nearest storage search, closures per call
+Knowledge:ClosestToolFrom  # tool search per labor, closures
+Knowledge:CanReach  # region connectivity check per candidate
+Knowledge:UniqueResourcesReacheableFrom  # reachable set rebuild
+Knowledge:AllReacheableObjectsFrom  # full reachable set rebuild
+Project:GoalNeedsEvaluation  # per-goal validity filter, hot in loops
+Project:GlobalCrewCount  # called per priority evaluation
+Project:PriorityInput  # priority build per labor per project
+Project:CrewCount  # crew enumeration in priority and idle checks
+Project:ProjectUnderCap  # LINQ count over all projects
+Project:HasNonStorableGoals  # LINQ any over goal providers
+ProjectDatabase:AvailableProjects  # Slinq filter builds list per call
+TreeGoalProvider:RefreshIfNeeded  # per-frame refresh check
+TreeGoalProvider:Refresh  # tree goal rescan, pooled sets
+TreeGoalProvider:RemoveOutdatedGoals  # Slinq filter, pooled list
+TreeGoalProvider:AddNewGoals  # Slinq filter creating goals
+VoxelGoalsStorage:GetNewGoals  # filters every voxel per fetch
+VoxelGoalsStorage:FetchNewGoals  # goal refetch spikes
+VoxelGoalsStorage:RemoveOutdatedGoals  # Slinq removal over all goals
+HarvestGoalProvider:RefreshGoals  # iterator scan of nature goals
+HarvestGoalProvider:RegisterGoals  # iterator registration, spiky
+HarvestGoalProvider:GoalCountOfType  # Slinq count per query
+VoxelPresence:GetPresenceAt  # Slinq per voxel, pathing hot path
+VoxelPresence:GetStackedPresence  # adjacency and Slinq per call
+VoxelPresence:IsInForest  # tree and adjacency lookups per call
+VoxelPresence:GetWalkableVoxel  # walkable search loop, all overloads
+GoalSelector:GetSelectorFromType  # allocates selectors per call
+BuildGoalFinder:SearchStep  # 10 search steps per call
+BuildGoalFinder:ComputeConnectedAccesses  # full connectivity search, heavy
+Task:RefuseOnlyThese  # HashSet alloc per refused task
+Thinker:BrixUpdate  # per-unit per-frame thought timers
+NullThinker:BrixUpdate  # per-frame timers for idle units
+BricktronDamageReceiver:BrixFixedUpdate  # per-unit fixed update, regen
+KinematicProjectile:Update  # per-projectile per-frame bounds checks
+LandscapeController:Update  # per-frame handle group refresh
+SharedFactionVision:BrixUpdate  # iterator over all visions, spread
+LocalFactionVision:UpdateVisibility  # GetComponent and observer rebuild per call
+LocalFactionVision:OnRebuildObservers  # loops users per observer rebuild
+LocalFactionVision:RefreshAllObservers  # rebuilds all tracked entries at once
+LocalFactionVision:ObjectIsVisibleForFaction  # GetComponent per visibility query
+LocalFactionVision:IsVisibleForFaction  # per-query visibility test
+TrackingRegistry:GetCollisions  # aggro collision scans per query
+TrackingRegistry:GetRelevantXYZsInRange  # enumerator range scan into list
+Faction:GetFaction  # GetComponent per faction lookup

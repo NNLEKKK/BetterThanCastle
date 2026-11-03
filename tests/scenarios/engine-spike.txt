@@ -1,0 +1,22 @@
+# Spike artifact check: 150 ms spikes with DEV counter sampling (FindObjectsOfType every 5 s) vs without. Results: BTClogs/engine.txt (spike frames + period).
+prof start
+newgame default conquest
+waitgame 240
+spawn bricktron 45
+spawn stockpile 8
+spawn rack 6
+spawn workbench 6
+spawn furnace 6
+waitspawn 120
+wait 15
+prof reset
+measure counters-on 40
+engine counters off
+wait 2
+measure counters-off 40
+measure counters-off2 40
+engine counters on
+wait 2
+measure counters-on2 30
+dump engine-spike
+quit

@@ -1,0 +1,56 @@
+# lab-block: running through a standing enemy / a 3-enemy wall / a gap (enemy collision vs sim)
+duelunits 4 1 3
+duelskip 1
+duelheal 0
+duelplayerbot -1
+duelnobot 1
+duelnorules 1
+dueltrace 1
+duel
+waitduel 240
+wait 3
+duelplace 0 0 20 10 90
+duelplace 1 0 40 10 270
+duelplace 1 1 95 9 270
+duelplace 1 2 95 16 270
+wait 2
+duellog RO-ONE
+duelo 0 0 move 70 10
+wait 6
+duellog RO-END-ONE
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 1 0 40 9 270
+duelplace 1 1 40 10 270
+duelplace 1 2 40 11 270
+wait 2
+duellog RO-WALL3
+duelo 0 0 move 70 10
+wait 6
+duellog RO-END-WALL3
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 1 0 40 8 270
+duelplace 1 1 40 12 270
+duelplace 1 2 95 16 270
+wait 2
+duellog RO-GAP
+duelo 0 0 move 70 10
+wait 6
+duellog RO-END-GAP
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 1 0 35 9 270
+duelplace 1 1 45 10 270
+duelplace 1 2 55 11 270
+wait 2
+duellog RO-DIAG
+duelo 0 0 move 70 10
+wait 6
+duellog RO-END-DIAG
+duelo 0 0 stop
+wait 1
+quit

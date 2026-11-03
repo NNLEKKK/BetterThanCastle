@@ -1,0 +1,12 @@
+# Duel framework test: sandbox -> arena -> 5 vs 5 halberdiers; scripted player walks to mid, bot reacts. Rules + log check.
+prof start
+duelunits 4 5 5
+duelskip 1
+duel
+waitduel 240
+wait 4
+duelpmove 0.4
+waitduelover 90
+wait 2
+dump basic
+quit

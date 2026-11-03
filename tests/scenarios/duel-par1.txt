@@ -1,0 +1,23 @@
+prof start
+duelunits 4 8 8
+duelskip 1
+duelheal 0
+duelplayerbot 1 1 4
+duelfeat 109004808
+duel
+waitduel 240
+waitduelover 150
+duelrematch
+wait 4
+waitduelover 150
+duelrematch
+wait 4
+waitduelover 150
+duelrematch
+wait 4
+waitduelover 150
+duelrematch
+wait 4
+waitduelover 150
+wait 1
+quit

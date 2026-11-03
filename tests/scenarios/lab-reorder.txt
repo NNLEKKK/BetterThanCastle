@@ -1,0 +1,382 @@
+# lab-reorder: rapid order streams (the LuminaZero order pattern) on one unit; per-frame trace. Compare with btclab reorder-lab.
+duelunits 4 1 1
+duelskip 1
+duelheal 0
+duelplayerbot -1
+duelnobot 1
+duelnorules 1
+dueltrace 1
+duel
+waitduel 240
+wait 3
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-MM01
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 move 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 move 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 move 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 move 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 move 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 move 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 move 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 move 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 move 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 move 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 move 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 move 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 move 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 move 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 move 80 10.6
+wait 0.1
+duellog RO-END-MM01
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-MA01
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 move 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duellog RO-END-MA01
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-AA01
+duelo 0 0 moveattack 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 moveattack 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 moveattack 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 moveattack 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 moveattack 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 moveattack 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 moveattack 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 moveattack 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 moveattack 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 moveattack 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 moveattack 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 moveattack 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 moveattack 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 moveattack 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duelo 0 0 moveattack 80 10
+wait 0.1
+duelo 0 0 moveattack 80 10.6
+wait 0.1
+duellog RO-END-AA01
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-MM02
+duelo 0 0 move 80 10
+wait 0.2
+duelo 0 0 move 80 10.6
+wait 0.2
+duelo 0 0 move 80 10
+wait 0.2
+duelo 0 0 move 80 10.6
+wait 0.2
+duelo 0 0 move 80 10
+wait 0.2
+duelo 0 0 move 80 10.6
+wait 0.2
+duelo 0 0 move 80 10
+wait 0.2
+duelo 0 0 move 80 10.6
+wait 0.2
+duelo 0 0 move 80 10
+wait 0.2
+duelo 0 0 move 80 10.6
+wait 0.2
+duelo 0 0 move 80 10
+wait 0.2
+duelo 0 0 move 80 10.6
+wait 0.2
+duelo 0 0 move 80 10
+wait 0.2
+duelo 0 0 move 80 10.6
+wait 0.2
+duelo 0 0 move 80 10
+wait 0.2
+duellog RO-END-MM02
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-MA02
+duelo 0 0 move 80 10
+wait 0.2
+duelo 0 0 moveattack 80 10.6
+wait 0.2
+duelo 0 0 move 80 10
+wait 0.2
+duelo 0 0 moveattack 80 10.6
+wait 0.2
+duelo 0 0 move 80 10
+wait 0.2
+duelo 0 0 moveattack 80 10.6
+wait 0.2
+duelo 0 0 move 80 10
+wait 0.2
+duelo 0 0 moveattack 80 10.6
+wait 0.2
+duelo 0 0 move 80 10
+wait 0.2
+duelo 0 0 moveattack 80 10.6
+wait 0.2
+duelo 0 0 move 80 10
+wait 0.2
+duelo 0 0 moveattack 80 10.6
+wait 0.2
+duelo 0 0 move 80 10
+wait 0.2
+duelo 0 0 moveattack 80 10.6
+wait 0.2
+duelo 0 0 move 80 10
+wait 0.2
+duellog RO-END-MA02
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-MA03
+duelo 0 0 move 80 10
+wait 0.3
+duelo 0 0 moveattack 80 10.6
+wait 0.3
+duelo 0 0 move 80 10
+wait 0.3
+duelo 0 0 moveattack 80 10.6
+wait 0.3
+duelo 0 0 move 80 10
+wait 0.3
+duelo 0 0 moveattack 80 10.6
+wait 0.3
+duelo 0 0 move 80 10
+wait 0.3
+duelo 0 0 moveattack 80 10.6
+wait 0.3
+duelo 0 0 move 80 10
+wait 0.3
+duelo 0 0 moveattack 80 10.6
+wait 0.3
+duellog RO-END-MA03
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-ZZ01
+duelo 0 0 move 80 6
+wait 0.1
+duelo 0 0 move 80 14
+wait 0.1
+duelo 0 0 move 80 6
+wait 0.1
+duelo 0 0 move 80 14
+wait 0.1
+duelo 0 0 move 80 6
+wait 0.1
+duelo 0 0 move 80 14
+wait 0.1
+duelo 0 0 move 80 6
+wait 0.1
+duelo 0 0 move 80 14
+wait 0.1
+duelo 0 0 move 80 6
+wait 0.1
+duelo 0 0 move 80 14
+wait 0.1
+duelo 0 0 move 80 6
+wait 0.1
+duelo 0 0 move 80 14
+wait 0.1
+duelo 0 0 move 80 6
+wait 0.1
+duelo 0 0 move 80 14
+wait 0.1
+duelo 0 0 move 80 6
+wait 0.1
+duelo 0 0 move 80 14
+wait 0.1
+duelo 0 0 move 80 6
+wait 0.1
+duelo 0 0 move 80 14
+wait 0.1
+duelo 0 0 move 80 6
+wait 0.1
+duelo 0 0 move 80 14
+wait 0.1
+duelo 0 0 move 80 6
+wait 0.1
+duelo 0 0 move 80 14
+wait 0.1
+duelo 0 0 move 80 6
+wait 0.1
+duelo 0 0 move 80 14
+wait 0.1
+duelo 0 0 move 80 6
+wait 0.1
+duelo 0 0 move 80 14
+wait 0.1
+duelo 0 0 move 80 6
+wait 0.1
+duelo 0 0 move 80 14
+wait 0.1
+duelo 0 0 move 80 6
+wait 0.1
+duelo 0 0 move 80 14
+wait 0.1
+duellog RO-END-ZZ01
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-ONE
+duelo 0 0 move 80 10
+wait 3
+duellog RO-END-ONE
+duelo 0 0 stop
+wait 1
+quit

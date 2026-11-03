@@ -1,0 +1,340 @@
+# lab-cancel: cancel window (order K sim frames after strike start), then idle auto-engage distances
+duelunits 4 1 1
+duelskip 1
+duelheal 1
+duelplayerbot -1
+duelnobot 1
+duelnorules 1
+dueltrace 1
+duel
+waitduel 240
+wait 3
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K1-attack
+duelcancel 1 attack
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K2-attack
+duelcancel 2 attack
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K3-attack
+duelcancel 3 attack
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K4-attack
+duelcancel 4 attack
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K5-attack
+duelcancel 5 attack
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K6-attack
+duelcancel 6 attack
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K7-attack
+duelcancel 7 attack
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K8-attack
+duelcancel 8 attack
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K9-attack
+duelcancel 9 attack
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K10-attack
+duelcancel 10 attack
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K11-attack
+duelcancel 11 attack
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K12-attack
+duelcancel 12 attack
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K13-attack
+duelcancel 13 attack
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K14-attack
+duelcancel 14 attack
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K16-attack
+duelcancel 16 attack
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K20-attack
+duelcancel 20 attack
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K6-skip
+duelcancel 6 skip
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K8-skip
+duelcancel 8 skip
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K10-skip
+duelcancel 10 skip
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K12-skip
+duelcancel 12 skip
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K14-skip
+duelcancel 14 skip
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K8-moveattack
+duelcancel 8 moveattack
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K12-moveattack
+duelcancel 12 moveattack
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+wait 0.3
+duellog CANCEL-K10-move
+duelcancel 10 move
+duelo 0 0 attack 1 0
+wait 9
+duelcancel -1
+duelrematch
+waitduel 60
+wait 2
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 150 30 90
+duelplace 1 0 151 30 270
+duellog IDLE-1-0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 150 30 90
+duelplace 1 0 152 30 270
+duellog IDLE-2-0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 150 30 90
+duelplace 1 0 153 30 270
+duellog IDLE-3-0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 150 30 90
+duelplace 1 0 154 30 270
+duellog IDLE-4-0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 150 30 90
+duelplace 1 0 156 30 270
+duellog IDLE-6-0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 150 30 90
+duelplace 1 0 160 30 270
+duellog IDLE-10-0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 150 30 90
+duelplace 1 0 165 30 270
+duellog IDLE-15-0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 150 30 90
+duelplace 1 0 170 30 270
+duellog IDLE-20-0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 150 30 90
+duelplace 1 0 151 31 270
+duellog IDLE-1-1
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 150 30 90
+duelplace 1 0 152 31 270
+duellog IDLE-2-1
+wait 7
+quit

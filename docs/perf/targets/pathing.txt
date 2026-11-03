@@ -1,0 +1,51 @@
+Locomotion4:ApplyAnimatorMotion  # per-frame animator move, floor snap and pop-out
+Locomotion4:CheckSnapToFloor  # per-frame floor snap decision
+Locomotion4:SnapToFloor  # per-frame floor snap; formats log on mismatch
+Locomotion4:PopOutOfGround  # per-frame occupancy check and floor lookup
+Locomotion4:CheckGrounded  # per-frame voxel, nature and floor queries
+Locomotion4:IsInsideGround  # per-frame, repeats grounded and floor height
+Locomotion4:ManualUpdate  # per-frame animator and target-match update
+Locomotion4:RepathMoveNext  # up to three repath searches per call
+Grounded:UpdateGround  # per-frame ground check chain, flail trigger
+Grounded:Update  # per-frame grounded state update
+Walking:Update  # per-frame walk: run check, move, path peek
+Running:Update  # per-frame run state update
+LocomotionWalkableCycleState:Move  # per-frame path advance for walk cycle
+LocomotionMovementState:FastForwardPath  # linear path index scan, repeated GetNth
+DestinationIterator:Replace  # synchronously enumerates up to 10000 nodes
+DestinationIterator:GetNth  # lazy enumeration, hit by every accessor
+DestinationIterator:GetPositionInTimeForSpeed  # node walk loop per call
+DestinationResolver:MergePaths  # repeated GetNth scans and Slinq copies
+DestinationResolver:GetRepathDestination  # InfoFormat boxing on fallback path
+DestinationRepathSearch:CanCross  # per-voxel closure allocation and volume query
+SearchPathRequest:CanCrossAt  # per-node blocker query, closure allocation
+SearchPathRequest:HasBlockerAt  # VolumeRegistry lambda allocation per call
+SearchPathRequest:HasNatureAt  # tree and nature queries per voxel
+SearchPathRequest:WorkImprovePath  # budgeted A* chunk, volume removal per step
+SearchPathRequest:LoopImprovePath  # improve-pass setup, queue and accepter allocs
+PathNodeRegistry:WalkableAt  # vertical scan with PathNodeRegistry.At per step
+PathNodeRegistry:WalkableAtOrUnder  # linear downward scan per call
+PathNodeRegistry:CountMutualLibertes  # nested sibling enumerations per query
+PathNodeRegistry:GetAdjacentBranches  # lazy sibling enumeration with validate delegate
+PathNodeRegistry:GetAdjacentPositions  # lazy sibling enumeration per neighbour check
+PathNodeRegistry:GetPositionInReach  # nested sibling loops, lazy yield
+PathNodeRegistry:HasHashLibertes  # sibling iteration per query
+PathNodeRegistry:GetConnectedNodes  # Slinq LINQ chain per call
+PathNodeRegistry:GetConnectedLibertes  # Slinq LINQ chain per call
+PathUnroll:PreProcessNodes  # FindObjectOfType when unset; GetComponent per call
+PathUnroll:ConvertVoxelListToPath  # builds WalkNode list per path
+PathUnroll:RemoveInvalidNodes  # list filtering per built path
+Navigation:GetSurroundingSurfaces  # per-neighbour lambda with Any, lazy
+Navigation:NeedsRetargeting  # per-tick target movement check
+Navigation:AssignBlocker  # GetComponent per volume on blocker assign
+VoxelPresence:CollideWithEveryone  # volume query with closure per voxel test
+VoxelPresence:DontCollideIfEnemy  # volume query with closure per voxel test
+VoxelPresence:DontCollideIfAbleToWork  # volume query with closure per voxel test
+VoxelPresence:PreventsMovement  # GetComponent per volume in presence tests
+VoxelPresence:GetStackedPresence  # Where and FirstOrDefault LINQ per call
+VoxelPresence:IsInForest  # Slinq Any and two neighbour queries per call
+FloorPicker:GetHeight  # per-frame 20-voxel ground scan
+FloorPicker:IsGrounded  # per-frame ground check, feeds flail and snap
+FloorPicker:IsOccupiedOrInsideGround  # volume query per frame in pop-out
+FloorPicker:GetNearestFreePosition  # radius loop with candidate enumeration
+FloorPicker:GetNearestAligned  # scan wrapper, may run per move step

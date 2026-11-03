@@ -1,0 +1,8 @@
+# Local match profile: new sandbox game on the default map, 60 s idle profile.
+prof start
+newgame
+waitgame 240
+prof reset
+wait 60
+dump basic
+quit

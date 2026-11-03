@@ -1,0 +1,19 @@
+# Spawn every unit kind on both sides (exceptions / equipment / HP check in the UNIT lines).
+prof start
+duelunits 0 1 1
+duelunits 1 1 1
+duelunits 2 1 1
+duelunits 3 1 1
+duelunits 4 1 1
+duelunits 5 1 1
+duelunits 6 1 1
+duelunits 7 1 1
+duelskip 1
+duelheal 0
+duelplayerbot 0
+duel
+waitduel 240
+waitduelover 60
+wait 1
+dump basic
+quit

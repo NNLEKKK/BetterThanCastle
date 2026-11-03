@@ -1,0 +1,204 @@
+# lab-reorder4: order B then the current order A again after g s: does B ever take effect (switch delay)
+duelunits 4 1 1
+duelskip 1
+duelheal 0
+duelplayerbot -1
+duelnobot 1
+duelnorules 1
+dueltrace 1
+duel
+waitduel 240
+wait 3
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-RUN_0.05
+duelo 0 0 move 80 10
+wait 1
+duelo 0 0 move 20 10
+wait 0.05
+duelo 0 0 move 80 10
+wait 1
+duellog RO-END-RUN_0.05
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-IDL_0.05
+duelo 0 0 move 22 10
+wait 1.5
+duelo 0 0 move 14 10
+wait 0.05
+duelo 0 0 move 22 10
+wait 2
+duellog RO-END-IDL_0.05
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-RUN_0.1
+duelo 0 0 move 80 10
+wait 1
+duelo 0 0 move 20 10
+wait 0.1
+duelo 0 0 move 80 10
+wait 1
+duellog RO-END-RUN_0.1
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-IDL_0.1
+duelo 0 0 move 22 10
+wait 1.5
+duelo 0 0 move 14 10
+wait 0.1
+duelo 0 0 move 22 10
+wait 2
+duellog RO-END-IDL_0.1
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-RUN_0.15
+duelo 0 0 move 80 10
+wait 1
+duelo 0 0 move 20 10
+wait 0.15
+duelo 0 0 move 80 10
+wait 1
+duellog RO-END-RUN_0.15
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-IDL_0.15
+duelo 0 0 move 22 10
+wait 1.5
+duelo 0 0 move 14 10
+wait 0.15
+duelo 0 0 move 22 10
+wait 2
+duellog RO-END-IDL_0.15
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-RUN_0.2
+duelo 0 0 move 80 10
+wait 1
+duelo 0 0 move 20 10
+wait 0.2
+duelo 0 0 move 80 10
+wait 1
+duellog RO-END-RUN_0.2
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-IDL_0.2
+duelo 0 0 move 22 10
+wait 1.5
+duelo 0 0 move 14 10
+wait 0.2
+duelo 0 0 move 22 10
+wait 2
+duellog RO-END-IDL_0.2
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-RUN_0.3
+duelo 0 0 move 80 10
+wait 1
+duelo 0 0 move 20 10
+wait 0.3
+duelo 0 0 move 80 10
+wait 1
+duellog RO-END-RUN_0.3
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-IDL_0.3
+duelo 0 0 move 22 10
+wait 1.5
+duelo 0 0 move 14 10
+wait 0.3
+duelo 0 0 move 22 10
+wait 2
+duellog RO-END-IDL_0.3
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-RUN_0.4
+duelo 0 0 move 80 10
+wait 1
+duelo 0 0 move 20 10
+wait 0.4
+duelo 0 0 move 80 10
+wait 1
+duellog RO-END-RUN_0.4
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-IDL_0.4
+duelo 0 0 move 22 10
+wait 1.5
+duelo 0 0 move 14 10
+wait 0.4
+duelo 0 0 move 22 10
+wait 2
+duellog RO-END-IDL_0.4
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-RUN_0.6
+duelo 0 0 move 80 10
+wait 1
+duelo 0 0 move 20 10
+wait 0.6
+duelo 0 0 move 80 10
+wait 1
+duellog RO-END-RUN_0.6
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-IDL_0.6
+duelo 0 0 move 22 10
+wait 1.5
+duelo 0 0 move 14 10
+wait 0.6
+duelo 0 0 move 22 10
+wait 2
+duellog RO-END-IDL_0.6
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-RUN_0.8
+duelo 0 0 move 80 10
+wait 1
+duelo 0 0 move 20 10
+wait 0.8
+duelo 0 0 move 80 10
+wait 1
+duellog RO-END-RUN_0.8
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+wait 1.5
+duellog RO-IDL_0.8
+duelo 0 0 move 22 10
+wait 1.5
+duelo 0 0 move 14 10
+wait 0.8
+duelo 0 0 move 22 10
+wait 2
+duellog RO-END-IDL_0.8
+duelo 0 0 stop
+wait 1
+quit

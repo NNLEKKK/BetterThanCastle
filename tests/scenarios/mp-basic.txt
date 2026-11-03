@@ -1,0 +1,18 @@
+# MP host side (BTC_ROLE=host): lobby on localhost, wait for 1 client, start, spawn 45 bricktrons, measure 60 s, dump. <= 8 min.
+prof start
+host default conquest
+waitclients 1 200
+wait 3
+startmatch 120
+waitgame 240
+wait 5
+prof reset
+spawn bricktron 45
+waitspawn 120
+wait 10
+walk init 20
+walk go a
+measure host-60s 60
+dump mp-host
+wait 20
+quit

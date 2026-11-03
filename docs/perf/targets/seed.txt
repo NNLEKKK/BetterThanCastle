@@ -1,0 +1,24 @@
+# Seed target list: Type:Method  # why. Validated against docs/gen/game-api-index.md.
+Locomotion4:BrixUpdate  # per-unit AI/movement update, main per-frame cost
+LocomotionStateUpdater:Update  # per-state locomotion update
+Locomotion4:DoFollowPath  # path start
+Locomotion4:ChangeArchetype  # archetype switch cost
+DestinationResolver:RepathMoveNext  # repath step, pathfinding hot spot
+DestinationRepathSearch:Search  # repath search
+DestinationRepathSearch:Init  # repath search setup
+SearchPathRequest:ComputePath  # A* path computation
+SearchPathRequest:Make  # pooled request creation
+FollowPathRequest:FollowNode  # per-node path following
+FollowPathRequest:FollowPath  # path following coroutine
+Navigation:NavigateTo  # path request entry
+Navigation:NavigateAway  # flee path request
+Navigation:Halt  # stop request
+PathUnroll:GetPathLocations  # path unrolling
+BaseLabor:Do  # task assignment
+BaseLabor:ProcessCurrentWorkSequence  # work node processing
+BaseLabor:ProcessPendingWorkSequence  # pending work processing
+BaseLabor:GetCurrentOrPendingTask  # task query frequency
+Labor:AssignToIdle  # idle assignment
+Labor:HasGoal  # goal query frequency
+Task:CreateFromGoal  # task creation
+GameLoader:LoadNewGameFromGameParams  # match loading (iterator MoveNext)

@@ -1,0 +1,53 @@
+TerrainLoop:BoucleTerrain  # per-frame voxel apply and architect flush
+VoxelRequestBatcher:FixedUpdate  # per physics step voxel change flush
+VoxelRequestBatcher:AddTerrainResources_Post  # OverlapSphere plus signals per resource change
+VoxelRequestBatcher:ProcessDebloc  # per-block debloc voxel lookup
+VoxelEngine:ApplyChanges  # static chunk and mesh rebuild flush
+Architecte:AppliquerChangements  # static change flush, called per frame twice
+Architecte:UpdateJardinier  # per-frame jardinier dispatch
+Architecte:Update  # per-frame architect loop
+Jardinier:Travailler  # megavoxel work queue per frame
+Jardinier:TraiterMegaVoxel  # megavoxel processing, mesh building
+MaterialCombineHarvester:ApplyCombine  # mesh combine, RecalculateBounds
+MaterialCombineDispatcher:Dispatch  # per display-data mesh dispatch
+VolumeRegistryComponent:LateUpdate  # per-frame volume validation, pooled lists
+VolumeRegistryComponent:ValidateTerrain  # terrain validation after voxel changes
+VolumeRegistry:HasVolumesWithPropertyAt  # per-voxel property query, many overloads
+Mergeback:Update  # per-frame garnotte merge state machine
+Mergeback:UpdateSinking  # per-garnotte terrain sinking queries
+Mergeback:SpreadCollisions  # pairwise garnotte collision loop
+Mergeback:FindTerrainTops  # per-region terrain column scan
+Mergeback:GetGaussianContribution  # point-pair gaussian loop
+ExplosionGameplay:Explosion  # explosion entry, fans out to all damage
+ExplosionGameplay:ApplyTerrainDammage  # voxel loop per explosion
+ExplosionGameplay:ApplyUnitDammage  # OverlapSphereNonAlloc per explosion
+ExplosionGameplay:ApplyObjectExplosionForce  # OverlapSphereNonAlloc per explosion
+Firefly:Update  # per-frame update for every firefly
+Firefly:CrystalCollisionCheck  # per-frame raycast and sphere cast
+Firefly:TerrainCollisionCheck  # per-frame downward raycast
+Firefly:ReevaluatePriorities  # nest search on reevaluation
+Firefly:GetNearestBestNest  # nest scan over all nests
+Firefly:RespawningFirefliesForFaction  # LINQ-style scan of all fireflies
+Firefly:SpawnableFirefliesForFaction  # LINQ-style scan of all fireflies
+WardAttack:FixedUpdate  # per-physics ward targeting
+WardAttack:CheckLinesOfSight  # raycast per candidate target
+WardAttack:ReachesTarget  # hit array scan per check
+MagitronWard:FixedUpdate  # per-physics ward targeting
+MagitronWard:CheckLinesOfSight  # raycast per candidate target
+MagitronRez:FixedUpdate  # per-physics rez check
+DamagedTree:Update  # per-frame tree state
+DamagedTree:Cut  # tree fall, spawns logs
+DamagedTree:Burst  # coroutine spawning falling logs
+Corpse:Start  # debris and firefly spawn per corpse
+Corpse:Spawn  # instantiates debris and firefly
+CatapultAmmoComponent:Update  # per-frame ammo tick
+Catapult:Update  # per-frame catapult state
+CatapultOperations:Update  # per-frame operator state
+ProjectilePhysics:ComputeExpectedCollision  # raycast loop along trajectory, generic overload
+ProjectilePhysics:ComputeTrajectory  # allocates point arrays per call
+ProjectileAiming:SimulateArrow  # trajectory simulation per aim check
+ProjectileAiming:IsProjectileObstructed  # simulates arrow per target check
+ProjectileAiming:ProjectileWillSpawnInsideTerrain  # terrain probe per throw check
+ProjectileWeapon:TryThrowUnit  # GetComponentsInChildren and IgnoreCollision loops
+ProjectileWeapon:TryThrowThing  # GetComponentsInChildren and IgnoreCollision loops
+Neo:Update  # per-frame relay loop with try per item

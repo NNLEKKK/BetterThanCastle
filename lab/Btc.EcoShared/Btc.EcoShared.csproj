@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- net35-compatible source, compiled as netstandard2.0 in the lab; the mod can link *.cs directly. -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>Btc.EcoShared</RootNamespace>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+</Project>

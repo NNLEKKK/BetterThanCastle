@@ -1,0 +1,102 @@
+# lab-block2: enemy at lateral offsets 0..5 from the run line z=10 (footprint of a character volume in path planning) + allied blocker
+duelunits 4 2 1
+duelskip 1
+duelheal 0
+duelplayerbot -1
+duelnobot 1
+duelnorules 1
+dueltrace 1
+duel
+waitduel 240
+wait 3
+duelplace 0 0 20 10 90
+duelplace 0 1 20 2 90
+duelplace 1 0 40 10 270
+wait 2
+duellog RO-E0
+duelo 0 0 move 60 10
+wait 6
+duellog RO-END-E0
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 0 1 20 2 90
+duelplace 1 0 40 11 270
+wait 2
+duellog RO-E1
+duelo 0 0 move 60 10
+wait 6
+duellog RO-END-E1
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 0 1 20 2 90
+duelplace 1 0 40 12 270
+wait 2
+duellog RO-E2
+duelo 0 0 move 60 10
+wait 6
+duellog RO-END-E2
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 0 1 20 2 90
+duelplace 1 0 40 13 270
+wait 2
+duellog RO-E3
+duelo 0 0 move 60 10
+wait 6
+duellog RO-END-E3
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 0 1 20 2 90
+duelplace 1 0 40 14 270
+wait 2
+duellog RO-E4
+duelo 0 0 move 60 10
+wait 6
+duellog RO-END-E4
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 0 1 20 2 90
+duelplace 1 0 40 15 270
+wait 2
+duellog RO-E5
+duelo 0 0 move 60 10
+wait 6
+duellog RO-END-E5
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 0 1 40 10 90
+duelplace 1 0 95 18 270
+wait 2
+duellog RO-A0
+duelo 0 0 move 60 10
+wait 6
+duellog RO-END-A0
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 0 1 40 11 90
+duelplace 1 0 95 18 270
+wait 2
+duellog RO-A1
+duelo 0 0 move 60 10
+wait 6
+duellog RO-END-A1
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 0 1 40 12 90
+duelplace 1 0 95 18 270
+wait 2
+duellog RO-A2
+duelo 0 0 move 60 10
+wait 6
+duellog RO-END-A2
+duelo 0 0 stop
+wait 1
+quit

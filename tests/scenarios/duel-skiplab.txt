@@ -1,0 +1,19 @@
+# Skip lab: 1v1 halberdier, infinite heal; the Chosen bot (side 1) cycles skip delays after each strike.
+# Match 1: skips allowed. Match 2: skips disabled while the bot still sends the skip orders (anti-skip patch must keep gap ~1500).
+prof start
+duelunits 4 1 1
+duelskip 1
+duelheal 1
+duelplayerbot 0
+duellab 210,220,230,240,250,260,270
+duel
+waitduel 240
+waitduelover 80
+duelskip 0
+duellabforce 1
+duelrematch
+wait 4
+waitduelover 80
+wait 1
+dump basic
+quit

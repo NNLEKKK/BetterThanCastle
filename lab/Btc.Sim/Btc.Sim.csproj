@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Btc.Sim</RootNamespace>
+    
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Btc.Shared/Btc.Shared.csproj" />
+  </ItemGroup>
+</Project>

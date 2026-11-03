@@ -1,0 +1,14 @@
+# MP client side (BTC_ROLE=client): wait for host marker, join, ready, play, measure 60 s, dump.
+prof start
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 90
+ready 120
+waitgame 240
+wait 5
+prof reset
+wait 20
+measure client-60s 60
+dump mp-client
+wait 20
+quit

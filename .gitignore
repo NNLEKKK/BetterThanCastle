@@ -1,0 +1,15 @@
+ref/
+logs/
+BTClogs/
+bin/
+obj/
+dist/
+*.dll
+.vs/
+game/
+Decompile/
+Lua/
+*.user
+*.lnk
+lab/runs/
+dist-setup/

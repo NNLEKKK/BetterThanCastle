@@ -1,0 +1,17 @@
+# LuminaBuild: measurement run on the training map (L0 sandbox): 6 units, no ore voxels, waitForOrder, blueprint costs, dump.
+newgame L0 sandbox
+waitgame 900
+wait 3
+spawn bricktron 1
+waitspawn
+wait 2
+econoore
+ecoauto 1
+ecotrace 1
+ecoplace near 4
+wait 1
+ecobpcost Blueprints.ChoppingBlock,Blueprints.Wood_Stump,Blueprints.Pallet,Blueprints.Chest,Blueprints.Furnace,Blueprints.Forge,Blueprints.Toolrack,Blueprints.SingleToolrack,Blueprints.Workbench,Blueprints.Altar,Blueprints.Loom,Blueprints.CaptureWard
+ecodump
+wait 10
+ecotrace 0
+quit

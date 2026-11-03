@@ -1,0 +1,31 @@
+# Local match stress (<= 8 min): spawn many bricktrons + structures, build orders, timescale up, dumps incl. GC focus.
+prof start
+newgame
+waitgame 240
+wait 5
+prof reset
+wait 30
+dump baseline
+spawn bricktron 60
+spawn furnace 10
+spawn stockpile 30
+spawn rack 20
+spawn workbench 10
+waitspawn 120
+order build 150
+wait 10
+prof reset
+wait 45
+dump loaded-x1
+timescale 4
+prof reset
+wait 60
+dump loaded-x4-gc
+timescale 1
+spawn bricktron 100
+waitspawn 120
+order build 300
+prof reset
+wait 60
+dump heavy
+quit

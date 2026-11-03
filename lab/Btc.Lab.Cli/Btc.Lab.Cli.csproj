@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Btc.Lab.Cli</RootNamespace>
+    <AssemblyName>btclab</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Btc.Shared/Btc.Shared.csproj" />
+    <ProjectReference Include="../Btc.Sim/Btc.Sim.csproj" />
+    <ProjectReference Include="../Btc.Bots/Btc.Bots.csproj" Condition="'$(NoBots)' != 'true'" />
+    <ProjectReference Include="../Btc.RL/Btc.RL.csproj" />
+    <ProjectReference Include="../Btc.Gpu/Btc.Gpu.csproj" />
+  </ItemGroup>
+</Project>

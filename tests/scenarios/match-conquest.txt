@@ -1,0 +1,26 @@
+# Conquest mod match (Lua gamemode serverside.lua runs): spawn load, dumps at t=30/60/120 s, then x3 timescale. <= 8 min.
+prof start
+newgame default conquest
+waitgame 240
+wait 5
+prof reset
+wait 30
+dump conq-t30
+spawn bricktron 40
+spawn stockpile 10
+spawn rack 6
+spawn workbench 6
+spawn furnace 6
+waitspawn 120
+prof reset
+wait 30
+dump conq-t60
+prof reset
+wait 60
+dump conq-t120
+timescale 3
+prof reset
+wait 60
+dump conq-x3
+timescale 1
+quit

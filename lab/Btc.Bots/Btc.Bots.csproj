@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Btc.Bots</RootNamespace>
+    <!-- The mod's duel bot sources are compiled unchanged against same-name shadow types (SimShadow/). SIM switches the few
+         #if SIM lines in those files (per-thread statics). Implicit usings off: System.Threading.Tasks.Task would clash with Brix Task. -->
+    <ImplicitUsings>disable</ImplicitUsings>
+    <DefineConstants>$(DefineConstants);SIM</DefineConstants>
+    <NoWarn>$(NoWarn);CS0162;CS0219;CS0414;CS0168;CS1717</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Btc.Shared/Btc.Shared.csproj" />
+    <ProjectReference Include="../Btc.Sim/Btc.Sim.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\src\BetterThanCastle\Features\Duel\BtcDuelUnitRef.cs" Link="Mod\BtcDuelUnitRef.cs" />
+    <Compile Include="..\..\src\BetterThanCastle\Features\Duel\BtcDuelMapGeometry.cs" Link="Mod\BtcDuelMapGeometry.cs" />
+    <Compile Include="..\..\src\BetterThanCastle\Features\Duel\BtcDuelBot.cs" Link="Mod\BtcDuelBot.cs" />
+    <Compile Include="..\..\src\BetterThanCastle\Features\Duel\BtcDuelBotTactics.cs" Link="Mod\BtcDuelBotTactics.cs" />
+    <Compile Include="..\..\src\BetterThanCastle\Features\Duel\BtcDuelPath.cs" Link="Mod\BtcDuelPath.cs" />
+    <Compile Include="..\..\src\BetterThanCastle\Features\Duel\BtcDuelBotV2.cs" Link="Mod\BtcDuelBotV2.cs" />
+    <Compile Include="..\..\src\BetterThanCastle\Features\Duel\BtcDuelBotX.cs" Link="Mod\BtcDuelBotX.cs" />
+    <Compile Include="..\..\src\BetterThanCastle\Features\Duel\BtcDuelHunter.cs" Link="Mod\BtcDuelHunter.cs" />
+    <Compile Include="..\..\src\BetterThanCastle\Features\Duel\BtcDuelBotLuminaZero.cs" Link="Mod\BtcDuelBotLuminaZero.cs" />
+  </ItemGroup>
+</Project>

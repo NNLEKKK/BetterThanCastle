@@ -1,0 +1,249 @@
+# lab-strike2: approach+strike repeats with fresh units per rep (rematch), fps 20/60 strike, MoveAttack acquisition offsets, crowd
+duelunits 4 1 1
+duelskip 1
+duelheal 1
+duelplayerbot -1
+duelnobot 1
+duelnorules 1
+dueltrace 1
+duel
+waitduel 240
+wait 2
+duelfps 0
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S-STRAIGHT-R1
+duelo 0 0 attack 1 0
+wait 9
+duelfps 0
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S-MUTUAL-R1
+duelo 0 0 attack 1 0
+duelo 1 0 attack 0 0
+wait 9
+duelfps 0
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S-STRAIGHT-R2
+duelo 0 0 attack 1 0
+wait 9
+duelfps 0
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S-MUTUAL-R2
+duelo 0 0 attack 1 0
+duelo 1 0 attack 0 0
+wait 9
+duelfps 0
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S-STRAIGHT-R3
+duelo 0 0 attack 1 0
+wait 9
+duelfps 0
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S-MUTUAL-R3
+duelo 0 0 attack 1 0
+duelo 1 0 attack 0 0
+wait 9
+duelfps 20
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S20-STRAIGHT-R1
+duelo 0 0 attack 1 0
+wait 9
+duelfps 20
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S20-MUTUAL-R1
+duelo 0 0 attack 1 0
+duelo 1 0 attack 0 0
+wait 9
+duelfps 20
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S20-STRAIGHT-R2
+duelo 0 0 attack 1 0
+wait 9
+duelfps 20
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S20-MUTUAL-R2
+duelo 0 0 attack 1 0
+duelo 1 0 attack 0 0
+wait 9
+duelfps 60
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S60-STRAIGHT-R1
+duelo 0 0 attack 1 0
+wait 9
+duelfps 60
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S60-MUTUAL-R1
+duelo 0 0 attack 1 0
+duelo 1 0 attack 0 0
+wait 9
+duelfps 60
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S60-STRAIGHT-R2
+duelo 0 0 attack 1 0
+wait 9
+duelfps 60
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S60-MUTUAL-R2
+duelo 0 0 attack 1 0
+duelo 1 0 attack 0 0
+wait 9
+duelfps 0
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 125 12 90
+duelplace 1 0 150 10 270
+wait 2
+duellog MA-OFF2
+duelo 0 0 moveattack 185 12
+wait 9
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 125 14 90
+duelplace 1 0 150 10 270
+wait 2
+duellog MA-OFF4
+duelo 0 0 moveattack 185 14
+wait 9
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 125 16 90
+duelplace 1 0 150 10 270
+wait 2
+duellog MA-OFF6
+duelo 0 0 moveattack 185 16
+wait 9
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 125 18 90
+duelplace 1 0 150 10 270
+wait 2
+duellog MA-OFF8
+duelo 0 0 moveattack 185 18
+wait 9
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 125 20 90
+duelplace 1 0 150 10 270
+wait 2
+duellog MA-OFF10
+duelo 0 0 moveattack 185 20
+wait 9
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 125 22 90
+duelplace 1 0 150 10 270
+wait 2
+duellog MA-OFF12
+duelo 0 0 moveattack 185 22
+wait 9
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 125 24 90
+duelplace 1 0 150 10 270
+wait 2
+duellog MA-OFF14
+duelo 0 0 moveattack 185 24
+wait 9
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 125 26 90
+duelplace 1 0 150 10 270
+wait 2
+duellog MA-OFF16
+duelo 0 0 moveattack 185 26
+wait 9
+duelunits 4 5 1
+duelrematch
+waitduel 60
+wait 2
+duelplace 0 0 120 26 90
+duelplace 0 1 120 28 90
+duelplace 0 2 120 30 90
+duelplace 0 3 120 32 90
+duelplace 0 4 120 34 90
+wait 2
+duellog D-CROWD
+duelo 0 0 move 130 30
+duelo 0 1 move 130 30
+duelo 0 2 move 130 30
+duelo 0 3 move 130 30
+duelo 0 4 move 130 30
+wait 7
+quit

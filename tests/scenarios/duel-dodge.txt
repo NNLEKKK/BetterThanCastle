@@ -1,0 +1,19 @@
+# Dodge lab: 1v1 naive vs naive with infinite heal; the target of each strike steps back 3 blocks DODGE ms after the strike starts. Compare STRIKE vs HIT counts.
+prof start
+duelunits 4 1 1
+duelskip 0
+duelheal 1
+duelplayerbot 0
+duelskipdelay 9999
+dueldodge 250
+duel
+waitduel 240
+wait 25
+dueldodge 350
+duelrematch
+wait 28
+dueldodge 420
+duelrematch
+wait 28
+dump basic
+quit

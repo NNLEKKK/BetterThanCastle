@@ -1,0 +1,203 @@
+# lab-strike: approach + strike geometry/timing, fps repeats, MoveAttack acquisition
+duelunits 4 2 2
+duelskip 1
+duelheal 1
+duelplayerbot -1
+duelnobot 1
+duelnorules 1
+dueltrace 1
+duel
+waitduel 240
+wait 3
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S-STRAIGHT
+duelo 0 0 attack 1 0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 100 30 90
+duelplace 1 0 120 36 270
+wait 2
+duellog S-ANG17
+duelo 0 0 attack 1 0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 100 30 90
+duelplace 1 0 112 42 225
+wait 2
+duellog S-DIAG45
+duelo 0 0 attack 1 0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 100 30 90
+duelplace 1 0 100 50 180
+wait 2
+duellog S-PERP
+duelo 0 0 attack 1 0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S-MUTUAL
+duelo 0 0 attack 1 0
+duelo 1 0 attack 0 0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 100 30 90
+duelplace 1 0 101 30 270
+wait 2
+duellog S-ADJ
+duelo 0 0 attack 1 0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 100 30 90
+duelplace 1 0 102 30 270
+wait 2
+duellog S-TWO
+duelo 0 0 attack 1 0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 100 30 90
+duelplace 1 0 101 31 270
+wait 2
+duellog S-DIAG1
+duelo 0 0 attack 1 0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 100 30 90
+duelplace 1 0 102 31 270
+wait 2
+duellog S-KNIGHT
+duelo 0 0 attack 1 0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S-STRAIGHT2
+duelo 0 0 attack 1 0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S-MUTUAL2
+duelo 0 0 attack 1 0
+duelo 1 0 attack 0 0
+wait 7
+duelfps 20
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S20-STRAIGHT
+duelo 0 0 attack 1 0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S20-MUTUAL
+duelo 0 0 attack 1 0
+duelo 1 0 attack 0 0
+wait 7
+duelfps 60
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S60-STRAIGHT
+duelo 0 0 attack 1 0
+wait 7
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 100 30 90
+duelplace 1 0 120 30 270
+wait 2
+duellog S60-MUTUAL
+duelo 0 0 attack 1 0
+duelo 1 0 attack 0 0
+wait 7
+duelfps 0
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 125 12 90
+duelplace 1 0 150 10 270
+wait 2
+duellog MA-OFF2
+duelo 0 0 moveattack 185 12
+wait 9
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 125 14 90
+duelplace 1 0 150 10 270
+wait 2
+duellog MA-OFF4
+duelo 0 0 moveattack 185 14
+wait 9
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 125 16 90
+duelplace 1 0 150 10 270
+wait 2
+duellog MA-OFF6
+duelo 0 0 moveattack 185 16
+wait 9
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 125 18 90
+duelplace 1 0 150 10 270
+wait 2
+duellog MA-OFF8
+duelo 0 0 moveattack 185 18
+wait 9
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 125 20 90
+duelplace 1 0 150 10 270
+wait 2
+duellog MA-OFF10
+duelo 0 0 moveattack 185 20
+wait 9
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 125 22 90
+duelplace 1 0 150 10 270
+wait 2
+duellog MA-OFF12
+duelo 0 0 moveattack 185 22
+wait 9
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 125 24 90
+duelplace 1 0 150 10 270
+wait 2
+duellog MA-OFF14
+duelo 0 0 moveattack 185 24
+wait 9
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 0 125 26 90
+duelplace 1 0 150 10 270
+wait 2
+duellog MA-OFF16
+duelo 0 0 moveattack 185 26
+wait 9
+quit

@@ -1,0 +1,111 @@
+# lab-kin: kinematics (straight, 180 turn, diagonal, short moves, redirect), fps 20/60 repeats, regen
+duelunits 4 1 1
+duelskip 1
+duelheal 0
+duelplayerbot -1
+duelnobot 1
+duelnorules 1
+dueltrace 1
+duel
+waitduel 240
+wait 3
+dueldump
+duellog KIN-BASE
+duelplace 0 0 60 10 90
+wait 1.5
+duelo 0 0 move 100 10
+wait 9
+duelo 0 0 move 60 10
+wait 9
+duelo 0 0 move 61 10
+wait 2.5
+duelo 0 0 move 63 10
+wait 2.5
+duelo 0 0 move 60 10
+wait 3
+duelo 0 0 move 60 11
+wait 2.5
+duelo 0 0 move 60 13
+wait 2.5
+duelo 0 0 move 65 10
+wait 3
+duelplace 0 0 60 10 90
+wait 1.5
+duelo 0 0 move 90 40
+wait 8
+duelo 0 0 move 60 10
+wait 8
+duelo 0 0 move 100 20
+wait 9
+duelo 0 0 move 60 10
+wait 9
+duelo 0 0 move 62 12
+wait 2.5
+duelo 0 0 move 60 10
+wait 2.5
+duelo 0 0 move 120 10
+wait 2
+duelo 0 0 move 60 10
+wait 9
+duelo 0 0 move 120 10
+wait 2
+duelo 0 0 move 75 45
+wait 7
+duelo 0 0 move 60 10
+wait 8
+duelo 0 0 turn 50 10
+wait 2
+duelo 0 0 turn 60 30
+wait 2
+duelo 0 0 turn 70 10
+wait 2
+duelfps 20
+duellog KIN-FPS20
+duelplace 0 0 60 10 90
+wait 1.5
+duelo 0 0 move 100 10
+wait 9
+duelo 0 0 move 60 10
+wait 9
+duelo 0 0 move 61 10
+wait 2.5
+duelo 0 0 move 63 10
+wait 2.5
+duelo 0 0 move 60 10
+wait 3
+duelo 0 0 move 60 11
+wait 2.5
+duelo 0 0 move 60 13
+wait 2.5
+duelo 0 0 move 65 10
+wait 3
+duelfps 60
+duellog KIN-FPS60
+duelplace 0 0 60 10 90
+wait 1.5
+duelo 0 0 move 100 10
+wait 9
+duelo 0 0 move 60 10
+wait 9
+duelo 0 0 move 61 10
+wait 2.5
+duelo 0 0 move 63 10
+wait 2.5
+duelo 0 0 move 60 10
+wait 3
+duelo 0 0 move 60 11
+wait 2.5
+duelo 0 0 move 60 13
+wait 2.5
+duelo 0 0 move 65 10
+wait 3
+duelfps 0
+duellog REGEN
+duelplace 0 0 60 10 90
+duelplace 1 0 64 10 270
+wait 1
+duelo 1 0 attack 0 0
+wait 5
+duelo 1 0 move 200 50
+wait 50
+quit

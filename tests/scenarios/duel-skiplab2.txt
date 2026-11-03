@@ -1,0 +1,20 @@
+# Frame-precise skip lab: Chosen bot cycles K = simulation frames between strike start and the skip order; read SKIP fr=K and the following HIT/STRIKE.
+prof start
+duelunits 4 12 12
+duelskip 1
+duelheal 1
+duelplayerbot 0 0
+duelfeat 0
+duellabframes 8,9,10,11,12,13,14,15
+duel
+waitduel 240
+waitduelover 60
+duelrematch
+wait 4
+waitduelover 60
+duelrematch
+wait 4
+waitduelover 60
+wait 1
+dump basic
+quit

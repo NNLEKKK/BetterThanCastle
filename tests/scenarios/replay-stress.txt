@@ -1,0 +1,13 @@
+# Replay playback profile: load latest replay, play 60 s at x1, 30 s at x4, seek, dump.
+prof start
+replay latest
+waitreplay 180
+wait 60
+dump replay-x1
+speed 4
+wait 30
+dump replay-x4
+seek 120
+wait 15
+dump replay-seek
+quit

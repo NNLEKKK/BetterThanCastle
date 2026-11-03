@@ -1,0 +1,133 @@
+# lab-reorder3: when does a new RunToward replace an active one (arrived / running), by distance and delay
+duelunits 4 1 1
+duelskip 1
+duelheal 0
+duelplayerbot -1
+duelnobot 1
+duelnorules 1
+dueltrace 1
+duel
+waitduel 240
+wait 3
+duelplace 0 0 20 10 90
+duelplace 1 0 95 10 270
+wait 1.5
+duellog RO-A_d4_w05
+duelo 0 0 move 22 10
+wait 1.5
+duelo 0 0 move 18 10
+wait 3
+duellog RO-END-A_d4_w05
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 1 0 95 10 270
+wait 1.5
+duellog RO-A_d4_w3
+duelo 0 0 move 22 10
+wait 4
+duelo 0 0 move 18 10
+wait 3
+duellog RO-END-A_d4_w3
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 1 0 95 10 270
+wait 1.5
+duellog RO-A_d10_w05
+duelo 0 0 move 22 10
+wait 1.5
+duelo 0 0 move 12 10
+wait 3
+duellog RO-END-A_d10_w05
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 1 0 95 10 270
+wait 1.5
+duellog RO-A_d20_w05
+duelo 0 0 move 22 10
+wait 1.5
+duelo 0 0 move 2 10
+wait 3
+duellog RO-END-A_d20_w05
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 1 0 95 10 270
+wait 1.5
+duellog RO-A_d38_w05
+duelo 0 0 move 22 10
+wait 1.5
+duelo 0 0 move 60 10
+wait 3
+duellog RO-END-A_d38_w05
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 1 0 95 10 270
+wait 1.5
+duellog RO-A_side4
+duelo 0 0 move 22 10
+wait 1.5
+duelo 0 0 move 22 14
+wait 3
+duellog RO-END-A_side4
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 1 0 95 10 270
+wait 1.5
+duellog RO-R_back6
+duelo 0 0 move 80 10
+wait 1
+duelo 0 0 move 20 10
+wait 3
+duellog RO-END-R_back6
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 1 0 95 10 270
+wait 1.5
+duellog RO-R_ahead
+duelo 0 0 move 80 10
+wait 1
+duelo 0 0 move 32 10
+wait 3
+duellog RO-END-R_ahead
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 1 0 95 10 270
+wait 1.5
+duellog RO-R_here
+duelo 0 0 move 80 10
+wait 1
+duelo 0 0 move 26 10
+wait 3
+duellog RO-END-R_here
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 1 0 95 10 270
+wait 1.5
+duellog RO-R_side
+duelo 0 0 move 80 10
+wait 1
+duelo 0 0 move 26 16
+wait 3
+duellog RO-END-R_side
+duelo 0 0 stop
+wait 1
+duelplace 0 0 20 10 90
+duelplace 1 0 95 10 270
+wait 1.5
+duellog RO-R_back3
+duelo 0 0 move 80 10
+wait 1
+duelo 0 0 move 23 10
+wait 3
+duellog RO-END-R_back3
+duelo 0 0 stop
+wait 1
+quit

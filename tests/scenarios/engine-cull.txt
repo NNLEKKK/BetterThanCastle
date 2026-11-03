@@ -1,0 +1,46 @@
+# Animator culling: movement correctness (walk A/B, render off => all units culled) + frame time. Results: BTClogs/engine.txt.
+prof start
+newgame default conquest
+waitgame 240
+spawn bricktron 45
+spawn stockpile 8
+spawn rack 6
+spawn workbench 6
+spawn furnace 6
+waitspawn 120
+wait 15
+engine counters off
+prof reset
+engine culling off
+wait 1
+walk init 8
+engine render off
+wait 2
+walk go always1
+wait 25
+walk go always1
+wait 25
+engine culling on
+wait 1
+walk go cull1
+wait 25
+walk go cull1
+wait 25
+engine cullfull on
+wait 1
+walk go full1
+wait 25
+engine cullfull off
+engine culling off
+engine render on
+wait 3
+measure always 15
+engine culling on
+wait 2
+measure cull-units 15
+engine cullfull on
+wait 2
+measure cull-full 15
+engine culling off
+dump engine-cull
+quit

@@ -1,0 +1,46 @@
+# Lessons (one line per gotcha: symptom -> cause -> fix)
+- Move-Item with a wildcard path under -LiteralPath fails -> wildcard not expanded -> use Get-ChildItem | Move-Item.
+- Diffs between decompiles show ~3000 files -> `// Token: 0x...` comments differ -> strip them before diffing (gen-diff.ps1).
+- `bool flag = x; if (flag)` pairs = dnSpy mod-decompile noise, not a change -> p2 normalisation inlines them.
+- Windows PowerShell 5.1 has no scriptblock in -replace and no pwsh -> use [regex]::Replace / String.Replace.
+- .claude/settings.json edits are blocked by the auto-mode classifier -> user must edit permissions themselves.
+- BepInEx "0 plugins to load" / no LogOutput.log -> BepInEx.cfg [Preloader.Entrypoint] Assembly=UnityEngine.CoreModule.dll (does not exist in Unity 5.6.5) -> must be UnityEngine.dll; check this first if the chainloader does not start.
+- BepInEx 0 plugins / no LogOutput.log on Unity 5.6 -> [Preloader.Entrypoint] Assembly was UnityEngine.CoreModule.dll -> set UnityEngine.dll (done above too).
+- Harmony anchor never found (`get_LocalUser`) -> `User.LocalUser` is a static FIELD (ldsfld), not a property -> check field vs property in the decompile before writing the anchor.
+- `CodeInstruction.LoadLocal/LocalIndex` do not exist in this HarmonyX -> build ldloc from the stloc instruction (opcode+operand), see DeepLayerPatches.LdlocFrom.
+- `[HarmonyPatch(typeof(Derived), "M")]` where M is inherited patches the BASE method for everyone -> patch the declaring class and test `__instance is Derived`.
+- Readonly vanilla field assigned in a patch -> CS0191 even with the publicized assembly -> `AccessTools.Field(...).SetValue(...)`.
+- Parallel agents' `dotnet build` collided (obj/bin dirs under src compiled twice: CS0579/CS0101) -> csproj `Compile Remove="obj\**;bin\**"` + `errors.ps1 -Tag`.
+- PowerShell `[IO.File]::*` uses the process cwd, not the PS location -> always absolute paths. `sed -i` on scripts with backslashes corrupts them -> edit with PowerShell string Replace.
+- `build.ps1` Copy-Item fails ("user-mapped section") while the game runs -> run-game/smoke refuse if the game is running; never kill a game the user may be playing.
+- Compiler messages are Russian -> parse `error CSxxxx`, never message text.
+- Probe (Finalizers on all patched methods) shifts startup timing: first `ApplyHats` retry may log a benign "Invalid Factory name 'Visuals'" warning (filtered in digest).
+- Windows file name `ref/vanilla` etc. are read-only references; the foreign mod inside the current DLL makes many diffs misleading (harpoon/sprint/climb): confirm with a clean DLL before porting any "inline" diff.
+- Handicap income stayed 0 -> Brewery.ProcessFirefly read `mainRecepteur` (property) as a field -> use `nest.faction`; check field vs property before ldfld/ldsfld.
+- Presets pick wrong settings after an update -> removing Defs rows shifted indices and presets store indices -> key presets by stable name or migrate; never remove rows silently.
+- Clicks pass through menus to the game in main menu/lobby -> InputModeController is null there, so no input lock -> disable uGUI EventSystem when null, recheck every 0.25 s; Lua reading Input directly cannot be blocked.
+- Agent commits got no author in this env -> identity is now in the LOCAL repo config (git config user.name/user.email, set 2026-11-03); never global config, never put the email into tracked files (repo is public).
+- Units did not move on an edited arena -> nav not told about the new terrain -> after VoxelEngine.ApplyChanges fire GameSignals.VoxelChanged/TerrainChanged + Architecte.Changement (BtcTerrainUndo.FireAt); it costs fps for ~8 s, wait for calm frames before timing anything.
+- Skip (move-attack after a strike) = every order makes a NEW AttackInfo (cooldown forgotten); strike->damage ~450 ms, an order <~225 ms after the strike cancels it, 220-230 ms gives a ~0.6 s hit gap (vanilla 1.5 s). Anti-skip = Prefix on AttackInfo.Strike with a per-unit timer (a Postfix still runs when the Prefix skips: carry a __state flag).
+- Duel units had 50 HP vs 500 -> BtcHandicap leftovers apply per faction -> BtcHandicap.For returns null while BtcDuel.Active.
+- Sandbox factions are neutral/allied by default -> set Faction.SetFactionRelation(Enemy) both ways for the duel.
+- Bot units survived Rematch -> Architecte.NetworkAsymmetricDestroy only releases objects owned by the local user -> call ObjectPoolSingleton.Release directly.
+- Hidden test game was audible -> Wwise ignores AudioListener.volume -> set Brix.Audio.SoundEngine.mute = true (runtime only, not saved).
+- Bot 'edge hold' fired for every unit at t=0 -> velocity from PrevPos=zero was huge -> init PrevPos at spawn.
+- Duel units ignored orders / stood AFK -> spawned 0.6 above the floor, landing stun swallows orders -> spawn at Floor+0.08 and keep bots idle 1.2 s.
+- Every redesign of the duel bot lost to the old one -> small samples (n=10, sd ~1.6 wins) fooled the first runs -> judge only n>=40 per mask, parallel instances (scripts/duel-par.ps1).
+- 70% of strike pauses > 1.6 s are target switches (data from duel logs) -> engaged units must not switch target (mask 2048); 100% of first-blood victims had been ordered to retreat and 76% of retreating units die while running.
+- Duel RL: re-sending the same order every decision restarts the unit task (Attack re-inits the AI search): the unit never moves. Skip repeats (DuelActions.IsRepeat) in every controller.
+- Duel RL: DuelView geometry defaults to the x1 arena; any producer of a DuelView must copy Len/Wid/SafeLen/NeutralLen/MidLen.
+- RL: pure self-play from scratch collapses into time-limit draws and never discovers rule exploits (kill&escape); a main exploiter (AlphaStar) fixes it.
+- RL: entropy 0.02 over 69 actions washes a prior to uniform before any reward signal; use 0.005.
+- lab: the MCP lab job locks lab/Btc.Lab.Cli/bin/Release; build tests with `-o <scratch>` while training runs.
+- lab GPU: a driver reset (TDR, e.g. the user starting the game) can leave the OpenCL context silently returning garbage; PpoTrainer.TrainGpu now probes GPU vs CPU forward every update and resets the backend / falls back to the CPU (a run froze for 3 h on KL ~1.4 before this).
+- Sim fidelity: the game delays an order to a running unit by ~0.35 s and the newest order replaces the pending one; the sim applied every order at once, so LuminaZero learned an order-spam style that freezes in the game (0/10 vs Chosen in game, 80% in sim). Validate RL policies on real-game logs (`btclab trace-unit`), not only sim eval.
+- lab: long training must run detached (Start-Process cmd /c ... >> BTClogs\train-<run>.log), not as an MCP lab job: the job's stdout pipe and timeout die with the session.
+- Hidden-game `newgame` scenarios (match-basic etc.) hung on 2026-11-02 night (scene stays SceneSplashScreen, "NetworkLobbyManager can't accept new connection ... game already in progress", no "load begin"); HUD panel names could not be dumped. BtcInterface therefore discovers HUD panels at runtime (log line `[Interface] panels:` shows the names in a real match; env BTC_UIDUMP=1 dumps canvases).
+- Pie menu (RMB hold) is RadialLayoutGroup: MouseRightDown -> SetCreationTime; skipping SetCreationTime keeps creationTime=-1 so neither the timer nor the drag path (MouseRightDrag -> Create) can open it.
+- Never `taskkill /IM "Castle Story.exe"` (classifier blocks it, could hit the user's game): kill only the PID whose CommandLine has -screen-width 640.
+- GUI.skin throws outside OnGUI (Update): create GUIStyles only when Event.current != null; later font size changes can be applied to the existing style anywhere.
+- Inside a class, a helper named `Time(...)` hides UnityEngine.Time (`Time.unscaledTime` stops compiling); `Environment` is ambiguous with Brix.External.Factories.Environment (use System.Environment).
+- Replay playback looks like a client fed from file (inferred from RewindResetWorld: ClientScene.DestroyAllClientObjects, User.LocalUser = null; not verified in game): server-side Harmony hooks (kills, recipes, blueprints) do not fire there; anything for replays must poll replicated state and reset on rewind.

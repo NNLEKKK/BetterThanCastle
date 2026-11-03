@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>ecolab</AssemblyName>
+    <RootNamespace>Btc.Eco.Cli</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Btc.EcoSim/Btc.EcoSim.csproj" />
+    <ProjectReference Include="../Btc.EcoShared/Btc.EcoShared.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,76 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net35</TargetFramework>
+    <AssemblyName>BetterThanCastle</AssemblyName>
+    <RootNamespace>BetterThanCastle</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Version>0.1.0</Version>
+    <DebugType>portable</DebugType>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <RestoreAdditionalProjectSources>https://nuget.bepinex.dev/v3/index.json</RestoreAdditionalProjectSources>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <DefineConstants>$(DefineConstants);DEV</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- private build dirs of parallel tagged builds (scripts/errors.ps1 -Tag) must never be compiled -->
+    <Compile Remove="obj\**;bin\**" />
+    <!-- lab/Btc.Shared: engine-neutral duel AI code shared with the lab simulator (DuelView, DuelObs, DuelActions, MlpPolicy) -->
+    <Compile Include="..\..\lab\Btc.Shared\*.cs" Link="Shared\%(Filename)%(Extension)" />
+    <!-- LuminaZero duel policy exported by `btclab export` (lab/policies/luminazero.btcpol); optional -->
+    <EmbeddedResource Include="..\..\lab\policies\luminazero.btcpol" LogicalName="BetterThanCastle.luminazero.btcpol" Condition="Exists('..\..\lab\policies\luminazero.btcpol')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net35" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.2" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Publicized at build time only: lets mod code touch private/internal members of the game directly. -->
+    <Reference Include="Assembly-CSharp-firstpass" Publicize="true">
+      <HintPath>$(ManagedDir)Assembly-CSharp-firstpass.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine"><HintPath>$(ManagedDir)UnityEngine.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UI"><HintPath>$(ManagedDir)UnityEngine.UI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.Networking"><HintPath>$(ManagedDir)UnityEngine.Networking.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Brix.Core"><HintPath>$(ManagedDir)Brix.Core.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="brix-common"><HintPath>$(ManagedDir)brix-common.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="MoonSharp.Interpreter"><HintPath>$(ManagedDir)MoonSharp.Interpreter.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Newtonsoft.Json"><HintPath>$(ManagedDir)Newtonsoft.Json.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Rewired_Core"><HintPath>$(ManagedDir)Rewired_Core.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Smooth.Foundations"><HintPath>$(ManagedDir)Smooth.Foundations.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="ArabicSupport"><HintPath>$(ManagedDir)ArabicSupport.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="log4net"><HintPath>$(ManagedDir)log4net.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Mono.Nat"><HintPath>$(ManagedDir)Mono.Nat.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="MouseLibWin"><HintPath>$(ManagedDir)MouseLibWin.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="ProMouseDll"><HintPath>$(ManagedDir)ProMouseDll.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Core" />
+    <Reference Include="BepInEx"><HintPath>$(BepInExCoreDir)BepInEx.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="0Harmony"><HintPath>$(BepInExCoreDir)0Harmony.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+
+  <!-- DEV only: bake the repo's BTClogs path into the Debug build (no absolute paths in Release). -->
+  <Target Name="BtcGenDevPaths" BeforeTargets="CoreCompile" Condition="'$(Configuration)' == 'Debug'">
+    <PropertyGroup>
+      <BtcRepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\'))</BtcRepoRoot>
+      <BtcDevPathsFile>$(IntermediateOutputPath)BtcDevPaths.g.cs</BtcDevPathsFile>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(BtcDevPathsFile)" Overwrite="true" WriteOnlyWhenDifferent="true"
+      Lines="#if DEV;namespace BetterThanCastle.Dev { internal static class BtcDevPaths { public static readonly string LogDir = Resolve(@&quot;$(BtcRepoRoot)BTClogs&quot;)%3B static string Resolve(string root) { string s = System.Environment.GetEnvironmentVariable(&quot;BTC_LOGDIR&quot;)%3B if (string.IsNullOrEmpty(s)) return root%3B return System.IO.Path.IsPathRooted(s) ? s : System.IO.Path.Combine(root, s)%3B } public const string Marker = &quot;BTC_DEV_BUILD&quot;%3B } };#endif" />
+    <ItemGroup>
+      <Compile Include="$(BtcDevPathsFile)" />
+      <FileWrites Include="$(BtcDevPathsFile)" />
+    </ItemGroup>
+  </Target>
+
+</Project>
