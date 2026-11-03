@@ -1,0 +1,23 @@
+# Extended colour firefly economy: host on slot 5 (Pink), client Red. Kills 3 Pink + 3 Red units, dumps fireflies/nests per faction.
+host default conquest
+waitclients 1 200
+wait 3
+hostfaction 5
+gameplay eco.stable=1;eco.penFixed=30;gen.maxp=8;mov.items=1;mov.retry=1;mov.cancel=1
+wait 3
+startmatch 120
+waitgame 240
+wait 5
+ffdump start
+ffkill 3 Pink
+ffkill 3 Red
+ffkill 3 Cyan
+wait 10
+ffdump kill10
+wait 40
+ffdump kill50
+wait 50
+ffdump kill100
+wait 40
+ffdump kill140
+quit

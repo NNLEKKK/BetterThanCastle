@@ -212,6 +212,10 @@ namespace BetterThanCastle.Dev
                 case "crystaldump": BtcDevCrystal.Dump(); break;
                 case "crystaltint": BtcDevCrystal.Tint(p); break;
                 case "crystalread": BtcDevCrystal.Read(); break;
+                case "hostfaction": BtcDevFirefly.HostFaction((int)F(p, 1, 0f)); break;
+                case "gameplay": BtcDevFirefly.Gameplay(p.Length > 1 ? p[1] : string.Empty); break;
+                case "ffdump": BtcDevFirefly.Dump(p.Length > 1 ? p[1] : "cmd"); break;
+                case "ffkill": BtcDevFirefly.Kill((int)F(p, 1, 1f), p.Length > 2 ? p[2] : null); break;
                 case "dump": BtcDevProf.Dump(p.Length > 1 ? p[1] : "cmd"); break;
                 case "done":
                     File.WriteAllText(Path.Combine(BtcDevPaths.LogDir, "done.txt"), DateTime.Now.ToString("HH:mm:ss"));

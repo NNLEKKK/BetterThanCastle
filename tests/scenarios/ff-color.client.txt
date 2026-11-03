@@ -1,0 +1,16 @@
+# Client side of ff-color: join, ready, idle, dump.
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 90
+wait 2
+hostfaction 6
+wait 2
+ready 120
+waitgame 240
+wait 5
+ffdump client-start
+wait 45
+ffdump client-mid
+wait 105
+ffdump client-end
+quit

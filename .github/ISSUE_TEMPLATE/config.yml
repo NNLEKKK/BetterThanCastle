@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Releases and install guide / Релизы и установка
+    url: https://github.com/NNLEKKK/BetterThanCastle/releases
+    about: Download the installer or the DLL. / Скачать установщик или DLL.
