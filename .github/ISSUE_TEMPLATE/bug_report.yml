@@ -16,8 +16,8 @@ body:
   - type: textarea
     id: what
     attributes:
-      label: What happened / Что случилось
-      description: One or two sentences. What did you see? / Одно-два предложения: что ты увидел?
+      label: "What happened / Что случилось"
+      description: "One or two sentences. What did you see? / Одно-два предложения: что ты увидел?"
       placeholder: "Example: after a group jump two archers landed in the same block and got stuck."
     validations:
       required: true
@@ -25,16 +25,16 @@ body:
   - type: textarea
     id: expected
     attributes:
-      label: What should happen / Как должно быть
-      description: What did you expect? Is it the same in vanilla (without the mod)? / Чего ты ожидал? В ванили (без мода) так же?
+      label: "What should happen / Как должно быть"
+      description: "What did you expect? Is it the same in vanilla (without the mod)? / Чего ты ожидал? В ванили (без мода) так же?"
     validations:
       required: true
 
   - type: textarea
     id: steps
     attributes:
-      label: Steps to reproduce / Как повторить
-      description: Numbered steps from the main menu. Mention map, mode, unit types and counts. / Шаги по пунктам от главного меню: карта, режим, какие юниты и сколько.
+      label: "Steps to reproduce / Как повторить"
+      description: "Numbered steps from the main menu. Mention map, mode, unit types and counts. / Шаги по пунктам от главного меню: карта, режим, какие юниты и сколько."
       placeholder: |
         1. Sandbox, map Ellaria
         2. Select 6 archers
@@ -46,7 +46,7 @@ body:
   - type: dropdown
     id: frequency
     attributes:
-      label: How often / Как часто
+      label: "How often / Как часто"
       options:
         - Every time / Каждый раз
         - Often / Часто
@@ -58,8 +58,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: Mod version / Версия мода
-      description: Shown in the BTC menu (PgDown) and in the first lines of LogOutput.log (`[BTC] loaded v...`). / Видна в меню BTC (PgDown) и в начале LogOutput.log.
+      label: "Mod version / Версия мода"
+      description: "Shown in the BTC menu (PgDown) and in the first lines of LogOutput.log (`[BTC] loaded v...`). / Видна в меню BTC (PgDown) и в начале LogOutput.log."
       placeholder: "0.2.2"
     validations:
       required: true
@@ -67,7 +67,7 @@ body:
   - type: dropdown
     id: mode
     attributes:
-      label: Where / Где
+      label: "Where / Где"
       options:
         - Singleplayer (sandbox / conquest / other) / Одиночная игра
         - Multiplayer, I was the HOST / Мультиплеер, я хост
@@ -84,8 +84,8 @@ body:
   - type: dropdown
     id: bc
     attributes:
-      label: BetterConnection
-      description: BTC menu → BC tab, or `BetterConnection` in `BepInEx/config/com.btc.betterthancastle.cfg`. / Меню BTC → вкладка BC.
+      label: "BetterConnection"
+      description: "BTC menu → BC tab, or `BetterConnection` in `BepInEx/config/com.btc.betterthancastle.cfg`. / Меню BTC → вкладка BC."
       options:
         - "ON / Вкл"
         - "OFF / Выкл"
@@ -96,21 +96,21 @@ body:
   - type: textarea
     id: mp
     attributes:
-      label: Multiplayer details / Детали мультиплеера
-      description: Only for MP. How many players, who was host, did everyone have the mod and the same version, did BC match? / Только для МП. Сколько игроков, кто хост, у всех ли мод и одна версия, совпадал ли BC?
+      label: "Multiplayer details / Детали мультиплеера"
+      description: "Only for MP. How many players, who was host, did everyone have the mod and the same version, did BC match? / Только для МП. Сколько игроков, кто хост, у всех ли мод и одна версия, совпадал ли BC?"
       placeholder: "2 players, I was host, friend has 0.2.2 too, both BC ON"
 
   - type: input
     id: when
     attributes:
-      label: When in the session / Когда в сессии
-      description: Rough time, so I can find it in the log (clock time or "about 10 minutes into the match"). / Примерное время, чтобы найти место в логе.
+      label: "When in the session / Когда в сессии"
+      description: "Rough time, so I can find it in the log (clock time or \"about 10 minutes into the match\"). / Примерное время, чтобы найти место в логе."
       placeholder: "around 21:40, ~10 min into the match"
 
   - type: textarea
     id: logs
     attributes:
-      label: Log file / Лог
+      label: "Log file / Лог"
       description: |
         Drag and drop `BepInEx/LogOutput.log` here (whole file, do not paste it as text). If more players were in the match, their logs help a lot too.
         For duels also attach the match log from `<Castle Story folder>/BetterThanCastle/duel-logs/`.
@@ -121,25 +121,25 @@ body:
   - type: textarea
     id: config
     attributes:
-      label: Config (optional) / Конфиг (необязательно)
-      description: Attach `BepInEx/config/com.btc.betterthancastle.cfg` if you changed settings. For gameplay-setting bugs say which settings were changed in the Gameplay tab. / Приложи, если менял настройки; для багов в Gameplay Settings напиши, что менял.
+      label: "Config (optional) / Конфиг (необязательно)"
+      description: "Attach `BepInEx/config/com.btc.betterthancastle.cfg` if you changed settings. For gameplay-setting bugs say which settings were changed in the Gameplay tab. / Приложи, если менял настройки; для багов в Gameplay Settings напиши, что менял."
 
   - type: textarea
     id: media
     attributes:
-      label: Screenshot / video / save / replay (optional)
-      description: Anything that shows the bug. A save or replay file that reproduces it is the best. / Всё, что показывает баг. Сейв или реплей, где он повторяется, лучше всего.
+      label: "Screenshot / video / save / replay (optional)"
+      description: "Anything that shows the bug. A save or replay file that reproduces it is the best. / Всё, что показывает баг. Сейв или реплей, где он повторяется, лучше всего."
 
   - type: textarea
     id: other
     attributes:
-      label: Other mods, anything else / Другие моды, что-то ещё
-      description: Other BepInEx plugins, custom maps or Lua gamemodes, resource packs. / Другие плагины BepInEx, свои карты или Lua-режимы, ресурс-паки.
+      label: "Other mods, anything else / Другие моды, что-то ещё"
+      description: "Other BepInEx plugins, custom maps or Lua gamemodes, resource packs. / Другие плагины BepInEx, свои карты или Lua-режимы, ресурс-паки."
 
   - type: checkboxes
     id: checks
     attributes:
-      label: Checks
+      label: "Checks"
       options:
         - label: I searched existing issues for this bug. / Я поискал похожие issues.
           required: true

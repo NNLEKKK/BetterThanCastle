@@ -1261,6 +1261,7 @@ public static class BtcGameplayUI
 			"gcol",
 			"path",
 			"mov",
+			"build",
 		};
 		string[] array2 = new string[]
 		{
@@ -1268,6 +1269,7 @@ public static class BtcGameplayUI
 			"New colours (slots 5-8)",
 			"Pathfinding (search budgets)",
 			"Movement",
+			"Building / blueprints",
 		};
 		string[] array3 = new string[]
 		{
@@ -1275,6 +1277,7 @@ public static class BtcGameplayUI
 			"Новые цвета (слоты 5-8)",
 			"Поиск путей (бюджеты поиска)",
 			"Движение",
+			"Постройка / чертежи",
 		};
 		for (int i = 0; i < array.Length; i++)
 		{

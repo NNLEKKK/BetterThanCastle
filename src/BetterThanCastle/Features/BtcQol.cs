@@ -38,6 +38,8 @@ public static class BtcQol
 		BtcGameplay.Defs[BtcGameplay.Idx("mov.retryDelay")].Adv = 2;
 		BtcGameplay.Defs[BtcGameplay.Idx("mov.repathSteps")].Adv = 2;
 		BtcSimplePhys.AddRows();
+		BtcJumpLine.AddRows();
+		BtcChopBlock1x1.AddRows();
 	}
 
 	private static bool On(ref int idx, string id)

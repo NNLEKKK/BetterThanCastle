@@ -12,8 +12,8 @@ body:
   - type: textarea
     id: problem
     attributes:
-      label: Problem / Проблема
-      description: What annoys you or what is missing? How does vanilla behave now? / Что мешает или чего не хватает? Как сейчас в ванили?
+      label: "Problem / Проблема"
+      description: "What annoys you or what is missing? How does vanilla behave now? / Что мешает или чего не хватает? Как сейчас в ванили?"
       placeholder: "Example: when a group jumps, every unit jumps onto the same block."
     validations:
       required: true
@@ -21,8 +21,8 @@ body:
   - type: textarea
     id: idea
     attributes:
-      label: Idea / Идея
-      description: What exactly should happen? Step by step from the player's view. / Что именно должно происходить, по шагам глазами игрока.
+      label: "Idea / Идея"
+      description: "What exactly should happen? Step by step from the player's view. / Что именно должно происходить, по шагам глазами игрока."
       placeholder: "Each unit jumps onto its own block, in a line across the target."
     validations:
       required: true
@@ -30,7 +30,7 @@ body:
   - type: dropdown
     id: area
     attributes:
-      label: Area / Область
+      label: "Area / Область"
       options:
         - Units, orders, movement / Юниты, приказы, движение
         - Building, blueprints / Постройка, чертежи
@@ -50,8 +50,8 @@ body:
   - type: dropdown
     id: scope
     attributes:
-      label: Who controls it / Кто управляет
-      description: In MP, should the host set it for everyone (a rule) or should each player choose it for themselves? / В МП это правило хоста для всех или личная настройка игрока?
+      label: "Who controls it / Кто управляет"
+      description: "In MP, should the host set it for everyone (a rule) or should each player choose it for themselves? / В МП это правило хоста для всех или личная настройка игрока?"
       options:
         - Host rule for everyone (Gameplay Settings) / Правило хоста для всех
         - Personal option of each player / Личная настройка игрока
@@ -63,7 +63,7 @@ body:
   - type: dropdown
     id: default
     attributes:
-      label: Default / По умолчанию
+      label: "Default / По умолчанию"
       options:
         - "On by default / Вкл по умолчанию"
         - "Off by default (opt-in) / Выкл по умолчанию"
@@ -72,26 +72,26 @@ body:
   - type: input
     id: where
     attributes:
-      label: Where in the menu (optional) / Где в меню
-      description: Which BTC menu tab or group would you look for it in? / В какой вкладке или группе меню BTC ты бы это искал?
+      label: "Where in the menu (optional) / Где в меню"
+      description: "Which BTC menu tab or group would you look for it in? / В какой вкладке или группе меню BTC ты бы это искал?"
       placeholder: "Gameplay → Movement"
 
   - type: textarea
     id: edge
     attributes:
-      label: Edge cases, abuse (optional) / Крайние случаи, абузы
-      description: What could go wrong? Can it be abused in PvP? / Что может пойти не так? Можно ли это абузить в PvP?
+      label: "Edge cases, abuse (optional) / Крайние случаи, абузы"
+      description: "What could go wrong? Can it be abused in PvP? / Что может пойти не так? Можно ли это абузить в PvP?"
 
   - type: textarea
     id: media
     attributes:
-      label: Pictures, video, examples (optional) / Картинки, видео, примеры
-      description: A sketch, a clip or "like in game X" helps a lot. / Набросок, клип или «как в игре X» очень помогают.
+      label: "Pictures, video, examples (optional) / Картинки, видео, примеры"
+      description: "A sketch, a clip or \"like in game X\" helps a lot. / Набросок, клип или «как в игре X» очень помогают."
 
   - type: checkboxes
     id: checks
     attributes:
-      label: Checks
+      label: "Checks"
       options:
         - label: I searched existing issues for this idea. / Я поискал похожие issues.
           required: true
