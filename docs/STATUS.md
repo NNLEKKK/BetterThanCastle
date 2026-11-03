@@ -12,8 +12,8 @@ Updated: 2026-11-03 (orders from any distance; public GitHub repo + v0.2.0 relea
 
 ## GitHub + releases (LIVE since 2026-11-03)
 - Public repo https://github.com/NNLEKKK/BetterThanCastle (gh account NNLEKKK, renamed from lokillFamalli 2026-11-03). Local branch `public` = snapshot chain (scripts/public-snapshot.ps1: HEAD minus CLAUDE.md, .claude, .mcp.json, docs/gen, docs/proposed-claude-config; noreply author) pushed as `main`; refactor/main history is NEVER pushed; tags point at public commits.
-- Release: `scripts/release.ps1 -Version x.y.z -Notes ... [-Publish]` (bumps Plugin.cs + csproj, Release + verify-dist, scripts/build-setup.ps1 -> dist-setup/BetterThanCastle-Setup.exe = BepInEx 5.4.23.5 zip (sha pinned) + DLL, commit, snapshot, tag). Auto mode denies git push: user runs the push / gh release lines with `!`. Needs a clean tree (stash tests/scenarios/duel-par*.txt).
-- v0.2.0 released (DLL + Setup). Updater (BtcUpdater, off in DEV builds) reads sha256 from the release body only; first real updater test = next release 0.2.1. Installer tested on a fake folder only (GUI + Steam detection untested).
+- Release: `scripts/release.ps1 -Version x.y.z -Notes ... [-Publish]` (bumps Plugin.cs + csproj, Release + verify-dist, scripts/build-setup.ps1 -> dist-setup/BetterThanCastle-Setup.exe = BepInEx 5.4.23.5 zip (sha pinned) + DLL, commit, snapshot, tag). User allowed (2026-11-03): git push origin public:main, git push origin v*, gh release create (run commands exactly, no pipes). Before snapshot: fetch origin main; if the user committed on GitHub, bring the files into refactor/main and base `public` on origin/main. Needs a clean tree (stash tests/scenarios/duel-par*.txt).
+- Released: v0.2.0, v0.2.1 (updater broken by the account rename), v0.2.2 (updater accepts any owner of BetterThanCastle). 0.2.0/0.2.1 users must install 0.2.2 once by hand. Installer GUI + Steam detection still untested on the real game.
 - Git identity in local repo config; never put the email into tracked files.
 
 ## Agent test automation (DEV only, see docs/perf/MASTER.md, docs/RUNBOOK.md)

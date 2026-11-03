@@ -32,7 +32,7 @@ Requires Windows, the .NET SDK and a Castle Story copy with BepInEx in `game/csm
 
 ## License
 
-The mod is released under the [MIT license](LICENSE). Castle Story belongs to Sauropod Studio; this project is not affiliated with it.
+The mod is released under the [GNU GPL v3](LICENSE). Castle Story belongs to Sauropod Studio; this project is not affiliated with it.
 The installer bundles the unmodified official [BepInEx](https://github.com/BepInEx/BepInEx) 5.4.23.5 (LGPL-2.1).
 
 ---
@@ -62,4 +62,4 @@ The installer bundles the unmodified official [BepInEx](https://github.com/BepIn
 
 ### Лицензия
 
-Мод распространяется по [лицензии MIT](LICENSE). Castle Story принадлежит Sauropod Studio; проект с ней не связан. В установщик входит неизменённый официальный [BepInEx](https://github.com/BepInEx/BepInEx) 5.4.23.5 (LGPL-2.1).
+Мод распространяется по [лицензии GNU GPL v3](LICENSE). Castle Story принадлежит Sauropod Studio; проект с ней не связан. В установщик входит неизменённый официальный [BepInEx](https://github.com/BepInEx/BepInEx) 5.4.23.5 (LGPL-2.1).
