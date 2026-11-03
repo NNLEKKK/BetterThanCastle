@@ -1,0 +1,27 @@
+# SP replay fidelity, part 1: record an offline sandbox game with the SP clock used like a player (fast, pause, default).
+# agent.log "RSync m=rec t=" lines (every 5 s of replay time); then run replay-sp-play and compare "RSync m=play t=".
+recsp 1
+rsync 1
+newgame
+waitgame 240
+wait 5
+spawn bricktron 12
+waitspawn 120
+wait 3
+walk init w 10
+walk go w
+wait 20
+clock fast
+walk go w
+wait 20
+clock veryfast
+walk go w
+wait 12
+walk go w
+wait 12
+clock pause
+wait 10
+clock default
+walk go w
+wait 25
+quit

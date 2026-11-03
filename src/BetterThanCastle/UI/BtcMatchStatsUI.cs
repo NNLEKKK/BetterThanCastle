@@ -312,7 +312,11 @@ namespace BetterThanCastle
             string val = Fmt(s, v, false);
             if (Vis.Count > 1) { CellTxt[i, _rowN] = val + " (" + Fmt(s, d, true) + ")"; CellCol[i, _rowN] = Good(s, d); }
             else { CellTxt[i, _rowN] = val; CellCol[i, _rowN] = BtcUiStyle.Text; }
+            // Perfect survival (accuracy 100%: no losses) is highlighted bright blue in every view.
+            if (s.Kind == 1 && v >= 99.9995) CellCol[i, _rowN] = PerfectBlue;
         }
+
+        private static readonly Color PerfectBlue = new Color(0.25f, 0.6f, 1f, 1f);
 
         /// <summary>Sub-rows of an expanded stat: every item key any shown faction has, sorted by name; diff vs the mean of the others.</summary>
         private static void AddDetailRows(DStat s, int k)

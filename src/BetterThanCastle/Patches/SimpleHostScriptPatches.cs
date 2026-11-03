@@ -29,5 +29,34 @@ namespace BetterThanCastle.Patches
                 return false;
             }
         }
+
+        // Local diagnostic only (both BC states): [Colors] faction table after host setup.
+        private static void Postfix() { BtcColors.LogFactions("host"); }
+    }
+
+    /// <summary>
+    /// SimpleHostScript.PopulateFactionsLocally (client, after HostLoadedAllFactions). Vanilla is a closure loop with
+    /// Slinq.First by uid (throws on a uid the host did not spawn). BC ON: BtcColors.PopulateLocal (ID, then name match,
+    /// visuals for unknown extended factions). BC OFF: vanilla untouched; Postfix only logs locally.
+    /// </summary>
+    [HarmonyPatch(typeof(SimpleHostScript), "PopulateFactionsLocally")]
+    internal static class SimpleHostScriptPopulateFactionsLocallyPatch
+    {
+        private static bool Prefix()
+        {
+            if (!BtcNetworkGate.Enabled) return true;
+            try
+            {
+                BtcColors.PopulateLocal();
+                return false;
+            }
+            catch (Exception e)
+            {
+                BtcLog.Error("Hook", "SimpleHostScript.PopulateFactionsLocally (BTC body): " + e);
+                return true;
+            }
+        }
+
+        private static void Postfix() { BtcColors.LogFactions("client"); }
     }
 }

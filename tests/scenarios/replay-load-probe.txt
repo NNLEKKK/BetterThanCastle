@@ -1,0 +1,6 @@
+# Load-only probe of an MP replay (RSync loader: lines).
+rsync 1
+wait 20
+replay 2026-11-03_17-48-22
+waitreplay 60
+quit

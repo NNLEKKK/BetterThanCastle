@@ -7,8 +7,8 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 $exclude = @('CLAUDE.md', '.claude', '.mcp.json', 'docs/gen', 'docs/proposed-claude-config')
-$name = 'lokillFamalli'
-$mail = '56294881+lokillFamalli@users.noreply.github.com'
+$name = 'NNLEKKK'
+$mail = '56294881+NNLEKKK@users.noreply.github.com'
 
 $idx = Join-Path $root 'obj\public.index'
 New-Item -ItemType Directory -Force (Split-Path $idx) | Out-Null
@@ -29,7 +29,7 @@ if ($parent) {
 $env:GIT_AUTHOR_NAME = $name; $env:GIT_AUTHOR_EMAIL = $mail
 $env:GIT_COMMITTER_NAME = $name; $env:GIT_COMMITTER_EMAIL = $mail
 try {
-    if ($parent) { $c = ($Message | git commit-tree $tree -p $parent) } else { $c = ($Message | git commit-tree $tree) }
+    if ($parent) { $c = (git commit-tree $tree -p $parent -m $Message) } else { $c = (git commit-tree $tree -m $Message) }
 } finally { 'GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL' | ForEach-Object { Remove-Item "Env:\$_" } }
 $c = $c.Trim()
 git update-ref refs/heads/public $c

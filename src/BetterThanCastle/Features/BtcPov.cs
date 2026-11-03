@@ -475,7 +475,7 @@ public static class BtcPov
 		bool flag2 = flag;
 		if (flag2)
 		{
-			BtcPov.ToggleUi();
+			BtcReplayUI.ToggleHidden(); // F8 hides the replay panel, the game UI stays
 		}
 		bool flag3 = now < BtcPov.nextUi;
 		bool flag4 = !flag3;

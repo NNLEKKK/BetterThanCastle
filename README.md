@@ -6,7 +6,7 @@ A quality-of-life, multiplayer and competitive mod for **Castle Story** (Steam),
 
 ## Install
 
-1. Download **`BetterThanCastle-Setup.exe`** from the [latest release](https://github.com/lokillFamalli/BetterThanCastle/releases/latest).
+1. Download **`BetterThanCastle-Setup.exe`** from the [latest release](https://github.com/NNLEKKK/BetterThanCastle/releases/latest).
 2. Run it and press **Install / update**. It finds Castle Story through Steam (or press *Browse* and pick the folder with `Castle Story.exe`), installs BepInEx 5.4.23.5 if it is missing, then the mod.
 3. Start the game through Steam. The mod menu opens with **PageDown**.
 
@@ -43,7 +43,7 @@ The installer bundles the unmodified official [BepInEx](https://github.com/BepIn
 
 ### Установка
 
-1. Скачайте **`BetterThanCastle-Setup.exe`** из [последнего релиза](https://github.com/lokillFamalli/BetterThanCastle/releases/latest).
+1. Скачайте **`BetterThanCastle-Setup.exe`** из [последнего релиза](https://github.com/NNLEKKK/BetterThanCastle/releases/latest).
 2. Запустите и нажмите **«Установить / обновить»**. Установщик сам найдёт Castle Story в Steam (или нажмите «Обзор» и выберите папку с `Castle Story.exe`), поставит BepInEx 5.4.23.5, если его нет, и мод.
 3. Запускайте игру через Steam. Меню мода открывается клавишей **PageDown**.
 

@@ -1,0 +1,12 @@
+# SP replay fidelity, part 2: play the newest replay at x1 to the end, then seek back and forward. Compare RSync lines with part 1.
+rsync 1
+wait 20
+replay latest
+waitreplay 180
+waitfinish 300
+wait 3
+seek 30
+wait 20
+seek 70
+wait 15
+quit

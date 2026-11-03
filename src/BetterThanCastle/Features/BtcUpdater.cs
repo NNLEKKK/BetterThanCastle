@@ -11,7 +11,7 @@ namespace BetterThanCastle
 	internal sealed class BtcUpdater : MonoBehaviour
 	{
 		// Set to "<owner>/<repo>" of the public repository. Updater stays off while it contains OWNER.
-		internal const string Repo = "lokillFamalli/BetterThanCastle";
+		internal const string Repo = "NNLEKKK/BetterThanCastle";
 		private const string AssetName = "BetterThanCastle.dll";
 
 		private enum Phase { Wait, Checking, Available, Downloading, Done, Error, Hidden }
@@ -87,7 +87,9 @@ namespace BetterThanCastle
 			Match sha = Regex.Match(body.Success ? body.Groups[1].Value : "", "sha256[:\\s=`]*([0-9a-fA-F]{64})", RegexOptions.IgnoreCase);
 			if (!tag.Success || !url.Success || !sha.Success) { BtcLog.Warn("Updater", "release has no tag/asset/sha256"); _phase = Phase.Hidden; return; }
 			string u = url.Groups[1].Value;
-			if (!u.StartsWith("https://github.com/" + Repo + "/releases/download/", StringComparison.Ordinal)) { BtcLog.Warn("Updater", "unexpected asset url"); _phase = Phase.Hidden; return; }
+			// Any owner of a repo named BetterThanCastle on github.com: the account was renamed once (lokillFamalli -> NNLEKKK) and
+			// GitHub redirects the API of the old name, but the asset urls carry the new owner. The SHA-256 check still applies.
+			if (!Regex.IsMatch(u, "^https://github\\.com/[A-Za-z0-9-]+/BetterThanCastle/releases/download/")) { BtcLog.Warn("Updater", "unexpected asset url"); _phase = Phase.Hidden; return; }
 			_latest = tag.Groups[1].Value.TrimStart('v', 'V');
 			_url = u;
 			_sha = sha.Groups[1].Value.ToLowerInvariant();

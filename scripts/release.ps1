@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
-$repo = 'lokillFamalli/BetterThanCastle'
+$repo = 'NNLEKKK/BetterThanCastle'
 $gh = 'C:\Program Files\GitHub CLI\gh.exe'
 if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw "Version must be x.y.z" }
 $tag = "v$Version"

@@ -1,0 +1,12 @@
+# Control: same as replay-sp-play on a recorded MP replay (name part).
+rsync 1
+wait 20
+replay 2026-11-03_17-48-22
+waitreplay 180
+waitfinish 240
+wait 3
+seek 30
+wait 20
+seek 70
+wait 15
+quit
