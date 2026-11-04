@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0
+## 0.2.5
 - Auto gamma (Overlays > Other): checkbox + Master gamma slider, same brightness day and night. Bottom attribution strip removed, version shown in the menu banner.
 - Gameplay > Movement: "Do not pick up lying items automatically" (default on, BetterConnection ON): workers on a task skip loose items on their way, a miner takes only its quarry's resource, items dropped from a bag are mess; Cleanup and manual pie-menu orders are unrestricted.
 - Cleanup task: 11 resource filter buttons in the bottom task menu (stone, brimstone, iron ore, grass, logs, planks, bricks, ingots, gears, fabric, rope), synced to multiplayer clients.
