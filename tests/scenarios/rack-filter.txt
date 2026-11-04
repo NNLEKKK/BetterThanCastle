@@ -1,0 +1,45 @@
+# Rack kit filter lab (BTClogs/rack-filter.txt): pie menu build, filter via the pie event path, capacity per kit, existing items stay.
+newgame
+waitgame 240
+wait 5
+rackspawn Toolrack 1 3
+wait 2
+rackinfo
+rackcheck start
+rackset Archer
+wait 2
+rackcheck archer-empty
+rackfill Knight
+rackfill Archer
+rackcheck archer-filled
+rackclear
+wait 1
+rackset Any
+wait 2
+rackcheck any-empty
+rackfill Knight
+rackcheck knight-filled
+rackset Halberdier
+wait 2
+rackcheck halberdier-over-knight-items
+rackinfo
+rackclear
+wait 2
+rackcheck halberdier-after-wipe
+rackset Any
+wait 2
+rackcheck any-after
+rackset Archer
+wait 2
+rackgate off
+rackclear
+rackfill Knight
+rackcheck gate-off-knight-expect-vanilla-isForKnight
+rackinfo
+rackclear
+rackgate on
+rackset Any
+wait 2
+rackcheck end
+wait 1
+quit

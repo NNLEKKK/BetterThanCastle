@@ -1,0 +1,11 @@
+# Dump chopping block volume cells + validate blueprint placement (BTClogs/chop-dump.txt, chop-off.txt, chop-on.txt).
+newgame
+waitgame 240
+wait 5
+chopdump
+wait 1
+chopdump off off
+wait 1
+chopdump on on
+wait 2
+quit

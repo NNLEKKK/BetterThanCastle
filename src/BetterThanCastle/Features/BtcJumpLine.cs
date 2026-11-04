@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text;
 using Brix.Engine;
 using Brix.Game.AI;
 using Brix.Game.AI.Pathfinding;
@@ -11,11 +12,17 @@ namespace BetterThanCastle
 {
 // Group jump: each selected unit gets its own block in a line through the clicked target.
 // Client-side only: changes the Vector3 in vanilla CmdGoAndJumpTo (wire format unchanged).
+// Host side (vanilla): CmdGoAndJumpTo -> TurnAndJumpToward -> GoJumpOff(XYZ.FromVector3(position)) uses the voxel of the
+// position as the jump destination as is (no re-snap), so distinct voxels = distinct landing blocks.
 public static class BtcJumpLine
 {
 	private static int iOn = -2;
 	private static int frame = -1;
+	private static int targetFrame = -1;
+	private static Vector3 rawTarget;
 	private static readonly Dictionary<int, Vector3> slots = new Dictionary<int, Vector3>();
+	private static readonly List<Vector3> spare = new List<Vector3>();
+	private static int spareUsed;
 	private static MethodInfo subjects;
 
 	public static void AddRows()
@@ -34,6 +41,13 @@ public static class BtcJumpLine
 		}
 	}
 
+	// Formation.Init postfix: remembers the real click target (GoAndJumpTo only gets Formation.Spot(i)).
+	public static void NoteTarget(Vector3 target)
+	{
+		rawTarget = target;
+		targetFrame = Time.frameCount;
+	}
+
 	// Called from the GoAndJumpTo prefix for every labor of one click (same frame).
 	public static void Adjust(Labor labor, ref Vector3 position)
 	{
@@ -42,10 +56,23 @@ public static class BtcJumpLine
 		{
 			frame = Time.frameCount;
 			slots.Clear();
-			Build(position);
+			spare.Clear();
+			spareUsed = 0;
+			Build(labor, position);
 		}
+		int id = labor.GetInstanceID();
 		Vector3 v;
-		if (slots.TryGetValue(labor.GetInstanceID(), out v)) position = v;
+		if (slots.TryGetValue(id, out v)) { position = v; return; }
+		// labor not in the collected set: next free unique slot
+		if (spare.Count == 0) return;
+		if (spareUsed < spare.Count) v = spare[spareUsed++];
+		else
+		{
+			v = spare[spare.Count - 1];
+			BtcLog.Warn("JumpLine", "no free slot left, reusing a block for an extra unit");
+		}
+		slots[id] = v;
+		position = v;
 	}
 
 	private static List<Labor> Group()
@@ -59,58 +86,90 @@ public static class BtcJumpLine
 		return subjects.Invoke(null, null) as List<Labor>;
 	}
 
-	private static void Build(Vector3 target)
+	private static long Key(XYZ p)
+	{
+		return ((long)(p.x + 32768) << 32) | ((long)(p.z + 32768) << 16) | (long)((p.y + 32768) & 0xFFFF);
+	}
+
+	private struct Slot
+	{
+		public Vector3 pos;
+		public float lat; // lateral coordinate across the jump direction
+	}
+
+	private static void Build(Labor first, Vector3 fallbackTarget)
 	{
 		List<Labor> group = Group();
-		if (group == null || group.Count < 2) return;
+		if (group == null) group = new List<Labor>();
+		if (group.Count == 0) group.Add(first);
 		int n = group.Count;
+		Vector3 target = (targetFrame == Time.frameCount) ? rawTarget : fallbackTarget;
 		Vector3 c = Vector3.zero;
 		for (int i = 0; i < n; i++) c += group[i].transform.position;
 		c /= n;
 		Vector3 d = target - c;
-		bool alongZ = Mathf.Abs(d.x) >= Mathf.Abs(d.z);
+		d.y = 0f;
+		if (d.sqrMagnitude < 0.01f) d = new Vector3(0f, 0f, 1f);
+		d.Normalize();
+		Vector3 perp = new Vector3(-d.z, 0f, d.x);
 		XYZ t = XYZ.FromVector3(target);
-		List<float> lat = new List<float>();
-		List<Vector3> pos = new List<Vector3>();
-		int limit = n + 6;
-		for (int k = 0; k <= limit * 2 && pos.Count < n; k++)
+
+		int want = n + 8; // spare slots for labors outside the collected set
+		int maxOff = want + 4;
+		List<Slot> pool = new List<Slot>();
+		HashSet<long> seen = new HashSet<long>();
+		int rows = 0;
+		for (int r = 0; r < 12 && pool.Count < want; r++)
 		{
-			int off = (k % 2 == 1) ? (k + 1) / 2 : -(k / 2);
-			// order 0, +1, -1, +2, -2 ...
-			off = (k == 0) ? 0 : ((k % 2 == 1) ? (k + 1) / 2 : -(k / 2));
-			XYZ p = alongZ ? new XYZ(t.x, t.y, t.z + off) : new XYZ(t.x + off, t.y, t.z);
-			WalkablePathNode node = PathNodeRegistry.WalkableAt(p);
-			if (node == null || node.IsEmpty) continue;
-			lat.Add(off);
-			pos.Add(node.RepresentativePosition.ToVector3());
+			// row order: 0, behind (toward the group), in front, 2 behind, 2 in front ...
+			int row = (r == 0) ? 0 : ((r % 2 == 1) ? -((r + 1) / 2) : (r / 2));
+			Vector3 rowShift = d * row;
+			rows++;
+			for (int k = 0; k <= maxOff * 2 && pool.Count < want; k++)
+			{
+				int off = (k == 0) ? 0 : ((k % 2 == 1) ? (k + 1) / 2 : -(k / 2));
+				Vector3 q = new Vector3(t.x, t.y, t.z) + perp * off + rowShift;
+				XYZ p = new XYZ(Mathf.RoundToInt(q.x), t.y, Mathf.RoundToInt(q.z));
+				WalkablePathNode node = PathNodeRegistry.WalkableAt(p);
+				if (node == null || node.IsEmpty) continue;
+				XYZ rp = node.RepresentativePosition;
+				if (!seen.Add(Key(rp))) continue;
+				Slot s;
+				s.pos = rp.ToVector3();
+				s.lat = off;
+				pool.Add(s);
+			}
 		}
-		if (pos.Count == 0) return;
-		int m = pos.Count;
-		// sort slots by lateral coordinate
-		int[] si = new int[m];
-		for (int i = 0; i < m; i++) si[i] = i;
-		Array.Sort(si, (a, b) => lat[a].CompareTo(lat[b]));
-		// sort units by lateral coordinate of their position
+		if (pool.Count == 0) return;
+
+		int take = Math.Min(n, pool.Count);
+		// the first `take` pool entries are the most central ones; order them across the direction
+		Slot[] chosen = new Slot[take];
+		for (int i = 0; i < take; i++) chosen[i] = pool[i];
+		Array.Sort(chosen, (a, b) => a.lat.CompareTo(b.lat));
 		float[] ul = new float[n];
 		int[] ui = new int[n];
 		for (int i = 0; i < n; i++)
 		{
-			Vector3 up = group[i].transform.position;
-			ul[i] = alongZ ? up.z : up.x;
+			ul[i] = Vector3.Dot(group[i].transform.position - c, perp);
 			ui[i] = i;
 		}
 		Array.Sort(ui, (a, b) => ul[a].CompareTo(ul[b]));
+		StringBuilder sb = new StringBuilder();
+		int reused = 0;
 		for (int i = 0; i < n; i++)
 		{
-			// spread units across the available slots; extra units share slots proportionally
-			int s = m >= n ? i : (int)((long)i * m / n);
-			if (m >= n)
-			{
-				// center the chosen slots: take the n lowest-|offset| ones, already sorted by lateral
-				s = i;
-			}
-			slots[group[ui[i]].GetInstanceID()] = pos[si[s]];
+			Slot s;
+			if (take >= n) s = chosen[i];
+			else { s = chosen[(int)((long)i * take / n)]; reused++; }
+			slots[group[ui[i]].GetInstanceID()] = s.pos;
+			XYZ v = XYZ.FromVector3(s.pos);
+			if (i > 0) sb.Append(' ');
+			sb.Append(v.x).Append(',').Append(v.y).Append(',').Append(v.z);
 		}
+		for (int i = take; i < pool.Count; i++) spare.Add(pool[i].pos);
+		BtcLog.Info("JumpLine", "units=" + n + " slots=" + pool.Count + " rows=" + rows + " dir=" + d.x.ToString("0.00") + "," + d.z.ToString("0.00") + " target=" + t.x + "," + t.y + "," + t.z + " voxels=" + sb);
+		if (reused > 0) BtcLog.Warn("JumpLine", "not enough walkable blocks: " + reused + " unit(s) share a block");
 	}
 }
 }

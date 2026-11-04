@@ -1,0 +1,40 @@
+# Group jump-off lab: crowded bricktrons on a 4-voxel step (17 columns wide), all ordered to jump to the SAME point below.
+# agent.log "JumpLab RESULT" lines: jumpedDown (left the top), distinct landing voxels. "JumpLine jump-off" lines: column + queue.
+newgame
+waitgame 240
+wait 5
+jumpsetup 8
+wait 4
+jumpgo on
+wait 2
+jumpdump on8-2s
+wait 1
+jumpdump on8-3s
+wait 3
+jumpdump on8-6s
+jumpreset
+wait 1
+jumpsetup 24
+wait 4
+jumpgo on
+wait 2
+jumpdump on24-2s
+wait 1
+jumpdump on24-3s
+wait 1
+jumpdump on24-4s
+wait 2
+jumpdump on24-6s
+wait 4
+jumpdump on24-10s
+jumpreset
+wait 1
+jumpsetup 24
+wait 4
+jumpgo off
+wait 6
+jumpdump off24-6s
+wait 10
+jumpdump off24-16s
+wait 1
+quit

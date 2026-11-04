@@ -825,7 +825,7 @@ public partial class ResourcePackManager : MonoBehaviour
 		num3 = tabRowH * (float)tabRows;
 		int num6 = this.menuPacks.Count + 1 + 1 + (this.hatsOpen ? (ResourcePackManager.HatOrder.Count + 1) : 0);
 		float num7 = BtcDuelUI.TabActive ? BtcDuelUI.ContentH : BtcNick.TabActive ? BtcNick.ContentH : (BtcShareUI.TabActive ? BtcShareUI.ContentH : (BtcGameplayUI.TabActive ? BtcGameplayUI.ContentH : (BtcReplayUI.TabActive ? BtcReplayUI.ContentH : (BtcHotkeysUI.TabActive ? BtcHotkeysUI.ContentH : (this.menuHp ? this.hpContentH : (this.menuBc ? this.bcContentH : ((float)num6 * num2 + this.dbgContentH + num2)))))));
-		float num8 = this.menuHp ? (((this.hpCfg != null) ? num2 : 0f) + num2 + num2) : 0f;
+		float num8 = this.menuHp ? (((this.hpCfg != null) ? num2 : 0f) + num2 + num2 + num2 * 2f) : 0f;
 		float num9 = num2 * 1.75f;
 		float num10 = flag ? ((float)Screen.height * 0.85f) : Mathf.Min(num9 + num3 + num8 + num7 + num4 * 2f, (float)Screen.height * 0.7f);
 		Rect rect = new Rect(((float)Screen.width - num5) * 0.5f, ((float)Screen.height - num10) * 0.5f, num5, num10);
@@ -1045,6 +1045,7 @@ public partial class ResourcePackManager : MonoBehaviour
 					{
 						this.SetDiscord(!this.discordOn);
 					}
+					this.DrawDisplayHeader(current, rect4.y + num2, rect, num2, num, num14, color);
 				}
 				Rect position2 = new Rect(rect.x, rect.y + num9 + num3 + num4 * 0.5f + num8, rect.width, rect.height - num9 - num3 - num4 * 1.5f - num8);
 				Rect viewRect = new Rect(0f, 0f, position2.width - ((num7 > position2.height) ? 16f : 0f), num7);

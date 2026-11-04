@@ -4,6 +4,8 @@ namespace BetterThanCastle
 {
     internal static class BtcConfig
     {
+        internal static ConfigEntry<int> WindowMode;
+        internal static ConfigEntry<bool> SkipIntro;
         internal static ConfigEntry<bool> BetterConnection;
         internal static ConfigEntry<bool> ShowPing;
         internal static ConfigEntry<bool> ShowPauseLabel;
@@ -24,6 +26,8 @@ namespace BetterThanCastle
         internal static void Init(ConfigFile cfg)
         {
             BtcDuelConfig.Init(cfg);
+            WindowMode = cfg.Bind("Display", "WindowMode", 3, "0 = keep the game setting, 1 = fullscreen, 2 = windowed, 3 = borderless.");
+            SkipIntro = cfg.Bind("Display", "SkipIntro", true, "Skip the logo screens on startup (applies on next launch).");
             UpdateCheck = cfg.Bind("Update", "CheckOnStart", true, "Check GitHub Releases at game start and offer to update the mod.");
             UpdateSkipped = cfg.Bind("Update", "SkippedVersion", "", "Version the player chose to skip.");
             BetterConnection = cfg.Bind("Network", "BetterConnection", true,
@@ -50,6 +54,7 @@ namespace BetterThanCastle
             StatsPanelOpacity = cfg.Bind("Stats", "PanelOpacity", 0.95f, "Panel opacity.");
             StatsBarList = cfg.Bind("Stats", "BarStats", "0,1,2,3,4,7,9", "Stat indices shown in the bar (see the Overlays tab, section Match statistics).");
             StatsPanelHidden = cfg.Bind("Stats", "PanelHidden", "", "Stat indices hidden in the panel.");
+            BtcDisplay.Init();
         }
     }
 }

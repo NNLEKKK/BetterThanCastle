@@ -410,6 +410,39 @@ public partial class ResourcePackManager : MonoBehaviour
 		y = yy;
 	}
 
+	// Overlays tab header (above the scroll list, next to Discord Rich Presence): window mode row + skip intro row.
+	private void DrawDisplayHeader(Event e, float y, Rect area, float rowH, int pad, float box, Color old)
+	{
+		Rect lr = new Rect(area.x, y, area.width, rowH);
+		this.DrawRowBackground(e, lr, false, old);
+		float lw = area.width * 0.34f;
+		GUI.Label(new Rect(area.x + (float)pad, y, lw - (float)pad, rowH), BtcLang.Russian ? "Режим окна" : "Window mode", this.menuLabelStyle);
+		string[] names = BtcLang.Russian ? ResourcePackManager.DisplayNamesRu : ResourcePackManager.DisplayNamesEn;
+		float bw = (area.width - lw) / 3f;
+		int cur = BtcDisplay.Mode;
+		for (int i = 0; i < 3; i++)
+		{
+			if (GUI.Button(new Rect(area.x + lw + bw * (float)i, y, bw, rowH), names[i], cur == i + 1 ? this.menuActiveStyle : this.menuItemStyle))
+			{
+				BtcDisplay.Apply(i + 1, 1);
+			}
+		}
+		Rect sr = new Rect(area.x, y + rowH, area.width, rowH);
+		bool skip = BtcConfig.SkipIntro != null && BtcConfig.SkipIntro.Value;
+		this.DrawRowBackground(e, sr, skip, old);
+		if (e.type == EventType.Repaint)
+		{
+			this.DrawCheckbox(new Rect(sr.x + (float)pad, sr.y + (rowH - box) * 0.5f, box, box), skip);
+		}
+		if (GUI.Button(sr, BtcLang.Russian ? "Пропускать интро (заставки при запуске)" : "Skip intro (logo screens on startup)", this.menuHatItemStyle) && BtcConfig.SkipIntro != null)
+		{
+			BtcConfig.SkipIntro.Value = !skip;
+		}
+	}
+
+	private static readonly string[] DisplayNamesEn = new string[] { "Fullscreen", "Windowed", "Borderless" };
+	private static readonly string[] DisplayNamesRu = new string[] { "Полный экран", "Окно", "Без рамки" };
+
 	private void DrawMatchStatsSection(Event e, ref float y, float w, float rowH, int fs, Color old)
 	{
 		float yy = y;

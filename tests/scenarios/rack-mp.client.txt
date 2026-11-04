@@ -1,0 +1,13 @@
+# Rack filter MP, client side.
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 90
+ready 120
+waitgame 240
+wait 18
+rackcheck client-sees-archer
+rackset Knight
+wait 4
+rackcheck client-after-own-request
+wait 8
+quit
