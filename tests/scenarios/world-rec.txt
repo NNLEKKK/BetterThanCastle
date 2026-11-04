@@ -1,0 +1,8 @@
+# Blueprints for the replay: record an SP replay with standing blueprints (bpspawn), then play it back (world-play).
+recsp 1
+newgame
+waitgame 240
+wait 5
+bpspawn 4
+wait 15
+quit

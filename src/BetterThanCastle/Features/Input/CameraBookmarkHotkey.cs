@@ -846,7 +846,7 @@ namespace Brix.Input
 						Ray ray = main.ScreenPointToRay(UnityEngine.Input.mousePosition);
 						int layerMask = 132096;
 						RaycastHit raycastHit;
-						bool flag16 = !Physics.Raycast(ray, out raycastHit, 500f, layerMask, QueryTriggerInteraction.Collide);
+						bool flag16 = !CameraBookmarkHotkey.TerrainRay(ray, layerMask, out raycastHit);
 						bool flag17 = !flag16;
 						bool flag18 = flag17;
 						bool flag19 = flag18;
@@ -1260,10 +1260,6 @@ namespace Brix.Input
 
 		private void DrawAttribution()
 		{
-			float num = 420f;
-			float num2 = 16f;
-			Rect position = new Rect(((float)Screen.width - num) * 0.5f, (float)Screen.height - num2 - 4f, num, num2);
-			GUI.Label(position, "Better Than Castle by NotNonlokill (v" + BtcPlugin.Version + ")", this._overlayAttributionStyle);
 		}
 
 		private static bool IsCameraAtState(CameraScript cam, CameraBookmarkHotkey.CamState state)
@@ -1318,6 +1314,81 @@ namespace Brix.Input
 			return go != null && (go.GetComponentInParent<BaseLabor>() != null || go.GetComponentInParent<Profession>() != null);
 		}
 
+		private static int _rayLogs;
+
+		// Range/aura volumes of wards (healing, lantern, sentinel...): a big collider on a ward that is not the ward's body.
+		// Hotkey rays must pass through them.
+		private static bool IsAuraCollider(Collider c)
+		{
+			if (c == null)
+			{
+				return false;
+			}
+			GameComponent root = c.GetComponentInParent<GameComponent>();
+			if (root == null)
+			{
+				return false;
+			}
+			Vector3 size = c.bounds.size;
+			bool big = size.x > 5f || size.z > 5f;
+			bool wardLike = root.GetComponentInChildren<RegenAura>() != null || root.GetComponentInParent<RegenAura>() != null || root.GetComponent<Ward>() != null
+				|| root.name.IndexOf("Ward", StringComparison.OrdinalIgnoreCase) >= 0 || c.name.IndexOf("aura", StringComparison.OrdinalIgnoreCase) >= 0
+				|| c.name.IndexOf("range", StringComparison.OrdinalIgnoreCase) >= 0 || c.name.IndexOf("radius", StringComparison.OrdinalIgnoreCase) >= 0;
+			return (wardLike && (big || c.isTrigger)) || (c.isTrigger && big);
+		}
+
+		// A loose item stored on a stockpile (not in a unit's bag): counts as part of the stockpile.
+		private static GameObject StockpileOf(GameObject item)
+		{
+			GameComponent gc = item != null ? item.GetComponent<GameComponent>() : null;
+			if (gc == null)
+			{
+				return null;
+			}
+			Brix.Game.Semantique.Recepteur r = gc.ParentRecepteur;
+			if (r == null || CameraBookmarkHotkey.IsUnit(r.gameObject))
+			{
+				return null;
+			}
+			return r.gameObject;
+		}
+
+		private static void LogRay(string what, RaycastHit[] hits)
+		{
+			if (_rayLogs++ > 12)
+			{
+				return;
+			}
+			System.Text.StringBuilder sb = new System.Text.StringBuilder(what + " ray:");
+			for (int i = 0; i < hits.Length && i < 8; i++)
+			{
+				Collider c = hits[i].collider;
+				GameComponent gc = c != null ? c.GetComponentInParent<GameComponent>() : null;
+				sb.Append(" [").Append(c != null ? c.name : "null").Append(" root=").Append(gc != null ? gc.name : "-").Append(" trig=").Append(c != null && c.isTrigger)
+					.Append(" layer=").Append(c != null ? c.gameObject.layer : -1).Append(" size=").Append(c != null ? c.bounds.size.x.ToString("0.0") : "-")
+					.Append(" aura=").Append(IsAuraCollider(c)).Append(" d=").Append(hits[i].distance.ToString("0.0")).Append("]");
+			}
+			BtcLog.Info("Hotkey", sb.ToString());
+		}
+
+		// Nearest terrain hit on the hotkey layers, skipping ward auras.
+		private static bool TerrainRay(Ray ray, int layerMask, out RaycastHit hit)
+		{
+			RaycastHit[] hits = Physics.RaycastAll(ray, 500f, layerMask, QueryTriggerInteraction.Collide);
+			Array.Sort<RaycastHit>(hits, (RaycastHit a, RaycastHit b) => a.distance.CompareTo(b.distance));
+			LogRay("dig", hits);
+			for (int i = 0; i < hits.Length; i++)
+			{
+				if (!CameraBookmarkHotkey.IsAuraCollider(hits[i].collider))
+				{
+					hit = hits[i];
+					return true;
+				}
+			}
+			hit = default(RaycastHit);
+			return false;
+		}
+
 		// True when a non-terrain, non-unit object (a building) is hit by the cursor ray before the terrain voxel.
 		private static bool BuildingOnRay(Ray ray, float terrainDist)
 		{
@@ -1327,9 +1398,13 @@ namespace Brix.Input
 				for (int i = 0; i < hits.Length; i++)
 				{
 					Collider c = hits[i].collider;
-					if (c == null)
+					if (c == null || CameraBookmarkHotkey.IsAuraCollider(c))
 					{
 						continue;
+					}
+					if (CameraBookmarkHotkey.StockpileOf(c.gameObject) != null || (c.GetComponentInParent<Garnotte>() != null && CameraBookmarkHotkey.StockpileOf(c.GetComponentInParent<Garnotte>().gameObject) != null))
+					{
+						return true;
 					}
 					GameComponent gc = c.GetComponentInParent<GameComponent>();
 					if (gc != null && !(gc is ISoulevable) && !CameraBookmarkHotkey.IsUnit(gc.gameObject)
@@ -1362,6 +1437,10 @@ namespace Brix.Input
 				Ray ray = main.ScreenPointToRay(UnityEngine.Input.mousePosition);
 				RaycastHit[] array = Physics.RaycastAll(ray, 500f, -1, needExplosive ? QueryTriggerInteraction.Collide : QueryTriggerInteraction.Ignore);
 				Array.Sort<RaycastHit>(array, (RaycastHit a, RaycastHit b) => a.distance.CompareTo(b.distance));
+				if (!needExplosive)
+				{
+					CameraBookmarkHotkey.LogRay("break", array);
+				}
 				for (int i = 0; i < array.Length; i++)
 				{
 					bool flag3 = array[i].collider == null;
@@ -1380,14 +1459,19 @@ namespace Brix.Input
 						}
 						else
 						{
-							if (array[i].collider.isTrigger)
+							if (array[i].collider.isTrigger || CameraBookmarkHotkey.IsAuraCollider(array[i].collider))
 							{
 								continue;
 							}
 							GameComponent componentInParent2 = array[i].collider.GetComponentInParent<GameComponent>();
 							if (componentInParent2 != null)
 							{
-								return CameraBookmarkHotkey.IsUnit(componentInParent2.gameObject) ? null : componentInParent2.gameObject;
+								if (CameraBookmarkHotkey.IsUnit(componentInParent2.gameObject))
+								{
+									return null;
+								}
+								GameObject stock = CameraBookmarkHotkey.StockpileOf(componentInParent2.gameObject);
+								return stock != null ? stock : componentInParent2.gameObject;
 							}
 							if (((1 << array[i].collider.gameObject.layer) & 132096) != 0)
 							{

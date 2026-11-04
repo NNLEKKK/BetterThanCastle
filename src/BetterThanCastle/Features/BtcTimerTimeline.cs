@@ -44,6 +44,8 @@ namespace BetterThanCastle
 
         internal static void OnRecordStart()
         {
+            BtcAutoMarks.OnRecordStart();
+            BtcPovRec.OnRecordStart();
             Rec.Clear();
             MarkLast.Clear();
             MarkCount.Clear();
@@ -89,8 +91,15 @@ namespace BetterThanCastle
         internal static string TimelinePayload()
         {
             StringBuilder sb = new StringBuilder(512);
+            sb.Append(BtcPovRec.TlToken());
             // structure events first, marks last (dropped first when the region is full)
             for (int pass = 0; pass < 2; pass++)
+            {
+                if (pass == 1)
+                {
+                    string auto = BtcAutoMarks.Payload(PadLen - sb.Length - 1);
+                    if (auto.Length > 0) { if (sb.Length > 0) sb.Append(';'); sb.Append(auto); }
+                }
                 for (int i = 0; i < Rec.Count; i++)
                 {
                     TlEv e = Rec[i];
@@ -100,6 +109,7 @@ namespace BetterThanCastle
                     if (sb.Length > 0) sb.Append(';');
                     sb.Append(s);
                 }
+            }
             return sb.ToString();
         }
 
@@ -173,7 +183,9 @@ namespace BetterThanCastle
         // ------------------------------------------------------------------ playback
         internal static void LoadTl(string s)
         {
+            BtcAutoMarks.ClearPlay();
             Play.Clear();
+            _markColsN = -1;
             HiddenCols.Clear();
             _playLogged = false;
             _panelLogged = false;
@@ -186,6 +198,7 @@ namespace BetterThanCastle
                 {
                     string[] p = items[i].Split(',');
                     if (p.Length < 2 || p[0].Length != 1) continue;
+                    if (BtcAutoMarks.TryParse(p, c)) continue;
                     TlEv e = new TlEv { K = p[0][0], T = float.Parse(p[1], c) };
                     if (e.K == 'S' && p.Length >= 5) { e.A = float.Parse(p[2], c); e.B = float.Parse(p[3], c); e.D = float.Parse(p[4], c); }
                     else if (e.K == 'Z' && p.Length >= 3) e.A = float.Parse(p[2], c);
@@ -193,6 +206,7 @@ namespace BetterThanCastle
                     else if (e.K != 'P' && e.K != 'L') continue;
                     Play.Add(e);
                 }
+                BtcAutoMarks.SortPlay();
             }
             catch (Exception ex) { BtcLog.Error("Timer", "LoadTl: " + ex.Message); Play.Clear(); }
         }
@@ -286,24 +300,20 @@ namespace BetterThanCastle
                         break;
                 }
             }
-            if (cols == null) return;
-            float cs = h * 0.5f;
-            float cx = panel.x + panel.width - cs - 4f;
-            float cy = panel.y - cs - 4f;
-            for (int i = 0; i < cols.Count; i++)
-            {
-                Rect cr = new Rect(cx - i * (cs + 4f), cy, cs, cs);
-                bool hidden = HiddenCols.Contains(cols[i]);
-                Box2(new Rect(cr.x - 1f, cr.y - 1f, cr.width + 2f, cr.height + 2f), new Color(0f, 0f, 0f, 0.8f));
-                Color pc = ParseCol(cols[i]);
-                if (hidden) pc.a = 0.25f;
-                Box2(cr, pc);
-                if (e.type == EventType.MouseDown && e.button == 0 && cr.Contains(e.mousePosition))
-                {
-                    if (hidden) HiddenCols.Remove(cols[i]); else HiddenCols.Add(cols[i]);
-                    e.Use();
-                }
-            }
+        }
+
+        /// <summary>Distinct colours of the player marks of the loaded replay (their hide chips live in the shared chip row of BtcAutoMarks).</summary>
+        private static readonly List<string> _markCols = new List<string>();
+        private static int _markColsN = -1;
+
+        internal static List<string> MarkColors()
+        {
+            if (_markColsN == Play.Count) return _markCols;
+            _markColsN = Play.Count;
+            _markCols.Clear();
+            for (int i = 0; i < Play.Count; i++)
+                if (Play[i].K == 'M' && !_markCols.Contains(Play[i].Col)) _markCols.Add(Play[i].Col);
+            return _markCols;
         }
     }
 }

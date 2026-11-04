@@ -39,6 +39,7 @@ public static class BtcQol
 		BtcGameplay.Defs[BtcGameplay.Idx("mov.repathSteps")].Adv = 2;
 		BtcSimplePhys.AddRows();
 		BtcJumpLine.AddRows();
+		BtcAutoPick.AddRows();
 		BtcChopBlock1x1.AddRows();
 		BtcTimer.AddRows();
 	}

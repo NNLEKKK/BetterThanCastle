@@ -83,21 +83,11 @@ namespace BetterThanCastle.Patches
     {
         private static void Postfix(Recepteur __instance, GameObject item)
         {
+            BtcRegistry.AddPallet(__instance);
             if (!BtcMatchStats.Active) return;
             try { BtcMatchStats.OnStored(__instance, item); }
             catch (Exception e) { BtcLog.Error("Hook", "MatchStatsRecepteurAdd: " + e); }
         }
     }
 
-    /// <summary>Explosive object blows up (barrels are filtered by asset key in BtcMatchStats.OnExplode).</summary>
-    [HarmonyPatch(typeof(ExplodeOnDeath), "Explode")]
-    internal static class MatchStatsExplodePatch
-    {
-        private static void Prefix(ExplodeOnDeath __instance)
-        {
-            if (!BtcMatchStats.Active || __instance == null) return;
-            try { BtcMatchStats.OnExplode(__instance.gameObject); }
-            catch (Exception e) { BtcLog.Error("Hook", "MatchStatsExplode: " + e); }
-        }
-    }
 }

@@ -1,0 +1,13 @@
+# POV follow + rewind: play the newest replay, watch a player, seek forward, then back (scene rebuild); agent.log must have no errors.
+replay latest
+waitreplay 180
+wait 5
+pov
+wait 8
+seek 50
+wait 10
+seek 8
+wait 25
+seek 40
+wait 8
+quit

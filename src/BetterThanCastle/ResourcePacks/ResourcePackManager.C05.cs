@@ -2606,6 +2606,24 @@ public partial class ResourcePackManager : MonoBehaviour
 				{
 					this.SetEnemyTex(!this.enemyTexOn);
 				}
+				if (this.CheckRow(e, ref num, w, rowH, fs, old, "Auto-equalize gamma (same brightness day and night)", this.autoGamma))
+				{
+					this.autoGamma = !this.autoGamma;
+					this.optSaveAt = Time.unscaledTime + 0.6f;
+					this.dirLightsNext = 0f;
+					this.lumRef = 0f;
+				}
+				if (this.autoGamma)
+				{
+					float masterNew = this.BrightRow(e, ref num, w, rowH, fs, old, "Master gamma", 23, this.masterGamma);
+					if (masterNew != this.masterGamma)
+					{
+						this.masterGamma = masterNew;
+						this.optSaveAt = Time.unscaledTime + 0.6f;
+					}
+				}
+				else
+				{
 				float num44 = this.BrightRow(e, ref num, w, rowH, fs, old, "Day brightness", 21, this.dayBright);
 				bool flag1483 = num44 != this.dayBright;
 				bool flag1484 = flag1483;
@@ -2637,6 +2655,7 @@ public partial class ResourcePackManager : MonoBehaviour
 					this.nightBright = num45;
 					this.optSaveAt = Time.unscaledTime + 0.6f;
 					this.dirLightsNext = 0f;
+				}
 				}
 			}
 			bool flag1501 = this.Section(e, ref num, w, rowH, old, "Advanced (shader overrides, intervals)", 5);

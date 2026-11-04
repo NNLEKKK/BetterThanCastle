@@ -1451,6 +1451,14 @@ public static class BtcLang
 			"Яркость ночью"
 		},
 		{
+			"Auto-equalize gamma (same brightness day and night)",
+			"Автоматически выравнивать гамму (одинаковая яркость днём и ночью)"
+		},
+		{
+			"Master gamma",
+			"Мастер-гамма"
+		},
+		{
 			"No",
 			"Нет"
 		},

@@ -1,0 +1,13 @@
+# Auto marks: record an SP replay with a few deaths; agent.log "[AutoMarks] payload" shows the saved events.
+recsp 1
+newgame
+waitgame 240
+wait 5
+spawn bricktron 12
+waitspawn 120
+wait 5
+ffkill 6
+wait 8
+ffkill 6
+wait 5
+quit

@@ -26,6 +26,10 @@ Updated: 2026-11-04 (advanced timer: ready phase, score-panel clock, replay time
 ## Duel bot research (2026-10-30, see docs/duel-bot-research.md)
 - Production bot = frozen v2 base + increment 2048 (engaged units stay on their target). Redesigned v3 (BtcDuelBotX, archived) LOST to v2 (3-7 .. 0-10); all bit-by-bit increments on v2 are within noise except 2048 (26/40). Tools: scripts/duel-par.ps1 (4 parallel hidden games, feature masks, human-like opponent tiers), duel-analyze.sh, duel-tally.sh. NOT reached: v3 10-0 over v2, v4. Spawn height fixed (units fell into landing stun), bots idle 1.2 s after spawn.
 
+- 2026-11-04: replay auto marks (BtcAutoMarks), camera+cursor recording (BtcPovRec, msg 93). User tests: lane, Alt preview, minimap pulse, MP camera/cursor of clients.
+
+- 2026-11-04: auto gamma (RPM Overlays/Other: checkbox + Master gamma, ResourcePackManager.Gamma.cs, options.txt AutoGamma/MasterGamma) and mov.noAutoPick (Gameplay/Movement, default ON, Patches/CleanUpGoalProviderPatches.cs: harvest/repair providers keep no goals; BC ON only). UNTESTED in game: user checks night brightness, workers skipping loose items.
+
 ## NEXT
 0. v0.2.3 released (2026-11-04): jump-off line (tag JumpLine), chop 1x1 (confirmed), rack kit filter (tag RackFilter/Livre; untested: Alt icon, save/load, MP host apply, hover pie), window mode + skip intro. User tests these.
 1. User: test MP (2 players, BC ON): lobby colours 5-8 + teams E-H, call-to-arms on custom colours (send `[CallToArms]` log line), editor panel for client, spawn selection, replay auto-delivery; docs/test-plans.md sections F, G.

@@ -897,6 +897,14 @@ public static class BtcReplay
 		}
 	}
 
+	/// <summary>Blueprint.OnRebuildObservers postfix: the recording connections observe every blueprint (local fake clients, nothing goes to real players).</summary>
+	internal static void AddRecObservers(HashSet<NetworkConnection> observers)
+	{
+		if (BtcReplay.mode != BtcReplay.State.Recording) return;
+		if (BtcReplay.mainConn != null && BtcReplay.mainConn.HasUser) observers.Add(BtcReplay.mainConn);
+		if (BtcReplay.kfConn != null) observers.Add(BtcReplay.kfConn);
+	}
+
 	private static BtcReplay.RecConn AddRecConn(int tag)
 	{
 		int num = BtcReplay.ConnId(tag);
@@ -1395,6 +1403,17 @@ public static class BtcReplay
 			{
 				BtcReplay.ds.Close();
 				BtcReplay.ds = null;
+				try
+				{
+					byte[] povBlock = BtcPovRec.BuildBlob();
+					if (povBlock != null && povBlock.Length > 0)
+					{
+						BtcReplay.fs.Write(povBlock, 0, povBlock.Length);
+					}
+				}
+				catch (Exception)
+				{
+				}
 				int value = 0;
 				bool flag22 = BtcReplay.footSnap > 0 && BtcReplay.snapZip != null && File.Exists(BtcReplay.snapZip);
 				bool flag23 = flag22;
@@ -2262,7 +2281,17 @@ public static class BtcReplay
 									};
 									lzip.decompress_File(zip, dir, progress, null, null, null);
 									File.Delete(zip);
-									MemoryStream compressedStream = new MemoryStream(buffer);
+									int povLen = BtcPovRec.BlobLenFromTl(dd.Tl);
+									int streamLen = buffer.Length;
+									BtcPovRec.SetBlob(null);
+									if (povLen > 0 && povLen < buffer.Length)
+									{
+										byte[] povBytes = new byte[povLen];
+										Buffer.BlockCopy(buffer, buffer.Length - povLen, povBytes, 0, povLen);
+										streamLen = buffer.Length - povLen;
+										BtcPovRec.SetBlob(povBytes);
+									}
+									MemoryStream compressedStream = new MemoryStream(buffer, 0, streamLen);
 									DeflateStream deflateStream = new DeflateStream(compressedStream, CompressionMode.Decompress);
 									MemoryStream memoryStream = new MemoryStream();
 									byte[] array = new byte[65536];

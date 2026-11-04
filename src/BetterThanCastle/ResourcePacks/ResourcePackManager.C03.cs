@@ -883,6 +883,8 @@ public partial class ResourcePackManager : MonoBehaviour
 		this.enemyTexOn = false;
 		this.discordOn = false;
 		this.dayBright = 1f;
+		this.autoGamma = false;
+		this.masterGamma = 1f;
 		this.nightBright = 1f;
 		try
 		{
@@ -968,7 +970,15 @@ public partial class ResourcePackManager : MonoBehaviour
 									if (flag48)
 									{
 										this.nightBright = ResourcePackManager.ParseBright(text);
-									}
+										}
+										else if (text.StartsWith("AutoGamma=", StringComparison.OrdinalIgnoreCase))
+										{
+											this.autoGamma = text.EndsWith("1");
+										}
+										else if (text.StartsWith("MasterGamma=", StringComparison.OrdinalIgnoreCase))
+										{
+											this.masterGamma = Mathf.Clamp(ResourcePackManager.ParseBright(text), 0.3f, 4f);
+										}
 								}
 							}
 						}
@@ -992,7 +1002,9 @@ public partial class ResourcePackManager : MonoBehaviour
 				"EnemyTex=" + (this.enemyTexOn ? "1" : "0"),
 				"DiscordRPC=" + (this.discordOn ? "1" : "0"),
 				"DayBrightness=" + this.dayBright.ToString("0.00", CultureInfo.InvariantCulture),
-				"NightBrightness=" + this.nightBright.ToString("0.00", CultureInfo.InvariantCulture)
+				"NightBrightness=" + this.nightBright.ToString("0.00", CultureInfo.InvariantCulture),
+				"AutoGamma=" + (this.autoGamma ? "1" : "0"),
+				"MasterGamma=" + this.masterGamma.ToString("0.00", CultureInfo.InvariantCulture)
 			});
 		}
 		catch (Exception)

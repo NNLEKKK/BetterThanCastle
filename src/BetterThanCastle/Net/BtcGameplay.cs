@@ -754,8 +754,10 @@ public static class BtcGameplay
 		BtcSpawnPick.RegisterHandlers(clientOverride);
 		BtcEditorShare.RegisterHandlers();
 		BtcReplayAuto.RegisterHandlers(clientOverride);
+		BtcPovRec.RegisterHandlers();
 		BtcMatchStatsNet.RegisterHandlers(clientOverride);
 		BtcRackFilterNet.RegisterHandlers(clientOverride);
+		BtcCleanFilterNet.RegisterHandlers(clientOverride);
 		BtcTimer.RegisterHandlers(clientOverride);
 		bool active = NetworkServer.active;
 		bool flag = active;
@@ -816,6 +818,7 @@ public static class BtcGameplay
 			BtcHandicap.SendState(conn);
 			BtcSpawnPick.SendState(conn);
 			BtcRackFilterNet.SendState(conn);
+			BtcCleanFilterNet.SendState(conn);
 		}
 	}
 

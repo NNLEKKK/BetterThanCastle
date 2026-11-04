@@ -327,7 +327,7 @@ namespace BetterThanCastle
                 if (!_auth) return;
                 if (now >= _nextPoll)
                 {
-                    _nextPoll = now + 1f;
+                    _nextPoll = now + 2f;
                     float dt = Mathf.Clamp(gt - _lastPollT, 0f, 5f);
                     _lastPollT = gt;
                     RefreshFactions();
@@ -352,6 +352,14 @@ namespace BetterThanCastle
         }
 
         // ------------------------------------------------------------------ helpers
+        /// <summary>Known units of the last scene scan (no scene walk); false when the stats are not running.</summary>
+        internal static bool CollectLabors(List<Labor> into)
+        {
+            if (!_active || Units.Count == 0) return false;
+            foreach (KeyValuePair<int, URec> kv in Units) if (kv.Value.Lab != null) into.Add(kv.Value.Lab);
+            return true;
+        }
+
         internal static bool Tracks(Faction f)
         {
             return f != null && !f.IsSpectator && f != Faction.DefaultNeutral && f != Faction.DefaultEnemy;
@@ -385,7 +393,7 @@ namespace BetterThanCastle
             return Tracks(f) ? f.ID : int.MinValue;
         }
 
-        private static bool Enemies(int a, int b)
+        internal static bool Enemies(int a, int b)
         {
             if (a == b) return false;
             Faction fa = FactionOf(a), fb = FactionOf(b);
@@ -404,20 +412,7 @@ namespace BetterThanCastle
         {
             // FindObjectsOfType walks every object of the scene (hitch + garbage): full scan only every few seconds, the known units in between
             LabTmp.Clear();
-            float uNow = Time.unscaledTime;
-            if (uNow >= _nextUnitScan)
-            {
-                _nextUnitScan = uNow + UnitScanEvery;
-                LabTmp.AddRange(UnityEngine.Object.FindObjectsOfType<Labor>());
-            }
-            else
-            {
-                foreach (KeyValuePair<int, URec> kv in Units)
-                {
-                    Labor l = kv.Value.Lab;
-                    if (l != null && l.gameObject.activeInHierarchy) LabTmp.Add(l);
-                }
-            }
+            BtcRegistry.CollectLabors(LabTmp);
             List<Labor> all = LabTmp;
             foreach (KeyValuePair<int, URec> kv in Units) kv.Value.Seen = false;
             for (int i = 0; i < all.Count; i++)
@@ -567,7 +562,7 @@ namespace BetterThanCastle
         }
 
         // ------------------------------------------------------------------ crystals
-        private static List<FireflyNest> NestList()
+        internal static List<FireflyNest> NestList()
         {
             if (!_nestListTried)
             {
@@ -646,8 +641,10 @@ namespace BetterThanCastle
             // souls flying to a nest (dead unit: pure energy after the death penalty) are energy of the faction too
             try
             {
-                Firefly[] all = UnityEngine.Object.FindObjectsOfType<Firefly>();
-                for (int i = 0; i < all.Length; i++)
+                FlyTmp.Clear();
+                BtcRegistry.CollectFireflies(FlyTmp);
+                List<Firefly> all = FlyTmp;
+                for (int i = 0; i < all.Count; i++)
                 {
                     Firefly ff = all[i];
                     if (ff == null || InNest.Contains(ff.GetInstanceID()) || ff.GetComponent<Labor>() != null) continue;
@@ -673,12 +670,16 @@ namespace BetterThanCastle
         private const float UnitScanEvery = 4f;
         private static float _nextUnitScan;
         private static readonly List<Labor> LabTmp = new List<Labor>();
+        private static readonly List<Firefly> FlyTmp = new List<Firefly>();
+        private static readonly List<Recepteur> PalTmp = new List<Recepteur>();
 
         private static void PollStockpiles()
         {
             foreach (KeyValuePair<int, int[]> kv in ResNow) Array.Clear(kv.Value, 0, NRES);
-            Recepteur[] all = UnityEngine.Object.FindObjectsOfType<Recepteur>();
-            for (int i = 0; i < all.Length; i++)
+            PalTmp.Clear();
+            BtcRegistry.CollectPallets(PalTmp);
+            List<Recepteur> all = PalTmp;
+            for (int i = 0; i < all.Count; i++)
             {
                 Recepteur r = all[i];
                 if (r == null) continue;

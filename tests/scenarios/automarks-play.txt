@@ -1,0 +1,6 @@
+# Auto marks playback: play a real MP replay, agent.log "[AutoMarks] minimap:" lines show engaged units / clusters / marks.
+replay Komorebi
+waitreplay 180
+speed 2
+wait 120
+quit

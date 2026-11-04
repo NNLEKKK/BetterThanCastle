@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+- Auto gamma (Overlays > Other): checkbox + Master gamma slider, same brightness day and night. Bottom attribution strip removed, version shown in the menu banner.
+- Gameplay > Movement: "Do not pick up lying items automatically" (default on, BetterConnection ON): workers on a task skip loose items on their way, a miner takes only its quarry's resource, items dropped from a bag are mess; Cleanup and manual pie-menu orders are unrestricted.
+- Cleanup task: 11 resource filter buttons in the bottom task menu (stone, brimstone, iron ore, grass, logs, planks, bricks, ingots, gears, fabric, rope), synced to multiplayer clients.
+- Hotkeys Dig voxel / Break object ignore ward auras and do not dig through stockpiles (issue #1).
+- Replays: automatic timeline marks, camera and cursor recording of all players, blueprints of all players with owner tint and queues overlay.
+
 ## 0.2.4
 - Advanced match timer (Gameplay Settings > Timer, on by default, BetterConnection ON): after the level loads everybody presses Ready (or the host starts by force), 3-2-1 countdown, then the timer runs from 0 on every machine. Crystals give no energy until the start. Follows game pause and speed, loaded saves stay on pause until everybody is ready (state stored next to the save).
 - The timer replaces the vanilla clock in the score panel: `m:ss (-m:ss)`, green during peace time, grey in the normal phase, red when the game time is over. Optional milliseconds. Settings: peace time and game length in minutes.

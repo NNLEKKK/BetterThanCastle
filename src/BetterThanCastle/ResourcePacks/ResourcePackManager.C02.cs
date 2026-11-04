@@ -897,7 +897,7 @@ public partial class ResourcePackManager : MonoBehaviour
 				}
 				GUI.color = color;
 				GUI.Label(new Rect(rect.x, rect.y + num4 * 0.4f, rect.width, num2 * 1.15f), BtcLang.Tr("Better Than Castle"), this.menuBannerStyle);
-				GUI.Label(new Rect(rect.x, rect.y + num4 * 0.4f + num2 * 1.1f, rect.width, num2 * 0.6f), BtcLang.Tr("by NotNonlokill"), this.menuBannerSubStyle);
+				GUI.Label(new Rect(rect.x, rect.y + num4 * 0.4f + num2 * 1.1f, rect.width, num2 * 0.6f), "v" + BtcPlugin.Version, this.menuBannerSubStyle);
 				this.DrawLangButton(rect, num2, num4);
 				bool flag42 = current.type == EventType.Repaint;
 				bool flag43 = flag42;

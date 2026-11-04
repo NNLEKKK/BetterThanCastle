@@ -1273,7 +1273,7 @@ public partial class ResourcePackManager : MonoBehaviour
 
 	private void UpdateLightCache()
 	{
-		bool flag = Mathf.Approximately(this.dayBright, 1f) && Mathf.Approximately(this.nightBright, 1f);
+		bool flag = this.LightIdle();
 		bool flag2 = !flag;
 		bool flag3 = flag2;
 		bool flag4 = flag3;
@@ -1312,6 +1312,10 @@ public partial class ResourcePackManager : MonoBehaviour
 						list.Add(array[i]);
 					}
 				}
+				if (this.dirLights == null || list.Count != this.dirLights.Length || (list.Count > 0 && list[0] != this.dirLights[0]))
+				{
+					this.lumRef = 0f;
+				}
 				this.dirLights = list.ToArray();
 			}
 		}
@@ -1319,7 +1323,7 @@ public partial class ResourcePackManager : MonoBehaviour
 
 	private void OnCamPreCull(Camera cam)
 	{
-		bool flag = this.lightApplied || (Mathf.Approximately(this.dayBright, 1f) && Mathf.Approximately(this.nightBright, 1f));
+		bool flag = this.lightApplied || this.LightIdle();
 		bool flag2 = !flag;
 		bool flag3 = flag2;
 		bool flag4 = flag3;
@@ -1369,7 +1373,7 @@ public partial class ResourcePackManager : MonoBehaviour
 			}
 			else
 			{
-				num = Mathf.Lerp(this.dayBright, this.nightBright, ResourcePackManager.NightFactor());
+				num = this.CurrentLightMul();
 			}
 			this.ambientSaved = RenderSettings.ambientLight;
 			Color color = this.ambientSaved;

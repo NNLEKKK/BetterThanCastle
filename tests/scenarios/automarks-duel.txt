@@ -1,0 +1,14 @@
+# Auto marks recording with real combat: record an SP replay while bots fight, then read "[AutoMarks] payload".
+recsp 1
+duelunits 4 5 5
+duelskip 1
+duelheal 0
+duelplayerbot 0
+duel
+waitduel 240
+waitduelover 150
+duelrematch
+wait 4
+waitduelover 150
+wait 2
+quit

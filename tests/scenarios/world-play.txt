@@ -1,0 +1,5 @@
+# Plays the newest replay; agent.log "[ReplayWorld] playback:" shows blueprints in the replay and how many were re-tinted.
+replay latest
+waitreplay 180
+wait 25
+quit
