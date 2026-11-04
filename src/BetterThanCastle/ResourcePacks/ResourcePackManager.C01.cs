@@ -194,8 +194,10 @@ public partial class ResourcePackManager : MonoBehaviour
 		BtcUnitPlates.Tick();
 		BtcInterface.Tick();
 		BtcMatchStats.Tick();
+		BtcTimer.Tick();
 		BtcMatchStatsUI.Tick();
 		BtcReplay.Tick();
+		BtcReplayKeys.Tick();
 		BtcNetDiag.Tick();
 		BtcSimplePhys.Tick();
 		BtcKick.Tick();
@@ -839,6 +841,7 @@ public partial class ResourcePackManager : MonoBehaviour
 	{
 		BtcOverlays.OnGUI();
 		BtcMatchStatsUI.OnGUI();
+		BtcTimer.OnGUI();
 		BtcReplayUI.OnGUI();
 		BtcGameplayUI.OnGUI();
 		BtcSessionTick.OnGUI();

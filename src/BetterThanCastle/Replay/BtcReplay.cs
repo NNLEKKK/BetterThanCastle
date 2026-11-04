@@ -525,7 +525,9 @@ public static class BtcReplay
 					}
 					stringBuilder.Append("players=").Append(stringBuilder2.ToString()).Append('\n');
 					stringBuilder.Append(BtcReplayNames.HeaderLine());
+					stringBuilder.Append(BtcTimer.HeaderLine());
 					byte[] bytes = Encoding.UTF8.GetBytes(stringBuilder.ToString());
+					BtcReplay.tlOff = 9L + (long)bytes.Length - (long)BtcTimer.PadLen - 1L;
 					BtcReplay.fs = new FileStream(BtcReplay.curPath, FileMode.Create, FileAccess.Write, FileShare.Read);
 					BtcReplay.fs.Write(new byte[]
 					{
@@ -554,6 +556,7 @@ public static class BtcReplay
 					BtcReplay.recGameClock = !Neo.multiplayer;
 					BtcReplay.recG0 = Time.time;
 					BtcReplay.mode = BtcReplay.State.Recording;
+					BtcTimer.OnRecordStart();
 					BtcReplay.wThread = new Thread(new ThreadStart(BtcReplay.WriterLoop));
 					BtcReplay.wThread.IsBackground = true;
 					BtcReplay.wThread.Start();
@@ -1194,6 +1197,30 @@ public static class BtcReplay
 	/// <summary>Recording timeline in seconds. MP: wall clock (vanilla MP cannot pause or change speed, so wall time == game time).
 	/// SP: game time (Time.time), so the SP clock (pause, x1.5/x2/x5, focus-loss pause) does not stretch or squeeze the replay:
 	/// the stream then plays back at the speed the world really moved, like an MP replay.</summary>
+	/// <summary>Recording timeline position (seconds), -1 when not recording (BtcTimer timeline events).</summary>
+	internal static float RecTime
+	{
+		get { return (BtcReplay.mode == BtcReplay.State.Recording) ? BtcReplay.RecClock() : -1f; }
+	}
+
+	private static long tlOff;
+
+	/// <summary>Overwrites the reserved "tl=" header region with the timeline events (same length, header size unchanged).</summary>
+	private static void PatchTimeline()
+	{
+		try
+		{
+			byte[] b = Encoding.ASCII.GetBytes(BtcTimer.TimelinePayload());
+			if (BtcReplay.tlOff < 9L || b.Length == 0 || b.Length > BtcTimer.PadLen) return;
+			long p = BtcReplay.fs.Position;
+			BtcReplay.fs.Flush();
+			BtcReplay.fs.Seek(BtcReplay.tlOff, SeekOrigin.Begin);
+			BtcReplay.fs.Write(b, 0, b.Length);
+			BtcReplay.fs.Seek(p, SeekOrigin.Begin);
+		}
+		catch (Exception ex) { BtcReplay.Log("PatchTimeline: " + ex.Message); }
+	}
+
 	private static float RecClock()
 	{
 		return BtcReplay.recGameClock ? (Time.time - BtcReplay.recG0) : (Time.unscaledTime - BtcReplay.recT0);
@@ -1395,6 +1422,7 @@ public static class BtcReplay
 				BtcReplay.fs.Write(BitConverter.GetBytes(BtcReplay.footRaw), 0, 8);
 				BtcReplay.fs.Write(BitConverter.GetBytes(BtcReplay.footKf), 0, 4);
 				BtcReplay.fs.Write(BitConverter.GetBytes(value), 0, 4);
+				BtcReplay.PatchTimeline();
 				BtcReplay.fs.Close();
 				BtcReplay.fs = null;
 			}
@@ -1556,6 +1584,7 @@ public static class BtcReplay
 												else
 												{
 													if (a == "pl2") data.Pl2 = text;
+													if (a == "tl") data.Tl = text;
 													bool flag71 = a == "players" && text.Length > 0;
 													bool flag72 = flag71;
 													bool flag73 = flag72;
@@ -2160,6 +2189,7 @@ public static class BtcReplay
 						{
 							BtcReplay.playData = d;
 							BtcReplayNames.Load(d.Pl2);
+							BtcTimer.LoadTl(d.Tl);
 							BtcReplay.playTotal = d.Duration;
 							BtcReplay.playClock = 0f;
 							BtcReplay.playSpeed = 1f;
@@ -5646,6 +5676,8 @@ public static class BtcReplay
 
 		/// <summary>Header "pl2": faction id, colour and rich-text nick per player (BtcReplayNames); null in old files.</summary>
 		public string Pl2;
+
+		public string Tl;
 
 		public string Mode;
 

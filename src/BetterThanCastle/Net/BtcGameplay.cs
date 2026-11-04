@@ -756,6 +756,7 @@ public static class BtcGameplay
 		BtcReplayAuto.RegisterHandlers(clientOverride);
 		BtcMatchStatsNet.RegisterHandlers(clientOverride);
 		BtcRackFilterNet.RegisterHandlers(clientOverride);
+		BtcTimer.RegisterHandlers(clientOverride);
 		bool active = NetworkServer.active;
 		bool flag = active;
 		bool flag2 = flag;

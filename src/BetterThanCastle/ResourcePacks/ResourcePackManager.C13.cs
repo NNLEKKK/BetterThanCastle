@@ -708,7 +708,7 @@ public partial class ResourcePackManager : MonoBehaviour
 		ResourcePackManager.HpConfig hpConfig = this.hpCfg;
 		try
 		{
-			this.ApplyMenuInputLock((this.menuOpen && hpConfig != null && hpConfig.menuBlockInput) || BtcMatchStatsUI.PanelOpen);
+			this.ApplyMenuInputLock((this.menuOpen && hpConfig != null && hpConfig.menuBlockInput) || BtcMatchStatsUI.PanelOpen || BtcTimer.MouseOver);
 			this.ApplyMenuPause(this.menuOpen && hpConfig != null && hpConfig.menuPause);
 		}
 		catch (Exception ex)

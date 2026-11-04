@@ -63,7 +63,8 @@ public static class BtcGameplayUI
 				BtcGameplayUI.T("General", "Общее"),
 				BtcGameplayUI.T("Handicap", "Фора"),
 				BtcGameplayUI.T("Presets", "Пресеты"),
-				BtcGameplayUI.T("Map", "Карта")
+				BtcGameplayUI.T("Map", "Карта"),
+				BtcGameplayUI.T("Timer", "Таймер")
 			};
 			float num2 = (w - (float)fs * 2f) / (float)array.Length;
 			for (int i = 0; i < array.Length; i++)
@@ -86,6 +87,17 @@ public static class BtcGameplayUI
 				BtcGameplayUI.Note(ref num, w, fs, BtcGameplayUI.T("Requests from players are waiting at the bottom of this tab.", "Запросы игроков ждут внизу этой вкладки."));
 			}
 			int subTab = BtcGameplayUI._subTab;
+			if (subTab == 5)
+			{
+				BtcGameplayUI.Note(ref num, w, fs, BtcGameplayUI.T("Advanced timer: synced for everybody, follows pauses and saves. Works with BetterConnection ON. After the level loads everybody presses Ready (or the host starts by force); until then crystals give no energy. Peace time shows green, the end of the game turns the timer red.", "Продвинутый таймер: синхронизирован у всех, учитывает паузы и сейвы. Работает при BetterConnection ВКЛ. После загрузки уровня все жмут Готов (или хост начинает принудительно); до этого кристаллы не дают энергию. Мирное время зелёное, конец игры делает таймер красным."));
+				for (int tk = 0; tk < BtcGameplay.Defs.Count; tk++)
+				{
+					if (BtcGameplay.Defs[tk].Group == "timer") BtcGameplayUI.ValueRow(e, ref num, w, rowH, fs, old, tk, shown, interact);
+				}
+				BtcGameplayUI.DrawPlates(e, ref num, w, rowH, fs, old, isHost, inSession);
+				BtcGameplayUI.ContentH = num + rowH * 0.4f;
+				return;
+			}
 			bool flag13 = subTab == 0;
 			bool flag14 = flag13;
 			if (flag14)

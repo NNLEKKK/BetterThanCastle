@@ -1,5 +1,5 @@
 # STATUS (read first; keep <=60 lines; update at the end of every session)
-Updated: 2026-11-03 (orders from any distance; public GitHub repo + v0.2.0 release with installer). Branch refactor/main.
+Updated: 2026-11-04 (advanced timer: ready phase, score-panel clock, replay timeline marks, souls in energy stats). Branch refactor/main.
 
 ## Done (code committed; user confirmed in game: hotkeys, input lock, menu look, thumbnail scale, handicap dmg/hp/income/penalty, symmetry crystal)
 - Port complete (125 patches after Anim Sync removal), net core, replay, ResourcePackManager menu, perf fixes (see git log).
@@ -27,7 +27,7 @@ Updated: 2026-11-03 (orders from any distance; public GitHub repo + v0.2.0 relea
 - Production bot = frozen v2 base + increment 2048 (engaged units stay on their target). Redesigned v3 (BtcDuelBotX, archived) LOST to v2 (3-7 .. 0-10); all bit-by-bit increments on v2 are within noise except 2048 (26/40). Tools: scripts/duel-par.ps1 (4 parallel hidden games, feature masks, human-like opponent tiers), duel-analyze.sh, duel-tally.sh. NOT reached: v3 10-0 over v2, v4. Spawn height fixed (units fell into landing stun), bots idle 1.2 s after spawn.
 
 ## NEXT
-0. User: test new QoL (b39ccc3, BC ON, NOT tested in game): Gameplay -> Movement "Group jump in a line" (mov.jumpLine; log tag JumpLine), Gameplay -> Building "Chopping block 1x1" (build.chop1x1; ghost offset vs built block? also MP host validation). Issue forms (.github/ISSUE_TEMPLATE/*.yml) pushed to GitHub.
+0. v0.2.3 released (2026-11-04): jump-off line (tag JumpLine), chop 1x1 (confirmed), rack kit filter (tag RackFilter/Livre; untested: Alt icon, save/load, MP host apply, hover pie), window mode + skip intro. User tests these.
 1. User: test MP (2 players, BC ON): lobby colours 5-8 + teams E-H, call-to-arms on custom colours (send `[CallToArms]` log line), editor panel for client, spawn selection, replay auto-delivery; docs/test-plans.md sections F, G.
 2. Handicap cap: send `[Handicap] cap`/`start workers` log lines if still wrong. Opt: menu checkbox for Replay/AutoShare (cfg only now). Profile checkbox shape confirmed square? (unchecked).
 3. Releases: test updater with 0.2.1; installer GUI test on the real game. Release build + verify-dist before every release.

@@ -40,6 +40,7 @@ public static class BtcQol
 		BtcSimplePhys.AddRows();
 		BtcJumpLine.AddRows();
 		BtcChopBlock1x1.AddRows();
+		BtcTimer.AddRows();
 	}
 
 	private static bool On(ref int idx, string id)

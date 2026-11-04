@@ -19,6 +19,7 @@ namespace BetterThanCastle
         internal static ConfigEntry<bool> UpdateCheck;
         internal static ConfigEntry<string> UpdateSkipped;
         internal static ConfigEntry<bool> ReplayAutoShare;
+        internal static ConfigEntry<bool> ReplaySkipPauses;
         internal static ConfigEntry<bool> StatsEnabled, StatsBar, StatsBarBottom;
         internal static ConfigEntry<float> StatsBarOffset, StatsBarScale, StatsBarOpacity, StatsPanelScale, StatsPanelOpacity;
         internal static ConfigEntry<string> StatsBarList, StatsPanelHidden;
@@ -42,6 +43,7 @@ namespace BetterThanCastle
             LogFaction = cfg.Bind("Logging", "FactionReplay", false, "Verbose log of the faction replay (debug).");
             LogFactionDump = cfg.Bind("Logging", "FactionDump", false, "Log minimap object positions once after load (debug).");
             ReplayAutoShare = cfg.Bind("Replay", "AutoShare", true, "Host: after a multiplayer match send the recorded replay (.btcr) to every connected BetterConnection client (BetterConnection only).");
+            ReplaySkipPauses = cfg.Bind("Replay", "SkipPauses", false, "Replay playback: jump over the recorded pauses of the advanced timer at once.");
             AnimatorCulling = cfg.Bind("Performance", "AnimatorCulling", false,
                 "Unit animators skip skeleton/transform updates while off-screen (CullUpdateTransforms). Visual only; needs BetterConnection ON. Measured: no frame-time gain (state machine cost dominates), so OFF by default.");
             StatsEnabled = cfg.Bind("Stats", "Enabled", true, "Match statistics: collecting, bar and panel. Off = nothing is collected, sent or recorded (players see only their own stats; spectators and replays see everyone).");

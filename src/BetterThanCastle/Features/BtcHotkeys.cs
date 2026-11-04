@@ -1245,6 +1245,8 @@ public static class BtcHotkeys
 		BtcHotkeys.AddFloat(group, "group_auto_cluster_radius", "Auto-group cluster radius (blocks)", "6", 1f, 30f, 0.5f, "0.0", string.Empty);
 		group = "Orders";
 		BtcHotkeys.AddBool(group, "order_any_distance", "Give orders from any camera distance (vanilla ignores clicks when the camera is zoomed out too far)", true);
+		BtcHotkeys.AddKey("Timer", "timer_mark", "Place a replay timeline mark (10 s back, shown in your colour)", 0, string.Empty, false);
+		BtcReplayKeys.AddKeys();
 		BtcHotkeys.AddKey(group, "dig_voxel", "Dig the block under the cursor (selected units)", 0, "G", false);
 		BtcHotkeys.AddKey(group, "break_object", "Break object under the cursor (selected units)", 0, string.Empty, false);
 		BtcHotkeys.AddKey(group, "shoot_at", "Shoot at the block or object under the cursor (selected archers, not Artificers)", 0, string.Empty, false);
@@ -1291,7 +1293,7 @@ public static class BtcHotkeys
 		return def2;
 	}
 
-	private static void AddKey(string group, string id, string label, int num, string def, bool any)
+	internal static void AddKey(string group, string id, string label, int num, string def, bool any)
 	{
 		BtcHotkeys.Def def2 = BtcHotkeys.NewDef(group, id, label, BtcHotkeys.Kind.Key, def);
 		def2.num = num;

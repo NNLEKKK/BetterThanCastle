@@ -144,6 +144,12 @@ public static class BtcReplayUI
 		return result;
 	}
 
+	/// <summary>Timeline readout: advanced timer time when the replay has one, else the replay clock.</summary>
+	private static string TClock(float sec)
+	{
+		return BtcTimer.ClockAt(sec) ?? BtcReplayUI.Clock(sec);
+	}
+
 	public static string Clock(float sec)
 	{
 		int num = Mathf.Max(0, Mathf.RoundToInt(sec));
@@ -227,6 +233,10 @@ public static class BtcReplayUI
 		if (flag32)
 		{
 			BtcReplay.SetShowIndicator(!BtcReplay.GetShowIndicator());
+		}
+		if (BtcReplayUI.CheckRow(e, ref num, w, rowH, fs, BtcReplayUI.T("Auto-skip pauses when playing a replay", "Автоматически перематывать паузы в реплее"), BtcReplayKeys.SkipPauses))
+		{
+			BtcReplayKeys.SkipPauses = !BtcReplayKeys.SkipPauses;
 		}
 		int keyMinutes = BtcReplay.GetKeyMinutes();
 		int num2 = BtcReplayUI.StepRow(num, w, rowH, fs, BtcReplayUI.T("Keyframe every N minutes (0 = off)", "Ключевой кадр каждые N минут (0 = выкл.)"), keyMinutes.ToString());
@@ -847,6 +857,7 @@ public static class BtcReplayUI
 			BtcReplayUI.Fill(r2, new Color(1f, 1f, 1f, 0.18f));
 			BtcReplayUI.Fill(new Rect(r2.x, r2.y, r2.width * num8, r2.height), BtcReplay.Seeking ? new Color(1f, 0.75f, 0.2f, 0.95f) : BtcReplayUI.Green);
 			BtcReplayUI.Fill(new Rect(r2.x + r2.width * num8 - 2f, r2.y - num2 * 0.1f, 4f, r2.height + num2 * 0.2f), Color.white);
+			BtcTimer.DrawTimeline(r2, num2, num6, rect);
 			bool flag38 = BtcReplayUI.seekDrag || rect2.Contains(current.mousePosition);
 			bool flag39 = flag38;
 			bool flag40 = flag39;
@@ -873,9 +884,9 @@ public static class BtcReplayUI
 				float num12 = num2 * 0.9f;
 				Rect rect3 = new Rect(Mathf.Clamp(num10 - num11 * 0.5f, rect.x, rect.x + rect.width - num11), rect.y - num12 - 4f, num11, num12);
 				BtcReplayUI.Fill(rect3, new Color(0f, 0f, 0f, 0.85f));
-				GUI.Label(rect3, BtcReplayUI.Clock(num9 * num6), BtcReplayUI.sTip);
+				GUI.Label(rect3, BtcReplayUI.TClock(num9 * num6), BtcReplayUI.sTip);
 			}
-			string text = BtcReplayUI.Clock(num7) + " / " + BtcReplayUI.Clock(BtcReplay.PlayTotal);
+			string text = BtcReplayUI.TClock(num7) + " / " + BtcReplayUI.TClock(BtcReplay.PlayTotal);
 			bool seeking = BtcReplay.Seeking;
 			bool flag49 = seeking;
 			bool flag50 = flag49;

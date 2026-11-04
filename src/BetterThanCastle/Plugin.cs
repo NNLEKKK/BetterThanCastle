@@ -9,7 +9,7 @@ namespace BetterThanCastle
     {
         public const string Guid = "com.btc.betterthancastle";
         public const string Name = "Better Than Castle";
-        public const string Version = "0.2.3";
+        public const string Version = "0.2.4";
 
         internal static ManualLogSource Log;
         internal static Harmony Harmony;

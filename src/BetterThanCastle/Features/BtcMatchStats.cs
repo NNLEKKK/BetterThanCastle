@@ -582,6 +582,7 @@ namespace BetterThanCastle
             return _nestList;
         }
 
+        private static readonly HashSet<int> InNest = new HashSet<int>();
         private static readonly List<FireflyNest> NestTmp = new List<FireflyNest>();
 
         private static void PollNests(float dt, float t)
@@ -591,6 +592,7 @@ namespace BetterThanCastle
             if (l != null && l.Count > 0) NestTmp.AddRange(l);
             else NestTmp.AddRange(UnityEngine.Object.FindObjectsOfType<FireflyNest>());
             for (int i = 0; i < Local.Factions.Count; i++) Local.Factions[i].V[V_CRYS] = 0;
+            InNest.Clear();
             StoredE.Clear();
             for (int i = 0; i < NestTmp.Count; i++)
             {
@@ -626,9 +628,36 @@ namespace BetterThanCastle
                 f.V[V_CRYS]++;
                 float a; CrysAcc.TryGetValue(owner, out a); CrysAcc[owner] = a + dt;
                 int se = 0;
-                try { se = n.GetAvailablePurifiedEnergy(); } catch { }
+                try
+                {
+                    foreach (IDescriptor d in n.mainRecepteur.StoredItems)
+                    {
+                        GameObject go = d.GameObject;
+                        if (go == null || !go.CompareTag("Firefly")) continue;
+                        Firefly ff = go.GetComponent<Firefly>();
+                        if (ff == null) continue;
+                        InNest.Add(ff.GetInstanceID());
+                        se += ff.pureEnergy + ff.storedEnergy;   // storedEnergy: dead unit waiting in the nest to respawn
+                    }
+                }
+                catch { }
                 if (se > 0) { int had; StoredE.TryGetValue(owner, out had); StoredE[owner] = had + se; }
             }
+            // souls flying to a nest (dead unit: pure energy after the death penalty) are energy of the faction too
+            try
+            {
+                Firefly[] all = UnityEngine.Object.FindObjectsOfType<Firefly>();
+                for (int i = 0; i < all.Length; i++)
+                {
+                    Firefly ff = all[i];
+                    if (ff == null || InNest.Contains(ff.GetInstanceID()) || ff.GetComponent<Labor>() != null) continue;
+                    int fo = FacId(ff.faction);
+                    int en = ff.pureEnergy + ff.storedEnergy;
+                    if (fo == int.MinValue || en <= 0) continue;
+                    int had2; StoredE.TryGetValue(fo, out had2); StoredE[fo] = had2 + en;
+                }
+            }
+            catch (Exception ex) { BtcLog.Warn("MatchStats", "souls: " + ex.Message); }
         }
 
         // ------------------------------------------------------------------ stockpiles (gathered = net increase of stockpile content)

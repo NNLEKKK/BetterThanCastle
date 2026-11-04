@@ -65,3 +65,12 @@ Log keywords: `[MatchStats] match start`, `sum t=..` (one line per faction every
 - MP, both BC ON: player sees only own faction in bar and panel (header "your stats only", source "host data" on the client). Spectator (mod spectate) sees all players, a late-joining spectator gets the full graph history within ~20 s.
 - MP, BC OFF (either side): no `Unknown message ID 84`, no `first stats message` in the host log; client shows only own stats with source "local (some n/a)" (n/a: idle, crafted, built, lost).
 - Replay playback: all players visible; after a rewind the stats restart from zero and rebuild (log `replay rewind: reset`).
+
+## H. Advanced timer (BtcTimer, BC ON; 2026-11-04)
+1. Lobby: Gameplay Settings > Timer (on by default, peace, game length, milliseconds checkbox). Start a match: panel "Waiting for players n/m", crystals give no energy; everybody presses Ready (or host Start now) -> 3,2,1 -> score panel clock runs from 0:00, green in peace `(-m:ss)`, grey after, red when the length is over.
+2. Pause (host voluntary pause / game pause) stops the clock for everybody; speed changes affect it equally. Client and host clocks match within ~1 s.
+3. Save during the game, load it: the game stays on host pause with the Ready panel until all press Ready, the clock resumes from the saved value (file btc-timer.txt in the save folder).
+4. Energy stat: kill a bricktron, the flying soul energy stays in the faction energy (stats panel).
+5. Replay: record a match with the timer; timeline shows white start tick, green peace end, red game end, orange pause spans; the score clock follows the recorded timer. Bind Hotkeys > Timer "replay mark" (unbound by default): marks appear 10 s before the press in the player colour; chips above the panel hide marks per player. Old replays: no ticks, vanilla clock.
+6. BC OFF: no timer UI, no mod messages (87/88), vanilla clock.
+Untested at the time of writing: items 1-5 in real MP, header patch with a real start event, mark hotkey.
