@@ -81,7 +81,10 @@ namespace BetterThanCastle
         private static float _nextWalk, _nextNestWalk;
         private static readonly Dictionary<int, int> ArmyAlive = new Dictionary<int, int>(), ArmyEng = new Dictionary<int, int>();
         private static readonly List<FireflyNest> Nests = new List<FireflyNest>();
-        private static readonly Dictionary<int, int> NestOwner = new Dictionary<int, int>();
+        private sealed class NestMem { internal FireflyNest N; internal int Owner; internal bool Home; internal Vector3 P; }
+        private static readonly Dictionary<int, NestMem> NestMems = new Dictionary<int, NestMem>();
+        private static readonly List<int> NestGone = new List<int>();
+        private static readonly Dictionary<int, float> LastDeath = new Dictionary<int, float>();
         private static readonly Dictionary<int, AffiliationComponent> NestAff = new Dictionary<int, AffiliationComponent>();
         private static readonly Dictionary<int, int> Alive = new Dictionary<int, int>();
         private static readonly Dictionary<int, int> Engaged = new Dictionary<int, int>();
@@ -118,7 +121,8 @@ namespace BetterThanCastle
         {
             Deaths.Clear();
             RecEv.Clear();
-            NestOwner.Clear();
+            NestMems.Clear();
+            LastDeath.Clear();
             _fOpen = false;
             _lastRecT = 0f;
         }
@@ -130,6 +134,11 @@ namespace BetterThanCastle
             if (t < 0f) return;
             Labor lab = dr.GetComponent<Labor>();
             if (lab == null || !BtcMatchStats.Tracks(lab.faction)) return;
+            // _Kill runs again for every hit on a dying unit: one death per unit instance within 20 s
+            int uid = lab.gameObject.GetInstanceID();
+            float last;
+            if (LastDeath.TryGetValue(uid, out last) && t - last < 20f && t >= last) return;
+            LastDeath[uid] = t;
             Deaths.Add(new RawDeath { T = t, Col = Hex(lab.faction.FactionColor), P = lab.transform.position });
         }
 
@@ -206,7 +215,9 @@ namespace BetterThanCastle
                 switch (e.K)
                 {
                     case 'D': s = "D," + e.T.ToString("F1", c) + "," + e.C1 + "," + e.N + Pos(e); break;
-                    case 'C': s = "C," + e.T.ToString("F1", c) + "," + e.C1 + "," + (e.C2 ?? "-") + Pos(e); break;
+                    case 'C':
+                    case 'N':
+                    case 'H': s = e.K + "," + e.T.ToString("F1", c) + "," + e.C1 + "," + (e.C2 ?? "-") + Pos(e); break;
                     case 'X': s = "X," + e.T.ToString("F1", c) + "," + e.C1 + Pos(e); break;
                     case 'W':
                     case 'F': s = e.K + "," + e.T.ToString("F1", c) + "," + e.A.ToString("F1", c) + "," + e.N + "," + (e.C1 ?? "-") + "," + (e.C2 ?? "-") + Pos(e); break;
@@ -234,7 +245,9 @@ namespace BetterThanCastle
             switch (k)
             {
                 case 'D': if (p.Length < 4) return true; e.T = float.Parse(p[1], c); e.A = e.T; e.C1 = p[2]; e.N = int.Parse(p[3], c); ReadPos(ref e, p, 4); break;
-                case 'C': if (p.Length < 4) return true; e.T = float.Parse(p[1], c); e.C1 = p[2]; e.C2 = p[3] == "-" ? null : p[3]; e.N = 1; ReadPos(ref e, p, 4); break;
+                case 'C':
+                case 'N':
+                case 'H': if (p.Length < 4) return true; e.T = float.Parse(p[1], c); e.C1 = p[2]; e.C2 = p[3] == "-" ? null : p[3]; e.N = 1; ReadPos(ref e, p, 4); break;
                 case 'X': e.T = float.Parse(p[1], c); e.C1 = p[2]; e.N = 1; ReadPos(ref e, p, 3); break;
                 case 'W':
                 case 'F':
@@ -401,18 +414,40 @@ namespace BetterThanCastle
                 FireflyNest n = Nests[i];
                 if (n == null) continue;
                 int id = n.gameObject.GetInstanceID();
+                if (NestMems.ContainsKey(id)) continue;
                 AffiliationComponent aff;
                 if (!NestAff.TryGetValue(id, out aff) || aff == null) { aff = n.GetComponent<AffiliationComponent>(); NestAff[id] = aff; }
                 if (aff == null) continue;
-                int owner = BtcMatchStats.Tracks(aff.faction) ? aff.faction.ID : int.MinValue;
-                int prev;
-                if (!NestOwner.TryGetValue(id, out prev)) { NestOwner[id] = owner; continue; }
-                if (prev == owner) continue;
-                NestOwner[id] = owner;
-                if (owner == int.MinValue) continue;
-                Vector3 np = n.transform.position;
-                RecEv.Add(new AEv { K = 'C', T = t, C1 = FacHex(owner), C2 = prev == int.MinValue ? null : FacHex(prev), N = 1, PX = np.x, PY = np.y, PZ = np.z, HasPos = true });
+                NestMems[id] = new NestMem { N = n, Owner = BtcMatchStats.Tracks(aff.faction) ? aff.faction.ID : int.MinValue, Home = n.isHome, P = n.transform.position };
             }
+            NestGone.Clear();
+            foreach (KeyValuePair<int, NestMem> kv in NestMems)
+            {
+                NestMem m = kv.Value;
+                int owner;
+                bool destroyed = m.N == null;
+                if (destroyed) owner = int.MinValue;
+                else
+                {
+                    m.Home |= m.N.isHome;
+                    m.P = m.N.transform.position;
+                    AffiliationComponent aff;
+                    NestAff.TryGetValue(kv.Key, out aff);
+                    owner = aff != null && BtcMatchStats.Tracks(aff.faction) ? aff.faction.ID : int.MinValue;
+                }
+                int prev = m.Owner;
+                if (destroyed) NestGone.Add(kv.Key);
+                if (prev == owner) continue;
+                m.Owner = owner;
+                // home crystal lost (taken, or blown up): a player is out. Other crystals: taken over (C), or neutralised (N)
+                if (prev != int.MinValue && m.Home)
+                    RecEv.Add(new AEv { K = 'H', T = t, C1 = FacHex(prev), C2 = owner == int.MinValue ? null : FacHex(owner), N = 1, PX = m.P.x, PY = m.P.y, PZ = m.P.z, HasPos = true });
+                else if (owner != int.MinValue)
+                    RecEv.Add(new AEv { K = 'C', T = t, C1 = FacHex(owner), C2 = prev == int.MinValue ? null : FacHex(prev), N = 1, PX = m.P.x, PY = m.P.y, PZ = m.P.z, HasPos = true });
+                else if (prev != int.MinValue)
+                    RecEv.Add(new AEv { K = 'N', T = t, C1 = FacHex(prev), N = 1, PX = m.P.x, PY = m.P.y, PZ = m.P.z, HasPos = true });
+            }
+            for (int i = 0; i < NestGone.Count; i++) NestMems.Remove(NestGone[i]);
         }
 
         // ------------------------------------------------------------------ snapshots (playback)
@@ -646,7 +681,7 @@ namespace BetterThanCastle
 
         private static void DrawIcon(char k, Rect r, string c1, string c2)
         {
-            BtcMarkIcons.Draw(k, r, ParseCol(c1), ParseCol(c2 ?? c1));
+            BtcMarkIcons.Draw(k, r, ParseCol(c1), ParseCol((k == 'H' || k == 'N' ? null : c2) ?? c1));
         }
 
         private static void Layout(float width, float total, float iw)
@@ -708,6 +743,8 @@ namespace BetterThanCastle
             {
                 case 'D': return BtcGameplay.T("Bricktron deaths", "Смерти бриктронов");
                 case 'C': return BtcGameplay.T("Crystal", "Кристалл");
+                case 'N': return BtcGameplay.T("Crystal neutralised", "Кристалл стал нейтральным");
+                case 'H': return BtcGameplay.T("Home crystal lost (defeat)", "Главный кристалл потерян (поражение)");
                 case 'X': return BtcGameplay.T("Barrel explosion", "Взрыв бочки");
                 case 'F': return BtcGameplay.T("Large fight", "Масштабный файт");
                 case 'Z': return BtcGameplay.T("Pause", "Пауза");
@@ -721,7 +758,7 @@ namespace BetterThanCastle
             return m + ":" + Mathf.FloorToInt(s % 60f).ToString("00");
         }
 
-        private static readonly char[] Kinds = { 'D', 'C', 'X', 'F', 'Z' };
+        private static readonly char[] Kinds = { 'D', 'C', 'N', 'H', 'X', 'F', 'Z' };
 
         /// <summary>Draws the lane + kind chips above the panel; returns the vertical space used (to lift the colour chips and the tooltip).</summary>
         internal static float DrawLane(Rect bar, float h, float total, Rect panel)
@@ -863,6 +900,8 @@ namespace BetterThanCastle
             {
                 case 'D': return new Color(0.9f, 0.9f, 0.92f);
                 case 'C': return new Color(0.45f, 0.85f, 1f);
+                case 'N': return new Color(0.6f, 0.75f, 0.85f);
+                case 'H': return new Color(1f, 0.45f, 0.55f);
                 case 'X': return new Color(1f, 0.6f, 0.15f);
                 case 'F': return new Color(1f, 0.35f, 0.3f);
                 default: return new Color(1f, 0.78f, 0.34f);
@@ -1006,6 +1045,7 @@ namespace BetterThanCastle
         private static readonly Dictionary<char, Set> Sets = new Dictionary<char, Set>();
 
         private static readonly float[] Arrow = { 9f, 35f, 9f, 9f, 14.5f, 14f, 18.5f, 5f, 22.5f, 7f, 18.5f, 15.5f, 26f, 15.5f };
+        private static readonly float[] Flag = { 12f, 35f, 22f, 33.5f, 33f, 31f, 28.5f, 26f, 33f, 21f, 22f, 23.5f, 12f, 21f };
 
         /// <summary>Signed distance to a polygon (even-odd inside test, nearest edge distance).</summary>
         private static float PolySd(float x, float y, float[] p)
@@ -1048,6 +1088,18 @@ namespace BetterThanCastle
                     }
                 case 'C':
                     return (Mathf.Abs(dx) / 11f + Mathf.Abs(dy) / 16f - 1f) * 9f;
+                case 'N': // crystal crossed out: the diamond is cut by a gap and a slash runs through it
+                    {
+                        float dia = (Mathf.Abs(dx) / 11f + Mathf.Abs(dy) / 16f - 1f) * 9f;
+                        float sl = Seg(x, y, 6f, 34f, 34f, 6f);
+                        return Mathf.Min(Mathf.Max(dia, -(sl - 4.6f)), sl - 1.9f);
+                    }
+                case 'H': // flag: pole and a waving cloth
+                    {
+                        float pole = Mathf.Max(Mathf.Abs(x - 11.5f) - 1.6f, Mathf.Abs(y - 19f) - 17f);
+                        float cloth = PolySd(x, y, Flag);
+                        return Mathf.Min(pole, cloth);
+                    }
                 case 'X':
                     {
                         float r = Mathf.Sqrt(dx * dx + dy * dy);

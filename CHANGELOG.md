@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.6
+- Replays: layout editor (F7 or the Layout button): scale, move and hide the control panel and the player box, sliders for timeline icons, cursors, nick text and view cones, named templates.
+- Replays: field of view of every player shown as a translucent 3D pyramid over the map (base follows the terrain height under the view). Button View toggles it.
+- Replays: the camera and cursor of multiplayer clients are recorded and can be watched (the message id collided with the plate sync). Player list shows coloured nicks without tags.
+- Replays: tasks of all players (beacons with radius circle, flatten and quarry volumes) with the task plate in the owner colour; same button as blueprints (BP+tasks). Coloured owner dot over every unit: off / while Alt / always.
+- Replays: new timeline marks (home crystal lost = flag, crystal became neutral = crossed-out crystal), death marks count every unit once.
+- Multiplayer (BetterConnection ON): mod message ids of match statistics, rack filter and the match timer changed to stop colliding with other features; everybody in a match needs the same version.
+
 ## 0.2.5
 - Auto gamma (Overlays > Other): checkbox + Master gamma slider, same brightness day and night. Bottom attribution strip removed, version shown in the menu banner.
 - Gameplay > Movement: "Do not pick up lying items automatically" (default on, BetterConnection ON): workers on a task skip loose items on their way, a miner takes only its quarry's resource, items dropped from a bag are mess; Cleanup and manual pie-menu orders are unrestricted.

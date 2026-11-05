@@ -1,0 +1,12 @@
+# Replay tasks: record an SP replay with a landscape, a quarry and a harvest project of the local faction.
+recsp 1
+newgame
+waitgame 240
+wait 5
+taskspawn
+wait 4
+taskset
+wait 8
+taskdump rec
+wait 5
+quit

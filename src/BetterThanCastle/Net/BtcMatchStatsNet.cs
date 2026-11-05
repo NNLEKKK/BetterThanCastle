@@ -9,7 +9,7 @@ namespace BetterThanCastle
 {
     /// <summary>
     /// Match statistics on the wire (BetterConnection ON only; OFF = no handler registered, nothing sent, the handler ignores messages).
-    /// Msg 84 host->client, kinds: 0 live values (1 Hz), 1 time-series sample (every 5 s; history streamed from index 0 through a
+    /// Msg 101 host->client, kinds: 0 live values (1 Hz), 1 time-series sample (every 5 s; history streamed from index 0 through a
     /// per-connection cursor, so late joiners get the whole match). Sent only to connections that said BTC hello (mod clients).
     /// Role filter at the host: spectators (BtcSpectate.IsSpec or spectator faction) get every faction, a player only the own faction.
     /// Payload: byte kind, int matchId, packed idx, float t, byte nFac, per faction: packed id+1, packed nv, nv packed values.
@@ -17,7 +17,7 @@ namespace BetterThanCastle
     /// </summary>
     internal static class BtcMatchStatsNet
     {
-        internal const short Msg = 84;
+        internal const short Msg = 101;
         private const int SamplesPerPump = 4;
 
         private sealed class Cur

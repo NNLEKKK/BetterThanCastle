@@ -34,8 +34,9 @@ public static class BtcPov
 			bool flag3 = flag2;
 			if (flag3)
 			{
-				return list;
+				if (BtcReplay.Mode != BtcReplay.State.Playing) return list;
 			}
+			else
 			foreach (User user in instance.UserList)
 			{
 				bool flag4 = user == null || user.faction == null || user.faction.IsSpectator;
@@ -80,7 +81,33 @@ public static class BtcPov
 		{
 			BtcPov.Log("Players: " + ex.Message);
 		}
+		try { BtcPov.AddReplayPlayers(list); }
+		catch (Exception ex) { BtcPov.Log("Players(replay): " + ex.Message); }
+		list.Sort(delegate (PlayerInfo a, PlayerInfo b) { return a.faction.ID.CompareTo(b.faction.ID); });
+		foreach (PlayerInfo pi in list) pi.name = BtcStr.Plain(pi.name);
 		return list;
+	}
+
+	/// <summary>Replay: the header lists only the players known at the start, so the recorded camera tracks and nicks add the rest (clients).</summary>
+	private static void AddReplayPlayers(List<BtcPov.PlayerInfo> list)
+	{
+		if (BtcReplay.Mode != BtcReplay.State.Playing) return;
+		HashSet<int> ids = new HashSet<int>();
+		foreach (int id in BtcReplayNames.Ids) ids.Add(id);
+		for (int i = 0; i < BtcPovRec.Play.Count; i++) ids.Add(BtcPovRec.Play[i].Fac);
+		foreach (int id in ids)
+		{
+			Faction f = BtcMatchStats.FactionOf(id);
+			if (f == null || !BtcMatchStats.Tracks(f)) continue;
+			bool have = false;
+			for (int i = 0; i < list.Count; i++) if (list[i].faction == f) { have = true; break; }
+			if (have) continue;
+			string n = BtcReplayNames.NickOf(id);
+			BtcPovRec.Track t = BtcPovRec.TrackOf(id);
+			if (string.IsNullOrEmpty(n) && t != null) n = t.Name;
+			if (string.IsNullOrEmpty(n)) n = f.name;
+			list.Add(new BtcPov.PlayerInfo { faction = f, name = n });
+		}
 	}
 
 	public static void SetPov(Faction f, string name)
@@ -477,6 +504,7 @@ public static class BtcPov
 		{
 			BtcReplayUI.ToggleHidden(); // F8 hides the replay panel, the game UI stays
 		}
+		if (Input.GetKeyDown(KeyCode.F7) && BtcReplay.Mode == BtcReplay.State.Playing) BtcReplayLayout.ToggleEdit();
 		bool flag3 = now < BtcPov.nextUi;
 		bool flag4 = !flag3;
 		bool flag5 = flag4;

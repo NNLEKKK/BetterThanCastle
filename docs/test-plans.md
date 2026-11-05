@@ -74,3 +74,15 @@ Log keywords: `[MatchStats] match start`, `sum t=..` (one line per faction every
 5. Replay: record a match with the timer; timeline shows white start tick, green peace end, red game end, orange pause spans; the score clock follows the recorded timer. Bind Hotkeys > Timer "replay mark" (unbound by default): marks appear 10 s before the press in the player colour; chips above the panel hide marks per player. Old replays: no ticks, vanilla clock.
 6. BC OFF: no timer UI, no mod messages (87/88), vanilla clock.
 Untested at the time of writing: items 1-5 in real MP, header patch with a real start event, mark hotkey.
+
+## Replay UI / cones / client POV (2026-11-05, all UNTESTED in a real match)
+1. MP (BC ON, 2+ players): record a match, play it: the `< name >` box lists EVERY player (client POV selectable, nick in faction colour, no <color> tags); log has `[PovRec] host: recording track of faction N`.
+2. Client cursors: with Cur on, all cursors fly over the map and the client's camera is followed when you pick them.
+3. View cones: translucent pyramids (apex = camera, base = ground area seen) per player; button "View" toggles; opacity slider in the layout window.
+4. F7 or button "Layout (F7)": yellow handles drag the panel / player box; sliders: scale, icons, cursors, nick text, cone opacity; checkbox hides a module; Compact / Reset; templates (Save as / Load / Del) in <game>/BetterThanCastle/ReplayUI.txt.
+5. Marks: flag icon = home crystal lost (defeat), crossed-out crystal = crystal became neutral, normal crystal = captured/stolen. Death marks count each unit once.
+6. Mod message ids moved (PovRec 100, match stats 101, rack filter 102/103, timer 104/105): everyone in MP needs the same build.
+7. Tasks in replays (button "BP+tasks", new replays only): beacon + radius ring of EVERY player's task in the owner's colour; flatten and quarry show their volume, threshold plane and dig/fill blocks. Ring is my own flat mesh at the beacon height (the game's circle shader has no colour input). If dig/fill blocks are missing send `[ReplayTasks]` lines. DEV: scenarios tasks-rec / tasks-play (`taskdump` line).
+8. View cone: far range now 260 (was 70) so the two top corners reach the ground when looking from high up.
+9. (2026-11-05 b) Tasks: the game's flatten/quarry visuals are NOT recoloured any more; owner = my overlay: coloured pillar+diamond on every task beacon, coloured ring for the radius, coloured frame around the whole flatten/quarry volume. View cone base = real footprint (24 rays marched through the voxel terrain, sky rays end on the ground at the far distance); look parallel to the ground and compare the outline with the real screen edges.
+10. (2026-11-05 c) Tasks: overlay removed (no pillar/ring/frame); game visuals as in-game; the task PLATE over each beacon gets a frame + badge + text in the owner colour (log `plates coloured N` in the DEV `taskdump`). Unit owner dots: layout window (F7) button "Unit owner dots": off / while Alt / always (cfg Replay/UnitOwnerDots, default Alt). UNTESTED: a game was running, only compiled (Debug + Release).

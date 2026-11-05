@@ -19,13 +19,13 @@ namespace BetterThanCastle
     /// Phases: None -> Waiting (everybody presses Ready, or the host forces the start; crystals brew no energy) -> Running (elapsed from 0,
     /// or from the saved value after loading a save, in which case the game stays on the host voluntary pause until the start).
     /// Time base = Time.deltaTime (scaled): game pause and speed changes affect every peer the same way, so nothing extra is synced for them.
-    /// Wire (mod ids, BC ON only): 87 state host->clients (1 Hz while running, at once on change), 88 hello/ready client->host.
+    /// Wire (mod ids, BC ON only): 104 state host->clients (1 Hz while running, at once on change), 105 hello/ready client->host.
     /// Save: sidecar file "btc-timer.txt" in the save folder (vanilla ignores it), written after Asset_Map.Disk_Overwrite/Disk_WriteAsNew.
     /// </summary>
     internal static partial class BtcTimer
     {
-        internal const short MsgState = 87;
-        internal const short MsgReady = 88;
+        internal const short MsgState = 104;
+        internal const short MsgReady = 105;
         internal const string SideFile = "btc-timer.txt";
 
         internal enum Phase { None = 0, Waiting = 1, Running = 2, Counting = 3 }

@@ -145,6 +145,7 @@ namespace BetterThanCastle
         /// <summary>Every frame (BtcPovRec.PlayTick): when the Blueprints button flips, refresh the existing blueprints once.</summary>
         internal static void Tick()
         {
+            BtcReplayTasks.Tick();
             if (BtcReplay.Mode != BtcReplay.State.Playing) return;
             bool on = BtcConfig.ReplayInfo != null && BtcConfig.ReplayInfo.Value;
             if (on != _lastInfo)

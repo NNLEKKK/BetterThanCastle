@@ -30,6 +30,8 @@ Updated: 2026-11-04 (advanced timer: ready phase, score-panel clock, replay time
 
 - 2026-11-04: auto gamma (RPM Overlays/Other: checkbox + Master gamma, ResourcePackManager.Gamma.cs, options.txt AutoGamma/MasterGamma) and mov.noAutoPick (Gameplay/Movement, default ON, Patches/CleanUpGoalProviderPatches.cs: harvest/repair providers keep no goals; BC ON only). UNTESTED in game: user checks night brightness, workers skipping loose items.
 
+- 2026-11-05 replay UI: layout editor (Replay/BtcReplayLayout.cs, F7: scale/move/hide modules, templates), 3D view cones (BtcPovCone.cs), client POV recording FIXED (msg 93 collided with BtcPlate; ids 100-105 now, see ARCHITECTURE), marks H (home crystal lost = flag) / N (crystal neutralised), death mark dedupe, POV list from tracks. Test plan docs/test-plans.md 'Replay UI'.
+
 ## NEXT
 0. v0.2.3 released (2026-11-04): jump-off line (tag JumpLine), chop 1x1 (confirmed), rack kit filter (tag RackFilter/Livre; untested: Alt icon, save/load, MP host apply, hover pie), window mode + skip intro. User tests these.
 1. User: test MP (2 players, BC ON): lobby colours 5-8 + teams E-H, call-to-arms on custom colours (send `[CallToArms]` log line), editor panel for client, spawn selection, replay auto-delivery; docs/test-plans.md sections F, G.

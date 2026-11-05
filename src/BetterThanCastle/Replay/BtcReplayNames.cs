@@ -78,6 +78,8 @@ namespace BetterThanCastle
             BtcLog.Info("Replay", "names: " + Nick.Count + " players from the header");
         }
 
+        internal static IEnumerable<int> Ids { get { return Nick.Keys; } }
+
         /// <summary>Recorded nick (rich text) of a faction during playback, else null.</summary>
         internal static string NickOf(int facId)
         {

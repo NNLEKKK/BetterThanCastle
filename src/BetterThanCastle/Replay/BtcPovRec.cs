@@ -13,7 +13,7 @@ namespace BetterThanCastle
 {
     /// <summary>
     /// Player cameras and cursors in replays. Recording (host / single player): the local camera, the world cursor, the mouse position, the mouse
-    /// buttons and the pie menu state are sampled at 10 Hz; BetterConnection clients send the same samples to the host (msg 93, batches at 2 Hz,
+    /// buttons and the pie menu state are sampled at 10 Hz; BetterConnection clients send the same samples to the host (msg 100, batches at 2 Hz,
     /// ~300 B/s each, BC ON only, nothing is sent with BC OFF). The tracks are stored delta-coded and deflated in ONE extra block of the replay file
     /// between the packet stream and the map snapshot (old readers ignore the trailing bytes of the stream; the length is the "V" token of the tl= header).
     /// Playback: every player's cursor flies over the map (arrow, name, click ripples, pie ring); watching a player in BtcPov also follows their camera
@@ -21,7 +21,7 @@ namespace BetterThanCastle
     /// </summary>
     internal static class BtcPovRec
     {
-        internal const short Msg = 93;
+        internal const short Msg = 100;
         private const float SampleEvery = 0.2f;
         private const float SendEvery = 0.5f;
 
@@ -50,6 +50,8 @@ namespace BetterThanCastle
         private static byte[] _pendingBlob;
         private static int _blobLen;
         private static float _nextSample, _nextSend, _nextPie;
+        private static bool _sentLogged, _rxLogged;
+        private static readonly HashSet<int> _rxFacs = new HashSet<int>();
         private static readonly List<S> NetBuf = new List<S>();
         private static bool _clickRipplesInit;
 
@@ -104,6 +106,8 @@ namespace BetterThanCastle
         {
             RecTracks.Clear();
             NetBuf.Clear();
+            _rxFacs.Clear();
+            _rxLogged = false;
             _blobLen = 0;
         }
 
@@ -172,6 +176,7 @@ namespace BetterThanCastle
 
         private static void SendBatch(User u)
         {
+            if (!_sentLogged && NetBuf.Count > 0) { _sentLogged = true; BtcLog.Info("PovRec", "client: first batch to the host, faction " + u.faction.ID + ", " + NetBuf.Count + " sample(s)"); }
             if (NetBuf.Count == 0) return;
             try
             {
@@ -203,6 +208,7 @@ namespace BetterThanCastle
             try
             {
                 PovMsg msg = nm.ReadMessage<PovMsg>();
+                if (!_rxLogged) { _rxLogged = true; BtcLog.Info("PovRec", "host: first batch received, faction " + msg.fac + ", mode " + BtcReplay.Mode + ", " + (msg.data != null ? msg.data.Length : -1) + " bytes"); }
                 if (BtcReplay.Mode != BtcReplay.State.Recording || !BtcNetworkGate.Enabled || msg.data == null || msg.data.Length > 4096) return;
                 float rt = BtcReplay.RecTime;
                 if (rt < 0f) return;
@@ -219,6 +225,7 @@ namespace BetterThanCastle
                     s.T = Mathf.Max(0, now - (span - s.T));
                     Add(msg.fac, name, msg.col.ToUpperInvariant(), s);
                 }
+                if (_rxFacs.Add(msg.fac)) BtcLog.Info("PovRec", "host: recording track of faction " + msg.fac + " (" + name + ")");
             }
             catch (Exception e) { BtcLog.Error("PovRec", "host: " + e.Message); }
         }
@@ -436,6 +443,8 @@ namespace BetterThanCastle
             if (BtcReplay.Loading || BtcReplay.Seeking || now < _holdUntil) return;
             try { UpdateMini(); }
             catch (Exception e) { LogErr("mini", e); }
+            try { UpdateCones(pc); }
+            catch (Exception e) { LogErr("cone", e); }
             bool follow = BtcPov.Active && BtcPov.PovFaction != null && BtcConfig.PovFollowCam.Value;
             if (!follow) { _wasFollowing = false; return; }
             Track t = TrackOf(BtcPov.PovFaction.ID);
@@ -501,8 +510,27 @@ namespace BetterThanCastle
             }
         }
 
+        private static bool ConesOn { get { return BtcConfig.PovShowCone != null && BtcConfig.PovShowCone.Value && BtcReplayLayout.ConeAlpha > 0.01f; } }
+
+        private static void UpdateCones(float pc)
+        {
+            Camera cam = Camera.main;
+            if (cam == null || !ConesOn || !BtcConfig.PovShowCursor.Value) { BtcPovCone.Clear(); return; }
+            for (int i = 0; i < Play.Count; i++)
+            {
+                Track t = Play[i];
+                if (BtcPov.Active && BtcPov.PovFaction != null && BtcPov.PovFaction.ID == t.Fac && BtcConfig.PovFollowCam.Value) continue;
+                S a, b; float f;
+                if (!At(t, pc, out a, out b, out f)) continue;
+                Vector3 p = Vector3.Lerp(CamPos(a), CamPos(b), f);
+                Quaternion q = Quaternion.Euler(Mathf.LerpAngle(a.Rx / 10f, b.Rx / 10f, f), Mathf.LerpAngle(a.Ry / 10f, b.Ry / 10f, f), 0f);
+                BtcPovCone.Frame(t.Fac, p, q, ParseCol(t.Col), cam.fieldOfView, cam.aspect, cam.farClipPlane, BtcReplayLayout.ConeAlpha, cam);
+            }
+        }
+
         private static void ClearMini()
         {
+            BtcPovCone.Clear();
             foreach (KeyValuePair<int, MiniP> kv in _mini)
             {
                 MiniP m = kv.Value;
@@ -533,9 +561,9 @@ namespace BetterThanCastle
             if (Event.current.type != EventType.Repaint) return;
             Camera cam = Camera.main;
             float pc = BtcReplay.PlayClock;
-            float sz = fs * 1.5f;
+            float sz = fs * 1.5f * BtcReplayLayout.CursorScale;
             if (_name == null) { _name = new GUIStyle(GUI.skin.label); _name.fontStyle = FontStyle.Bold; _name.normal.textColor = Color.white; _name.alignment = TextAnchor.MiddleLeft; _name.clipping = TextClipping.Overflow; }
-            _name.fontSize = Mathf.Max(11, (int)(fs * 0.62f));
+            _name.fontSize = Mathf.Max(8, (int)(fs * 0.62f * BtcReplayLayout.LabelScale));
             for (int i = 0; i < Play.Count; i++)
             {
                 Track t = Play[i];
@@ -622,7 +650,7 @@ namespace BetterThanCastle
                 pts[i] = new Vector2(sp.x, Screen.height - sp.y);
             }
             Color lc = new Color(c.r, c.g, c.b, 0.85f);
-            if (ok)
+            if (ok && !ConesOn)
                 for (int i = 0; i < 4; i++) Line(pts[i], pts[(i + 1) % 4], lc, 2.5f);
             Vector3 ls = cam.WorldToScreenPoint(look);
             if (ls.z > 0f)

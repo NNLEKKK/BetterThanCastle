@@ -1,0 +1,8 @@
+# Replay tasks: play the newest replay, the projects must appear (beacons shown, tinted, landscape/quarry volumes).
+replay latest
+waitreplay 180
+dots 2
+wait 12
+taskdump play
+wait 3
+quit

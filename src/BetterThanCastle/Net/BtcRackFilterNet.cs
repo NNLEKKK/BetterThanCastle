@@ -10,13 +10,13 @@ namespace BetterThanCastle
 {
     /// <summary>
     /// Wire for BtcRackFilter (BC ON only; nothing is registered or sent with BC OFF).
-    /// 85 request client->host {rack netId, kit+1}; 86 full state host->clients {count, (netId, kit)*}. The host checks that the
+    /// 102 request client->host {rack netId, kit+1}; 103 full state host->clients {count, (netId, kit)*}. The host checks that the
     /// requester's faction owns the rack. State is also sent to every client that becomes ready (BtcGameplay.OnClientReady).
     /// </summary>
     internal static class BtcRackFilterNet
     {
-        internal const short MsgRequest = 85;
-        internal const short MsgState = 86;
+        internal const short MsgRequest = 102;
+        internal const short MsgState = 103;
         private static float _rateT;
         private static int _rateN;
 

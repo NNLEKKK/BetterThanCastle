@@ -4,6 +4,13 @@ namespace BetterThanCastle
     /// for "switch (string)" decompiled as hash trees. Same FNV-1a variant the C# compiler uses.</summary>
     internal static class BtcStr
     {
+        /// <summary>Nick without rich-text tags (colour tags etc.).</summary>
+        internal static string Plain(string s)
+        {
+            if (string.IsNullOrEmpty(s) || s.IndexOf('<') < 0) return s ?? string.Empty;
+            return System.Text.RegularExpressions.Regex.Replace(s, "<[^>]*>", string.Empty).Trim();
+        }
+
         internal static uint ComputeStringHash(string s)
         {
             uint h = 2166136261u;

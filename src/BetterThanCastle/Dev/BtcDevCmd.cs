@@ -230,6 +230,10 @@ namespace BetterThanCastle.Dev
                 case "gameplay": BtcDevFirefly.Gameplay(p.Length > 1 ? p[1] : string.Empty); break;
                 case "ffdump": BtcDevFirefly.Dump(p.Length > 1 ? p[1] : "cmd"); break;
                 case "pov": BtcPov.Cycle(1); break;
+                case "dots": BtcConfig.ReplayUnitDots.Value = (int)F(p, 1, 2f); break;
+                case "taskspawn": BtcDevTasks.Spawn(); break;
+                case "taskset": BtcDevTasks.SetBounds(); break;
+                case "taskdump": BtcDevTasks.Dump(p.Length > 1 ? p[1] : "x"); break;
                 case "bpspawn": BtcDevBp.Spawn((int)F(p, 1, 3f)); break;
                 case "ffkill": BtcDevFirefly.Kill((int)F(p, 1, 1f), p.Length > 2 ? p[2] : null); break;
                 case "dump": BtcDevProf.Dump(p.Length > 1 ? p[1] : "cmd"); break;

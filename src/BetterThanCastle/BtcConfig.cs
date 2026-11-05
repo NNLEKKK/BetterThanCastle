@@ -19,8 +19,10 @@ namespace BetterThanCastle
         internal static ConfigEntry<bool> UpdateCheck;
         internal static ConfigEntry<string> UpdateSkipped;
         internal static ConfigEntry<bool> ReplayAutoShare;
+        internal static ConfigEntry<bool> PovShowCone;
+        internal static ConfigEntry<int> ReplayUnitDots;
         internal static ConfigEntry<bool> ReplaySkipPauses, ReplayAutoMarks, ReplayMinimapFights, ReplayRecordPov, PovFollowCam, PovShowCursor, ReplayInfo;
-        internal static ConfigEntry<string> ReplayHiddenKinds;
+        internal static ConfigEntry<string> ReplayHiddenKinds, ReplayUiLayout;
         internal static ConfigEntry<bool> StatsEnabled, StatsBar, StatsBarBottom;
         internal static ConfigEntry<float> StatsBarOffset, StatsBarScale, StatsBarOpacity, StatsPanelScale, StatsPanelOpacity;
         internal static ConfigEntry<string> StatsBarList, StatsPanelHidden;
@@ -52,6 +54,9 @@ namespace BetterThanCastle
             PovFollowCam = cfg.Bind("Replay", "PovFollowCamera", true, "Watching a player in a replay: follow their recorded camera.");
             PovShowCursor = cfg.Bind("Replay", "ShowCursors", true, "Replay: draw the recorded cursors of the players.");
             ReplayInfo = cfg.Bind("Replay", "ShowBlueprintsAndQueues", true, "Replay: draw the blueprints of all players and the crafting queues of all buildings.");
+            PovShowCone = cfg.Bind("Replay", "ShowViewCones", true, "Replay: draw the field of view of every player as a translucent pyramid over the map.");
+            ReplayUnitDots = cfg.Bind("Replay", "UnitOwnerDots", 1, "Replay: coloured owner dot over every unit. 0 off, 1 only while Alt is held, 2 always.");
+            ReplayUiLayout = cfg.Bind("Replay", "UiLayout", "", "Replay player UI layout (scale, position, visibility); edited in the replay with F7.");
             AnimatorCulling = cfg.Bind("Performance", "AnimatorCulling", false,
                 "Unit animators skip skeleton/transform updates while off-screen (CullUpdateTransforms). Visual only; needs BetterConnection ON. Measured: no frame-time gain (state machine cost dominates), so OFF by default.");
             StatsEnabled = cfg.Bind("Stats", "Enabled", true, "Match statistics: collecting, bar and panel. Off = nothing is collected, sent or recorded (players see only their own stats; spectators and replays see everyone).");
