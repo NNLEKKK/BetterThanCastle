@@ -78,7 +78,7 @@ public static class BtcDiscord
 			BtcDiscord.tplDetails = "{mode} • {map}";
 			BtcDiscord.tplState = "{fp} • Crystals {crystals}";
 			BtcDiscord.aboutLabel = "About Mod";
-			BtcDiscord.aboutUrl = "https://discord.gg/Hah3GVMCd6";
+			BtcDiscord.aboutUrl = "https://github.com/NNLEKKK/BetterThanCastle";
 		}
 	}
 
@@ -401,6 +401,14 @@ public static class BtcDiscord
 						num2 = Math.Max(0f, Time.timeSinceLevelLoad - BtcDiscord.readyAt);
 					}
 					int num3 = (int)num2;
+					string phaseText = null;
+					bool hideClock = false;
+					float advElapsed;
+					if (BtcTimer.DiscordInfo(out advElapsed, out phaseText))
+					{
+						if (advElapsed >= 0f) num3 = (int)advElapsed;
+						else hideClock = true;
+					}
 					int num4 = BtcDiscord.LoadPercent();
 					Dictionary<string, string> dictionary = new Dictionary<string, string>();
 					dictionary["map"] = (text2 ?? string.Empty);
@@ -555,6 +563,10 @@ public static class BtcDiscord
 								}
 								activity.details = BtcDiscord.Fill(tpl, dictionary).Replace("•  •", "•");
 								activity.state = BtcDiscord.Fill(text13, dictionary);
+								if (phaseText != null && BtcDiscord.result == 0)
+								{
+									activity.state = phaseText + " • " + activity.state;
+								}
 								bool flag164 = BtcReplayBoost.IsReplay();
 								bool flag165 = flag164;
 								bool flag166 = flag165;
@@ -618,7 +630,7 @@ public static class BtcDiscord
 						{
 							BtcDiscord.timerAnchor = num6;
 						}
-						activity.start = (BtcDiscord.showTimer ? BtcDiscord.timerAnchor : 0L);
+						activity.start = ((BtcDiscord.showTimer && !hideClock) ? BtcDiscord.timerAnchor : 0L);
 					}
 					else
 					{
@@ -2100,7 +2112,7 @@ public static class BtcDiscord
 			{
 				foreach (User user in UnityEngine.Object.FindObjectsOfType<User>())
 				{
-					bool flag5 = user == null;
+					bool flag5 = user == null || BtcDiscord.IsRecorder(user);
 					bool flag6 = !flag5;
 					bool flag7 = flag6;
 					bool flag8 = flag7;
@@ -2125,6 +2137,19 @@ public static class BtcDiscord
 			list = list2;
 		}
 		return list;
+	}
+
+	/// <summary>The replay recorder joins as a hidden spectator user ("REC", shown as "Player"): never list it.</summary>
+	private static bool IsRecorder(User u)
+	{
+		try
+		{
+			return BtcReplay.IsRec(u.connectionToClient) || u.Network_screenName == "REC";
+		}
+		catch (Exception)
+		{
+			return false;
+		}
 	}
 
 	private static List<int> BuildTeamOrder(List<BtcDiscord.PlayerInfo> players)
@@ -2456,7 +2481,7 @@ public static class BtcDiscord
 
 	private static string aboutLabel = "About Mod";
 
-	private static string aboutUrl = "https://discord.gg/Hah3GVMCd6";
+	private static string aboutUrl = "https://github.com/NNLEKKK/BetterThanCastle";
 
 	private class Activity
 	{

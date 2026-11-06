@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -128,10 +128,12 @@ namespace BetterThanCastle.Patches
     [HarmonyPatch(typeof(UNetManager), "Disconnect")]
     internal static class UNetManagerDisconnectPatch
     {
-        private static void Prefix(UNetManager __instance)
+        private static bool Prefix(UNetManager __instance)
         {
+            if (BtcReplayAuto.DeferDisconnect(__instance)) return false;
             try { BtcNetManager.OnDisconnect(__instance); }
             catch (Exception e) { BtcLog.Error("Hook", "UNetManager.Disconnect: " + e); }
+            return true;
         }
     }
 

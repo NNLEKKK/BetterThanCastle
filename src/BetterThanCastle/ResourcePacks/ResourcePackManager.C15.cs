@@ -450,6 +450,13 @@ public partial class ResourcePackManager : MonoBehaviour
 		y = yy;
 	}
 
+	private void DrawChatSection(Event e, ref float y, float w, float rowH, int fs, Color old)
+	{
+		float yy = y;
+		BtcGameChatFade.DrawSettings((string label, bool on) => this.CheckRow(e, ref yy, w, rowH, fs, old, label, on), delegate (string label, int id, float v, float mn, float mx, float st, string fmt, string suf) { return this.SliderRow(e, ref yy, w, rowH, fs, old, label, id, v, mn, mx, st, fmt, string.Empty, suf); });
+		y = yy;
+	}
+
 	private void DrawOverlaySection(Event e, ref float y, float w, float rowH, int fs, Color old, int idx)
 	{
 		float yy = y;

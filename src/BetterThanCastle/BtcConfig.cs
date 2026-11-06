@@ -1,4 +1,4 @@
-using BepInEx.Configuration;
+﻿using BepInEx.Configuration;
 
 namespace BetterThanCastle
 {
@@ -18,7 +18,8 @@ namespace BetterThanCastle
         internal static ConfigEntry<bool> LogFactionDump;
         internal static ConfigEntry<bool> UpdateCheck;
         internal static ConfigEntry<string> UpdateSkipped;
-        internal static ConfigEntry<bool> ReplayAutoShare;
+        internal static ConfigEntry<bool> ReplayAutoShare, ReplayDownloadFromHost, ChatFade;
+        internal static ConfigEntry<float> ChatFadeSeconds;
         internal static ConfigEntry<bool> PovShowCone;
         internal static ConfigEntry<int> ReplayUnitDots;
         internal static ConfigEntry<bool> ReplaySkipPauses, ReplayAutoMarks, ReplayMinimapFights, ReplayRecordPov, PovFollowCam, PovShowCursor, ReplayInfo;
@@ -46,6 +47,9 @@ namespace BetterThanCastle
             LogFaction = cfg.Bind("Logging", "FactionReplay", false, "Verbose log of the faction replay (debug).");
             LogFactionDump = cfg.Bind("Logging", "FactionDump", false, "Log minimap object positions once after load (debug).");
             ReplayAutoShare = cfg.Bind("Replay", "AutoShare", true, "Host: after a multiplayer match send the recorded replay (.btcr) to every connected BetterConnection client (BetterConnection only).");
+            ReplayDownloadFromHost = cfg.Bind("Replay", "DownloadFromHost", true, "Client: accept the replay the host sends after a multiplayer match and save it to Replays (file name carries the host name; BetterConnection only).");
+            ChatFade = cfg.Bind("Chat", "FadeMessages", true, "In-game chat: hide messages after FadeSeconds; opening the chat shows the history.");
+            ChatFadeSeconds = cfg.Bind("Chat", "FadeSeconds", 10f, new ConfigDescription("Seconds an in-game chat message stays visible.", new AcceptableValueRange<float>(2f, 60f)));
             ReplaySkipPauses = cfg.Bind("Replay", "SkipPauses", false, "Replay playback: jump over the recorded pauses of the advanced timer at once.");
             ReplayAutoMarks = cfg.Bind("Replay", "AutoMarks", true, "Record automatic timeline marks (deaths, crystals, barrels, large fights) into new replays.");
             ReplayMinimapFights = cfg.Bind("Replay", "MinimapFights", true, "Highlight combat on the mini map while watching a replay.");

@@ -238,6 +238,14 @@ public static class BtcReplayUI
 		{
 			BtcReplayKeys.SkipPauses = !BtcReplayKeys.SkipPauses;
 		}
+		if (BtcReplayUI.CheckRow(e, ref num, w, rowH, fs, BtcReplayUI.T("Download the replay from the host after a match (when you are a client)", "Р—Р°РіСЂСѓР¶Р°С‚СЊ СЂРµРїР»РµР№ Сѓ С…РѕСЃС‚Р° РїРѕСЃР»Рµ РјР°С‚С‡Р° (РєРѕРіРґР° РІС‹ РєР»РёРµРЅС‚)"), BtcConfig.ReplayDownloadFromHost.Value))
+		{
+			BtcConfig.ReplayDownloadFromHost.Value = !BtcConfig.ReplayDownloadFromHost.Value;
+		}
+		if (BtcReplayUI.CheckRow(e, ref num, w, rowH, fs, BtcReplayUI.T("Send the replay to all clients after a match (when you host)", "РћС‚РїСЂР°РІР»СЏС‚СЊ СЂРµРїР»РµР№ РІСЃРµРј РєР»РёРµРЅС‚Р°Рј РїРѕСЃР»Рµ РјР°С‚С‡Р° (РєРѕРіРґР° РІС‹ С…РѕСЃС‚)"), BtcConfig.ReplayAutoShare.Value))
+		{
+			BtcConfig.ReplayAutoShare.Value = !BtcConfig.ReplayAutoShare.Value;
+		}
 		int keyMinutes = BtcReplay.GetKeyMinutes();
 		int num2 = BtcReplayUI.StepRow(num, w, rowH, fs, BtcReplayUI.T("Keyframe every N minutes (0 = off)", "Ключевой кадр каждые N минут (0 = выкл.)"), keyMinutes.ToString());
 		num += rowH;

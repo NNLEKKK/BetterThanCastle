@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace BetterThanCastle
 {
@@ -63,12 +63,14 @@ namespace BetterThanCastle
                     BtcEditorShare.Tick();
                     BtcSpawnPick.Tick();
                     BtcReplayAuto.Tick();
+                    BtcGameChatFade.Tick();
                 }
                 catch (System.Exception ex)
                 {
                     BtcLog.Error("Session", "tick: " + ex);
                 }
             }
+            BtcGameChatFade.OnGUI(e);
             BtcToast.OnGUI();
         }
     }

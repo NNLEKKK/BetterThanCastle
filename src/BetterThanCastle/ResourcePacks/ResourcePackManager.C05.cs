@@ -2554,6 +2554,10 @@ public partial class ResourcePackManager : MonoBehaviour
 			{
 				this.DrawMatchStatsSection(e, ref num, w, rowH, fs, old);
 			}
+			if (this.Section(e, ref num, w, rowH, old, "Chat", 18))
+			{
+				this.DrawChatSection(e, ref num, w, rowH, fs, old);
+			}
 			bool flag1447 = this.Section(e, ref num, w, rowH, old, "Other", 4);
 			bool flag1448 = flag1447;
 			bool flag1449 = flag1448;
@@ -2756,6 +2760,10 @@ public partial class ResourcePackManager : MonoBehaviour
 			if (this.Section(e, ref num47, w, rowH, old, "Match statistics", 17))
 			{
 				this.DrawMatchStatsSection(e, ref num47, w, rowH, fs, old);
+			}
+			if (this.Section(e, ref num47, w, rowH, old, "Chat", 18))
+			{
+				this.DrawChatSection(e, ref num47, w, rowH, fs, old);
 			}
 			this.hpContentH = num47 + rowH * 0.3f;
 		}

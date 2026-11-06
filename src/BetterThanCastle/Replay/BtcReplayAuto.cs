@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -49,6 +49,14 @@ namespace BetterThanCastle
         private static byte[] _rxBuf;
         private static int _rxGot;
         private static int _rxChunks;
+        private static string _rxHost;
+        private static float _rxLast;
+
+        // deferred Disconnect (leaving the match while a transfer is running keeps the connection alive until it ends)
+        private const float DeferCap = 90f;
+        private static Brix.Network.UNetManager _pending;
+        private static float _pendingSince;
+        private static bool _bypass;
 
         internal static void RegisterHandlers(NetworkClient clientOverride)
         {
@@ -88,9 +96,47 @@ namespace BetterThanCastle
             catch (Exception e) { BtcLog.Error("ReplayShare", "OnRecordingEnded: " + e); }
         }
 
+        private static bool Busy()
+        {
+            if (_waitPath != null || _jobs.Count > 0) return true;
+            return _rxBuf != null && Time.unscaledTime - _rxLast < Timeout;
+        }
+
+        /// <summary>UNetManager.Disconnect Prefix: true = postpone the real disconnect until the replay transfer is done (max 90 s).</summary>
+        internal static bool DeferDisconnect(Brix.Network.UNetManager m)
+        {
+            try
+            {
+                if (_bypass || !BtcNetworkGate.Enabled || m == null) return false;
+                if (_pending != null) return true;
+                if (NetworkServer.active) BtcReplay.FinishForDisconnect();
+                if (!Busy()) return false;
+                _pending = m;
+                _pendingSince = Time.unscaledTime;
+                BtcLog.Info("ReplayShare", "Disconnect postponed until the replay transfer ends");
+                BtcToast.Show(BtcReplay.T("Finishing the replay transfer before leaving...", "Р”РѕР·Р°РіСЂСѓР¶Р°РµРј СЂРµРїР»РµР№ РїРµСЂРµРґ РІС‹С…РѕРґРѕРј..."));
+                return true;
+            }
+            catch (Exception e) { BtcLog.Error("ReplayShare", "DeferDisconnect: " + e); return false; }
+        }
+
+        private static void RunPendingDisconnect()
+        {
+            if (_pending == null) return;
+            if (Busy() && Time.unscaledTime - _pendingSince < DeferCap) return;
+            Brix.Network.UNetManager m = _pending;
+            _pending = null;
+            BtcLog.Info("ReplayShare", "postponed Disconnect now runs");
+            _bypass = true;
+            try { m.Disconnect(); }
+            catch (Exception e) { BtcLog.Error("ReplayShare", "pending Disconnect: " + e); }
+            finally { _bypass = false; }
+        }
+
         /// <summary>Once per frame (RPM OnGUI repaint).</summary>
         internal static void Tick()
         {
+            RunPendingDisconnect();
             if (_waitPath == null && _jobs.Count == 0) return;
             try
             {
@@ -176,7 +222,7 @@ namespace BetterThanCastle
                 if (c == null || !c.isConnected || BtcNetManager.IsLocalConnection(c)) continue;
                 Job j = new Job { conn = c, sid = ++_sidCounter, lastProgress = now };
                 _jobs.Add(j);
-                c.Send(MsgChunk, new ChunkMsg { sid = j.sid, idx = -1, total = _data.Length, name = _name, data = new byte[0] });
+                c.Send(MsgChunk, new ChunkMsg { sid = j.sid, idx = -1, total = _data.Length, name = _name, data = System.Text.Encoding.UTF8.GetBytes(HostName()) });
             }
             BtcLog.Info("ReplayShare", "offering " + _name + " (" + _data.Length + " bytes, " + _chunks + " chunks) to " + _jobs.Count + " client(s)");
             if (_jobs.Count == 0) _data = null;
@@ -230,6 +276,12 @@ namespace BetterThanCastle
                         Ack(nm.conn, m.sid, 0, 2);
                         return;
                     }
+                    if (BtcConfig.ReplayDownloadFromHost != null && !BtcConfig.ReplayDownloadFromHost.Value)
+                    {
+                        Ack(nm.conn, m.sid, 0, 1);
+                        return;
+                    }
+                    _rxHost = CleanHost(m.data != null && m.data.Length > 0 ? System.Text.Encoding.UTF8.GetString(m.data) : null);
                     string existing = Path.Combine(BtcReplay.ReplaysDir, name);
                     if (File.Exists(existing) && new FileInfo(existing).Length == m.total)
                     {
@@ -238,6 +290,7 @@ namespace BetterThanCastle
                     }
                     _rxSid = m.sid;
                     _rxName = name;
+                    _rxLast = Time.unscaledTime;
                     _rxBuf = new byte[m.total];
                     _rxGot = 0;
                     _rxChunks = (m.total + ChunkSize - 1) / ChunkSize;
@@ -250,10 +303,11 @@ namespace BetterThanCastle
                 if (off + m.data.Length > _rxBuf.Length) { Fail(nm.conn, "chunk overflow"); return; }
                 Buffer.BlockCopy(m.data, 0, _rxBuf, off, m.data.Length);
                 _rxGot++;
+                _rxLast = Time.unscaledTime;
                 if (_rxGot >= _rxChunks)
                 {
                     Directory.CreateDirectory(BtcReplay.ReplaysDir);
-                    string path = Unique(BtcReplay.ReplaysDir, Path.GetFileNameWithoutExtension(_rxName));
+                    string path = Unique(BtcReplay.ReplaysDir, Path.GetFileNameWithoutExtension(_rxName) + (string.IsNullOrEmpty(_rxHost) ? string.Empty : "_host-" + _rxHost));
                     File.WriteAllBytes(path, _rxBuf);
                     BtcLog.Info("ReplayShare", "saved " + path);
                     Ack(nm.conn, _rxSid, _rxGot, 3);
@@ -279,6 +333,22 @@ namespace BetterThanCastle
             try { Ack(conn, _rxSid, _rxGot, 2); } catch (Exception) { }
             _rxBuf = null;
             _rxSid = -1;
+        }
+
+        private static string HostName()
+        {
+            Brix.Network.UNetManager m = NetworkManager.singleton as Brix.Network.UNetManager;
+            return m != null && m.LocalPlayerName != null ? m.LocalPlayerName : string.Empty;
+        }
+
+        private static string CleanHost(string n)
+        {
+            if (string.IsNullOrEmpty(n)) return null;
+            n = BtcStr.Plain(n);
+            foreach (char c in Path.GetInvalidFileNameChars()) n = n.Replace(c, '_');
+            n = n.Trim();
+            if (n.Length > 24) n = n.Substring(0, 24);
+            return n.Length == 0 ? null : n;
         }
 
         private static string SafeName(string n)

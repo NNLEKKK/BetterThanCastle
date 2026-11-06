@@ -678,6 +678,12 @@ public static class BtcReplay
 		}
 	}
 
+	/// <summary>Host leaves while still recording: close the file now so BtcReplayAuto can send it.</summary>
+	internal static void FinishForDisconnect()
+	{
+		if (BtcReplay.mode == BtcReplay.State.Recording) BtcReplay.EndRecording();
+	}
+
 	/// <summary>True while the writer thread still flushes/closes the current .btcr (BtcReplayAuto waits for it).</summary>
 	internal static bool WriterBusy
 	{

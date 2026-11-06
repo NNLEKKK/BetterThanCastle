@@ -513,6 +513,29 @@ namespace BetterThanCastle
             return "<color=" + col + ">" + Clock(t) + tail + "</color>";
         }
 
+        /// <summary>Discord RPC: phase text ("Task planning" / "Peace time -1:23" / "Time limit -5:00" / "Time is up") and the clock to show (-1 = hide it).</summary>
+        internal static bool DiscordInfo(out float elapsed, out string text)
+        {
+            elapsed = -1f;
+            text = null;
+            if (Cur == Phase.None || !BtcNetworkGate.Enabled) return false;
+            bool ru = BtcLang.Russian;
+            if (Cur == Phase.Waiting) { text = ru ? "Расстановка заданий" : "Task planning"; return true; }
+            if (Cur == Phase.Counting) { text = ru ? "Старт игры" : "Starting"; return true; }
+            float t = Elapsed;
+            elapsed = t;
+            if (PeaceSec > 0f && t < PeaceSec) text = (ru ? "Мирное время -" : "Peace time -") + Mmss(PeaceSec - t);
+            else if (LimitSec > 0f && t >= LimitSec) text = ru ? "Время вышло" : "Time is up";
+            else if (LimitSec > 0f) text = (ru ? "До лимита -" : "Time limit -") + Mmss(LimitSec - t);
+            return true;
+        }
+
+        private static string Mmss(float s)
+        {
+            int n = Mathf.Max(0, Mathf.CeilToInt(s));
+            return n < 3600 ? (n / 60) + ":" + (n % 60).ToString("00") : (n / 3600) + ":" + (n / 60 % 60).ToString("00") + ":" + (n % 60).ToString("00");
+        }
+
         internal static string Clock(float s)
         {
             int n = Mathf.Max(0, Mathf.FloorToInt(s));

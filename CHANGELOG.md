@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.7
+- Replays: after a multiplayer match the host sends the replay to every client (BetterConnection ON). New Replay tab checkboxes: "Download the replay from the host" (client) and "Send the replay to all clients" (host). The saved file name carries the host: `..._host-NICK.btcr`. Leaving the match while a transfer runs is postponed (up to 90 s) so nobody loses the file.
+- In-game chat: messages disappear after 10 seconds (Overlays > Chat: switch and seconds slider). Opening the chat shows the history (100 lines), scroll with the mouse wheel or the bar left of the chat. The lobby chat is unchanged.
+- Discord RPC: the About Mod button opens the GitHub page of the mod; the replay recorder no longer shows up as a player "Player". With the advanced timer the status shows the phase (task planning before Ready, peace time with a negative countdown, time limit countdown, time is up) and the RPC clock follows the advanced timer.
+
 ## 0.2.6
 - Replays: layout editor (F7 or the Layout button): scale, move and hide the control panel and the player box, sliders for timeline icons, cursors, nick text and view cones, named templates.
 - Replays: field of view of every player shown as a translucent 3D pyramid over the map (base follows the terrain height under the view). Button View toggles it.
