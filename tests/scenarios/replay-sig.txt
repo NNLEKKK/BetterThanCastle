@@ -1,0 +1,29 @@
+# Replay v4 seek fidelity on the user's Komorebi 1v1: reference = legacy multi-frame forward seek (what normal viewing shows),
+# then instant jumps away and back; world signatures diffed. agent.log: "[WorldSig] J60 vs L60 ...", "voxprobe".
+replay 2026-11-05_17-32-04_Komorebi
+waitreplay 240
+wait 70
+voxprobe 17918 140 145
+voxprobe 18238 140 145
+pkjump 0
+rpause
+seek 600
+wait 12
+worldsig L60
+voxprobe 17918 140 145
+pkjump 1
+seek 1500
+wait 3
+worldsig J1500
+voxprobe 17918 140 145
+seek 600
+wait 3
+worldsig J60 L60
+voxprobe 17918 140 145
+voxprobe 18238 140 145
+seek 200
+wait 3
+seek 600
+wait 3
+worldsig JJ60 L60
+quit

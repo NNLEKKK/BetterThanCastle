@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.3.0
+Items marked (BC) need BetterConnection ON; with it OFF the mod stays vanilla on the wire.
+
+### Replays
+- Instant seek: jumping anywhere on the timeline (click, +10 / -10, C / V) takes a fraction of a second instead of re-playing the match. The first time a replay is opened it is prepared in the background (a plate with progress, no sound or picture, a few seconds for a short match, under a minute for a long one); the result is cached in `BetterThanCastle/cash/` and reused next time. Works for old replays too.
+- A seek shows the same world as normal viewing at that moment: terrain (digging, crust, sand piles), cut trees, captured crystals with their owner, colour, creep and capture progress, capture circles, wards and carried items where they were placed, contents of altars, racks and stockpiles, crafting station effects.
+- Fixed: phantom wards next to the real ones, frozen clone workers that stood still forever after many seeks (+10/-10 spam), invisible units, terrain from the end of the game shown at the start.
+- Auto-skip host freezes: the "auto-skip pauses" checkbox now also jumps over moments where the host's game hung (no recorded messages for more than 1 s, setting `Replay/FreezeGap`), so playback no longer repeats them.
+- True slow motion: speeds below x1 slow down the world itself (animations, projectiles), not only the packet feed.
+- Bear traps are recorded and visible in replays.
+- Replays no longer write keyframes while recording (less load during the match); old replays with keyframes still play.
+- Fixed broken Russian text in the replay and duel menus.
+
+### Gameplay and multiplayer
+- Gameplay Settings > Economy: "Spawn energy: +cost per extra bricktron" now defaults to the vanilla 60 and is no longer highlighted at 60 (BC OFF uses the map value as before).
+- Gameplay Settings can be edited offline (main menu) and in singleplayer, not only in a host lobby of a multiplayer game; in multiplayer the rules are still locked after the start.
+- Advanced match timer works only in multiplayer; singleplayer and the world editor use the vanilla clock.
+- Multiplayer (BC): mod HP numbers, damage numbers, entity centre dots and always-visible rings are no longer drawn on enemy units and buildings (they would reveal hidden objects). Replays still show them.
+- Hotkey "Shoot at": the ray ignores the aura volume of wards (a Healing Ward aura no longer swallows the shot at a block), like Dig voxel and Break object.
+- Gameplay > Movement "Ban animation skips" (BC): melee units keep their full strike cooldown after a new order, so the move-attack animation skip does not work. Applies in every game mode, not only in duels.
+- Gameplay > Movement "Shoot straight down" (BC): ranged units may shoot at targets right below them; the minimum range is measured in 3D for targets lower than the shooter instead of the flat distance only.
+- Gameplay > Economy "Workbench/forge: max queued orders" (BC): 8 to 40 orders per crafting station (vanilla 8). Orders above 8 are synced to clients with a new mod message (id 107); the part above 8 is not stored in saves.
+- Saves (host, BC): the "infinity heal" state of competitive play survives a save: units that keep a healing aura after the ward was lifted are stored next to the save (`btc-infheal.txt`) and get the same heal back after loading. Heal never stacks (one value: the larger of aura and own regeneration).
+- Saves (host, BC): wards carried by workers are no longer lost (vanilla drops them); they are stored in `btc-heldwards.txt` inside the save folder and handed back to the nearest worker after loading. Both files are ignored by vanilla and by clients without the mod.
+- Gameplay > Balance "Artificer focus mark" (BC, default OFF): hotkey marks the enemy under the cursor with a selected Artificer; every Sentinel Ward that can fire at it shoots it first (new message id 106).
+- Text rule: UI strings use only plain Latin and Cyrillic letters (no look-alike symbols).
+
 ## 0.2.7
 - Replays: after a multiplayer match the host sends the replay to every client (BetterConnection ON). New Replay tab checkboxes: "Download the replay from the host" (client) and "Send the replay to all clients" (host). The saved file name carries the host: `..._host-NICK.btcr`. Leaving the match while a transfer runs is postponed (up to 90 s) so nobody loses the file.
 - In-game chat: messages disappear after 10 seconds (Overlays > Chat: switch and seconds slider). Opening the chat shows the history (100 lines), scroll with the mouse wheel or the bar left of the chat. The lobby chat is unchanged.

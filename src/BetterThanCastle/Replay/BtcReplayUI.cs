@@ -234,48 +234,18 @@ public static class BtcReplayUI
 		{
 			BtcReplay.SetShowIndicator(!BtcReplay.GetShowIndicator());
 		}
-		if (BtcReplayUI.CheckRow(e, ref num, w, rowH, fs, BtcReplayUI.T("Auto-skip pauses when playing a replay", "Автоматически перематывать паузы в реплее"), BtcReplayKeys.SkipPauses))
+		if (BtcReplayUI.CheckRow(e, ref num, w, rowH, fs, BtcReplayUI.T("Auto-skip pauses and host freezes when playing a replay", "Автоматически перематывать паузы и фризы хоста в реплее"), BtcReplayKeys.SkipPauses))
 		{
 			BtcReplayKeys.SkipPauses = !BtcReplayKeys.SkipPauses;
 		}
-		if (BtcReplayUI.CheckRow(e, ref num, w, rowH, fs, BtcReplayUI.T("Download the replay from the host after a match (when you are a client)", "Р—Р°РіСЂСѓР¶Р°С‚СЊ СЂРµРїР»РµР№ Сѓ С…РѕСЃС‚Р° РїРѕСЃР»Рµ РјР°С‚С‡Р° (РєРѕРіРґР° РІС‹ РєР»РёРµРЅС‚)"), BtcConfig.ReplayDownloadFromHost.Value))
+		if (BtcReplayUI.CheckRow(e, ref num, w, rowH, fs, BtcReplayUI.T("Download the replay from the host after a match (when you are a client)", "Загружать реплей у хоста после матча (когда вы клиент)"), BtcConfig.ReplayDownloadFromHost.Value))
 		{
 			BtcConfig.ReplayDownloadFromHost.Value = !BtcConfig.ReplayDownloadFromHost.Value;
 		}
-		if (BtcReplayUI.CheckRow(e, ref num, w, rowH, fs, BtcReplayUI.T("Send the replay to all clients after a match (when you host)", "РћС‚РїСЂР°РІР»СЏС‚СЊ СЂРµРїР»РµР№ РІСЃРµРј РєР»РёРµРЅС‚Р°Рј РїРѕСЃР»Рµ РјР°С‚С‡Р° (РєРѕРіРґР° РІС‹ С…РѕСЃС‚)"), BtcConfig.ReplayAutoShare.Value))
+		if (BtcReplayUI.CheckRow(e, ref num, w, rowH, fs, BtcReplayUI.T("Send the replay to all clients after a match (when you host)", "Отправлять реплей всем клиентам после матча (когда вы хост)"), BtcConfig.ReplayAutoShare.Value))
 		{
 			BtcConfig.ReplayAutoShare.Value = !BtcConfig.ReplayAutoShare.Value;
 		}
-		int keyMinutes = BtcReplay.GetKeyMinutes();
-		int num2 = BtcReplayUI.StepRow(num, w, rowH, fs, BtcReplayUI.T("Keyframe every N minutes (0 = off)", "Ключевой кадр каждые N минут (0 = выкл.)"), keyMinutes.ToString());
-		num += rowH;
-		bool flag33 = num2 != 0;
-		bool flag34 = flag33;
-		bool flag35 = flag34;
-		bool flag36 = flag35;
-		bool flag37 = flag36;
-		bool flag38 = flag37;
-		bool flag39 = flag38;
-		bool flag40 = flag39;
-		if (flag40)
-		{
-			int num3 = Array.IndexOf<int>(BtcReplayUI.KeySteps, keyMinutes);
-			bool flag41 = num3 < 0;
-			bool flag42 = flag41;
-			bool flag43 = flag42;
-			bool flag44 = flag43;
-			bool flag45 = flag44;
-			bool flag46 = flag45;
-			bool flag47 = flag46;
-			bool flag48 = flag47;
-			if (flag48)
-			{
-				num3 = 0;
-			}
-			num3 = Mathf.Clamp(num3 + num2, 0, BtcReplayUI.KeySteps.Length - 1);
-			BtcReplay.SetKeyMinutes(BtcReplayUI.KeySteps[num3]);
-		}
-		num = BtcReplayUI.Note(num, w, fs, BtcReplayUI.T("A keyframe is a full re-send of the world into the file (needed for rewinding). The host stalls for a moment each time, so very short intervals are not recommended.", "Ключевой кадр это полная пересылка мира в файл (нужна для отмотки). Каждый раз хост на мгновение подвисает, поэтому слишком короткие интервалы не рекомендуются."));
 		bool flag49 = BtcReplayUI.CheckRow(e, ref num, w, rowH, fs, BtcReplayBoost.UiFastNature(), BtcReplayBoost.GetFastNature());
 		bool flag50 = flag49;
 		bool flag51 = flag50;

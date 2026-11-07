@@ -463,6 +463,10 @@ public static class BtcLang
 			"Сломать объект под курсором (выделенные юниты)"
 		},
 		{
+			"Artificer focus mark: mark the enemy under the cursor for Sentinel Wards (selected Artificer)",
+			"Метка мага: пометить врага под курсором для Sentinel Ward (выделенный маг)"
+		},
+		{
 			"Shoot at the block or object under the cursor (selected archers, not Artificers)",
 			"Стрелять по блоку или объекту под курсором (выделенные лучники, кроме артефакторов)"
 		},

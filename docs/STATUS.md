@@ -33,6 +33,7 @@ Updated: 2026-11-04 (advanced timer: ready phase, score-panel clock, replay time
 - 2026-11-05 replay UI: layout editor (Replay/BtcReplayLayout.cs, F7: scale/move/hide modules, templates), 3D view cones (BtcPovCone.cs), client POV recording FIXED (msg 93 collided with BtcPlate; ids 100-105 now, see ARCHITECTURE), marks H (home crystal lost = flag) / N (crystal neutralised), death mark dedupe, POV list from tracks. Test plan docs/test-plans.md 'Replay UI'.
 
 ## NEXT
+00. Replay v4 (list I1, branch `replay-v4`, NOT merged; memory project-replay-v4): traps in replays + true slow motion OK; recording keyframes removed. Instant seek (Replay/BtcReplaySeek.cs) BROKEN per user 2026-11-07 on a fresh replay: end-of-game terrain at the start, phantom purple capture wards, captured crystals not restored. Goal: keyframes save everything, seek == normal viewing. Next session: reproduce on a fresh recording first.
 0. v0.2.3 released (2026-11-04): jump-off line (tag JumpLine), chop 1x1 (confirmed), rack kit filter (tag RackFilter/Livre; untested: Alt icon, save/load, MP host apply, hover pie), window mode + skip intro. User tests these.
 1. User: test MP (2 players, BC ON): lobby colours 5-8 + teams E-H, call-to-arms on custom colours (send `[CallToArms]` log line), editor panel for client, spawn selection, replay auto-delivery; docs/test-plans.md sections F, G.
 2. Handicap cap: send `[Handicap] cap`/`start workers` log lines if still wrong. Opt: menu checkbox for Replay/AutoShare (cfg only now). Profile checkbox shape confirmed square? (unchecked).
@@ -58,3 +59,9 @@ Session 4 (2026-10-30 evening):
 - Goal: 6 workers -> 8 halberdier kits on racks + 2 crafted capture wards, fastest; no auto worker AI; ~1.1M params (map conv + entity transformer + pointer heads).
 - Done: lab/Btc.EcoShared (101-cmd grammar), lab/Btc.EcoSim (map loader, world, params, gameplay snapshot check), ecolab selftest OK (003ba07); DEV ecodump/ecotrace (31d2aa5, compiled, NOT run yet). New projects not in Btc.Lab.sln.
 - Next: user gives cropped map -> ecodump in hidden game, check NOTE|res / MILE ids; eco-* measurement scenarios; ecoplay; sim behaviour (nav, units, items, crafting, stockpiles, blueprints). Training only on user command.
+
+## Small list.md items (2026-11-07, user CONFIRMED in game except I2)
+- Done: G8 (eco.factor default 60), J3 (adv timer only Neo.multiplayer), H2 (ResourcePackManager.HideEnemyHud, MP only), F5 (shoot-at ray skips ward auras), G7 (mov.noskip: BtcNoSkip), C1 (craft.max 8-40, BtcCraftQueue, msg 107 tail sync, BC ON), G1 (CanEdit/IsHost also offline+SP), F2 (mov.shootdown: BtcShootDown, 3D min range), G5 infinity heal saved in the save folder (BtcInfHeal, btc-infheal.txt "x y z regen", matched by position, dummy RegenAura per regen value; stuck = regen 0 / inactive / carried / not tracked / >25 blocks), carried wards saved (BtcHeldWards, btc-heldwards.txt, retry 30 s). C3 struck off. Extra files live inside the save folder (Asset_Map.Disk_Save postfix, Disk_ReadGameObjects prefix: Patches/InfHealPatches.cs), host + BC ON only.
+- Heal never stacks: vanilla heals once per second by max(aura regen, own regen); we only set ExternalRegenerator when it is null.
+- I2 NOT FIXED: BtcPovRec.SnapStart (first POV pose) did not help; ask the user for the symptom before touching it again.
+- C1 caveat: the tail (>8 orders) is not saved; the Lua queue UI may show only 8 slots.

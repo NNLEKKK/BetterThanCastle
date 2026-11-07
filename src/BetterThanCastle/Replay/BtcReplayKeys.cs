@@ -5,7 +5,9 @@ namespace BetterThanCastle
     /// <summary>
     /// Replay playback quality of life: hotkeys (configurable in Hotkeys > Replay: Space pause/play, Z slower, X faster, C back 10 s, V forward 10 s)
     /// and "auto-skip pauses" (cfg Replay/SkipPauses, checkbox in the Replay tab): when playback reaches a recorded pause of the advanced timer
-    /// it jumps to the end of that pause at once. Pure local playback behaviour, nothing is sent.
+    /// it jumps to the end of that pause at once. The same checkbox skips host freezes: while the host hangs nothing is recorded, so
+    /// playback would stand still as long; a gap between two records longer than Replay/FreezeGap jumps to the next record.
+    /// Pure local playback behaviour, nothing is sent.
     /// </summary>
     internal static class BtcReplayKeys
     {
@@ -34,6 +36,9 @@ namespace BetterThanCastle
         }
 
         private static float _lastSkipFrom = -1f;
+        private static long _freezeFrom = -1L;
+        private static int _freezeN;
+        private static float _freezeS;
 
         internal static void Tick()
         {
@@ -62,6 +67,24 @@ namespace BetterThanCastle
                     return;
                 }
             }
+            FreezeTick(pc);
+        }
+
+        private static void FreezeTick(float pc)
+        {
+            if (BtcReplay.PlayPaused || BtcConfig.ReplayFreezeGap == null) return;
+            long next;
+            if (!BtcReplay.NextRecordMs(out next)) return;
+            long last = BtcReplay.FeedMs;
+            float gap = (next - last) / 1000f;
+            // inside a gap only: the clock is past the last record and the next one is more than FreezeGap after it
+            if (gap < Mathf.Max(0.3f, BtcConfig.ReplayFreezeGap.Value) || pc * 1000f < last || last == _freezeFrom) return;
+            _freezeFrom = last;
+            _freezeN++;
+            _freezeS += gap;
+            BtcLog.Info("Replay", "host freeze skipped: " + (last / 1000f).ToString("0.0") + " -> " + (next / 1000f).ToString("0.0") + " s (" + gap.ToString("0.0")
+                + " s; total " + _freezeN + ", " + _freezeS.ToString("0") + " s)");
+            BtcReplay.SeekTo(next / 1000f);
         }
     }
 }

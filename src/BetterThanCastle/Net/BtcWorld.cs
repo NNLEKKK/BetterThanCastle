@@ -117,7 +117,7 @@ public static class BtcWorld
 	{
 		Vector3 a = weapon.transform.position - target;
 		float magnitude = a.Flatten().magnitude;
-		return magnitude >= BtcWorld.Range(weapon.MinRange, shooter, false) && magnitude <= BtcWorld.Range(weapon.MaxRange, shooter, true);
+		return BtcShootDown.MinDistance(a, magnitude) >= BtcWorld.Range(weapon.MinRange, shooter, false) && magnitude <= BtcWorld.Range(weapon.MaxRange, shooter, true);
 	}
 
 	public static bool FarEnough(ProjectileWeapon weapon, GameObject shooter, Vector3 target)

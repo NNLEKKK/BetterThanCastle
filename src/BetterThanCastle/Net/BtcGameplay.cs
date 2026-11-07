@@ -71,7 +71,7 @@ public static class BtcGameplay
 		BtcGameplay.Add("eco.penFixed", "eco", "Death penalty: fixed energy lost", "Штраф за смерть: фиксированная потеря энергии", -1f, -1f, 300f, 1f, false, "-1 = off. Otherwise refund = spawn cost - this value, always (competitive style).", "-1 = выкл. Иначе возврат = цена спавна - это значение, всегда.");
 		BtcGameplay.Add("eco.penProp", "eco", "Death penalty: refund share of spawn cost", "Штраф за смерть: доля возврата от цены", -1f, -1f, 1f, 0.05f, false, "-1 = map value. 0.7 = 70% of the spawn cost comes back. Ignored when the fixed penalty is set.", "-1 = как на карте. 0.7 = возвращается 70% цены. Игнорируется при фикс. штрафе.");
 		BtcGameplay.Add("eco.base", "eco", "Spawn energy: base cost", "Энергия на спавн: базовая цена", -1f, -1f, 1000f, 5f, false, "-1 = map value (Lua is overridden otherwise).", "-1 = как на карте (иначе Lua перекрывается).");
-		BtcGameplay.Add("eco.factor", "eco", "Spawn energy: +cost per extra bricktron", "Энергия на спавн: прибавка за каждого сверх порога", -1f, -1f, 500f, 5f, false, null, null);
+		BtcGameplay.Add("eco.factor", "eco", "Spawn energy: +cost per extra bricktron", "Энергия на спавн: прибавка за каждого сверх порога", 60f, 0f, 500f, 5f, false, "Vanilla is 60.", "В ваниле 60.");
 		BtcGameplay.Add("eco.begin", "eco", "Spawn energy: bricktrons before the cost grows", "Энергия на спавн: бриктронов до роста цены", -1f, -1f, 50f, 1f, false, null, null);
 		BtcGameplay.Add("eco.cap", "eco", "Bricktron cap", "Максимум бриктронов", -1f, -1f, 100f, 1f, false, null, null);
 		BtcGameplay.AddWorldRows();
@@ -157,7 +157,7 @@ public static class BtcGameplay
 	{
 		get
 		{
-			return BtcBc.BcEnabled && NetworkServer.active;
+			return BtcBc.BcEnabled && (NetworkServer.active || !BtcBc.BcInSession);   // offline (menu, singleplayer before the server starts) edits the local rules
 		}
 	}
 
@@ -182,7 +182,7 @@ public static class BtcGameplay
 	{
 		get
 		{
-			return BtcGameplay.IsHost && BtcGameplay.InLobby;
+			return BtcGameplay.IsHost && (!BtcGameplay.InSession || BtcGameplay.InLobby || !Brix.Engine.Neo.multiplayer);   // G1: also outside a host lobby when no other player can be in the game
 		}
 	}
 
@@ -759,6 +759,8 @@ public static class BtcGameplay
 		BtcRackFilterNet.RegisterHandlers(clientOverride);
 		BtcCleanFilterNet.RegisterHandlers(clientOverride);
 		BtcTimer.RegisterHandlers(clientOverride);
+		BtcCraftQueue.RegisterHandlers(clientOverride);
+		BtcFocusMark.RegisterHandlers(clientOverride);
 		bool active = NetworkServer.active;
 		bool flag = active;
 		bool flag2 = flag;
@@ -1196,7 +1198,7 @@ public static class BtcGameplay
 	{
 		float[] e = BtcGameplay.E;
 		int num = (e[BtcGameplay.iBase] >= 0f) ? Mathf.RoundToInt(e[BtcGameplay.iBase]) : mapBase;
-		int num2 = (e[BtcGameplay.iFactor] >= 0f) ? Mathf.RoundToInt(e[BtcGameplay.iFactor]) : mapFactor;
+		int num2 = (BtcBc.BcEnabled && e[BtcGameplay.iFactor] >= 0f) ? Mathf.RoundToInt(e[BtcGameplay.iFactor]) : mapFactor;
 		int num3 = (e[BtcGameplay.iBegin] >= 0f) ? Mathf.RoundToInt(e[BtcGameplay.iBegin]) : mapBegin;
 		return Mathf.Max(1, num + num2 * Mathf.Max(activeCharacters - num3, 0));
 	}

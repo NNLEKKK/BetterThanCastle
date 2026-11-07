@@ -1,0 +1,12 @@
+# Replay v4: does serializing the world (keyframe capture) change active flags? linear move, compare, serialize-only probe, compare again.
+replay 2026-11-05_17-32-04_Komorebi
+waitreplay 240
+wait 40
+rpause
+pkmove 60 linear
+pkcmp 60
+pkprobe 0
+pkcmp 60
+wait 2
+pkcmp 60
+quit

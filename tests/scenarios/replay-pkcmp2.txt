@@ -1,0 +1,11 @@
+# Replay v4: active flags after the legacy multi-frame forward seek (jumps off) vs keyframe 60.
+replay 2026-11-05_17-32-04_Komorebi
+waitreplay 240
+wait 40
+pkjump 0
+rpause
+seek 600
+wait 15
+ts
+pkcmp 60
+quit

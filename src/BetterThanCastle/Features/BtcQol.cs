@@ -42,6 +42,9 @@ public static class BtcQol
 		BtcAutoPick.AddRows();
 		BtcChopBlock1x1.AddRows();
 		BtcTimer.AddRows();
+		BtcNoSkip.AddRows();
+		BtcCraftQueue.AddRows();
+		BtcShootDown.AddRows();
 	}
 
 	private static bool On(ref int idx, string id)

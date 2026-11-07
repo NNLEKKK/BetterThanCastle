@@ -1249,6 +1249,7 @@ public static class BtcHotkeys
 		BtcReplayKeys.AddKeys();
 		BtcHotkeys.AddKey(group, "dig_voxel", "Dig the block under the cursor (selected units)", 0, "G", false);
 		BtcHotkeys.AddKey(group, "break_object", "Break object under the cursor (selected units)", 0, string.Empty, false);
+		BtcHotkeys.AddKey(group, "focus_mark", "Artificer focus mark: mark the enemy under the cursor for Sentinel Wards (selected Artificer)", 0, string.Empty, false);
 		BtcHotkeys.AddKey(group, "shoot_at", "Shoot at the block or object under the cursor (selected archers, not Artificers)", 0, string.Empty, false);
 		BtcHotkeys.AddKey(group, "drop_luggage", "Drop the carried object (barrel etc.) at the cursor (selected units)", 0, string.Empty, false);
 		BtcHotkeys.AddKey(group, "go_detonate", "Go detonate the barrel under the cursor (selected units)", 0, string.Empty, false);

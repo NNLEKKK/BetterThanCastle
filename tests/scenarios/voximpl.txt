@@ -1,0 +1,6 @@
+# DEV: list the voxel engine implementation methods (agent.log "voximpl:").
+replay 2026-11-05_17-32-04_Komorebi
+waitreplay 240
+wait 5
+voximpl
+quit

@@ -1,0 +1,30 @@
+# Replay v4: normal viewing reference (x8, playto) on the user's 2nd fresh replay; probes every 20 s.
+pkpre 0
+pkjump 0
+replay 2026-11-07_17-57-15_Pioneer_Pass
+waitreplay 240
+speed 8
+playto 20
+worldsig Q20
+playto 40
+worldsig Q40
+playto 60
+worldsig Q60
+pkpos 9089
+playto 80
+worldsig Q80
+playto 100
+worldsig Q100
+playto 120
+worldsig Q120
+playto 140
+worldsig Q140
+playto 160
+worldsig Q160
+playto 175
+worldsig Q175
+pkpos 9089
+pkpos 9134
+pkpos 4589
+pkpos 9264
+quit

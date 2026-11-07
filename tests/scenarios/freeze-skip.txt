@@ -1,0 +1,9 @@
+# Replay: host freeze skip on the 2 latest user replays (x8 normal viewing, skip on); agent.log "host freeze skipped".
+pkpre 0
+skippauses 1
+replay 2026-11-07_17-57-15_Pioneer_Pass
+waitreplay 240
+speed 8
+playto 180
+skippauses 0
+quit

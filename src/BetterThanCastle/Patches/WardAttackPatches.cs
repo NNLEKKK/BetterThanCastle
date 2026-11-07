@@ -17,6 +17,16 @@ namespace BetterThanCastle.Patches
         }
     }
 
+    [HarmonyPatch(typeof(WardAttack), "UnitsRefresh")]
+    internal static class WardAttackUnitsRefreshPatch
+    {
+        private static bool Prefix(WardAttack __instance, HashSet<Trackable> units)
+        {
+            try { return BtcFocusMark.RefreshWard(__instance, units); }
+            catch (Exception e) { BtcLog.Error("Hook", "WardAttack.UnitsRefresh: " + e); return true; }
+        }
+    }
+
     [HarmonyPatch(typeof(WardAttack), "FixedUpdate")]
     internal static class WardAttackFixedUpdatePatch
     {

@@ -1,0 +1,11 @@
+# DEV: voxel engine field layout (terrain keyframe design), on the user's fresh replay at the end.
+pkpre 0
+pkjump 0
+replay 2026-11-07_16-22-13_Pioneer_Pass
+waitreplay 240
+wait 3
+rpause
+seek 410
+wait 8
+voxfields
+quit

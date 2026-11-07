@@ -1,0 +1,24 @@
+# Replay v4 repro, TRUE reference: the user's fresh replay watched normally at x8 (true time scale, no seek at all), paused at
+# each probe time. Signatures R<t> in BTClogs/ws; rv4-jump diffs against them.
+pkpre 0
+pkjump 0
+replay 2026-11-07_16-22-13_Pioneer_Pass
+waitreplay 240
+speed 8
+playto 22
+worldsig R22
+playto 302
+worldsig R302
+playto 342
+worldsig R342
+voxprobe 22574 102 106
+playto 382
+worldsig R382
+playto 412
+worldsig R412
+voxlay 436 105 446
+voxlay 438 105 447
+voxprobe 21927 102 106
+voxprobe 22572 102 106
+pkpos 10646
+quit

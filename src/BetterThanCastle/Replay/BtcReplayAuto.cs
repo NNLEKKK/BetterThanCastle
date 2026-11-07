@@ -114,7 +114,7 @@ namespace BetterThanCastle
                 _pending = m;
                 _pendingSince = Time.unscaledTime;
                 BtcLog.Info("ReplayShare", "Disconnect postponed until the replay transfer ends");
-                BtcToast.Show(BtcReplay.T("Finishing the replay transfer before leaving...", "Р”РѕР·Р°РіСЂСѓР¶Р°РµРј СЂРµРїР»РµР№ РїРµСЂРµРґ РІС‹С…РѕРґРѕРј..."));
+                BtcToast.Show(BtcReplay.T("Finishing the replay transfer before leaving...", "Дозагружаем реплей перед выходом..."));
                 return true;
             }
             catch (Exception e) { BtcLog.Error("ReplayShare", "DeferDisconnect: " + e); return false; }

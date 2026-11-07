@@ -1,0 +1,15 @@
+# Replay v4: jump timing on Komorebi (cache present): far forward, back, back further. agent.log "[ReplaySeek] jump ... [set .., create .., nudge .., fire ..]".
+replay 2026-11-05_17-32-04_Komorebi
+waitreplay 240
+wait 40
+seek 1500
+wait 3
+seek 600
+wait 3
+seek 200
+wait 3
+seek 2000
+wait 3
+seek 1990
+wait 3
+quit

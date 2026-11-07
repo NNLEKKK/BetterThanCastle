@@ -407,6 +407,7 @@ public partial class ResourcePackManager : MonoBehaviour
 
 	private void ScanAutoRings(UIGameObserver.Bricktron observer, SelectionCircle.MainColors color, bool enemy)
 	{
+		if (enemy && ResourcePackManager.HideEnemyHud()) return;
 		bool flag = observer == null;
 		bool flag2 = !flag;
 		bool flag3 = flag2;

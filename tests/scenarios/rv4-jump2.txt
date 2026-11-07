@@ -1,0 +1,40 @@
+# Replay v4: instant jumps on the 2nd fresh replay vs rv4-real2 (playto stops exactly).
+replay 2026-11-07_17-57-15_Pioneer_Pass
+waitreplay 240
+wait 20
+rpause
+seek 175
+wait 2
+worldsig K175 Q175
+pkpos 4589
+pkpos 9264
+seek 40
+wait 2
+worldsig K40 Q40
+seek 120
+wait 2
+worldsig K120 Q120
+seek 20
+wait 2
+worldsig K20 Q20
+seek 160
+wait 2
+worldsig K160 Q160
+seek 60
+wait 2
+worldsig K60 Q60
+seek 140
+wait 2
+worldsig K140 Q140
+seek 80
+wait 2
+worldsig K80 Q80
+seek 100
+wait 2
+worldsig K100 Q100
+seek 175
+wait 2
+worldsig K175 Q175
+pkpos 4589
+pkpos 9264
+quit

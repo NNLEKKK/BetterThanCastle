@@ -1,0 +1,21 @@
+# Replay v4: normal viewing reference on the old Komorebi replay (recorded with host keyframes).
+pkpre 0
+pkjump 0
+replay 2026-11-05_17-32-04_Komorebi
+waitreplay 240
+speed 8
+playto 300 1200
+worldsig KR300
+playto 600 1200
+worldsig KR600
+playto 900 1200
+worldsig KR900
+playto 1200 1200
+worldsig KR1200
+playto 1500 1200
+worldsig KR1500
+playto 1800 1200
+worldsig KR1800
+playto 2100 1200
+worldsig KR2100
+quit

@@ -48,6 +48,7 @@ public static class BtcBalanceExtra
 		BtcGameplay.Add("start.knight", "eco", "Starting bricktrons: knights", "Стартовые бриктроны: рыцари", -1f, -1f, 100f, 1f, false, "-1 = preset value (vanilla 0).", "-1 = значение из пресета (ваниль 0).");
 		BtcGameplay.Add("start.archer", "eco", "Starting bricktrons: archers", "Стартовые бриктроны: лучники", -1f, -1f, 100f, 1f, false, "-1 = preset value (vanilla 0).", "-1 = значение из пресета (ваниль 0).");
 		BtcQol.AddRows();
+		BtcFocusMark.AddRows();
 	}
 
 	private static void Init()

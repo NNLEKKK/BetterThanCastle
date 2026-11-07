@@ -1,0 +1,30 @@
+# Replay v4: instant jumps on the old Komorebi replay vs rv4-kreal.
+replay 2026-11-05_17-32-04_Komorebi
+waitreplay 240
+wait 90
+rpause
+seek 2100
+wait 2
+worldsig KJ2100 KR2100
+seek 600
+wait 2
+worldsig KJ600 KR600
+seek 1500
+wait 2
+worldsig KJ1500 KR1500
+seek 300
+wait 2
+worldsig KJ300 KR300
+seek 1800
+wait 2
+worldsig KJ1800 KR1800
+seek 900
+wait 2
+worldsig KJ900 KR900
+seek 1200
+wait 2
+worldsig KJ1200 KR1200
+seek 2100
+wait 2
+worldsig KJ2100 KR2100
+quit

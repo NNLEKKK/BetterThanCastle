@@ -24,6 +24,7 @@ namespace BetterThanCastle
         internal static ConfigEntry<int> ReplayUnitDots;
         internal static ConfigEntry<bool> ReplaySkipPauses, ReplayAutoMarks, ReplayMinimapFights, ReplayRecordPov, PovFollowCam, PovShowCursor, ReplayInfo;
         internal static ConfigEntry<string> ReplayHiddenKinds, ReplayUiLayout;
+        internal static ConfigEntry<float> ReplayFreezeGap;
         internal static ConfigEntry<bool> StatsEnabled, StatsBar, StatsBarBottom;
         internal static ConfigEntry<float> StatsBarOffset, StatsBarScale, StatsBarOpacity, StatsPanelScale, StatsPanelOpacity;
         internal static ConfigEntry<string> StatsBarList, StatsPanelHidden;
@@ -50,7 +51,8 @@ namespace BetterThanCastle
             ReplayDownloadFromHost = cfg.Bind("Replay", "DownloadFromHost", true, "Client: accept the replay the host sends after a multiplayer match and save it to Replays (file name carries the host name; BetterConnection only).");
             ChatFade = cfg.Bind("Chat", "FadeMessages", true, "In-game chat: hide messages after FadeSeconds; opening the chat shows the history.");
             ChatFadeSeconds = cfg.Bind("Chat", "FadeSeconds", 10f, new ConfigDescription("Seconds an in-game chat message stays visible.", new AcceptableValueRange<float>(2f, 60f)));
-            ReplaySkipPauses = cfg.Bind("Replay", "SkipPauses", false, "Replay playback: jump over the recorded pauses of the advanced timer at once.");
+            ReplaySkipPauses = cfg.Bind("Replay", "SkipPauses", false, "Replay playback: jump over the recorded pauses of the advanced timer and over host freezes (record gaps) at once.");
+            ReplayFreezeGap = cfg.Bind("Replay", "FreezeGap", 1f, "With SkipPauses: a gap without any recorded message longer than this (seconds) counts as a host freeze and is skipped.");
             ReplayAutoMarks = cfg.Bind("Replay", "AutoMarks", true, "Record automatic timeline marks (deaths, crystals, barrels, large fights) into new replays.");
             ReplayMinimapFights = cfg.Bind("Replay", "MinimapFights", true, "Highlight combat on the mini map while watching a replay.");
             ReplayHiddenKinds = cfg.Bind("Replay", "HiddenMarkKinds", "", "Timeline mark kinds hidden by the player (D C X F Z).");

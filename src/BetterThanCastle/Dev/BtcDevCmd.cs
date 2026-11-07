@@ -81,11 +81,15 @@ namespace BetterThanCastle.Dev
             catch (Exception e) { BtcLog.Warn("Cmd", "load: " + e.Message); }
         }
 
+        private float _playTo;
+        private float _playSpeed = 1f;
+
         private bool WaitDone(float now)
         {
             if (_wait == "measure") { if (!BtcDevEngine.Measuring) return true; if (now < _waitUntil + 1f) return false; BtcDevEngine.EndMeasure(); return true; }
             if (now >= _waitUntil) { if (_wait != "sec") BtcLog.Warn("Cmd", "wait " + _wait + " timed out"); return true; }
             if (_wait == "replay") return BtcReplay.Running;
+            if (_wait == "playto") { if (_playTo - BtcReplay.PlayClock < 2f) for (int i = 0; i < 12 && BtcReplay.PlaySpeed > 1.01f; i++) BtcReplay.SpeedStep(-1); if (BtcReplay.PlayClock < _playTo) return false; if (!BtcReplay.PlayPaused) BtcReplay.TogglePause(); BtcLog.Info("Cmd", "playto reached " + BtcReplay.PlayClock.ToString("0.00")); return true; }
             if (_wait == "finish") return BtcReplay.Finished;
             if (_wait == "menu")
             {
@@ -170,13 +174,62 @@ namespace BetterThanCastle.Dev
                 case "speed":
                     {
                         float want = F(p, 1, 1f);
+                        _playSpeed = want;
                         for (int i = 0; i < 12 && BtcReplay.PlaySpeed < want - 0.01f; i++) BtcReplay.SpeedStep(1);
                         for (int i = 0; i < 12 && BtcReplay.PlaySpeed > want + 0.01f; i++) BtcReplay.SpeedStep(-1);
                         BtcLog.Info("Cmd", "speed now " + BtcReplay.PlaySpeed);
                         break;
                     }
+                // normal viewing up to T (no seek), then pause: the reference for instant seek fidelity
+                case "playto": _playTo = F(p, 1, 0f); for (int i = 0; i < 12 && BtcReplay.PlaySpeed < _playSpeed - 0.01f; i++) BtcReplay.SpeedStep(1); _wait = "playto"; _waitUntil = now + F(p, 2, 900f); if (BtcReplay.PlayPaused) BtcReplay.TogglePause(); break;
                 case "seek": BtcReplay.SeekTo(F(p, 1, 0f)); break;
                 case "timescale": Time.timeScale = F(p, 1, 1f); break;
+                case "worldsig": BtcDevWorldSig.Run(p.Length > 1 ? p[1] : "now", p.Length > 2 ? p[2] : null); break;
+                case "pkpre": BtcReplaySeek.DevNoPreprocess = F(p, 1, 1f) < 0.5f; BtcLog.Info("Cmd", "pkpre " + !BtcReplaySeek.DevNoPreprocess); break;
+                case "pkjump": BtcReplaySeek.DevNoJump = F(p, 1, 1f) < 0.5f; BtcLog.Info("Cmd", "pkjump " + !BtcReplaySeek.DevNoJump); break;
+                case "voxprobe": BtcLog.Info("Cmd", "voxprobe: " + BtcReplayAnchor.ProbeColumn((int)F(p, 1, 0f), (int)F(p, 2, 140f), (int)F(p, 3, 145f))); break;
+                case "voxset": BtcLog.Info("Cmd", "voxset: " + BtcReplayAnchor.DevVoxSet((int)F(p, 1, 0f), (int)F(p, 2, 0f), (int)F(p, 3, 0f), (int)F(p, 4, 0f), (int)F(p, 5, 0f), (int)F(p, 6, 0f))); break;
+                case "voximpl":
+                    {
+                        object eng = Brix.Engine.Voxel.Engine;
+                        if (eng == null) { BtcLog.Info("Cmd", "voximpl: null"); break; }
+                        System.Collections.Generic.List<System.Type> types = new System.Collections.Generic.List<System.Type> { eng.GetType() };
+                        foreach (System.Type t in eng.GetType().Assembly.GetTypes())
+                            if (t.Name == "NegativeLayer" || t.Name == "TerrainSurfaceLayer" || t.Name == "Layers" || t.Name == "VoxelEngineImpl") types.Add(t);
+                        foreach (System.Type t in types)
+                        {
+                            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                            int n = 0;
+                            foreach (System.Reflection.MethodInfo mi in t.GetMethods(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly))
+                            {
+                                sb.Append(mi.Name).Append('(');
+                                foreach (System.Reflection.ParameterInfo pi in mi.GetParameters()) sb.Append(pi.ParameterType.Name).Append(' ').Append(pi.Name).Append(',');
+                                sb.Append(") ");
+                                if (++n % 10 == 0) { BtcLog.Info("Cmd", "voximpl " + t.FullName + ": " + sb); sb.Length = 0; }
+                            }
+                            if (sb.Length > 0) BtcLog.Info("Cmd", "voximpl " + t.FullName + ": " + sb);
+                        }
+                        break;
+                    }
+                case "pkpos": BtcLog.Info("Cmd", "pkpos: " + BtcReplaySeek.DevPkPos((uint)F(p, 1, 0f))); break;
+                case "voxlay": BtcLog.Info("Cmd", "voxlay: " + BtcReplaySeek.DevLayerProbe(new Brix.Engine.XYZ((int)F(p, 1, 0f), (int)F(p, 2, 0f), (int)F(p, 3, 0f)))); break;
+                case "skippauses": BtcReplayKeys.SkipPauses = F(p, 1, 1f) > 0.5f; BtcLog.Info("Cmd", "skippauses " + BtcReplayKeys.SkipPauses); break;
+                case "voxfields": BtcDevVoxFields.Run(); break;
+                case "pkcmp": BtcLog.Info("Cmd", "pkcmp: " + BtcReplaySeek.CompareActive((int)F(p, 1, 0f))); break;
+                case "pkmove":BtcLog.Info("Cmd", "pkmove: " + BtcReplaySeek.MoveTo((int)F(p, 1, 0f), p.Length > 2 && p[2] == "linear")); break;
+                case "pkprobe":BtcDevPkProbe.Run(F(p, 1, 1f) > 0.5f); break;
+                case "pkverify":
+                    {
+                        int n = (int)F(p, 1, 5f), slots = BtcReplaySeek.SlotCount;
+                        BtcLog.Info("Cmd", "pkverify: " + BtcReplaySeek.Count + " pks, " + slots + " slots");
+                        for (int i = 0; i < n && slots > 1; i++)
+                        {
+                            int s = (int)((long)(slots - 2) * (n - 1 - i) / Math.Max(1, n - 1));
+                            BtcLog.Info("Cmd", "pkverify " + s + ": " + BtcReplaySeek.VerifyPair(s));
+                        }
+                        break;
+                    }
+                case "ts":BtcLog.Info("Cmd", "ts timeScale=" + Time.timeScale + " speed=" + BtcReplay.PlaySpeed + " t=" + BtcReplay.PlayClock.ToString("0.0")); break;
                 case "clock": // SP game clock like the player uses it: clock pause|default|fast|veryfast|double
                     {
                         string ck = p.Length > 1 ? p[1] : "default";

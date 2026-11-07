@@ -426,7 +426,21 @@ namespace BetterThanCastle
 
         private static Vector3 CamPos(S s) { return new Vector3(s.Cx / 8f, s.Cy / 8f, s.Cz / 8f); }
 
-        private static bool _wasFollowing;
+        private static bool _wasFollowing, _startSnapped;
+
+        // list.md I2: the replay opens on the first recorded camera pose of the first player track instead of wherever the spectator camera happens to be
+        private static void SnapStart()
+        {
+            try
+            {
+                CameraScript cam = CameraScript.Instance;
+                if (cam == null || !cam.isActiveAndEnabled || Camera.main == null || Play.Count == 0 || Play[0].L.Count == 0) return;
+                S a = Play[0].L[0];
+                cam.Positionner(CamPos(a), Quaternion.Euler(a.Rx / 10f, a.Ry / 10f, a.Rz / 10f), a.D / 10f);
+                BtcLog.Info("PovRec", "start camera set to " + Play[0].Name);
+            }
+            catch (Exception e) { LogErr("startcam", e); }
+        }
         private static float _holdUntil, _lastClock = -1f, _nextErrLog;
         private static int _camErr;
 
@@ -435,7 +449,7 @@ namespace BetterThanCastle
         {
             if (_pendingBlob != null) ParsePending();
             BtcReplayWorld.Tick();
-            if (Play.Count == 0 || BtcReplay.Mode != BtcReplay.State.Playing) { if (_mini.Count > 0) ClearMini(); _lastClock = -1f; return; }
+            if (Play.Count == 0 || BtcReplay.Mode != BtcReplay.State.Playing) { if (_mini.Count > 0) ClearMini(); _lastClock = -1f; _startSnapped = false; return; }
             float now = Time.unscaledTime;
             float pc = BtcReplay.PlayClock;
             if (_lastClock >= 0f && pc < _lastClock - 1.5f) { _holdUntil = now + 3f; ClearMini(); _wasFollowing = false; }
@@ -445,6 +459,7 @@ namespace BetterThanCastle
             catch (Exception e) { LogErr("mini", e); }
             try { UpdateCones(pc); }
             catch (Exception e) { LogErr("cone", e); }
+            if (!_startSnapped) { _startSnapped = true; if (pc < 5f) SnapStart(); }
             bool follow = BtcPov.Active && BtcPov.PovFaction != null && BtcConfig.PovFollowCam.Value;
             if (!follow) { _wasFollowing = false; return; }
             Track t = TrackOf(BtcPov.PovFaction.ID);

@@ -178,6 +178,7 @@ public partial class ResourcePackManager : MonoBehaviour
 
 	private void CollectHitUnits(UIGameObserver.Bricktron observer, bool enemy, float now)
 	{
+		if (enemy && ResourcePackManager.HideEnemyHud()) return;
 		bool flag = observer == null;
 		bool flag2 = !flag;
 		bool flag3 = flag2;

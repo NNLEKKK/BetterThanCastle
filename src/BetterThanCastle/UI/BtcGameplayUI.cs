@@ -41,7 +41,7 @@ public static class BtcGameplayUI
 			string text;
 			if (flag6)
 			{
-				text = (BtcGameplay.CanEdit ? BtcGameplayUI.T("You are the host: changes apply to everybody at once.", "Вы хост: изменения сразу применяются у всех.") : BtcGameplayUI.T("You are the host. The game has started: rules are locked.", "Вы хост. Игра началась: правила заблокированы."));
+				text = (!inSession ? BtcGameplayUI.T("Offline: these rules apply to your next game (singleplayer or a lobby you host).", "Офлайн: эти правила применятся в вашей следующей игре (одиночной или в вашем лобби).") : BtcGameplay.CanEdit ? BtcGameplayUI.T("You are the host: changes apply to everybody at once.", "Вы хост: изменения сразу применяются у всех.") : BtcGameplayUI.T("You are the host. The game has started: rules are locked.", "Вы хост. Игра началась: правила заблокированы."));
 			}
 			else
 			{

@@ -551,6 +551,7 @@ public partial class ResourcePackManager : MonoBehaviour
 
 	private void CollectBuildings(UIGameObserver.DynamicObjects obs, bool enemy)
 	{
+		if (enemy && ResourcePackManager.HideEnemyHud()) return;
 		bool flag = obs == null || obs.All == null;
 		bool flag2 = !flag;
 		bool flag3 = flag2;
@@ -1037,6 +1038,7 @@ public partial class ResourcePackManager : MonoBehaviour
 
 	private void CollectHitBuildings(UIGameObserver.DynamicObjects obs, bool enemy, float now)
 	{
+		if (enemy && ResourcePackManager.HideEnemyHud()) return;
 		bool flag = obs == null || obs.All == null;
 		bool flag2 = !flag;
 		bool flag3 = flag2;
@@ -1483,9 +1485,15 @@ public partial class ResourcePackManager : MonoBehaviour
 		return cfg.alwaysOwn && this.AltShow(cfg, cfg.altRings);
 	}
 
+	// Live multiplayer: no mod HP/centre overlays on enemy units or buildings (they would leak hidden info). Replays keep them.
+	private static bool HideEnemyHud()
+	{
+		return Neo.multiplayer && BtcReplay.Mode != BtcReplay.State.Playing;
+	}
+
 	private bool AlwaysEnemyNow(ResourcePackManager.HpConfig cfg)
 	{
-		return cfg.alwaysEnemy && this.AltShow(cfg, cfg.altRings);
+		return cfg.alwaysEnemy && !ResourcePackManager.HideEnemyHud() && this.AltShow(cfg, cfg.altRings);
 	}
 
 	private void HandleHitGone(ResourcePackManager.HpConfig cfg, ResourcePackManager.HitTrack ht, float now, float gt)

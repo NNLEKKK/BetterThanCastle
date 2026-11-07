@@ -147,6 +147,7 @@ public static class BtcReplayBoost
 
 	public static long Budget(bool rewinding)
 	{
+		if (BtcReplaySeek.Preprocessing) return 250L;
 		bool flag = !rewinding;
 		bool flag2 = flag;
 		long result;

@@ -20,6 +20,7 @@ public static class BtcReplayAnchor
 	/// <summary>Called once when a forward seek (not a rewind) reaches its target. Visual reconcile after fast-forward (trees etc.).</summary>
 	public static void AfterSeekForward()
 	{
+		BtcReplaySeek.ScheduleSweep();
 		try
 		{
 			Stopwatch sw = Stopwatch.StartNew();
@@ -31,8 +32,15 @@ public static class BtcReplayAnchor
 			for (int i = 0; i < skipped.Count; i++)
 			{
 				DamagedTree dt = skipped[i];
-				if (dt == null) continue; // destroyed Unity object
-				XYZ p = XYZ.FromVector3(dt.transform.position);
+				XYZ p = i < BtcTreeCutSkipPatch.SkippedPos.Count ? BtcTreeCutSkipPatch.SkippedPos[i] : XYZ.zero;
+				if (dt == null)
+				{
+					// destroyed Unity object: the tree was still cut
+					if (p != XYZ.zero && TreeRegistry.Instance != null && TreeRegistry.Instance.Remove(p)) { pos.Add(p); fixedCut++; }
+					continue;
+				}
+				// a pooled object is back at the origin: the position taken at skip time wins over the live transform
+				if (p == XYZ.zero) p = XYZ.FromVector3(dt.transform.position);
 				try
 				{
 					if (BtcTreeCutSkipPatch.PosField != null)
@@ -51,6 +59,7 @@ public static class BtcReplayAnchor
 				fixedCut++;
 			}
 			skipped.Clear();
+			BtcTreeCutSkipPatch.SkippedPos.Clear();
 			// stale entries: damaged trees whose object is gone or deactivated must not keep their batch instance excluded
 			List<XYZ> dead = null;
 			foreach (KeyValuePair<XYZ, DamagedTree> kv in DamagedTree.AllDamagedTrees)
@@ -490,7 +499,8 @@ public static class BtcReplayAnchor
 					stopwatch.ElapsedMilliseconds,
 					" ms"
 				}));
-				bool flag2 = num == 0 || BtcReplayAnchor._failed;
+				// replay v4: the instant-seek preprocess replaces the visible anchor build pass (anchors only serve the legacy fallback)
+				bool flag2 = num == 0 || BtcReplayAnchor._failed || BtcReplaySeek.Enabled;
 				if (!flag2)
 				{
 					int num2 = BtcReplayAnchor._cacheOn ? BtcReplayAnchor.LoadCache() : 0;
@@ -846,6 +856,7 @@ public static class BtcReplayAnchor
 			BtcReplayAnchor._fVr = BtcReplayAnchor.Fld("_vrange");
 			BtcReplayAnchor._fHas = BtcReplayAnchor.Fld("_has");
 			BtcReplayAnchor._fHasVox = BtcReplayAnchor.Fld("_hasVox");
+			BtcReplayAnchor._fDirty = BtcReplayAnchor.Fld("_dirty");
 			bool flag = method == null || method2 == null || BtcReplayAnchor._fBot == null || BtcReplayAnchor._fVr == null || BtcReplayAnchor._fHasVox == null || BtcReplayAnchor._fCrf == null;
 			if (flag)
 			{
@@ -870,6 +881,18 @@ public static class BtcReplayAnchor
 
 	private static byte[] SnapTerrain()
 	{
+		return BtcReplayAnchor.SnapTerrain(false);
+	}
+
+	/// <summary>fast: only the columns BtcTerrainUndo journalled since its last capture/restore (the others equal the baseline), in index order.</summary>
+	private static byte[] SnapTerrain(bool fast)
+	{
+		return BtcReplayAnchor.SnapTerrain(fast, false);
+	}
+
+	/// <summary>colsOnly: heightmap columns only (voxels above them are in the layer part, BtcTerrainLayers).</summary>
+	private static byte[] SnapTerrain(bool fast, bool colsOnly)
+	{
 		bool flag = !BtcReplayAnchor.Bind() || !(bool)BtcReplayAnchor._fHas.GetValue(null);
 		byte[] result;
 		if (flag)
@@ -890,8 +913,18 @@ public static class BtcReplayAnchor
 			BinaryWriter binaryWriter = new BinaryWriter(memoryStream);
 			List<int> list = new List<int>();
 			int num5 = num3 * num4;
-			for (int i = 0; i < num5; i++)
+			HashSet<int> dirty = fast ? (BtcReplayAnchor._fDirty.GetValue(null) as HashSet<int>) : null;
+			List<int> scan = null;
+			if (dirty != null)
 			{
+				scan = new List<int>(dirty);
+				scan.Sort();
+			}
+			int scanN = (scan != null) ? scan.Count : num5;
+			for (int si = 0; si < scanN; si++)
+			{
+				int i = (scan != null) ? scan[si] : si;
+				if (i < 0 || i >= num5) continue;
 				int b;
 				int t;
 				VoxelTerrainType ty;
@@ -922,14 +955,35 @@ public static class BtcReplayAnchor
 			List<byte> list3 = new List<byte>();
 			List<byte> list4 = new List<byte>();
 			List<byte> list5 = new List<byte>();
-			bool flag3 = (bool)BtcReplayAnchor._fHasVox.GetValue(null);
+			bool flag3 = !colsOnly && (bool)BtcReplayAnchor._fHasVox.GetValue(null);
 			if (flag3)
 			{
 				Dictionary<int, int> dictionary = (Dictionary<int, int>)BtcReplayAnchor._fVr.GetValue(null);
 				int[] array5 = (int[])BtcReplayAnchor._fVs.GetValue(null);
 				byte[] array6 = (byte[])BtcReplayAnchor._fVt.GetValue(null);
 				byte[] array7 = (byte[])BtcReplayAnchor._fVv.GetValue(null);
-				foreach (KeyValuePair<int, int> keyValuePair in dictionary)
+				// the journal misses some changes (replay seek fidelity, 2026-11-07): every column that differs from the baseline also gets
+				// its whole voxel window [min bottom - 1, max top + 1] of baseline and live scanned
+				Dictionary<int, int> merged = new Dictionary<int, int>(dictionary);
+				for (int ci = 0; ci < list.Count; ci++)
+				{
+					int col = list[ci];
+					int lb, lt;
+					VoxelEngine.GetColumnData(num + col / num4, num2 + col % num4, out lb, out lt);
+					int lo = Mathf.Clamp(Mathf.Min(lb, (int)array[col]), 0, 255);
+					int hi = Mathf.Clamp(Mathf.Max(lt, (int)array2[col]), 0, 255);
+					int prev;
+					if (merged.TryGetValue(col, out prev))
+					{
+						lo = Math.Min(lo, prev & 255);
+						hi = Math.Max(hi, prev >> 8);
+					}
+					merged[col] = lo | hi << 8;
+				}
+				// sorted: identical terrain must give identical bytes (blobs are compared to skip work)
+				List<KeyValuePair<int, int>> vranges = new List<KeyValuePair<int, int>>(merged);
+				vranges.Sort((x, y) => x.Key.CompareTo(y.Key));
+				foreach (KeyValuePair<int, int> keyValuePair in vranges)
 				{
 					int key = keyValuePair.Key;
 					int num9 = Mathf.Max((keyValuePair.Value & 255) - 1, 0);
@@ -1839,6 +1893,462 @@ public static class BtcReplayAnchor
 		BtcReplayAnchor._touched.Clear();
 	}
 
+	// ---- replay v4 instant seek (BtcReplaySeek) ----
+	internal static bool Busy { get { return BtcReplayAnchor._state != 0; } }
+
+	/// <summary>True while the legacy rewind feeds a host keyframe window (the world is mid-respawn: no capture).</summary>
+	internal static bool Gating { get { return BtcReplayAnchor._active != 0; } }
+
+	/// <summary>DEV fidelity checks: full-map scan (journal-independent).</summary>
+	internal static byte[] TerrainBlobFull()
+	{
+		return BtcReplayAnchor.SnapTerrain(false);
+	}
+
+	private const int LayerBlobMagic = 0x3159414C; // "LAY1"
+
+	/// <summary>Instant seek keyframe terrain: [magic][columns length][heightmap columns vs the baseline][BtcTerrainLayers sets].
+	/// Without the layer part (engine not resolvable) it falls back to the old columns + voxel windows blob.</summary>
+	internal static byte[] TerrainBlob()
+	{
+		byte[] lay = BtcTerrainLayers.Snap();
+		// full column scan: the BtcTerrainUndo journal alone missed dug columns/crust (seek fidelity on Komorebi 2026-11-07)
+		if (lay == null) return BtcReplayAnchor.SnapTerrain(false);
+		byte[] cols = BtcReplayAnchor.SnapTerrain(false, true);
+		if (cols == null) return null;
+		byte[] r = new byte[8 + cols.Length + lay.Length];
+		Buffer.BlockCopy(BitConverter.GetBytes(LayerBlobMagic), 0, r, 0, 4);
+		Buffer.BlockCopy(BitConverter.GetBytes(cols.Length), 0, r, 4, 4);
+		Buffer.BlockCopy(cols, 0, r, 8, cols.Length);
+		Buffer.BlockCopy(lay, 0, r, 8 + cols.Length, lay.Length);
+		return r;
+	}
+
+	internal static bool SplitLayerBlob(byte[] b, out byte[] cols, out byte[] lay)
+	{
+		cols = null;
+		lay = null;
+		if (b == null || b.Length < 8 || BitConverter.ToInt32(b, 0) != LayerBlobMagic) return false;
+		int n = BitConverter.ToInt32(b, 4);
+		cols = new byte[n];
+		Buffer.BlockCopy(b, 8, cols, 0, n);
+		lay = new byte[b.Length - 8 - n];
+		Buffer.BlockCopy(b, 8 + n, lay, 0, lay.Length);
+		return true;
+	}
+
+	/// <summary>Jump terrain from blob cur (live) to target (both from TerrainBlob); returns changed columns + cells, -1 = use ApplyTerrainBlob.</summary>
+	internal static int ApplyTerrainKey(byte[] cur, byte[] target)
+	{
+		byte[] cc, cl, tc, tl;
+		bool a = SplitLayerBlob(cur, out cc, out cl), b = SplitLayerBlob(target, out tc, out tl);
+		if (!a && !b) return BtcReplayAnchor.ApplyTerrainDelta(cur, target);
+		if (!a || !b) return -1;
+		int n = 0;
+		LastDeltaTimes = "";
+		LastCreateInfo = "";
+		if (!BtcReplayAnchor.SameBytes(cc, tc)) n += BtcReplayAnchor.ApplyTerrainDelta(cc, tc);
+		int m = BtcTerrainLayers.Apply(tl);
+		if (m < 0) return -1;
+		LastCreateInfo = BtcTerrainLayers.LastInfo;
+		byte[] after = BtcTerrainLayers.Snap();
+		if (!BtcReplayAnchor.SameBytes(after, tl)) LastCreateInfo += " VERIFY DIFF (" + (after != null ? after.Length : -1) + " vs " + tl.Length + " B)";
+		return n + m;
+	}
+
+	/// <summary>Fallback when no delta is possible: full restore to the baseline, then the target's columns (and layers).</summary>
+	internal static void ApplyTerrainKeyFull(byte[] target)
+	{
+		byte[] tc, tl;
+		if (!SplitLayerBlob(target, out tc, out tl)) { BtcReplayAnchor.ApplyTerrainBlob(target); return; }
+		BtcReplayAnchor.ApplyTerrainBlob(tc);
+		BtcTerrainLayers.Apply(tl);
+	}
+
+	private static bool SameBytes(byte[] a, byte[] b)
+	{
+		if (a == b) return true;
+		if (a == null || b == null || a.Length != b.Length) return false;
+		for (int i = 0; i < a.Length; i++) if (a[i] != b[i]) return false;
+		return true;
+	}
+
+	internal static void FireVoxel(XYZ p)
+	{
+		if (BtcReplayAnchor.Bind()) BtcReplayAnchor._fire(p.x, p.y, p.z);
+	}
+
+	private struct TCol
+	{
+		public short Bot, Top;
+		public byte Typ;
+		public float Crf;
+	}
+
+	private static void ParseTerrain(byte[] blob, Dictionary<int, TCol> cols, Dictionary<int, int> vox)
+	{
+		BinaryReader r = new BinaryReader(new MemoryStream(blob));
+		int n = r.ReadInt32();
+		for (int i = 0; i < n; i++)
+		{
+			int c = r.ReadInt32();
+			TCol t;
+			t.Bot = r.ReadInt16();
+			t.Top = r.ReadInt16();
+			t.Typ = r.ReadByte();
+			t.Crf = r.ReadSingle();
+			cols[c] = t;
+		}
+		int nv = r.ReadInt32();
+		for (int j = 0; j < nv; j++)
+		{
+			int c2 = r.ReadInt32();
+			int y = (int)r.ReadByte();
+			int ty = (int)r.ReadByte();
+			int vv = (int)r.ReadByte();
+			vox[c2 * 256 + y] = ty | vv << 8;
+		}
+	}
+
+	/// <summary>Terrain jump without the full Restore: only columns/voxels that differ between the current and the target blob change
+	/// (a value missing from a blob = the BtcTerrainUndo baseline). Both blobs come from SnapTerrain against the same baseline.</summary>
+	internal static string LastDeltaTimes = "";
+
+	internal static string LastCreateInfo = "";
+
+	private static MethodInfo _setVoxelData;
+
+	internal static int ApplyTerrainDelta(byte[] cur, byte[] target)
+	{
+		Stopwatch dsw = Stopwatch.StartNew();
+		if (!BtcReplayAnchor.Bind()) throw new Exception("no terrain baseline");
+		int x0 = (int)BtcReplayAnchor._fX0.GetValue(null);
+		int z0 = (int)BtcReplayAnchor._fZ0.GetValue(null);
+		int h = (int)BtcReplayAnchor._fH.GetValue(null);
+		short[] bot = (short[])BtcReplayAnchor._fBot.GetValue(null);
+		short[] top = (short[])BtcReplayAnchor._fTop.GetValue(null);
+		byte[] typ = (byte[])BtcReplayAnchor._fTyp.GetValue(null);
+		float[] crf = (float[])BtcReplayAnchor._fCrf.GetValue(null);
+		int[] vs = (int[])BtcReplayAnchor._fVs.GetValue(null);
+		byte[] vt = (byte[])BtcReplayAnchor._fVt.GetValue(null);
+		byte[] vvb = (byte[])BtcReplayAnchor._fVv.GetValue(null);
+		Dictionary<int, TCol> cc = new Dictionary<int, TCol>(), tc = new Dictionary<int, TCol>();
+		Dictionary<int, int> cv = new Dictionary<int, int>(), tv = new Dictionary<int, int>();
+		BtcReplayAnchor.ParseTerrain(cur, cc, cv);
+		BtcReplayAnchor.ParseTerrain(target, tc, tv);
+		HashSet<int> keys = new HashSet<int>(cc.Keys);
+		keys.UnionWith(tc.Keys);
+		List<int> chCols = new List<int>();
+		List<float> chCrust = new List<float>();
+		List<int> chTop = new List<int>();
+		VoxelEngine.BeginChanges();
+		foreach (int c in keys)
+		{
+			TCol a, b;
+			if (!cc.TryGetValue(c, out a)) { a.Bot = bot[c]; a.Top = top[c]; a.Typ = typ[c]; a.Crf = crf[c]; }
+			if (!tc.TryGetValue(c, out b)) { b.Bot = bot[c]; b.Top = top[c]; b.Typ = typ[c]; b.Crf = crf[c]; }
+			if (a.Bot == b.Bot && a.Top == b.Top && a.Typ == b.Typ && Mathf.Abs(a.Crf - b.Crf) < 0.0001f) continue;
+			int x = x0 + c / h, z = z0 + c % h;
+			VoxelEngine.SetColumnBottom(x, z, (int)b.Bot);
+			VoxelEngine.SetColumnTopVoxel(x, z, (int)b.Top);
+			VoxelEngine.SetColumnType(x, z, (VoxelTerrainType)b.Typ);
+			VoxelEngine.SetColumnCrustVolume(x, z, b.Crf);
+			chCols.Add(c);
+			chCrust.Add(b.Crf);
+			chTop.Add((int)b.Top);
+		}
+		VoxelEngine.ApplyChanges(false);
+		HashSet<int> vkeys = new HashSet<int>(cv.Keys);
+		vkeys.UnionWith(tv.Keys);
+		List<XYZ> chVox = new List<XYZ>();
+		List<XYZ> create = new List<XYZ>();
+		List<int> createV = new List<int>();
+		int created0 = 0;
+		VoxelEngine.BeginChanges();
+		foreach (int k in vkeys)
+		{
+			int c = k >> 8, y = k & 255;
+			int a, b;
+			if (!cv.TryGetValue(k, out a)) a = BtcReplayAnchor.BaseVox(c, y, bot, top, vs, vt, vvb);
+			if (!tv.TryGetValue(k, out b)) b = BtcReplayAnchor.BaseVox(c, y, bot, top, vs, vt, vvb);
+			if ((a & 255) == 0) a = 0;
+			if ((b & 255) == 0) b = 0;
+			if (a == b) continue;
+			XYZ p = new XYZ(x0 + c / h, y, z0 + c % h);
+			VoxelHandle vh = Brix.Engine.Voxel.Engine.GetVoxelHandle(p);
+			int bt = b & 255;
+			if (bt == 0)
+			{
+				Brix.Engine.Voxel.Engine.RemoveVoxel(vh);
+			}
+			else
+			{
+				// a dug/partly dug cell is a negative-layer entry: SetVoxelType/SetVoxelVolume/AddTerrainResources cannot refill it.
+				// Proven way (voxset experiment, Komorebi): RemoveVoxel, ApplyChanges, then SetVoxelData(type, volume, 0)
+				if (Brix.Engine.Voxel.Engine.IsVoxelNonEmpty(vh)) Brix.Engine.Voxel.Engine.RemoveVoxel(vh);
+				create.Add(p);
+				createV.Add(b);
+			}
+			chVox.Add(p);
+		}
+		VoxelEngine.ApplyChanges(false);
+		double tSet = dsw.Elapsed.TotalMilliseconds;
+		if (create.Count > 0)
+		{
+			object eng = Brix.Engine.Voxel.Engine;
+			if (BtcReplayAnchor._setVoxelData == null)
+			{
+				BtcReplayAnchor._setVoxelData = eng.GetType().GetMethod("SetVoxelData", new Type[] { typeof(VoxelHandle), typeof(int), typeof(int), typeof(int) });
+			}
+			object[] args = new object[4];
+			VoxelEngine.BeginChanges();
+			for (int j = 0; j < create.Count; j++)
+			{
+				args[0] = Brix.Engine.Voxel.Engine.GetVoxelHandle(create[j]);
+				args[1] = createV[j] & 255;
+				args[2] = createV[j] >> 8;
+				args[3] = 0;
+				BtcReplayAnchor._setVoxelData.Invoke(eng, args);
+			}
+			VoxelEngine.ApplyChanges(false);
+			// fallback for cells SetVoxelData did not fill (crust): the game's own re-add path
+			List<int> retry = new List<int>();
+			for (int j = 0; j < create.Count; j++)
+			{
+				VoxelHandle vh2 = Brix.Engine.Voxel.Engine.GetVoxelHandle(create[j]);
+				if (Brix.Engine.Voxel.Engine.GetVoxelType(vh2) != (createV[j] & 255) || Brix.Engine.Voxel.Engine.GetVoxelVolume(vh2) != (createV[j] >> 8)) retry.Add(j);
+			}
+			if (retry.Count > 0)
+			{
+				VoxelTerrainResources res = new VoxelTerrainResources();
+				VoxelEngine.BeginChanges();
+				for (int r = 0; r < retry.Count; r++)
+				{
+					int j = retry[r];
+					res.Clear();
+					// resources: crust volume v = 2v units, a full voxel = 10 units
+					res.Add(createV[j] & 255, (createV[j] >> 8) >= 255 ? 10 : Mathf.Clamp((createV[j] >> 8) * 2, 1, 10));
+					Brix.Engine.Voxel.Engine.AddTerrainResources(Brix.Engine.Voxel.Engine.GetVoxelHandle(create[j]), res);
+				}
+				VoxelEngine.ApplyChanges(false);
+				for (int r = 0; r < retry.Count; r++)
+				{
+					VoxelHandle vh3 = Brix.Engine.Voxel.Engine.GetVoxelHandle(create[retry[r]]);
+					if (Brix.Engine.Voxel.Engine.GetVoxelType(vh3) != (createV[retry[r]] & 255)) created0++;
+				}
+			}
+			LastCreateInfo = create.Count + " re-created, " + retry.Count + " via resources, " + created0 + " failed";
+		}
+		double tCreate = dsw.Elapsed.TotalMilliseconds;
+		// only columns whose own data changed are nudged (empty crust cells are re-created above; nudging voxel-only columns cost ~2 ms each)
+		if (chCols.Count > 0)
+		{
+			BtcReplayAnchor.NudgeCrust(chCols, chCrust.ToArray(), x0, z0, h);
+		}
+		double tNudge = dsw.Elapsed.TotalMilliseconds;
+		for (int i = 0; i < chCols.Count; i++)
+		{
+			XYZ p2 = new XYZ(x0 + chCols[i] / h, Mathf.Clamp(chTop[i], 0, 255), z0 + chCols[i] % h);
+			BtcReplayAnchor._fire(p2.x, chTop[i], p2.z);
+			BtcTerrainUndo.MarkAt(p2);
+		}
+		for (int j = 0; j < chVox.Count; j++)
+		{
+			BtcReplayAnchor._fire(chVox[j].x, chVox[j].y, chVox[j].z);
+			BtcTerrainUndo.MarkAt(chVox[j]);
+		}
+		if (create.Count == 0) LastCreateInfo = "";
+		LastDeltaTimes = "set " + tSet.ToString("0") + ", create " + (tCreate - tSet).ToString("0") + " (" + create.Count + "), nudge " + (tNudge - tCreate).ToString("0") + " (" + chCols.Count + " cols), fire " + (dsw.Elapsed.TotalMilliseconds - tNudge).ToString("0") + " (" + chVox.Count + " vox)";
+		return chCols.Count + chVox.Count;
+	}
+
+	/// <summary>DEV experiment on one voxel (column index c, height y): mode 0 SetVoxelData(t,v,d), 1 Remove + SetVoxelData,
+	/// 2 SetVoxelType+SetVoxelVolume, 3 AddTerrainResources(t, v) + CompactCrust. Returns the probe after the change.</summary>
+	internal static string DevVoxSet(int c, int y, int t, int v, int d, int mode)
+	{
+		if (!BtcReplayAnchor.Bind()) return "n/a";
+		int x0 = (int)BtcReplayAnchor._fX0.GetValue(null);
+		int z0 = (int)BtcReplayAnchor._fZ0.GetValue(null);
+		int h = (int)BtcReplayAnchor._fH.GetValue(null);
+		XYZ p = new XYZ(x0 + c / h, y, z0 + c % h);
+		object eng = Brix.Engine.Voxel.Engine;
+		VoxelEngine.BeginChanges();
+		VoxelHandle vh = Brix.Engine.Voxel.Engine.GetVoxelHandle(p);
+		if (mode == 1) { Brix.Engine.Voxel.Engine.RemoveVoxel(vh); VoxelEngine.ApplyChanges(false); VoxelEngine.BeginChanges(); vh = Brix.Engine.Voxel.Engine.GetVoxelHandle(p); }
+		if (mode == 0 || mode == 1)
+		{
+			MethodInfo m = eng.GetType().GetMethod("SetVoxelData", new Type[] { typeof(VoxelHandle), typeof(int), typeof(int), typeof(int) });
+			m.Invoke(eng, new object[] { vh, t, v, d });
+		}
+		else if (mode == 2)
+		{
+			Brix.Engine.Voxel.Engine.SetVoxelType(vh, t);
+			Brix.Engine.Voxel.Engine.SetVoxelVolume(vh, v);
+		}
+		else
+		{
+			MethodInfo m = eng.GetType().GetMethod("AddTerrainResources", new Type[] { typeof(VoxelHandle), typeof(int), typeof(int) });
+			m.Invoke(eng, new object[] { vh, t, v });
+			Brix.Engine.Voxel.Engine.CompactCrust(Brix.Engine.Voxel.Engine.GetVoxelHandle(p));
+		}
+		VoxelEngine.ApplyChanges(false);
+		return BtcReplayAnchor.ProbeColumn(c, y - 1, y + 1);
+	}
+
+	/// <summary>DEV: voxel type/volume/resources and column data of column index c (BtcTerrainUndo grid) at heights y0..y1.</summary>
+	internal static string ProbeColumn(int c, int y0, int y1)
+	{
+		if (!BtcReplayAnchor.Bind()) return "n/a";
+		int x0 = (int)BtcReplayAnchor._fX0.GetValue(null);
+		int z0 = (int)BtcReplayAnchor._fZ0.GetValue(null);
+		int h = (int)BtcReplayAnchor._fH.GetValue(null);
+		int x = x0 + c / h, z = z0 + c % h;
+		int b, t;
+		VoxelTerrainType ty;
+		float cr;
+		VoxelEngine.GetColumnData(x, z, out b, out t, out ty, out cr);
+		System.Text.StringBuilder sb = new System.Text.StringBuilder();
+		sb.Append("col ").Append(c).Append(" (").Append(x).Append(',').Append(z).Append(") bot ").Append(b).Append(" top ").Append(t).Append(" type ").Append(ty).Append(" crust ").Append(cr.ToString("0.00"));
+		List<int> types = new List<int>(), amounts = new List<int>();
+		for (int y = y0; y <= y1; y++)
+		{
+			VoxelHandle vh = Brix.Engine.Voxel.Engine.GetVoxelHandle(new XYZ(x, y, z));
+			types.Clear();
+			amounts.Clear();
+			Brix.Engine.Voxel.Engine.GetTerrainResources(vh, types, amounts);
+			sb.Append(" | y").Append(y).Append(" t").Append(Brix.Engine.Voxel.Engine.GetVoxelType(vh)).Append(" v").Append(Brix.Engine.Voxel.Engine.GetVoxelVolume(vh))
+				.Append(Brix.Engine.Voxel.Engine.IsVoxelNonEmpty(vh) ? " ne" : " e").Append(" res");
+			for (int i = 0; i < types.Count; i++) sb.Append(' ').Append(types[i]).Append(':').Append(i < amounts.Count ? amounts[i] : -1);
+		}
+		return sb.ToString();
+	}
+
+	/// <summary>DEV: what differs between two terrain blobs (columns, voxels) with samples, live vs reference.</summary>
+	internal static string DiffTerrain(byte[] live, byte[] reference)
+	{
+		if (live == null || reference == null || !BtcReplayAnchor.Bind()) return "n/a";
+		int h = (int)BtcReplayAnchor._fH.GetValue(null);
+		short[] bot = (short[])BtcReplayAnchor._fBot.GetValue(null);
+		short[] top = (short[])BtcReplayAnchor._fTop.GetValue(null);
+		byte[] typ = (byte[])BtcReplayAnchor._fTyp.GetValue(null);
+		float[] crf = (float[])BtcReplayAnchor._fCrf.GetValue(null);
+		int[] vs = (int[])BtcReplayAnchor._fVs.GetValue(null);
+		byte[] vt = (byte[])BtcReplayAnchor._fVt.GetValue(null);
+		byte[] vvb = (byte[])BtcReplayAnchor._fVv.GetValue(null);
+		Dictionary<int, TCol> lc = new Dictionary<int, TCol>(), rc = new Dictionary<int, TCol>();
+		Dictionary<int, int> lv = new Dictionary<int, int>(), rv = new Dictionary<int, int>();
+		BtcReplayAnchor.ParseTerrain(live, lc, lv);
+		BtcReplayAnchor.ParseTerrain(reference, rc, rv);
+		HashSet<int> keys = new HashSet<int>(lc.Keys);
+		keys.UnionWith(rc.Keys);
+		int nc = 0;
+		System.Text.StringBuilder sb = new System.Text.StringBuilder();
+		foreach (int c in keys)
+		{
+			TCol a, b;
+			if (!lc.TryGetValue(c, out a)) { a.Bot = bot[c]; a.Top = top[c]; a.Typ = typ[c]; a.Crf = crf[c]; }
+			if (!rc.TryGetValue(c, out b)) { b.Bot = bot[c]; b.Top = top[c]; b.Typ = typ[c]; b.Crf = crf[c]; }
+			if (a.Bot == b.Bot && a.Top == b.Top && a.Typ == b.Typ && Mathf.Abs(a.Crf - b.Crf) < 0.0001f) continue;
+			nc++;
+			if (nc <= 6) sb.Append(" col ").Append(c).Append(" live ").Append(a.Bot).Append('/').Append(a.Top).Append('/').Append(a.Typ).Append('/').Append(a.Crf.ToString("0.00"))
+				.Append(" ref ").Append(b.Bot).Append('/').Append(b.Top).Append('/').Append(b.Typ).Append('/').Append(b.Crf.ToString("0.00")).Append(" base ").Append(bot[c]).Append('/').Append(top[c]).Append(';');
+		}
+		HashSet<int> vk = new HashSet<int>(lv.Keys);
+		vk.UnionWith(rv.Keys);
+		int nv = 0;
+		foreach (int k in vk)
+		{
+			int c = k >> 8, y = k & 255, a, b;
+			if (!lv.TryGetValue(k, out a)) a = BtcReplayAnchor.BaseVox(c, y, bot, top, vs, vt, vvb);
+			if (!rv.TryGetValue(k, out b)) b = BtcReplayAnchor.BaseVox(c, y, bot, top, vs, vt, vvb);
+			if ((a & 255) == 0) a = 0;
+			if ((b & 255) == 0) b = 0;
+			if (a == b) continue;
+			nv++;
+			if (nv <= 8) sb.Append(" vox ").Append(c).Append('=').Append((int)BtcReplayAnchor._fX0.GetValue(null) + c / h).Append(',').Append(y).Append(',').Append((int)BtcReplayAnchor._fZ0.GetValue(null) + c % h).Append(" live ").Append(a & 255).Append(':').Append(a >> 8).Append(" ref ").Append(b & 255).Append(':').Append(b >> 8)
+				.Append(" inLive ").Append(lv.ContainsKey(k) ? 1 : 0).Append(" inRef ").Append(rv.ContainsKey(k) ? 1 : 0).Append(';');
+		}
+		return "cols " + nc + " voxels " + nv + ":" + sb.ToString();
+	}
+
+	/// <summary>Baseline voxel at column c, height y as type | volume << 8 (0 = empty), same window rule as SnapTerrain.</summary>
+	private static int BaseVox(int c, int y, short[] bot, short[] top, int[] vs, byte[] vt, byte[] vv)
+	{
+		int lo = Mathf.Max((int)(bot[c] - 1), 0);
+		int hi = Mathf.Min((int)(top[c] + 1), 254);
+		if (vs[c] < 0 || y < lo || y > hi) return 0;
+		int t = (int)vt[vs[c] + (y - lo)];
+		return (t == 0) ? 0 : (t | (int)vv[vs[c] + (y - lo)] << 8);
+	}
+
+	internal static void ApplyTerrainBlob(byte[] blob)
+	{
+		if (!BtcTerrainUndo.Restore()) throw new Exception("terrain restore failed");
+		BtcReplayAnchor.ApplyTerrain(blob);
+		// the journal was cleared by Restore: mark what the blob changed, so the next fast snapshot sees it
+		BinaryReader r = new BinaryReader(new MemoryStream(blob));
+		int x0 = (int)BtcReplayAnchor._fX0.GetValue(null);
+		int z0 = (int)BtcReplayAnchor._fZ0.GetValue(null);
+		int h = (int)BtcReplayAnchor._fH.GetValue(null);
+		int n = r.ReadInt32();
+		for (int i = 0; i < n; i++)
+		{
+			int c = r.ReadInt32();
+			r.ReadInt16();
+			int top = (int)r.ReadInt16();
+			r.ReadByte();
+			r.ReadSingle();
+			BtcTerrainUndo.MarkAt(new XYZ(x0 + c / h, Mathf.Clamp(top, 0, 255), z0 + c % h));
+		}
+		int nv = r.ReadInt32();
+		for (int j = 0; j < nv; j++)
+		{
+			int c2 = r.ReadInt32();
+			int y = (int)r.ReadByte();
+			r.ReadByte();
+			r.ReadByte();
+			BtcTerrainUndo.MarkAt(new XYZ(x0 + c2 / h, y, z0 + c2 % h));
+		}
+	}
+
+	internal static byte[] NatureBlob()
+	{
+		BtcReplayAnchor.NState s = BtcReplayAnchor.ReadLive();
+		// fast feeding skips tree cuts ("not ready", BtcTreeCutSkipPatch) until the seek ends: those trees count as cut already
+		if (s != null && s.trees != null)
+		{
+			List<DamagedTree> skipped = BtcTreeCutSkipPatch.Skipped;
+			for (int i = 0; i < skipped.Count; i++)
+			{
+				DamagedTree dt = skipped[i];
+				if (dt == null)
+				{
+					if (i < BtcTreeCutSkipPatch.SkippedPos.Count) s.trees.Remove(BtcTreeCutSkipPatch.SkippedPos[i]);
+					continue;
+				}
+				XYZ p = XYZ.FromVector3(dt.transform.position);
+				try
+				{
+					if (BtcTreeCutSkipPatch.PosField != null)
+					{
+						XYZ q = (XYZ)BtcTreeCutSkipPatch.PosField.GetValue(dt);
+						if (q != XYZ.zero) p = q;
+					}
+				}
+				catch (Exception) { }
+				s.trees.Remove(p);
+				if (i < BtcTreeCutSkipPatch.SkippedPos.Count) s.trees.Remove(BtcTreeCutSkipPatch.SkippedPos[i]);
+			}
+		}
+		return (s != null) ? BtcReplayAnchor.WriteNature(s) : null;
+	}
+
+	internal static void ApplyNatureBlob(byte[] blob)
+	{
+		BtcReplayAnchor.NState s = BtcReplayAnchor.ReadNature(blob);
+		if (s != null) BtcReplayAnchor.ApplyState(s);
+	}
+
 	public static void ApplyWorld()
 	{
 		BtcReplayAnchor.EnsureCfg();
@@ -1965,6 +2475,8 @@ public static class BtcReplayAnchor
 
 	private static FieldInfo _fHasVox;
 
+	private static FieldInfo _fDirty;
+
 	private static BtcReplayAnchor.NState _base;
 
 	private static FieldInfo _treeField;
@@ -2069,6 +2581,8 @@ public static class BtcReplayAnchor
 internal static class BtcTreeCutSkipPatch
 {
 	public static readonly List<DamagedTree> Skipped = new List<DamagedTree>();
+	// position per Skipped entry, taken at skip time: a tree spawned and destroyed within one fast frame is gone (null) by the reconcile
+	public static readonly List<XYZ> SkippedPos = new List<XYZ>();
 	public static readonly FieldInfo ReadyField = typeof(DamagedTree).GetField("_ready", BindingFlags.Instance | BindingFlags.NonPublic);
 	public static readonly FieldInfo CutField = typeof(DamagedTree).GetField("_wasCut", BindingFlags.Instance | BindingFlags.NonPublic);
 	public static readonly FieldInfo PosField = typeof(DamagedTree).GetField("_pos", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -2080,7 +2594,7 @@ internal static class BtcTreeCutSkipPatch
 		{
 			if (!BtcReplay.Active || ReadyField == null || CutField == null) return;
 			if ((bool)CutField.GetValue(__instance) || (bool)ReadyField.GetValue(__instance)) return;
-			if (!Skipped.Contains(__instance)) Skipped.Add(__instance);
+			if (!Skipped.Contains(__instance)) { Skipped.Add(__instance); SkippedPos.Add(XYZ.FromVector3(__instance.transform.position)); }
 		}
 		catch (Exception e) { BtcLog.Error("Hook", "DamagedTree.Cut skip: " + e.Message); }
 	}

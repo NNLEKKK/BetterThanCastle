@@ -1,0 +1,8 @@
+# Traps in replays: record an SP replay with placed bear traps; agent.log must show "[ReplayTrap] rec observes". Then run trap-play.
+recsp 1
+newgame
+waitgame 240
+wait 5
+spawn ObjetsDynamiques.BearTrap 3
+wait 15
+quit

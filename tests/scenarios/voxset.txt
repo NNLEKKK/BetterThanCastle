@@ -1,0 +1,23 @@
+# DEV: how to make a partly dug voxel solid again. After end->start jump, cells 18249@142, 18554@142, 18555@142, 18556@138 are 6:4 instead of 6:255.
+replay 2026-11-05_17-32-04_Komorebi
+waitreplay 240
+wait 40
+rpause
+seek 2200
+wait 3
+seek 45
+wait 3
+voxprobe 18249 141 143
+voxset 18249 142 6 255 0 0
+voxprobe 18554 141 143
+voxset 18554 142 6 255 0 1
+voxprobe 18555 141 143
+voxset 18555 142 6 255 0 2
+voxprobe 18556 137 139
+voxset 18556 138 6 10 0 3
+wait 2
+voxprobe 18249 141 143
+voxprobe 18554 141 143
+voxprobe 18555 141 143
+voxprobe 18556 137 139
+quit

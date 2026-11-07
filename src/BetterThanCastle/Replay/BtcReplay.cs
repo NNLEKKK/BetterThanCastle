@@ -111,6 +111,7 @@ public static class BtcReplay
 				BtcReplay.RecordSingleplayer = (BtcPaths.ReadKey("replay.txt", "RecordSingleplayer", "0") == "1");
 				BtcReplay.ShowIndicator = (BtcPaths.ReadKey("replay.txt", "ShowIndicator", "1") != "0");
 				BtcReplay.RecSpectator = (BtcPaths.ReadKey("replay.txt", "SpectatorUser", "1") != "0");
+				BtcReplay.cfgTimeScale = (BtcPaths.ReadKey("replay.txt", "TimeScale", "1") != "0");
 				int num;
 				bool flag8 = int.TryParse(BtcPaths.ReadKey("replay.txt", "KeyMinutes", "5"), NumberStyles.Integer, BtcReplay.Inv, out num) && num >= 0 && num <= 120;
 				bool flag9 = flag8;
@@ -147,6 +148,8 @@ public static class BtcReplay
 				BtcReplay.RecSpectator ? "1" : "0",
 				"\r\n# Keyframe (full world respawn) every KeyMinutes minutes, 0 = never.\r\nKeyMinutes=",
 				BtcReplay.KeyMinutes.ToString(BtcReplay.Inv),
+				"\r\n# Playback speed also scales game time (true slow motion). 0 = only the packet feed rate changes.\r\nTimeScale=",
+				BtcReplay.cfgTimeScale ? "1" : "0",
 				"\r\n"
 			}));
 		}
@@ -344,18 +347,7 @@ public static class BtcReplay
 							}
 							else
 							{
-								bool flag80 = BtcReplay.KeyMinutes > 0 && unscaledTime >= BtcReplay.nextKf;
-								bool flag81 = flag80;
-								bool flag82 = flag81;
-								bool flag83 = flag82;
-								bool flag84 = flag83;
-								bool flag85 = flag84;
-								bool flag86 = flag85;
-								bool flag87 = flag86;
-								if (flag87)
-								{
-									BtcReplay.StartKeyframe();
-								}
+								// replay v4: no keyframes while recording any more (playback builds its own, BtcReplaySeek); old files with keyframes still play
 							}
 						}
 					}
@@ -2154,6 +2146,7 @@ public static class BtcReplay
 
 	public static void StartReplay(BtcReplay.Data d)
 	{
+		BtcReplaySeek.Reset();
 		try
 		{
 			bool flag = d == null || d.Error != null;
@@ -2395,6 +2388,41 @@ public static class BtcReplay
 		BtcReplay.playSpeed = array[num];
 	}
 
+	/// <summary>
+	/// True slow motion / fast forward: while packets are fed at normal pace, the local world runs at the replay speed, so client
+	/// animations, interpolation, particles and projectiles slow down with it (pause = 0). The game camera uses real time (Timer.smoothDeltaTime).
+	/// Seeking, rewinding and loading run at 1. Cfg Replay/TimeScale=0 keeps the old behaviour (feed rate only).
+	/// </summary>
+	private static void ApplyTimeScale()
+	{
+		float want = 1f;
+		if (BtcReplay.TimeScaleOn && BtcReplay.playStage == 3 && BtcReplay.playGo && !BtcReplay.playSeeking && !BtcReplay.rwActive)
+		{
+			want = BtcReplay.playPaused ? 0f : BtcReplay.playSpeed;
+		}
+		if (Mathf.Abs(Time.timeScale - want) > 0.001f)
+		{
+			if (!BtcReplay.tsOwned) BtcReplay.tsOwned = true;
+			Time.timeScale = want;
+		}
+	}
+
+	private static void RestoreTimeScale()
+	{
+		if (!BtcReplay.tsOwned) return;
+		BtcReplay.tsOwned = false;
+		Time.timeScale = 1f;
+	}
+
+	private static bool tsOwned;
+
+	private static bool cfgTimeScale = true;
+
+	private static bool TimeScaleOn
+	{
+		get { return BtcReplay.cfgTimeScale; }
+	}
+
 	public static void StopReplay()
 	{
 		BtcReplay.EndPlayback(true);
@@ -2423,6 +2451,7 @@ public static class BtcReplay
 		{
 			BtcReplay.mode = BtcReplay.State.Idle;
 			BtcReplay.Active = false;
+			BtcReplay.RestoreTimeScale();
 			BtcReplay.playStage = 0;
 			BtcReplay.playSeeking = false;
 			BtcReplay.rwHold = false;
@@ -2432,6 +2461,7 @@ public static class BtcReplay
 			BtcSpectate.RewindKeep = false;
 			BtcReplay.playBuf = null;
 			BtcReplayAnchor.Clear();
+			BtcReplaySeek.Reset();
 			BtcReplay.playEnded = false;
 			BtcReplay.playStatus = null;
 			try
@@ -2890,6 +2920,7 @@ public static class BtcReplay
 	{
 		BtcPov.Tick(now);
 		BtcReplayAnchor.Tick(now, BtcReplay.playGo, BtcReplay.playSeeking, BtcReplay.rwActive);
+		BtcReplaySeek.Tick(now, BtcReplay.playSeeking, BtcReplay.playClock, BtcReplay.playTotal);
 		try
 		{
 			switch (BtcReplay.playStage)
@@ -2995,6 +3026,7 @@ public static class BtcReplay
 				BtcReplay.RewindTick(now);
 				break;
 			}
+			BtcReplay.ApplyTimeScale();
 		}
 		catch (Exception ex)
 		{
@@ -3132,6 +3164,7 @@ public static class BtcReplay
 				BtcReplay.playPos = num;
 			}
 		}
+		BtcReplaySeek.AfterRecord(BtcReplay.playPos, BtcReplay.playMsAcc);
 	}
 
 	private static bool HasMsgType(byte[] b, int n, int type)
@@ -3198,6 +3231,10 @@ public static class BtcReplay
 			if (flag20)
 			{
 				BtcReplay.FixSceneSpawn(array, num4);
+			}
+			if (num3 == 3 || num3 == 10)
+			{
+				BtcReplaySeek.OnSpawnMsg(array, num4);
 			}
 			try
 			{
@@ -3982,8 +4019,110 @@ public static class BtcReplay
 		}
 	}
 
+	// ---- replay v4 instant seek (BtcReplaySeek) access to the feed state ----
+	internal static int FeedPos { get { return BtcReplay.playPos; } }
+	internal static long FeedMs { get { return BtcReplay.playMsAcc; } }
+
+	/// <summary>Replay time (ms) of the next record not fed yet; false at the end of the stream or when not playing.</summary>
+	internal static bool NextRecordMs(out long ms)
+	{
+		ms = 0L;
+		if (BtcReplay.mode != BtcReplay.State.Playing || !BtcReplay.Peek()) return false;
+		ms = BtcReplay.pendAbs;
+		return true;
+	}
+	internal static bool FeedGo { get { return BtcReplay.mode == BtcReplay.State.Playing && BtcReplay.playGo && BtcReplay.playStage == 3; } }
+	internal static bool FeedRewinding { get { return BtcReplay.rwActive; } }
+	internal static bool FeedEnded { get { return BtcReplay.playEnded; } }
+	internal static string FeedFile { get { return (BtcReplay.playData != null) ? BtcReplay.playData.FilePath : null; } }
+
+	/// <summary>Moves the feed to a captured stream position (between records) and sets the clock there.</summary>
+	internal static void FeedRestore(int pos, long ms)
+	{
+		BtcReplay.playPos = pos;
+		BtcReplay.playMsAcc = ms;
+		BtcReplay.playHavePend = false;
+		BtcReplay.playClock = (float)ms / 1000f;
+		BtcReplay.playEnded = false;
+		BtcReplay.playSeeking = false;
+	}
+
+	/// <summary>Feeds every record up to ms in one go (no frame budget). Returns the number of records.</summary>
+	internal static int FeedUntil(long ms)
+	{
+		int n = 0;
+		while (BtcReplay.Peek() && BtcReplay.pendAbs <= ms)
+		{
+			BtcReplay.Consume();
+			n++;
+		}
+		BtcReplay.playClock = Mathf.Max(BtcReplay.playClock, (float)ms / 1000f);
+		if (!BtcReplay.Peek()) BtcReplay.playEnded = true;
+		return n;
+	}
+
+	/// <summary>Feeds records until the stream position reaches pos (exact PK boundary, used by the seek self-check).</summary>
+	internal static int FeedUntilPos(int pos)
+	{
+		int n = 0;
+		while (BtcReplay.playPos < pos && BtcReplay.Peek())
+		{
+			BtcReplay.Consume();
+			n++;
+		}
+		BtcReplay.playClock = (float)BtcReplay.playMsAcc / 1000f;
+		return n;
+	}
+
+	/// <summary>Feeds one synthesized UNET message ([len u16][type u16][body]) to the replay client.</summary>
+	internal static bool FeedRaw(byte[] msg)
+	{
+		try
+		{
+			int type = (int)msg[2] | (int)msg[3] << 8;
+			if (type == 10) BtcReplay.FixSceneSpawn(msg, msg.Length);
+			BtcReplay.rconn.TransportReceive(msg, msg.Length, 0);
+			return true;
+		}
+		catch (Exception ex)
+		{
+			BtcReplay.playErrors++;
+			BtcReplay.LogFeedError((int)msg[2] | (int)msg[3] << 8, msg.Length - 4, ex);
+			return false;
+		}
+	}
+
+	internal static void SeekForwardRaw(float t)
+	{
+		BtcReplay.StartSeekForward(t);
+	}
+
+	internal static void SetStatus(string s)
+	{
+		BtcReplay.playStatus = s;
+	}
+
+	/// <summary>Per-feature resets after a jump (same as the legacy rewind) plus the HUD/minimap re-arm of RewindFinish.</summary>
+	internal static void AfterJump()
+	{
+		BtcPov.OnRewind();
+		BtcMatchStats.ResetForRewind();
+		float t = Time.unscaledTime;
+		BtcReplay.SetSpec("_hudAt", t + 0.5f);
+		BtcReplay.SetSpec("_hudPass", 0);
+		BtcReplay.SetSpec("_probeAt", t + 2f);
+		BtcReplay.SetSpec("_fixNext", 0f);
+		try { BtcReplayAnchor.AfterSeekForward(); }
+		catch (Exception ex) { BtcLog.Error("Replay", "AfterSeekForward: " + ex.Message); }
+	}
+
 	public static void SeekTo(float seconds)
 	{
+		if (BtcReplay.mode == BtcReplay.State.Playing && BtcReplay.playGo && BtcReplay.playData != null && !BtcReplay.rwActive
+			&& BtcReplaySeek.TryJump(Mathf.Clamp(seconds, 0f, BtcReplay.playTotal)))
+		{
+			return;
+		}
 		bool flag = BtcReplay.mode != BtcReplay.State.Playing || !BtcReplay.playGo || BtcReplay.playData == null;
 		bool flag2 = !flag;
 		bool flag3 = flag2;
@@ -4913,6 +5052,7 @@ public static class BtcReplay
 
 	private static void RewindFinish()
 	{
+		BtcReplaySeek.ScheduleSweep();
 		BtcReplay.rwActive = false;
 		float unscaledTime = Time.unscaledTime;
 		BtcReplay.SetSpec("_hudAt", unscaledTime + 1.5f);

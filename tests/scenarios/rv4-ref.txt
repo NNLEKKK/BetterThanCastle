@@ -1,0 +1,39 @@
+# Replay v4 repro, reference run: the user's fresh replay played normally (no preprocess, no instant jumps, multi-frame feed only).
+# Signatures go to BTClogs/ws/<tag>.txt; rv4-jump diffs its jumps against them. The match itself happens at ~290-417 s.
+pkpre 0
+pkjump 0
+replay 2026-11-07_16-22-13_Pioneer_Pass
+waitreplay 240
+wait 20
+rpause
+worldsig S20
+seek 300
+wait 8
+rpause
+wait 2
+rpause
+wait 1
+worldsig L300
+seek 340
+wait 8
+rpause
+wait 2
+rpause
+wait 1
+worldsig L340
+seek 380
+wait 8
+rpause
+wait 2
+rpause
+wait 1
+worldsig L380
+seek 410
+wait 8
+rpause
+wait 2
+rpause
+wait 1
+worldsig L410
+pkpos 10646
+quit

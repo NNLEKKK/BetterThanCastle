@@ -28,6 +28,12 @@ public static class BtcTerrainUndo
 		}
 	}
 
+	/// <summary>Replay seek (BtcReplayAnchor.ApplyTerrainBlob): journal a column/voxel it wrote directly.</summary>
+	internal static void MarkAt(XYZ p)
+	{
+		BtcTerrainUndo.Mark(p);
+	}
+
 	private static void Mark(XYZ p)
 	{
 		bool flag = !BtcTerrainUndo._live;

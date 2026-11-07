@@ -39,12 +39,12 @@ namespace BetterThanCastle
             }
             y += rowH * 1.1f;
             string[] dsc = {
-                BtcGameplay.T("Easy: attacks the nearest, no tricks.", "Easy: Р±СЊС‘С‚ Р±Р»РёР¶Р°Р№С€РµРіРѕ, Р±РµР· РїСЂРёС‘РјРѕРІ."),
-                BtcGameplay.T("Medium: focus fire and escapes, slow reactions, no skips.", "Medium: С„РѕРєСѓСЃ Рё СѓС…РѕРґ, РјРµРґР»РµРЅРЅС‹Рµ СЂРµР°РєС†РёРё, Р±РµР· СЃРєРёРїРѕРІ."),
-                BtcGameplay.T("Hard: slow imprecise skips, rotates wounded units.", "Hard: РјРµРґР»РµРЅРЅС‹Рµ РЅРµС‚РѕС‡РЅС‹Рµ СЃРєРёРїС‹, СЂРѕС‚Р°С†РёСЏ СЂР°РЅРµРЅС‹С…."),
-                BtcGameplay.T("Extreme: near-perfect skips and reactions.", "Extreme: РїРѕС‡С‚Рё РёРґРµР°Р»СЊРЅС‹Рµ СЃРєРёРїС‹ Рё СЂРµР°РєС†РёРё."),
-                BtcGameplay.T("Chosen: everything the bot can do.", "Chosen: РІСЃС‘, С‡С‚Рѕ СѓРјРµРµС‚ Р±РѕС‚."),
-                BtcGameplay.T("Custom: same as Chosen for now.", "Custom: РїРѕРєР° РєР°Рє Chosen."),
+                BtcGameplay.T("Easy: attacks the nearest, no tricks.", "Easy: бьёт ближайшего, без приёмов."),
+                BtcGameplay.T("Medium: focus fire and escapes, slow reactions, no skips.", "Medium: фокус и уход, медленные реакции, без скипов."),
+                BtcGameplay.T("Hard: slow imprecise skips, rotates wounded units.", "Hard: медленные неточные скипы, ротация раненых."),
+                BtcGameplay.T("Extreme: near-perfect skips and reactions.", "Extreme: почти идеальные скипы и реакции."),
+                BtcGameplay.T("Chosen: everything the bot can do.", "Chosen: всё, что умеет бот."),
+                BtcGameplay.T("Custom: same as Chosen for now.", "Custom: пока как Chosen."),
                 BtcGameplay.T("BreaktronZero (B0): neural network bot trained in the lab simulator (falls back to Chosen if no policy is available).", "BreaktronZero (B0): нейросетевой бот, обученный в симуляции (если нет весов, играет как Chosen).") };
             GUI.Label(new Rect(fs, y, w - fs * 2f, rowH), dsc[(int)BtcDuelConfig.Difficulty], BtcUiStyle.Note(fs));
             y += rowH;
@@ -53,7 +53,7 @@ namespace BetterThanCastle
             y += rowH;
             if (BtcUiStyle.CheckRow(new Rect(0f, y, w, rowH), BtcDuelConfig.InfiniteHeal, BtcGameplay.T("Infinite heal (10 HP/s for everyone)", "Бесконечный хил (10 HP/с у всех)"), fs)) { BtcDuelConfig.InfiniteHeal = !BtcDuelConfig.InfiniteHeal; BtcDuelConfig.Save(); }
             y += rowH;
-            if (BtcUiStyle.CheckRow(new Rect(0f, y, w, rowH), BtcDuelConfig.ArenaScale == 3, BtcGameplay.T("Large arena x3 (300x60)", "Р‘РѕР»СЊС€Р°СЏ Р°СЂРµРЅР° x3 (300x60)"), fs)) { BtcDuelConfig.ArenaScale = BtcDuelConfig.ArenaScale == 3 ? 1 : 3; BtcDuelConfig.Save(); }
+            if (BtcUiStyle.CheckRow(new Rect(0f, y, w, rowH), BtcDuelConfig.ArenaScale == 3, BtcGameplay.T("Large arena x3 (300x60)", "Большая арена x3 (300x60)"), fs)) { BtcDuelConfig.ArenaScale = BtcDuelConfig.ArenaScale == 3 ? 1 : 3; BtcDuelConfig.Save(); }
             y += rowH * 1.2f;
 
             // unit table

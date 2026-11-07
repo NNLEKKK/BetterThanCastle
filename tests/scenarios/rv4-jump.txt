@@ -1,0 +1,32 @@
+# Replay v4 repro, jump run (run rv4-real first). Delete the replay's cash/*.btcs to run the preprocess like on a first open;
+# keep it to test the cache path. Each probe: exact jump to the probe time while paused, signature, diffed against normal viewing.
+replay 2026-11-07_16-22-13_Pioneer_Pass
+waitreplay 240
+wait 30
+rpause
+worldsig P0
+seek 412
+wait 2
+worldsig J412 R412
+voxprobe 21927 102 106
+voxprobe 22572 102 106
+pkpos 10646
+voxlay 436 105 446
+voxlay 438 105 447
+seek 302
+wait 2
+worldsig J302 R302
+seek 382
+wait 2
+worldsig J382 R382
+seek 342
+wait 2
+worldsig J342 R342
+voxprobe 22574 102 106
+seek 22
+wait 2
+worldsig J22 R22
+seek 412
+wait 2
+worldsig JJ412 R412
+quit

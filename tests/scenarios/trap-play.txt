@@ -1,0 +1,16 @@
+# Plays the newest replay (from trap-rec) at x0.25 then x4; agent.log: "[ReplayTrap] playback trap" lines, "clock ... timeScale=0.25/4", no errors.
+replay latest
+waitreplay 180
+wait 3
+speed 0.25
+wait 2
+ts
+wait 4
+speed 4
+wait 2
+ts
+wait 4
+seek 4
+wait 6
+ts
+quit

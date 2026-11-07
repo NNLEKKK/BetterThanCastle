@@ -1,0 +1,19 @@
+# Replay v4: jump back to the start after the end (user report: start keyframe shows end-of-game terraforming).
+# S45 = fresh world at ~45 s (no jump yet), then jump to 2200 and back to 45: J45 vs S45.
+replay 2026-11-05_17-32-04_Komorebi
+waitreplay 240
+wait 40
+rpause
+worldsig S45
+seek 2200
+wait 3
+worldsig J2200
+seek 45
+wait 3
+worldsig J45 S45
+seek 2200
+wait 3
+seek 45
+wait 3
+worldsig JJ45 S45
+quit

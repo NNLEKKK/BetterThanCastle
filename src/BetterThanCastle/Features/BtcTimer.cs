@@ -98,6 +98,9 @@ namespace BetterThanCastle
         internal static void Tick()
         {
             BtcAutoMarks.Tick();
+            BtcCraftQueue.Tick();
+            BtcInfHeal.Tick();
+            BtcHeldWards.Tick();
             BtcPovRec.Tick();
             BtcPovRec.PlayTick();
             if (Cur != _lastCur) { BtcLog.Info("Timer", "phase " + _lastCur + " -> " + Cur + " (replay " + BtcReplay.Mode + ")"); _lastCur = Cur; }
@@ -109,7 +112,7 @@ namespace BetterThanCastle
                     if (Time.unscaledTime >= _nextAskLog) { _nextAskLog = Time.unscaledTime + 5f; BtcLog.Info("Timer", "replay pc=" + (BtcReplay.Seeking ? BtcReplay.SeekTarget : BtcReplay.PlayClock).ToString("F0") + " el=" + Elapsed.ToString("F0") + " panelAsks+" + (_asks - _asksLogged)); _asksLogged = _asks; }
                     return;
                 }
-                bool want = BtcNetworkGate.Enabled && BtcReplay.Mode != BtcReplay.State.Playing && InMatch()
+                bool want = BtcNetworkGate.Enabled && Neo.multiplayer && BtcReplay.Mode != BtcReplay.State.Playing && InMatch()
                             && (Host ? SettingOn : true);
                 if (!want)
                 {

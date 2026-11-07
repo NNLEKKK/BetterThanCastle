@@ -86,3 +86,15 @@ Untested at the time of writing: items 1-5 in real MP, header patch with a real 
 8. View cone: far range now 260 (was 70) so the two top corners reach the ground when looking from high up.
 9. (2026-11-05 b) Tasks: the game's flatten/quarry visuals are NOT recoloured any more; owner = my overlay: coloured pillar+diamond on every task beacon, coloured ring for the radius, coloured frame around the whole flatten/quarry volume. View cone base = real footprint (24 rays marched through the voxel terrain, sky rays end on the ground at the far distance); look parallel to the ground and compare the outline with the real screen edges.
 10. (2026-11-05 c) Tasks: overlay removed (no pillar/ring/frame); game visuals as in-game; the task PLATE over each beacon gets a frame + badge + text in the owner colour (log `plates coloured N` in the DEV `taskdump`). Unit owner dots: layout window (F7) button "Unit owner dots": off / while Alt / always (cfg Replay/UnitOwnerDots, default Alt). UNTESTED: a game was running, only compiled (Debug + Release).
+
+## Small list items 2026-11-07
+- craft.max: BC ON, set 20; queue 20 orders at a bench, client sees all 20 (tail msg 107), remove/clear works, BC OFF = 8.
+- G5: put a healing ward, stand in, lift it so it is unpowered, units heal anywhere; save, reload: they still heal (log `[InfHeal] saved/restored`).
+- I2: open a replay that has POV tracks: the camera starts on the first player's camera (log `[PovRec] start camera set`).
+- noskip (Movement): move-attack before a hit no longer cancels the strike. H2: enemy HP numbers/centres hidden in MP, visible in replays. G8/J3 see STATUS.
+
+## Replay v4 (branch replay-v4, 2026-11-07)
+- Traps: record a match with armed bear traps (own and enemy). Replay: free camera shows all traps; a player's POV shows only own/allied ones. Log `[ReplayTrap] rec observes` (recording), `[ReplayTrap] playback trap` (playback).
+- Slow motion: x0.25 / x0.5: units, animations, arrows, particles really slow down; pause freezes the world; x4/x8 speeds everything up; camera and UI stay at normal speed. replay.txt `TimeScale=0` = old behaviour.
+- Instant seek: first open shows "Preparing seek N%" (fast forward to the end, then back); afterwards clicking anywhere on the timeline (back or forward) is near-instant. Second open of the same replay skips the preparation (cache in BetterThanCastle/cash/*.btcs). Log `[ReplaySeek] jump ... total N ms`.
+- After jumps check: carried items in hands, items on racks/stockpiles, buildings/blueprints, crafting queues, dug terrain and fallen trees look like normal playback at that time. Old replays (v0.2.x) play and seek the same way. Fallback: replay.txt `InstantSeek=0`.

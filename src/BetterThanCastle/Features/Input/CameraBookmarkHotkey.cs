@@ -40,6 +40,7 @@ namespace Brix.Input
 				this.HandleBreakObject();
 				this.HandleGoDetonate();
 				this.HandleShootAt();
+				this.HandleFocusMark();
 				this.HandleDropLuggage();
 				this.HandleOverlayToggle();
 			}
@@ -925,6 +926,7 @@ namespace Brix.Input
 				this.DrawOverlay();
 			}
 			this.DrawAttribution();
+			BtcFocusMark.DrawIcon();
 		}
 
 		private void EnsureOverlayStyles()
@@ -1553,6 +1555,15 @@ namespace Brix.Input
 			}
 		}
 
+		private void HandleFocusMark()
+		{
+			KeyCode[] keys = BtcHotkeys.GetKeys("focus_mark", null);
+			if (keys != null && keys.Length != 0 && CameraBookmarkHotkey.IsComboPressed(keys))
+			{
+				BtcFocusMark.Place();
+			}
+		}
+
 		private void HandleShootAt()
 		{
 			KeyCode[] keys = BtcHotkeys.GetKeys("shoot_at", null);
@@ -1590,7 +1601,7 @@ namespace Brix.Input
 				for (int j = 0; j < hits.Length && target == null; j++)
 				{
 					Collider col = hits[j].collider;
-					if (col == null)
+					if (col == null || CameraBookmarkHotkey.IsAuraCollider(col))
 					{
 						continue;
 					}

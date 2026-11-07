@@ -1,0 +1,13 @@
+# Replay v4 phase 0: playback keyframe feasibility + current seek cost on a real MP replay.
+# agent.log: "PkProbe" lines (serialize/deserialize round trip), seek/rewind timings.
+replay 2026-11-06_18-43-18
+waitreplay 240
+wait 20
+pkprobe 1
+seek 900
+wait 40
+pkprobe 1
+seek 300
+wait 60
+pkprobe 1
+quit

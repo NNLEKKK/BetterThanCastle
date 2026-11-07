@@ -1,0 +1,6 @@
+# Replay v4: PK self-check only (restore + feed to next PK), names the differing component per object.
+replay 2026-11-06_18-43-18
+waitreplay 240
+wait 40
+pkverify 4
+quit

@@ -1,0 +1,9 @@
+# DEV: one jump on Komorebi to dump phantom ward visuals (ProducedItems).
+replay 2026-11-05_17-32-04_Komorebi
+waitreplay 240
+wait 60
+rpause
+seek 1500
+wait 2
+worldsig KJ1500 KR1500
+quit

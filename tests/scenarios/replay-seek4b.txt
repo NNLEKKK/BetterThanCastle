@@ -1,0 +1,20 @@
+# Replay v4 instant seek on the biggest local replay (полётика1): first-open preprocess, PK self-check, jumps back and forth.
+# agent.log: "[ReplaySeek] preprocess done", "pkverify ... MATCH", "[ReplaySeek] jump ... total N ms".
+replay полётика1
+waitreplay 240
+wait 120
+pkverify 6
+wait 3
+seek 900
+wait 5
+seek 300
+wait 5
+seek 30
+wait 5
+seek 1500
+wait 5
+seek 1495
+wait 5
+ts
+pkprobe 0
+quit
