@@ -12,7 +12,7 @@ $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 $repo = 'NNLEKKK/BetterThanCastle'
 $gh = 'C:\Program Files\GitHub CLI\gh.exe'
-if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw "Version must be x.y.z" }
+if ($Version -notmatch '^\d+\.\d+\.\d+[a-z]?$') { throw "Version must be x.y.z or x.y.z + a letter" }
 $tag = "v$Version"
 if (git tag --list $tag) { throw "Tag $tag already exists" }
 if (git status --porcelain --untracked-files=no) { throw "Working tree has uncommitted changes; commit them first" }
@@ -20,7 +20,7 @@ if (git status --porcelain --untracked-files=no) { throw "Working tree has uncom
 $plugin = Join-Path $root 'src\BetterThanCastle\Plugin.cs'
 $proj = Join-Path $root 'src\BetterThanCastle\BetterThanCastle.csproj'
 [IO.File]::WriteAllText($plugin, [regex]::Replace([IO.File]::ReadAllText($plugin), 'Version = "[^"]*";', "Version = `"$Version`";"))
-[IO.File]::WriteAllText($proj, [regex]::Replace([IO.File]::ReadAllText($proj), '<Version>[^<]*</Version>', "<Version>$Version</Version>"))
+[IO.File]::WriteAllText($proj, [regex]::Replace([IO.File]::ReadAllText($proj), '<Version>[^<]*</Version>', "<Version>$($Version -replace '[a-z]$','')</Version>"))
 
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'build.ps1') -Release
 if ($LASTEXITCODE -ne 0) { git checkout -- $plugin $proj; throw "Release build / verify-dist failed" }

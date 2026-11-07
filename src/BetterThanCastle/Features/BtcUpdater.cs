@@ -138,7 +138,16 @@ namespace BetterThanCastle
 				if (i < y.Length) int.TryParse(Regex.Match(y[i], "\\d+").Value, out q);
 				if (p != q) return p < q ? -1 : 1;
 			}
-			return 0;
+			// letter suffix of the last part (0.3.0a > 0.3.0)
+			int sa = Suffix(x), sb = Suffix(y);
+			return sa == sb ? 0 : (sa < sb ? -1 : 1);
+		}
+
+		private static int Suffix(string[] p)
+		{
+			if (p.Length < 3) return 0;
+			Match m = Regex.Match(p[2], "[A-Za-z]");
+			return m.Success ? char.ToLower(m.Value[0]) - 'a' + 1 : 0;
 		}
 
 		private void OnGUI()

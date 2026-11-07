@@ -24,4 +24,17 @@ namespace BetterThanCastle.Patches
             catch (Exception e) { BtcLog.Error("Hook", "InfHeal.Load: " + e); }
         }
     }
+
+    // a ward switched to healing (powered) releases every unit bound to it by the stuck-heal bug (restored from a save)
+    [HarmonyPatch(typeof(Brix.Game.Components.ArtificerStaff), "ToHealing")]
+    internal static class InfHealWardOnPatch
+    {
+        private static readonly System.Reflection.FieldInfo AuraField = AccessTools.Field(typeof(Brix.Game.Components.ArtificerStaff), "aura");
+
+        private static void Postfix(Brix.Game.Components.ArtificerStaff __instance)
+        {
+            try { BtcInfHeal.OnWardOn(AuraField.GetValue(__instance) as Brix.Game.Components.RegenAura); }
+            catch (Exception e) { BtcLog.Error("Hook", "InfHeal.WardOn: " + e); }
+        }
+    }
 }

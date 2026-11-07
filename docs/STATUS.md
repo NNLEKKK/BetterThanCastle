@@ -1,5 +1,5 @@
 # STATUS (read first; keep <=60 lines; update at the end of every session)
-Updated: 2026-11-04 (advanced timer: ready phase, score-panel clock, replay timeline marks, souls in energy stats). Branch refactor/main.
+Updated: 2026-11-07 (v0.3.0 released: replay instant seek).
 
 ## Done (code committed; user confirmed in game: hotkeys, input lock, menu look, thumbnail scale, handicap dmg/hp/income/penalty, symmetry crystal)
 - Port complete (125 patches after Anim Sync removal), net core, replay, ResourcePackManager menu, perf fixes (see git log).
@@ -33,7 +33,7 @@ Updated: 2026-11-04 (advanced timer: ready phase, score-panel clock, replay time
 - 2026-11-05 replay UI: layout editor (Replay/BtcReplayLayout.cs, F7: scale/move/hide modules, templates), 3D view cones (BtcPovCone.cs), client POV recording FIXED (msg 93 collided with BtcPlate; ids 100-105 now, see ARCHITECTURE), marks H (home crystal lost = flag) / N (crystal neutralised), death mark dedupe, POV list from tracks. Test plan docs/test-plans.md 'Replay UI'.
 
 ## NEXT
-00. Replay v4 (list I1, branch `replay-v4`, NOT merged; memory project-replay-v4): traps in replays + true slow motion OK; recording keyframes removed. Instant seek (Replay/BtcReplaySeek.cs) BROKEN per user 2026-11-07 on a fresh replay: end-of-game terrain at the start, phantom purple capture wards, captured crystals not restored. Goal: keyframes save everything, seek == normal viewing. Next session: reproduce on a fresh recording first.
+00. RELEASED v0.3.0 (2026-11-07, public abca5d8): replay v4 instant seek merged into refactor/main (keyframes: terrain layers, crystals, trees, dropped items, containers, orphan sweep + re-listing, host freeze skip). User confirmed seek OK on new replays and Komorebi spam. Memory project-replay-v4 has the details and open leads.
 0. v0.2.3 released (2026-11-04): jump-off line (tag JumpLine), chop 1x1 (confirmed), rack kit filter (tag RackFilter/Livre; untested: Alt icon, save/load, MP host apply, hover pie), window mode + skip intro. User tests these.
 1. User: test MP (2 players, BC ON): lobby colours 5-8 + teams E-H, call-to-arms on custom colours (send `[CallToArms]` log line), editor panel for client, spawn selection, replay auto-delivery; docs/test-plans.md sections F, G.
 2. Handicap cap: send `[Handicap] cap`/`start workers` log lines if still wrong. Opt: menu checkbox for Replay/AutoShare (cfg only now). Profile checkbox shape confirmed square? (unchecked).
