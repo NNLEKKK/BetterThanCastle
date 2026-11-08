@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory=$true)][string]$Version,   # e.g. 0.2.0
     [string]$Notes = '',                            # changelog text for the release (also add it to CHANGELOG.md)
     [switch]$Prerelease,                            # GitHub pre-release (updater ignores it: /releases/latest skips pre-releases)
