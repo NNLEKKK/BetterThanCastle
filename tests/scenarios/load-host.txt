@@ -1,0 +1,5 @@
+# Load-time probe: new sandbox game, wait for load, quit.
+newgame
+waitgame 240
+wait 3
+quit

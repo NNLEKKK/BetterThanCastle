@@ -57,6 +57,18 @@ namespace BetterThanCastle.Patches
         }
     }
 
+    [HarmonyPatch(typeof(LocalFactionVision), "UpdateHostVisibility")]
+    internal static class LocalFactionVisionUpdateHostVisibilityPatch
+    {
+        // replay POV: vanilla sets renderers by the spectator faction's vision, which fights BtcPov's per-POV fog -> flicker
+        private static void Postfix(LocalFactionVision __instance)
+        {
+            if (!BtcPov.Active) return;
+            try { BtcPov.ReapplyHostVisibility(__instance); }
+            catch (Exception e) { BtcLog.Error("Hook", "LocalFactionVision.UpdateHostVisibility: " + e.Message); }
+        }
+    }
+
     [HarmonyPatch(typeof(LocalFactionVision), "ResetComponent")]
     internal static class LocalFactionVisionResetComponentPatch
     {

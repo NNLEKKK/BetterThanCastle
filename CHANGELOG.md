@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.3.3
+Includes everything since 0.3.0 (0.3.0a, 0.3.1a, 0.3.2 and new work). Items marked (BC) need BetterConnection ON; with it OFF the mod stays vanilla on the wire.
+
+### Replay player
+- One bottom bar instead of two panels: full screen width, flush with the bottom edge. Top: the timeline with marks; below: time, play / pause, slower / faster, -10 s / +10 s, player switch, toggles and exit. Everything is drawn as icons in one style (tooltips with hotkeys on hover), text uses a geometric font (Bahnschrift, falls back to Segoe UI / Arial).
+- Icon toggles: hide UI (F8), follow the player's camera, player cursors, blueprints + tasks, view cones, UI settings (F7). The red square leaves the replay.
+- Watching a player: click the nick to open a list (Spectator + all players with their colours), or use the arrows. New hotkeys Shift+A / Shift+D = previous / next POV or spectator (Hotkeys > Replay, rebindable).
+- F7 settings: new "Panel height" slider; the panel position is fixed, old position/scale of the two panels is ignored. Defaults now: timeline icons 0.7, cursors 1.0, view cone 0.43.
+- Camera and cursor of players are now recorded at 30 Hz and teleports (hotkeys, bookmarks, minimap clicks) are flagged, so the replay shows jumps as jumps instead of a smooth glide. Old replays keep their old 5 Hz data.
+- Fixed: flickering fog of war while watching a player (vanilla re-enabled objects for the spectator faction between our updates).
+- Fixed in seek: a unit that respawned could stay invisible after jumping back to a death mark; containers refresh after a jump; match statistics are rebuilt after instant seeks and for old replays.
+
+### Loading
+- Load timer overlay while the world loads (seconds, total at the end): Display/LoadTimer.
+- Menu panels are reused while the world loads, host load about 24 s -> 20.7 s in our tests: Loading/ReuseMenuPanels (turn it off if the in-game UI looks wrong after loading).
+- Multiplayer (experimental): the client builds its UI while it waits for the host, waits for its home nest, and falls back to the vanilla loading by itself if something is missing. The real two-PC gain is not measured yet.
+
+### Gameplay and saves
+- Infinity heal after loading a save is now bound to its real source ward and ends when that ward is destroyed, like in vanilla (no dummy auras, no stacking).
+
+### Updater
+- Version numbers with a letter suffix (0.3.1a) are understood by the in-game updater.
+
+**По-русски:** новая нижняя панель реплея на всю ширину с иконками, переключение игрока по клику на ник и Shift+A / Shift+D, запись камеры 30 Гц с точными телепортами, исправлено мерцание тумана войны в режиме просмотра игрока, таймер загрузки и ускоренная загрузка мира, исправления перемотки реплеев.
+
+
 ## 0.3.0
 Items marked (BC) need BetterConnection ON; with it OFF the mod stays vanilla on the wire.
 

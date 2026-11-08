@@ -40,17 +40,32 @@ namespace BetterThanCastle.Patches
         private static bool Step(DynValue t, LuaMenuComponent lmc)
         {
             long t0 = Stopwatch.GetTimestamp();
+            double spent = 0.0;
             for (;;)
             {
                 long r0 = Stopwatch.GetTimestamp();
                 t.Tuple[1].Coroutine.Resume();
                 double ms = BtcLoadBoost.ElapsedMs(r0);
+                spent += ms;
                 if (ms >= 150.0) BtcLoadBoost.Note("  slow menu resume: " + ms.ToString("F0") + " ms" + BtcLoadBoost.GcInfo());
                 if (t.Tuple[1].Coroutine.State == CoroutineState.Dead) break;
-                if (!BtcLoadBoost.MenuSliceOn()) return false;
-                if (BtcLoadBoost.ElapsedMs(t0) >= (double)BtcLoadBoost.MenuBudgetMs) return false;
+                if (!BtcLoadBoost.MenuSliceOn()) { BtcLoadBoost.AddMenu(lmc.Path, spent); return false; }
+                if (BtcLoadBoost.ElapsedMs(t0) >= (double)BtcLoadBoost.MenuBudgetMs) { BtcLoadBoost.AddMenu(lmc.Path, spent); return false; }
             }
-            lmc._menu = LuaMenu.LoadMenuTable(t.Tuple[0].Table, lmc.GetParent, lmc.OnMenuLoadedHook, lmc.Path, false, true, false);
+            long l0 = Stopwatch.GetTimestamp();
+            // same steps as LuaMenu.LoadMenuTable, split for timing
+            Table tm = t.Tuple[0].Table;
+            if (!string.IsNullOrEmpty(lmc.Path)) tm.Set("Path", DynValue.NewString(lmc.Path));
+            IMenu menu = LuaMenu.ScanMenuTable(tm, false, true, false);
+            double scan = BtcLoadBoost.ElapsedMs(l0);
+            menu.GetParent = lmc.GetParent;
+            menu.OnLoadedHook = lmc.OnMenuLoadedHook;
+            menu.Load(true, true);
+            lmc._menu = menu;
+            double build = BtcLoadBoost.ElapsedMs(l0);
+            BtcLoadBoost.Note("  menu " + lmc.Path + ": scan " + scan.ToString("F0") + " ms, Load " + (build - scan).ToString("F0") + " ms");
+            BtcLoadBoost.AddMenu(lmc.Path, spent + build);
+            if (spent + build >= 100.0) BtcLoadBoost.Note("  menu " + lmc.Path + ": lua " + spent.ToString("F0") + " ms, table " + build.ToString("F0") + " ms");
             return true;
         }
     }

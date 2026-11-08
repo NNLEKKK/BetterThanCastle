@@ -23,9 +23,12 @@ public static class BtcLoadBoost
 		BtcLoadBoost.RefreshTreeCalls = 0;
 		BtcLoadBoost.RefreshTreeMs = 0.0;
 		BtcLoadBoost._t0 = Stopwatch.GetTimestamp();
+		BtcLoadTimer.Begin();
 		BtcLoadBoost._last = BtcLoadBoost._t0;
 		BtcLoadBoost._started = true;
 		BtcGc.Pause("load begin");
+#if DEV
+#endif
 		BtcLoadBoost.Write(string.Concat(new string[]
 		{
 			"---- load begin (",
@@ -43,7 +46,9 @@ public static class BtcLoadBoost
 		if (flag2)
 		{
 			BtcLoadBoost.Loading = false;
-			BtcGc.Resume("StartStep done");
+			BtcLoadBoost.DumpMenus();
+				BtcLoadTimer.End();
+				BtcGc.Resume("StartStep done");
 		}
 		else
 		{
@@ -73,7 +78,9 @@ public static class BtcLoadBoost
 
 	private static void Write(string line)
 	{
-		string message = "[BtcLoad] " + line;
+		string role = Environment.GetEnvironmentVariable("BTC_ROLE");
+			if (!string.IsNullOrEmpty(role)) line = "<" + role + "> " + line;
+			string message = "[BtcLoad] " + line;
 		UnityEngine.Debug.Log(message);
 		try
 		{
@@ -145,7 +152,34 @@ public static class BtcLoadBoost
 		BtcLoadBoost._hashCache = new Dictionary<string, string>();
 	}
 
-	public static void Note(string s)
+	private static readonly Dictionary<string, double> _menuMs = new Dictionary<string, double>();
+
+		public static void AddMenu(string path, double ms)
+		{
+			if (path == null) path = "?";
+			double v;
+			_menuMs.TryGetValue(path, out v);
+			_menuMs[path] = v + ms;
+		}
+
+		public static void DumpMenus()
+		{
+			List<KeyValuePair<string, double>> l = new List<KeyValuePair<string, double>>(_menuMs);
+			_menuMs.Clear();
+			l.Sort((a, b) => b.Value.CompareTo(a.Value));
+			double sum = 0;
+			for (int i = 0; i < l.Count; i++) sum += l[i].Value;
+			Note("menus total " + sum.ToString("F0") + " ms in " + l.Count + " menus; instantiate-tree reuse forced " + BetterThanCastle.Patches.BuilderUtilityInstantiateTreePatch.Forced);
+#if DEV
+			BetterThanCastle.Dev.BtcDevLoadProbe.Dump();
+			BetterThanCastle.Dev.BtcDevMethodProf.Dump();
+			BetterThanCastle.Dev.BtcDevMenuProbe.Dump();
+			BetterThanCastle.Dev.BtcDevLuaFileProbe.Dump();
+#endif
+			for (int i = 0; i < l.Count && i < 15; i++) Note("  top menu " + l[i].Key + " " + l[i].Value.ToString("F0") + " ms");
+		}
+
+		public static void Note(string s)
 	{
 		double num = (double)(Stopwatch.GetTimestamp() - BtcLoadBoost._t0) / (double)Stopwatch.Frequency;
 		BtcLoadBoost.Write(string.Format("{0,8:F2}s  {1}", num, s));
@@ -193,7 +227,7 @@ public static class BtcLoadBoost
 
 	public static bool Loading;
 
-	public static float MenuBudgetMs = 100000f;
+	public static float MenuBudgetMs = 250f;
 
 	public static int RefreshTreeCalls;
 

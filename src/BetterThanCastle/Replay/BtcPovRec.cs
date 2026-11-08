@@ -22,7 +22,7 @@ namespace BetterThanCastle
     internal static class BtcPovRec
     {
         internal const short Msg = 100;
-        private const float SampleEvery = 0.2f;
+        private const float SampleEvery = 1f / 30f;   // 30 Hz: camera glides and cursor are recorded as they were; jumps are flagged (Fl 32)
         private const float SendEvery = 0.5f;
 
         internal struct S
@@ -33,7 +33,7 @@ namespace BetterThanCastle
             internal int D;                 // camera distance, 0.1
             internal int Wx, Wy, Wz;        // cursor world position, 1/8 voxel
             internal int Mu, Mv;            // mouse on screen, 0..1000 (v up)
-            internal int Fl;                // 1 LMB, 2 RMB, 4 MMB, 8 pie open, 16 world cursor valid
+            internal int Fl;                // 1 LMB, 2 RMB, 4 MMB, 8 pie open, 16 world cursor valid, 32 camera jump (do not interpolate from the previous sample)
             internal int Pr;                // pie opening progress 0..255 (0 = none)
         }
 
@@ -123,31 +123,65 @@ namespace BetterThanCastle
             t.L.Add(s);
         }
 
-        /// <summary>Every frame (BtcTimer.Tick): record / send the local player's camera and cursor.</summary>
+        private static string _idCache, _idCol;   // nick / colour strings reused between samples (no garbage at 30 Hz)
+        private static int _idFac;
+        private static float _idUntil;
+        private static S _prevS;
+        private static bool _havePrev;
+
+        /// <summary>A camera move no smooth scroll/rotate/zoom produces in one frame: hotkey / bookmark / minimap jump.</summary>
+        private static bool Jumped(S a, S b, float dt)
+        {
+            float dx = (b.Cx - a.Cx) / 8f, dy = (b.Cy - a.Cy) / 8f, dz = (b.Cz - a.Cz) / 8f;
+            if (dx * dx + dy * dy + dz * dz > Mathf.Pow(10f + 150f * dt, 2f)) return true;
+            return Mathf.Abs(Mathf.DeltaAngle(a.Ry / 10f, b.Ry / 10f)) > 25f + 400f * dt;
+        }
+
+        private static void Emit(S s, bool recMode, User u)
+        {
+            if (recMode)
+            {
+                if (_idCache == null || _idFac != u.faction.ID || Time.unscaledTime > _idUntil) { _idFac = u.faction.ID; _idCache = LocalName(); _idCol = ColorUtility.ToHtmlStringRGB(u.faction.FactionColor); _idUntil = Time.unscaledTime + 10f; }
+                Add(u.faction.ID, _idCache, _idCol, s);
+            }
+            else NetBuf.Add(s);
+        }
+
+        /// <summary>Every frame (BtcTimer.Tick): record / send the local player's camera and cursor. The pose is checked each frame so a jump is stored
+        /// as "old pose, then new pose flagged 32" and shows in the replay as a jump; otherwise a sample every SampleEvery (changes only).</summary>
         internal static void Tick()
         {
-            if (BtcConfig.ReplayRecordPov == null || !BtcConfig.ReplayRecordPov.Value) return;
+            if (BtcConfig.ReplayRecordPov == null || !BtcConfig.ReplayRecordPov.Value) { _havePrev = false; return; }
             bool rec = BtcReplay.Mode == BtcReplay.State.Recording;
-            if (!rec && (BtcReplay.Mode == BtcReplay.State.Playing || NetworkServer.active || !BtcNetworkGate.Enabled)) return;
+            if (!rec && (BtcReplay.Mode == BtcReplay.State.Playing || NetworkServer.active || !BtcNetworkGate.Enabled)) { _havePrev = false; return; }
             float now = Time.unscaledTime;
-            if (now < _nextSample) return;
-            _nextSample = now + SampleEvery;
             User u = User.LocalUser;
-            if (u == null || u.faction == null || !BtcMatchStats.Tracks(u.faction)) return;
+            if (u == null || u.faction == null || !BtcMatchStats.Tracks(u.faction)) { _havePrev = false; return; }
             S s;
-            if (!Capture(out s)) return;
-            if (rec && (NetworkServer.active || BtcReplay.Mode == BtcReplay.State.Recording))
+            if (!Capture(out s)) { _havePrev = false; return; }
+            bool recMode = rec && (NetworkServer.active || BtcReplay.Mode == BtcReplay.State.Recording);
+            if (recMode)
             {
                 float t = BtcReplay.RecTime;
-                if (t < 0f) return;
+                if (t < 0f) { _havePrev = false; return; }
                 s.T = Mathf.RoundToInt(t * 1000f);
-                Add(u.faction.ID, LocalName(), ColorUtility.ToHtmlStringRGB(u.faction.FactionColor), s);
-                return;
             }
-            // pure BC client: batch to the host
-            s.T = Mathf.RoundToInt(now * 1000f);
-            NetBuf.Add(s);
-            if (now >= _nextSend) { _nextSend = now + SendEvery; SendBatch(u); }
+            else s.T = Mathf.RoundToInt(now * 1000f);
+            bool jump = _havePrev && Jumped(_prevS, s, Mathf.Min(Time.unscaledDeltaTime, 0.5f));
+            bool due = now >= _nextSample;
+            if (jump)
+            {
+                Emit(_prevS, recMode, u);   // the pose right before the jump (Add drops it when it equals the last sample)
+                s.Fl |= 32;
+            }
+            if (jump || due)
+            {
+                _nextSample = now + SampleEvery;
+                Emit(s, recMode, u);
+            }
+            _prevS = s;
+            _havePrev = true;
+            if (!recMode && now >= _nextSend) { _nextSend = now + SendEvery; SendBatch(u); }
         }
 
         // ------------------------------------------------------------------ net (client -> host)
@@ -414,7 +448,7 @@ namespace BetterThanCastle
             b = i + 1 < n ? t.L[i + 1] : a;
             // a gap in the data (no samples while the camera did not move is fine; more than 3 s: hold the last one)
             f = b.T > a.T ? Mathf.Clamp01((float)(ms - a.T) / (b.T - a.T)) : 0f;
-            if (b.T - a.T > 3000) f = 0f;
+            if (b.T - a.T > 3000 || (b.Fl & 32) != 0) f = 0f;   // gap, or the camera jumped (hotkey / minimap click): hold the old pose until the jump
             return true;
         }
 

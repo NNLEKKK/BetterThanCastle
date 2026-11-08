@@ -1,0 +1,5 @@
+# Load-time probe of a replay: load, wait, quit.
+replay 2026-11-05_17-32-04_Komorebi
+waitreplay 300
+wait 3
+quit

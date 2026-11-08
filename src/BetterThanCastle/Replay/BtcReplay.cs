@@ -793,6 +793,7 @@ public static class BtcReplay
 
 	public static void OnBeforeGamemode(int phase)
 	{
+		BtcLoadBoost.Note("gamemode phase " + phase);
 	}
 
 	public static bool IsRec(NetworkConnection c)

@@ -19,6 +19,8 @@ namespace BetterThanCastle
             BtcHotkeys.AddKey(g, "replay_faster", "Replay: faster", 0, "X", false);
             BtcHotkeys.AddKey(g, "replay_back", "Replay: back 10 s", 0, "C", false);
             BtcHotkeys.AddKey(g, "replay_fwd", "Replay: forward 10 s", 0, "V", false);
+            BtcHotkeys.AddKey(g, "replay_pov_prev", "Replay: previous POV / spectator", 0, "LeftShift+A", false);
+            BtcHotkeys.AddKey(g, "replay_pov_next", "Replay: next POV / spectator", 0, "LeftShift+D", false);
         }
 
         internal static bool SkipPauses
@@ -49,6 +51,8 @@ namespace BetterThanCastle
             float pc = BtcReplay.Seeking ? BtcReplay.SeekTarget : BtcReplay.PlayClock;
             if (Pressed("replay_back", new[] { KeyCode.C })) BtcReplay.SeekTo(Mathf.Max(0f, pc - 10f));
             if (Pressed("replay_fwd", new[] { KeyCode.V })) BtcReplay.SeekTo(pc + 10f);
+            if (Pressed("replay_pov_prev", new[] { KeyCode.LeftShift, KeyCode.A })) BtcPov.Cycle(-1);
+            if (Pressed("replay_pov_next", new[] { KeyCode.LeftShift, KeyCode.D })) BtcPov.Cycle(1);
             if (SkipPauses && !BtcReplay.Seeking) SkipTick();
         }
 

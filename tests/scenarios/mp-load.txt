@@ -1,0 +1,8 @@
+# MP load probe, host: lobby, 1 client, start, wait for load, quit.
+host default conquest
+waitclients 1 200
+wait 3
+startmatch 120
+waitgame 240
+wait 5
+quit

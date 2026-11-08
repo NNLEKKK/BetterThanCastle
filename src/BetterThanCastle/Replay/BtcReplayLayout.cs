@@ -14,15 +14,15 @@ namespace BetterThanCastle
     /// </summary>
     internal static class BtcReplayLayout
     {
-        internal const int Bar = 0, Pov = 1, N = 2;
-        private static readonly string[] Names = { "Control panel", "Player box" };
-        private static readonly string[] NamesRu = { "Панель управления", "Блок игрока" };
-        private static readonly float[] Scale = { 1f, 1f }, Ox = { 0f, 0f }, Oy = { 0f, 0f };
-        private static readonly bool[] Vis = { true, true };
+        internal const int Bar = 0, N = 1;
+        private static readonly string[] Names = { "Control panel" };
+        private static readonly string[] NamesRu = { "Панель управления" };
+        private static readonly float[] Scale = { 1f }, Ox = { 0f }, Oy = { 0f };
+        private static readonly bool[] Vis = { true };
         private static readonly Rect[] Tr = new Rect[N];
         private static readonly bool[] TrOk = new bool[N];
 
-        internal static float MarkScale = 1f, CursorScale = 1f, LabelScale = 1f, ConeAlpha = 1f;
+        internal static float MarkScale = 0.701f, CursorScale = 1.009f, LabelScale = 1f, ConeAlpha = 0.43f, BarScale = 1f;
         internal static bool Edit;
 
         private static bool _loaded, _dirty;
@@ -48,7 +48,7 @@ namespace BetterThanCastle
         internal static void Reset()
         {
             for (int i = 0; i < N; i++) { Scale[i] = 1f; Ox[i] = 0f; Oy[i] = 0f; Vis[i] = true; }
-            MarkScale = CursorScale = LabelScale = ConeAlpha = 1f;
+            MarkScale = 0.701f; CursorScale = 1.009f; LabelScale = BarScale = 1f; ConeAlpha = 0.43f;
             _dirty = true;
         }
 
@@ -66,7 +66,7 @@ namespace BetterThanCastle
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < N; i++)
                 sb.Append("m").Append(i).Append('=').Append(F(Scale[i])).Append(',').Append(F(Ox[i])).Append(',').Append(F(Oy[i])).Append(',').Append(Vis[i] ? 1 : 0).Append(';');
-            sb.Append("mk=").Append(F(MarkScale)).Append(";cs=").Append(F(CursorScale)).Append(";ls=").Append(F(LabelScale)).Append(";ca=").Append(F(ConeAlpha));
+            sb.Append("mk=").Append(F(MarkScale)).Append(";cs=").Append(F(CursorScale)).Append(";ls=").Append(F(LabelScale)).Append(";ca=").Append(F(ConeAlpha)).Append(";bs=").Append(F(BarScale));
             return sb.ToString();
         }
 
@@ -99,6 +99,7 @@ namespace BetterThanCastle
                 else if (key == "cs") CursorScale = Mathf.Clamp(P(val, 1f), 0.4f, 3f);
                 else if (key == "ls") LabelScale = Mathf.Clamp(P(val, 1f), 0.4f, 3f);
                 else if (key == "ca") ConeAlpha = Mathf.Clamp(P(val, 1f), 0f, 2f);
+                else if (key == "bs") BarScale = Mathf.Clamp(P(val, 1f), 0.6f, 1.6f);
             }
         }
 
@@ -114,6 +115,7 @@ namespace BetterThanCastle
         {
             Ensure();
             _cur = id;
+            if (id == Bar) { _saved = GUI.matrix; Tr[id] = b; TrOk[id] = true; return; }   // the bar is fixed: full width, flush with the screen bottom
             float s = Scale[id];
             Vector2 pv = id == Bar ? new Vector2(b.center.x, b.yMax) : b.center;
             Vector2 off = new Vector2(Ox[id] * Screen.width, Oy[id] * Screen.height);
@@ -192,7 +194,7 @@ namespace BetterThanCastle
             float rowH = fs * 1.6f;
             float w = fs * 27f;
             if (_presets == null) LoadPresets();
-            float h = rowH * (4f + N + 5f + 2f + 1f + Mathf.Min(_presets.Count, 6)) + fs;
+            float h = rowH * (4f + N + 6f + 2f + 1f + Mathf.Min(_presets.Count, 6)) + fs;
             if (_win.x < 0f) _win = new Vector2(Screen.width - w - fs, fs * 2f);
             _win.x = Mathf.Clamp(_win.x, 0f, Mathf.Max(0f, Screen.width - w));
             _win.y = Mathf.Clamp(_win.y, 0f, Mathf.Max(0f, Screen.height - h));
@@ -202,7 +204,7 @@ namespace BetterThanCastle
             BtcReplayUI.Fill(title, new Color(1f, 0.85f, 0.25f, 0.9f));
             Color oc = GUI.contentColor;
             GUI.contentColor = Color.black;
-            GUI.Label(new Rect(title.x + fs * 0.7f, title.y, w - fs * 6f, rowH), Tt("Replay UI layout (F7)  - drag the yellow handles", "Раскладка UI реплея (F7) - тяни жёлтые метки"), BtcReplayUI.sLabel);
+            GUI.Label(new Rect(title.x + fs * 0.7f, title.y, w - fs * 6f, rowH), Tt("Replay UI settings (F7)", "Настройки UI реплея (F7)"), BtcReplayUI.sLabel);
             GUI.contentColor = oc;
             if (e.type == EventType.MouseDown && e.button == 0 && title.Contains(e.mousePosition) && _drag < 0) { _drag = 100; e.Use(); }
             if (_drag == 100)
@@ -218,17 +220,13 @@ namespace BetterThanCastle
                 bool vis = GUI.Toggle(new Rect(win.x + fs * 0.7f, y + rowH * 0.15f, fs * 1.2f, rowH * 0.7f), Vis[id], "");
                 if (vis != Vis[id]) { Vis[id] = vis; _dirty = true; }
                 GUI.Label(new Rect(win.x + fs * 2.2f, y, fs * 8.2f, rowH), Tt(Names[id], NamesRu[id]), BtcReplayUI.sLabel);
-                Rect sr = new Rect(win.x + fs * 10.5f, y + rowH * 0.3f, w - fs * 10.5f - fs * 8.4f, rowH * 0.4f);
-                float nv = GUI.HorizontalSlider(sr, Scale[id], 0.4f, 2f);
-                if (Mathf.Abs(nv - Scale[id]) > 0.0005f) { Scale[id] = nv; _dirty = true; }
-                GUI.Label(new Rect(sr.xMax + fs * 0.4f, y, fs * 3f, rowH), Scale[id].ToString("0.00", CultureInfo.InvariantCulture), BtcReplayUI.sLabel);
-                if (BtcReplayUI.Button(new Rect(win.xMax - fs * 4.2f, y + 2f, fs * 3.8f, rowH - 4f), Tt("Pos", "Поз."), Color.white)) { Ox[id] = 0f; Oy[id] = 0f; _dirty = true; }
                 y += rowH;
             }
             MarkScale = Slider(win, ref y, Tt("Timeline icons", "Иконки меток"), MarkScale, 0.4f, 2.5f, fs, rowH);
             CursorScale = Slider(win, ref y, Tt("Cursors", "Курсоры"), CursorScale, 0.4f, 3f, fs, rowH);
             LabelScale = Slider(win, ref y, Tt("Nick text", "Текст ников"), LabelScale, 0.4f, 3f, fs, rowH);
             ConeAlpha = Slider(win, ref y, Tt("View cone", "Конус обзора"), ConeAlpha, 0f, 2f, fs, rowH);
+            BarScale = Slider(win, ref y, Tt("Panel height", "Высота панели"), BarScale, 0.6f, 1.6f, fs, rowH);
             if (BtcReplayUI.Button(new Rect(win.x + fs * 0.7f, y + 2f, w - fs * 1.4f, rowH - 4f), Tt("Unit owner dots: ", "Точки владельца: ") + (BtcUnitDots.Mode == 0 ? Tt("off", "выкл") : (BtcUnitDots.Mode == 1 ? Tt("while Alt", "с Alt") : Tt("always", "всегда"))), Color.white)) BtcUnitDots.Cycle();
             y += rowH;
             float bw = (w - fs * 2.1f) / 2f;

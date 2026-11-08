@@ -6,6 +6,8 @@ namespace BetterThanCastle
     {
         internal static ConfigEntry<int> WindowMode;
         internal static ConfigEntry<bool> SkipIntro;
+        internal static ConfigEntry<bool> LoadTimer;
+        internal static ConfigEntry<bool> ReuseMenuPanels;
         internal static ConfigEntry<bool> BetterConnection;
         internal static ConfigEntry<bool> ShowPing;
         internal static ConfigEntry<bool> ShowPauseLabel;
@@ -34,6 +36,8 @@ namespace BetterThanCastle
             BtcDuelConfig.Init(cfg);
             WindowMode = cfg.Bind("Display", "WindowMode", 3, "0 = keep the game setting, 1 = fullscreen, 2 = windowed, 3 = borderless.");
             SkipIntro = cfg.Bind("Display", "SkipIntro", true, "Skip the logo screens on startup (applies on next launch).");
+            LoadTimer = cfg.Bind("Display", "LoadTimer", true, "Show how many seconds the world load has been running (and the total after it).");
+            ReuseMenuPanels = cfg.Bind("Loading", "ReuseMenuPanels", true, "While the world loads, reuse already built menu panels instead of destroying and re-creating them (faster load). Turn off if the in-game UI looks wrong.");
             UpdateCheck = cfg.Bind("Update", "CheckOnStart", true, "Check GitHub Releases at game start and offer to update the mod.");
             UpdateSkipped = cfg.Bind("Update", "SkippedVersion", "", "Version the player chose to skip.");
             BetterConnection = cfg.Bind("Network", "BetterConnection", true,

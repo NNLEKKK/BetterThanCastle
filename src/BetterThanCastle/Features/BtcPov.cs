@@ -391,6 +391,15 @@ public static class BtcPov
 		return result;
 	}
 
+	/// <summary>Vanilla UpdateHostVisibility re-enables renderers for the local (spectator) faction; put the POV state back at once (else flicker until the next 0.04 s tick).</summary>
+	internal static void ReapplyHostVisibility(LocalFactionVision o)
+	{
+		if (BtcPov.PovFaction == null || o == null) return;
+		bool vis = BtcPov.IsVisible(o, BtcPov.PovFaction, BtcPov.posBuf, BtcPov.rngBuf);
+		BtcPov.SetRenderers(o, vis);
+		BtcPov.hidden[o] = !vis;
+	}
+
 	private static void SetRenderers(LocalFactionVision o, bool vis)
 	{
 		foreach (Renderer renderer in o.GetComponentsInChildren<Renderer>(true))

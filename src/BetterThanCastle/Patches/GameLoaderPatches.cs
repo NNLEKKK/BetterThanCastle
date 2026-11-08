@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using Brix.Engine;
+using Brix.Game;
+using Brix.Game.Components;
 using Brix.UI.Builder.Menu.Component;
 using HarmonyLib;
 using UnityEngine;
@@ -38,6 +40,7 @@ namespace BetterThanCastle.Patches
             MethodInfo poll = AccessTools.Method(typeof(BtcLoadBoost), "Poll");
             int n = 0;
             int lastSite = -1;
+            int gated = 0;
             for (int i = 0; i + 1 < ins.Count; i++)
             {
                 if (ins[i].opcode != OpCodes.Ldc_R4 || !(ins[i].operand is float) || (float)ins[i].operand != 1f) continue;
@@ -52,6 +55,17 @@ namespace BetterThanCastle.Patches
                         if (f != null && f.Name == "HostLoaded") { target = gate; break; }
                     }
                 }
+                if (gate != null && target == poll)
+                {
+                    // mcs puts the loop condition AFTER the body: look forward too (up to the next 1s poll site)
+                    for (int k = i + 2; k < ins.Count && k < i + 40; k++)
+                    {
+                        if (ins[k].opcode == OpCodes.Ldc_R4 && ins[k].operand is float && (float)ins[k].operand == 1f) break;
+                        FieldInfo f2 = ins[k].operand as FieldInfo;
+                        if (f2 != null && f2.Name == "HostLoaded") { target = gate; break; }
+                    }
+                }
+                if (target != poll) gated++;
                 ins[i].opcode = OpCodes.Nop;
                 ins[i].operand = null;
                 ins[i + 1].opcode = OpCodes.Call;
@@ -59,6 +73,7 @@ namespace BetterThanCastle.Patches
                 lastSite = i;
                 n++;
             }
+            BtcLog.Info("Hook", tag + ": " + n + " poll site(s) swapped, gate sites=" + gated);
             if (n == 0) BtcLog.Error("Hook", tag + ": WaitForSeconds(1f) sites not found");
             return ins;
         }
@@ -303,14 +318,16 @@ namespace BetterThanCastle.Patches
     {
         private static bool _uiPreloaded;
         private static bool _done;
+        private static bool _logged;
 
-        public static void Reset() { _uiPreloaded = false; _done = false; }
+        public static void Reset() { _uiPreloaded = false; _done = false; _logged = false; }
 
         /// <summary>Replaces the 1s poll of the "wait for HostLoaded" loop.</summary>
         public static object GateWait()
         {
             try
             {
+                if (!_logged) { _logged = true; BtcLoadBoost.Note("GateWait: done=" + _done + " server=" + NetworkServer.active + " mp=" + Neo.IsMultiplayer + " hostLoaded=" + GameParam.instance.HostLoaded); }
                 if (!_done && !NetworkServer.active && Neo.IsMultiplayer && !GameParam.instance.HostLoaded)
                 {
                     _done = true;
@@ -321,14 +338,40 @@ namespace BetterThanCastle.Patches
             return BtcLoadBoost.Poll();
         }
 
+        private static bool NestReady()
+        {
+            try
+            {
+                if (User.LocalUser == null) return false;
+                foreach (FireflyNest n in FireflyNest.FireflyNests)
+                    if (n != null && n.isHome && n.faction == User.LocalUser.faction) return true;
+            }
+            catch (Exception) { }
+            return false;
+        }
+
+        private static bool TryInvoke(GameSignals.GameSignal gs)
+        {
+            try { GameSignals.Invoke(gs); return true; }
+            catch (Exception e)
+            {
+                BtcLog.Error("Loader", "early client UI failed, falling back to the vanilla path: " + e.Message);
+                return false;
+            }
+        }
+
         private static IEnumerator EarlyUi()
         {
             if (GameLoader._instance != null && GameLoader._instance.loadingScreen != null)
                 GameLoader._instance.loadingScreen.SetLoadingTitle("##loading");
             BtcLoadBoost.Note("early client UI: host not loaded yet, loading UI while waiting");
             yield return new WaitForSeconds(0.3f);
-            BtcLoadBoost.Note("early client UI: network flushed, starting UI");
-            SafeInvoke(GameSignals.LoadUI);
+            // the Lua UI calls FireflyNest.GetInfo (throws without a home nest of our faction): wait for the nest, else vanilla path
+            float waited = 0f;
+            while (!NestReady() && !GameParam.instance.HostLoaded && waited < 30f) { waited += 0.1f; yield return new WaitForSeconds(0.1f); }
+            if (!NestReady()) { BtcLoadBoost.Note("early client UI skipped: no home firefly nest yet"); yield break; }
+            BtcLoadBoost.Note("early client UI: nest ready after " + waited.ToString("F1") + " s, starting UI");
+            if (!TryInvoke(GameSignals.LoadUI)) yield break;
             int frames = 0;
             while (LuaMenuComponent.CoroutineCount != 0)
             {
@@ -338,6 +381,7 @@ namespace BetterThanCastle.Patches
             _uiPreloaded = true;
             BtcLoadBoost.Mark("early client UI loaded, frames=" + frames);
         }
+
 
         /// <summary>Replaces GameSignals.Invoke(GameSignals.LoadUI) in StartStep.</summary>
         public static void InvokeLoadUi(GameSignals.GameSignal gs)
@@ -360,5 +404,70 @@ namespace BetterThanCastle.Patches
                 BtcLog.Error("Loader", "LoadUI threw during replay (swallowed): " + e.Message);
             }
         }
+    }
+}
+
+namespace BetterThanCastle.Patches
+{
+    /// <summary>Load profile: marks every loading step title (##loading_title_stepN) with its time.</summary>
+    [HarmonyPatch(typeof(Brix.NewUI.LoadingScreen.LoadingScreen), "SetLoadingTitle")]
+    internal static class LoadingScreenTitleProfilePatch
+    {
+        private static string _last;
+
+        [HarmonyPrefix]
+        private static void Prefix(string text)
+        {
+            try
+            {
+                if (!BtcLoadBoost.Loading || text == _last) return;
+                _last = text;
+                BtcLoadBoost.Note("loading title " + text);
+            }
+            catch (Exception) { }
+        }
+    }
+}
+
+namespace BetterThanCastle.Patches
+{
+    /// <summary>Load profile: end marks of the terrain sub-steps.</summary>
+    internal static class LoadStepMarks
+    {
+        internal static void Wrap(ref System.Collections.IEnumerator result, string mark)
+        {
+            try { result = G3Il.Wrap(result, false, mark); }
+            catch (Exception e) { BtcLog.Error("Hook", "load mark " + mark + ": " + e); }
+        }
+    }
+
+    [HarmonyPatch(typeof(GameLoader), "LoadBasicTerrain")]
+    internal static class GameLoaderLoadBasicTerrainMarkPatch
+    {
+        [HarmonyPostfix] private static void Postfix(ref System.Collections.IEnumerator __result) { LoadStepMarks.Wrap(ref __result, "LoadBasicTerrain done"); }
+    }
+
+    [HarmonyPatch(typeof(GameLoader), "InitTerrainGravity")]
+    internal static class GameLoaderInitTerrainGravityMarkPatch
+    {
+        [HarmonyPostfix] private static void Postfix(ref System.Collections.IEnumerator __result) { LoadStepMarks.Wrap(ref __result, "InitTerrainGravity done"); }
+    }
+
+    [HarmonyPatch(typeof(GameLoader), "LoadNature")]
+    internal static class GameLoaderLoadNatureMarkPatch
+    {
+        [HarmonyPostfix] private static void Postfix(ref System.Collections.IEnumerator __result) { LoadStepMarks.Wrap(ref __result, "LoadNature done"); }
+    }
+
+    [HarmonyPatch(typeof(GameLoader), "BuildTerrainMeshes")]
+    internal static class GameLoaderBuildTerrainMeshesMarkPatch
+    {
+        [HarmonyPostfix] private static void Postfix(ref System.Collections.IEnumerator __result) { LoadStepMarks.Wrap(ref __result, "BuildTerrainMeshes done"); }
+    }
+
+    [HarmonyPatch(typeof(GameLoader), "LoadGameObjects")]
+    internal static class GameLoaderLoadGameObjectsMarkPatch
+    {
+        [HarmonyPostfix] private static void Postfix(ref System.Collections.IEnumerator __result) { LoadStepMarks.Wrap(ref __result, "LoadGameObjects done"); }
     }
 }
