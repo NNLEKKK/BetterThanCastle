@@ -183,6 +183,8 @@ namespace BetterThanCastle.Dev
                 // normal viewing up to T (no seek), then pause: the reference for instant seek fidelity
                 case "playto": _playTo = F(p, 1, 0f); for (int i = 0; i < 12 && BtcReplay.PlaySpeed < _playSpeed - 0.01f; i++) BtcReplay.SpeedStep(1); _wait = "playto"; _waitUntil = now + F(p, 2, 900f); if (BtcReplay.PlayPaused) BtcReplay.TogglePause(); break;
                 case "seek": BtcReplay.SeekTo(F(p, 1, 0f)); break;
+                case "statsdump": { BtcMsStore r = BtcMatchStats.Remote; int ns = 0; for (int i = 0; i < r.Factions.Count; i++) ns += r.Factions[i].Series.Count; BtcLog.Info("Cmd", "statsdump " + (p.Length > 1 ? p[1] : "") + ": match=" + r.MatchId + " facs=" + r.Factions.Count + " samples=" + ns + " T=" + r.T.ToString("0.0") + " fresh=" + BtcMatchStats.RemoteFresh + " clock=" + BtcReplay.PlayClock.ToString("0.0")); break; }
+                case "marks": { System.Text.StringBuilder sb = new System.Text.StringBuilder(); foreach (BtcAutoMarks.AEv e in BtcAutoMarks.Play) if (e.K == 'D' && sb.Length < 600) sb.Append(e.T.ToString("0.0")).Append("(x").Append(e.N).Append(") "); BtcLog.Info("Cmd", "marks D: " + sb); break; }
                 case "timescale": Time.timeScale = F(p, 1, 1f); break;
                 case "worldsig": BtcDevWorldSig.Run(p.Length > 1 ? p[1] : "now", p.Length > 2 ? p[2] : null); break;
                 case "pkpre": BtcReplaySeek.DevNoPreprocess = F(p, 1, 1f) < 0.5f; BtcLog.Info("Cmd", "pkpre " + !BtcReplaySeek.DevNoPreprocess); break;

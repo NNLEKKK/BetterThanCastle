@@ -1,0 +1,14 @@
+# Old replay (stats recorded as msg 84): stats after preprocess + jumps
+replay 2026-11-05_17-32-04_Komorebi
+waitreplay 300
+wait 30
+statsdump open
+wait 150
+statsdump after
+seek 600
+wait 4
+statsdump seek600
+seek 60
+wait 4
+statsdump seek60
+quit

@@ -3232,6 +3232,8 @@ public static class BtcReplay
 			{
 				BtcReplay.FixSceneSpawn(array, num4);
 			}
+			if (num3 == 84 && BtcMatchStatsNet.LegacyStats(array, num4)) { array[2] = (byte)BtcMatchStatsNet.Msg; array[3] = 0; num3 = BtcMatchStatsNet.Msg; }
+			if (num3 == BtcMatchStatsNet.Msg) BtcReplaySeek.OnStatsMsg(array, num4, BtcReplay.playMsAcc);
 			if (num3 == 3 || num3 == 10)
 			{
 				BtcReplaySeek.OnSpawnMsg(array, num4);

@@ -1,0 +1,24 @@
+# Seek before a death, play through it, seek back: units must look the same (Komorebi deaths at 832.1, 891.5, 956.7)
+replay 2026-11-05_17-32-04_Komorebi
+waitreplay 300
+wait 40
+rpause
+seek 829
+wait 3
+worldsig DA
+rpause
+wait 12
+rpause
+seek 829
+wait 3
+worldsig DB DA
+seek 888
+wait 3
+worldsig EA
+rpause
+wait 12
+rpause
+seek 888
+wait 3
+worldsig EB EA
+quit

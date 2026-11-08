@@ -61,7 +61,59 @@ namespace BetterThanCastle
         {
             try
             {
-                StatsMsg m = nm.ReadMessage<StatsMsg>();
+                ApplyAtClient(nm.ReadMessage<StatsMsg>());
+            }
+            catch (Exception e) { BtcLog.Error("MatchStats", "OnMsgAtClient: " + e); }
+        }
+
+        private static int _legacyMatch;
+
+        internal static void ResetLegacy() { _legacyMatch = 0; }
+
+        /// <summary>
+        /// Replays recorded before 2026-11-05 20:00 carry the stats stream as msg 84 (id moved to 101 because of the BtcRecipes collision).
+        /// True when this msg 84 of such a replay is a stats message (parsed + same match id as the first one), so the feeder can retag it.
+        /// </summary>
+        internal static bool LegacyStats(byte[] raw, int len)
+        {
+            try
+            {
+                if (BtcReplay.Mode != BtcReplay.State.Playing || len < 12) return false;
+                string f = BtcReplay.FeedFile;
+                if (string.IsNullOrEmpty(f)) return false;
+                string n = System.IO.Path.GetFileName(f);
+                // yyyy-MM-dd_HH-mm-ss_...: the file name sorts like time
+                if (n.Length < 19 || string.CompareOrdinal(n.Substring(0, 19), "2026-11-05_20-00-00") >= 0) return false;
+                NetworkReader rd = new NetworkReader(raw);
+                rd.ReadUInt16();
+                rd.ReadUInt16();
+                StatsMsg m = new StatsMsg();
+                m.Deserialize(rd);
+                if (m.Kind > 2 || m.MatchId == 0 || m.N > 32 || rd.Position > len) return false;
+                if (_legacyMatch == 0) _legacyMatch = m.MatchId;
+                return m.MatchId == _legacyMatch;
+            }
+            catch (Exception) { return false; }
+        }
+        /// <summary>Replay seek: re-apply a recorded raw stats message (header + payload as stored in the stream).</summary>
+        internal static void ApplyRaw(byte[] raw, int len)
+        {
+            try
+            {
+                NetworkReader rd = new NetworkReader(raw);
+                rd.ReadUInt16();
+                rd.ReadUInt16();
+                StatsMsg m = new StatsMsg();
+                m.Deserialize(rd);
+                ApplyAtClient(m);
+            }
+            catch (Exception e) { BtcLog.Error("MatchStats", "ApplyRaw: " + e.Message); }
+        }
+
+        private static void ApplyAtClient(StatsMsg m)
+        {
+            try
+            {
                 bool replay = BtcReplay.Mode == BtcReplay.State.Playing;
                 if ((!BtcNetworkGate.Enabled && !replay) || (NetworkServer.active && !replay) || m == null || m.MatchId == 0) return;
                 BtcMsStore r = BtcMatchStats.Remote;

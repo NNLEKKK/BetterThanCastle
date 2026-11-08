@@ -1,0 +1,17 @@
+# Replay stats must survive open, preprocess, jumps
+replay 2026-11-08_00-05-10_Pioneer_Pass
+waitreplay 240
+wait 15
+statsdump open
+wait 30
+statsdump play30
+seek 150
+wait 3
+statsdump seek150
+seek 20
+wait 3
+statsdump seek20
+seek 100
+wait 3
+statsdump seek100
+quit

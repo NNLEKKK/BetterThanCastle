@@ -1,0 +1,16 @@
+# Replay stats: long replay, jump right after open (cache present), then far jumps
+replay 2026-11-07_17-57-15_Pioneer_Pass
+waitreplay 240
+wait 3
+rpause
+statsdump open
+seek 150
+wait 3
+statsdump seek150
+seek 30
+wait 3
+statsdump seek30
+seek 175
+wait 3
+statsdump seek175
+quit

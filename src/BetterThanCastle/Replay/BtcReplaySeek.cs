@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
@@ -96,6 +96,9 @@ namespace BetterThanCastle
             QuietEnd();
             Pks.Clear();
             SpawnMsgs.Clear();
+            StatsMsgs.Clear();
+            _statsLastMs = -1;
+            BtcMatchStatsNet.ResetLegacy();
             _lastTerrain = null;
             _lastNature = null;
             _bytes = 0;
@@ -107,6 +110,30 @@ namespace BetterThanCastle
         }
 
         // ---------------- recording of the stream (spawn messages) ----------------
+
+        // recorded stats messages (msg 101) with stream ms: after a jump the stats store is rebuilt from them (the jump only feeds the last <10 s)
+        private struct StatsRec { internal long Ms; internal byte[] Raw; }
+        private static readonly List<StatsRec> StatsMsgs = new List<StatsRec>();
+        private static long _statsLastMs = -1;
+
+        internal static void OnStatsMsg(byte[] msg, int len, long ms)
+        {
+            if (_applying || ms <= _statsLastMs) return; // monotonic append: re-fed records after a jump/rewind are already stored
+            byte[] copy = new byte[len];
+            Buffer.BlockCopy(msg, 0, copy, 0, len);
+            _statsLastMs = ms;
+            StatsMsgs.Add(new StatsRec { Ms = ms, Raw = copy });
+        }
+
+        /// <summary>Rebuild the replay stats store as of stream time ms (everything recorded before it).</summary>
+        private static void RestoreStats(long ms)
+        {
+            if (StatsMsgs.Count == 0) return;
+            BtcMatchStats.OnReplayStart();
+            int n = 0;
+            for (int i = 0; i < StatsMsgs.Count && StatsMsgs[i].Ms <= ms; i++) { BtcMatchStatsNet.ApplyRaw(StatsMsgs[i].Raw, StatsMsgs[i].Raw.Length); n++; }
+            BtcLog.Info("ReplaySeek", "stats restored: " + n + "/" + StatsMsgs.Count + " msgs up to " + (ms / 1000f).ToString("0.0") + " s");
+        }
 
         internal static void OnSpawnMsg(byte[] msg, int len)
         {
@@ -174,7 +201,10 @@ namespace BetterThanCastle
                     {
                         // client copies of the spawn animator fields are stale (host only refreshes them): put the live pose in, so a
                         // respawn from this payload plays the right state (OnStartPureClient) and an in-place restore can Play() it
-                        o.AnimState = an.animator.GetCurrentAnimatorStateInfo(0).fullPathHash;
+                        // fast feeds (preprocess) set flags/params without animator frames: the state machine still sits in the old state (a unit that
+                        // already stopped is saved as "running" and Play() would pin it there). Evaluate the transitions for the params first.
+                        an.animator.Update(0f);
+                        o.AnimState = an.animator.IsInTransition(0) ? an.animator.GetNextAnimatorStateInfo(0).fullPathHash : an.animator.GetCurrentAnimatorStateInfo(0).fullPathHash;
                         o.AnimCarry = an.animator.GetFloat("CarryMode");
                         o.HasAnim = true;
                         an.NetworkserverAnimatorStateOnSpawn = o.AnimState;
@@ -393,7 +423,7 @@ namespace BetterThanCastle
                 _keepOff.Clear();
                 foreach (KeyValuePair<NetworkInstanceId, NetworkIdentity> kv in ClientScene.objects)
                 {
-                    if (kv.Value == null) continue;
+                    if (kv.Value == null) { _ghosts.Add(kv.Key); continue; } // key kept with a destroyed identity: UNET then registers the respawn nowhere
                     if (IsGhost(kv.Key.Value, kv.Value))
                     {
                         // a pool-released entry UNET still lists; its GameObject may already serve another object: never destroy it.
@@ -415,6 +445,8 @@ namespace BetterThanCastle
 
                 // 2. spawn what the world does not have now. An object UNET dropped from its list during the previous feed may still be in
                 // the scene, alive: put it back under its netId instead of spawning a copy (user: clone units piling up on +10/-10 spam)
+                Dictionary<uint, NetworkIdentity> sceneNis = null;
+                int reRegistered = 0;
                 Dictionary<uint, NetworkIdentity> loose = new Dictionary<uint, NetworkIdentity>();
                 HashSet<GameObject> listed = new HashSet<GameObject>();
                 foreach (KeyValuePair<NetworkInstanceId, NetworkIdentity> kv in ClientScene.objects) if (kv.Value != null) listed.Add(kv.Value.gameObject);
@@ -442,7 +474,7 @@ namespace BetterThanCastle
                     byte[] src;
                     if (!SpawnMsgs.TryGetValue(o.Id, out src)) { missing++; continue; }
                     byte[] msg = RewriteSpawn(src, o);
-                    if (msg != null && BtcReplay.FeedRaw(msg)) spawned++; else missing++;
+                    if (msg != null && BtcReplay.FeedRaw(msg)) { spawned++; if (ClientScene.FindLocalObject(new NetworkInstanceId(o.Id)) == null) RegisterSpawned(o.Id, ref sceneNis, ref reRegistered); } else missing++;
                 }
 
                 // 3. in place: deserialize changed objects and run their SyncVar hooks like a normal update (a jump = one big delta);
@@ -491,6 +523,7 @@ namespace BetterThanCastle
             // a partial debloc batch left from the old position would corrupt the next one (its digs never show)
             SetDeblocState(pk.Debloc);
             // 4. feed the remainder (< SlotMs of records)
+            RestoreStats(pk.Ms);
             BtcReplay.FeedRestore(pk.Pos, pk.Ms);
             double t0 = sw.Elapsed.TotalMilliseconds;
             _jumpFeeding = true;
@@ -577,6 +610,21 @@ namespace BetterThanCastle
         }
 
         /// <summary>Destroys a live object through UNET; children that the PK keeps are detached first (they stay, their hooks re-parent them).</summary>
+        /// <summary>A spawn the game completed (object exists, netId set) but UNET did not list (stale key of the dead copy): list it, or the unit stays unregistered, invisible and is hidden by the orphan sweep.</summary>
+        private static void RegisterSpawned(uint id, ref Dictionary<uint, NetworkIdentity> sceneNis, ref int count)
+        {
+            if (sceneNis == null)
+            {
+                sceneNis = new Dictionary<uint, NetworkIdentity>();
+                foreach (NetworkIdentity x in UnityEngine.Object.FindObjectsOfType<NetworkIdentity>())
+                    if (!x.netId.IsEmpty() && x.gameObject.activeInHierarchy) sceneNis[x.netId.Value] = x;
+            }
+            NetworkIdentity ni;
+            if (!sceneNis.TryGetValue(id, out ni) || ni == null) return;
+            ClientScene.objects[ni.netId] = ni;
+            count++;
+        }
+
         private static bool Kill(uint id, Dictionary<uint, Obj> want)
         {
             GameObject go = ClientScene.FindLocalObject(new NetworkInstanceId(id));
@@ -837,6 +885,7 @@ namespace BetterThanCastle
                 WriteParams(an.animator, o.AnimParams);
                 an.animator.SetFloat("CarryMode", o.AnimCarry);
                 an.animator.Play(o.AnimState);
+                an.animator.Update(0f); // resolve condition transitions of the restored params now, not after the first frame
                 if (StateChanged != null) StateChanged.Invoke(an, new object[] { an.state });
             }
             catch (Exception e) { LogOnce("anim restore: " + e.Message); }
@@ -1044,7 +1093,7 @@ namespace BetterThanCastle
         // ---------------- disk cache (<BetterThanCastle>/cash/*.btcs) ----------------
 
         private const int CacheMagic = 0x53435442; // "BTCS"
-        private const int CacheVersion = 19;
+        private const int CacheVersion = 22;
 
         private static string CachePath()
         {
@@ -1068,6 +1117,7 @@ namespace BetterThanCastle
             if (path == null || _failed) return;
             List<Pk> pks = new List<Pk>(Pks.Values);
             Dictionary<uint, byte[]> spawns = new Dictionary<uint, byte[]>(SpawnMsgs);
+            List<StatsRec> stats = new List<StatsRec>(StatsMsgs);
             System.Threading.ThreadPool.QueueUserWorkItem(delegate
             {
                 try
@@ -1092,6 +1142,8 @@ namespace BetterThanCastle
                         for (int i = 0; i < blobs.Count; i++) { bw.Write(blobs[i].Length); bw.Write(blobs[i]); }
                         bw.Write(spawns.Count);
                         foreach (KeyValuePair<uint, byte[]> kv in spawns) { bw.Write(kv.Key); bw.Write(kv.Value.Length); bw.Write(kv.Value); }
+                        bw.Write(stats.Count);
+                        for (int i = 0; i < stats.Count; i++) { bw.Write(stats[i].Ms); bw.Write(stats[i].Raw.Length); bw.Write(stats[i].Raw); }
                         bw.Write(pks.Count);
                         for (int i = 0; i < pks.Count; i++)
                         {
@@ -1146,6 +1198,7 @@ namespace BetterThanCastle
                 Stopwatch sw = Stopwatch.StartNew();
                 Dictionary<int, Pk> pks = new Dictionary<int, Pk>();
                 Dictionary<uint, byte[]> spawns = new Dictionary<uint, byte[]>();
+                List<StatsRec> stats = new List<StatsRec>();
                 long bytes = 0;
                 using (System.IO.FileStream fs = new System.IO.FileStream(path, System.IO.FileMode.Open, System.IO.FileAccess.Read))
                 using (System.IO.Compression.DeflateStream ds = new System.IO.Compression.DeflateStream(fs, System.IO.Compression.CompressionMode.Decompress))
@@ -1157,6 +1210,8 @@ namespace BetterThanCastle
                     for (int i = 0; i < nb; i++) { blobs[i] = br.ReadBytes(br.ReadInt32()); bytes += blobs[i].Length; }
                     int ns = br.ReadInt32();
                     for (int i = 0; i < ns; i++) { uint id = br.ReadUInt32(); spawns[id] = br.ReadBytes(br.ReadInt32()); }
+                    int nst = br.ReadInt32();
+                    for (int i = 0; i < nst; i++) { StatsRec sr = new StatsRec(); sr.Ms = br.ReadInt64(); sr.Raw = br.ReadBytes(br.ReadInt32()); stats.Add(sr); }
                     int np = br.ReadInt32();
                     for (int i = 0; i < np; i++)
                     {
@@ -1192,6 +1247,7 @@ namespace BetterThanCastle
                 Pks.Clear();
                 foreach (KeyValuePair<int, Pk> kv in pks) Pks[kv.Key] = kv.Value;
                 foreach (KeyValuePair<uint, byte[]> kv in spawns) SpawnMsgs[kv.Key] = kv.Value;
+                StatsMsgs.Clear(); StatsMsgs.AddRange(stats); _statsLastMs = stats.Count > 0 ? stats[stats.Count - 1].Ms : -1;
                 _bytes = bytes;
                 BtcLog.Info("ReplaySeek", "cache loaded in " + sw.ElapsedMilliseconds + " ms: " + Pks.Count + " pks, " + (bytes / 1024) + " KB, " + spawns.Count + " spawn msgs");
                 return true;

@@ -1,4 +1,4 @@
-﻿param(
+param(
     [Parameter(Mandatory=$true)][string]$Version,   # e.g. 0.2.0
     [string]$Notes = '',                            # changelog text for the release (also add it to CHANGELOG.md)
     [switch]$Prerelease,                            # GitHub pre-release (updater ignores it: /releases/latest skips pre-releases)
@@ -19,7 +19,9 @@ if (git status --porcelain --untracked-files=no) { throw "Working tree has uncom
 
 $plugin = Join-Path $root 'src\BetterThanCastle\Plugin.cs'
 $proj = Join-Path $root 'src\BetterThanCastle\BetterThanCastle.csproj'
-[IO.File]::WriteAllText($plugin, [regex]::Replace([IO.File]::ReadAllText($plugin), 'Version = "[^"]*";', "Version = `"$Version`";"))
+$plain = $Version -replace '[a-z]$'
+$ptxt = [regex]::Replace([IO.File]::ReadAllText($plugin), 'const string Version = "[^"]*";', "const string Version = `"$Version`";")
+[IO.File]::WriteAllText($plugin, [regex]::Replace($ptxt, 'const string BepVersion = "[^"]*";', "const string BepVersion = `"$plain`";"))
 [IO.File]::WriteAllText($proj, [regex]::Replace([IO.File]::ReadAllText($proj), '<Version>[^<]*</Version>', "<Version>$($Version -replace '[a-z]$','')</Version>"))
 
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'build.ps1') -Release
@@ -32,7 +34,7 @@ $hash = (Get-FileHash $dll -Algorithm SHA256).Hash.ToLower()
 $hashSetup = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLower()
 
 git add $plugin $proj
-git commit -q -m "release: $tag`n`nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -q -m "release: $tag`n`nCo-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 $pub = (& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'public-snapshot.ps1') -Message "Better Than Castle $Version" | Select-Object -Last 1).Trim()
 git tag $tag $pub
 

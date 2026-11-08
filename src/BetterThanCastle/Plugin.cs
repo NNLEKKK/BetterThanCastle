@@ -4,12 +4,14 @@ using HarmonyLib;
 
 namespace BetterThanCastle
 {
-    [BepInPlugin(Guid, Name, Version)]
+    [BepInPlugin(Guid, Name, BepVersion)]
     public class BtcPlugin : BaseUnityPlugin
     {
         public const string Guid = "com.btc.betterthancastle";
         public const string Name = "Better Than Castle";
-        public const string Version = "0.3.1a";
+        public const string Version = "0.3.2";
+        // BepInEx parses the plugin version with System.Version: no letter suffix allowed here (the mod is skipped otherwise)
+        public const string BepVersion = "0.3.2";
 
         internal static ManualLogSource Log;
         internal static Harmony Harmony;

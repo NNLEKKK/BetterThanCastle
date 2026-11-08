@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -156,7 +156,10 @@ namespace BetterThanCastle
                         try { r.OnObjectTracked(g); added++; changed = true; }
                         catch (Exception e) { BtcLog.Warn("ReplaySeek", "recepteur track " + g.name + ": " + e.Message); }
                     }
-                if (!changed) continue;
+                // protection: containers that hold items get their display/exclusivity re-derived even when the set matched (a silent restore
+                // never sends the change signals the rack/stockpile visuals listen to)
+                if (!changed && r.StoredItems.Count == 0) continue;
+                if (!changed) { try { Brix.Game.Semantique.ToolRack tr = r.GetComponent<Brix.Game.Semantique.ToolRack>(); if (tr != null) tr.RefreshExclusivity(); } catch (Exception) { } }
                 boxes++;
                 try
                 {
