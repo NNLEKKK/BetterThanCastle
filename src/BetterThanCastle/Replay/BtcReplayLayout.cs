@@ -14,11 +14,11 @@ namespace BetterThanCastle
     /// </summary>
     internal static class BtcReplayLayout
     {
-        internal const int Bar = 0, N = 1;
-        private static readonly string[] Names = { "Control panel" };
-        private static readonly string[] NamesRu = { "Панель управления" };
-        private static readonly float[] Scale = { 1f }, Ox = { 0f }, Oy = { 0f };
-        private static readonly bool[] Vis = { true };
+        internal const int Bar = 0, Keys = 1, N = 2;
+        private static readonly string[] Names = { "Control panel", "Pressed keys" };
+        private static readonly string[] NamesRu = { "Панель управления", "Нажатия игрока" };
+        private static readonly float[] Scale = { 1f, 1f }, Ox = { 0f, 0f }, Oy = { 0f, 0f };
+        private static readonly bool[] Vis = { true, true };
         private static readonly Rect[] Tr = new Rect[N];
         private static readonly bool[] TrOk = new bool[N];
 

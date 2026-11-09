@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -146,7 +146,7 @@ public static class BtcReplayUI
 	}
 
 	/// <summary>Timeline readout: advanced timer time when the replay has one, else the replay clock.</summary>
-	private static string TClock(float sec)
+	internal static string TClock(float sec)
 	{
 		return BtcTimer.ClockAt(sec) ?? BtcReplayUI.Clock(sec);
 	}
@@ -622,6 +622,7 @@ public static class BtcReplayUI
 		else
 		{
 			BtcReplayUI.Hidden = false;
+			BtcReplayMinimap.Reset();
 			bool flag8 = BtcReplay.Mode != BtcReplay.State.Recording || !BtcReplay.GetShowIndicator();
 			bool flag9 = !flag8;
 			bool flag10 = flag9;
@@ -736,6 +737,8 @@ public static class BtcReplayUI
 		int num = Mathf.Max(14, Screen.height / 38);
 		BtcReplayUI.Ensure(num);
 		GUI.depth = -950;
+		BtcReplayMinimap.Tick();
+		BtcApm.Warm();
 		BtcPovRec.DrawCursors((float)num);
 		BtcReplayLayout.DrawHandles(num);
 		BtcUnitDots.Draw((float)num);
@@ -778,15 +781,19 @@ public static class BtcReplayUI
 		{
 			float num4 = (float)Screen.width;
 			float hs = BtcReplayLayout.BarScale;
-			float barH = (float)num * 4.5f * hs;
+			float apmH = (BtcConfig.ReplayApmMode.Value != 0 && BtcApm.Has) ? (float)num * 1.7f * hs : 0f;
+			float barH = (float)num * 4.5f * hs + apmH;
 			Rect rect = new Rect(0f, (float)Screen.height - barH, num4, barH);
 			BtcReplayLayout.Begin(BtcReplayLayout.Bar, rect);
 			BtcReplayUI.Fill(rect, new Color(0f, 0f, 0f, 0.7f));
+			float by = rect.y + apmH;
 			float num5 = rect.x + (float)num * 0.5f;
-			float y = rect.y + (float)num * 2.4f * hs;
+			float y = by + (float)num * 2.4f * hs;
 			float height = (float)num * 1.9f * hs;
-			Rect r2 = new Rect(rect.x + (float)num * 0.5f, rect.y + (float)num * 0.9f * hs, num4 - (float)num, (float)num * 0.8f * hs);
-			Rect rect2 = new Rect(r2.x, rect.y + (float)num * 0.2f * hs, r2.width, (float)num * 1.9f * hs);
+			Rect r2 = new Rect(rect.x + (float)num * 0.5f, by + (float)num * 0.9f * hs, num4 - (float)num, (float)num * 0.8f * hs);
+			Rect rect2 = new Rect(r2.x, by + (float)num * 0.2f * hs, r2.width, (float)num * 1.9f * hs);
+			Rect waveR = new Rect(r2.x, rect.y + 2f, r2.width, apmH > 0f ? Mathf.Max(0f, r2.y - rect.y - 3f) : 0f);   // down to the timeline line
+			if (apmH > 0f) rect2 = Rect.MinMaxRect(rect2.x, waveR.y, rect2.xMax, rect2.yMax);   // the wave is part of the seek area
 			float num6 = Mathf.Max(0.001f, BtcReplay.PlayTotal);
 			float num7 = BtcReplay.Seeking ? BtcReplay.SeekTarget : BtcReplay.PlayClock;
 			Event current = Event.current;
@@ -842,7 +849,8 @@ public static class BtcReplayUI
 			BtcReplayUI.Fill(new Rect(r2.x, r2.y, r2.width * num8, r2.height), BtcReplay.Seeking ? new Color(1f, 0.75f, 0.2f, 0.95f) : BtcReplayUI.Green);
 			BtcReplayUI.Fill(new Rect(r2.x + r2.width * num8 - 2f, r2.y - num2 * 0.1f, 4f, r2.height + num2 * 0.2f), Color.white);
 			float autoLift = BtcAutoMarks.DrawLane(r2, num2 * BtcReplayLayout.MarkScale, num6, rect);
-			BtcTimer.DrawTimeline(r2, num2 * BtcReplayLayout.MarkScale, num6, new Rect(rect.x, rect.y - autoLift, rect.width, rect.height));
+			if (apmH > 0f) BtcApm.Draw(waveR, num6, (float)num);
+			BtcTimer.DrawTimeline(r2,num2 * BtcReplayLayout.MarkScale, num6, new Rect(rect.x, rect.y - autoLift, rect.width, rect.height));
 			bool flag38 = BtcReplayUI.seekDrag || rect2.Contains(current.mousePosition);
 			bool flag39 = flag38;
 			bool flag40 = flag39;
@@ -870,6 +878,7 @@ public static class BtcReplayUI
 				Rect rect3 = new Rect(Mathf.Clamp(num10 - num11 * 0.5f, rect.x, rect.x + rect.width - num11), rect.y - autoLift - num12 - 4f, num11, num12);
 				BtcReplayUI.Fill(rect3, new Color(0f, 0f, 0f, 0.85f));
 				GUI.Label(rect3, BtcReplayUI.TClock(num9 * num6), BtcReplayUI.sTip);
+					if (apmH > 0f) BtcApm.DrawHover(waveR, num9, num10, rect3.y - 4f, (float)num);
 				if (BtcAutoMarks.AltDown)
 				{
 					BtcAutoMarks.DrawPreview(num9 * num6, num10, rect3.y - 4f, num2 * BtcReplayLayout.MarkScale);
@@ -947,9 +956,19 @@ public static class BtcReplayUI
 			bool povCone = BtcConfig.PovShowCone.Value;
 			if (BtcReplayIcons.Button(new Rect(cx, iy, ib, ib), BtcReplayIcons.View, povCone, BtcReplayUI.T("View cones", "Конусы обзора"))) BtcConfig.PovShowCone.Value = !povCone;
 			cx += ib + gap;
+			int keysMode = BtcConfig.ReplayKeysMode.Value;
+			if (BtcReplayIcons.Button(new Rect(cx, iy, ib, ib), BtcReplayIcons.Keys, keysMode != 0, BtcReplayUI.T("Player keys: ", "Нажатия игрока: ") + (keysMode == 0 ? BtcReplayUI.T("hidden", "скрыто") : (keysMode == 1 ? BtcReplayUI.T("feed", "лента") : BtcReplayUI.T("keyboard", "клавиатура"))))) BtcConfig.ReplayKeysMode.Value = (keysMode + 1) % 3;
+			cx += ib + gap;
+			int apmMode = BtcConfig.ReplayApmMode.Value;
+			if (BtcReplayIcons.Button(new Rect(cx, iy, ib, ib), BtcReplayIcons.Wave, apmMode != 0, BtcReplayUI.T("Activity graph: ", "График активности: ") + (apmMode == 0 ? BtcReplayUI.T("hidden", "скрыт") : (apmMode == 1 ? "APM" : "EPM")))) BtcConfig.ReplayApmMode.Value = (apmMode + 1) % 3;
+			cx += ib + gap;
+			bool hideMm = BtcConfig.ReplayHideMinimap.Value;
+			if (BtcReplayIcons.Button(new Rect(cx, iy, ib, ib), BtcReplayIcons.Map, hideMm, BtcReplayUI.T("Hide minimap", "Скрыть миникарту"))) BtcConfig.ReplayHideMinimap.Value = !hideMm;
+			cx += ib + gap;
 			if (BtcReplayIcons.Button(new Rect(cx, iy, ib, ib), BtcReplayIcons.Layout, BtcReplayLayout.Edit, BtcReplayUI.T("UI settings (F7)", "Настройки UI (F7)"))) BtcReplayLayout.ToggleEdit();
 			if (BtcReplayIcons.Plain(new Rect((float)Screen.width - (float)num * 0.5f - ib, iy, ib, ib), BtcReplayIcons.Stop, BtcReplayUI.Red, BtcReplayUI.T("Exit replay", "Выйти из реплея"))) BtcReplay.StopReplay();
 			BtcReplayLayout.End();
+			BtcReplayInput.Draw((float)num, rect.y - autoLift - 4f);
 			BtcReplayIcons.DrawTip(num);
 			BtcReplayUI.DrawPovList(nameR, num);
 		}

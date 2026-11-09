@@ -1,4 +1,4 @@
-﻿using BepInEx.Configuration;
+using BepInEx.Configuration;
 
 namespace BetterThanCastle
 {
@@ -24,7 +24,8 @@ namespace BetterThanCastle
         internal static ConfigEntry<float> ChatFadeSeconds;
         internal static ConfigEntry<bool> PovShowCone;
         internal static ConfigEntry<int> ReplayUnitDots;
-        internal static ConfigEntry<bool> ReplaySkipPauses, ReplayAutoMarks, ReplayMinimapFights, ReplayRecordPov, PovFollowCam, PovShowCursor, ReplayInfo;
+        internal static ConfigEntry<bool> ReplaySkipPauses, ReplayAutoMarks, ReplayMinimapFights, ReplayRecordPov, PovFollowCam, PovShowCursor, ReplayInfo, ReplayHideMinimap, ReplayShowApm;
+        internal static ConfigEntry<int> ReplayKeysMode, ReplayApmMode;
         internal static ConfigEntry<string> ReplayHiddenKinds, ReplayUiLayout;
         internal static ConfigEntry<float> ReplayFreezeGap;
         internal static ConfigEntry<bool> StatsEnabled, StatsBar, StatsBarBottom;
@@ -64,6 +65,10 @@ namespace BetterThanCastle
             PovFollowCam = cfg.Bind("Replay", "PovFollowCamera", true, "Watching a player in a replay: follow their recorded camera.");
             PovShowCursor = cfg.Bind("Replay", "ShowCursors", true, "Replay: draw the recorded cursors of the players.");
             ReplayInfo = cfg.Bind("Replay", "ShowBlueprintsAndQueues", true, "Replay: draw the blueprints of all players and the crafting queues of all buildings.");
+            ReplayHideMinimap = cfg.Bind("Replay", "HideMinimap", false, "Replay: hide the mini map (bar icon).");
+            ReplayShowApm = cfg.Bind("Replay", "ShowApm", true, "Replay: draw the actions-per-minute graph of every player above the timeline (replays recorded since this feature only).");
+            ReplayKeysMode = cfg.Bind("Replay", "PressedKeysMode", 1, "Replay: pressed keys of the watched player (0 hidden, 1 feed, 2 keyboard).");
+            ReplayApmMode = cfg.Bind("Replay", "ApmGraphMode", 1, "Replay: graph above the timeline (0 hidden, 1 APM, 2 EPM without spam).");
             PovShowCone = cfg.Bind("Replay", "ShowViewCones", true, "Replay: draw the field of view of every player as a translucent pyramid over the map.");
             ReplayUnitDots = cfg.Bind("Replay", "UnitOwnerDots", 1, "Replay: coloured owner dot over every unit. 0 off, 1 only while Alt is held, 2 always.");
             ReplayUiLayout = cfg.Bind("Replay", "UiLayout", "", "Replay player UI layout (scale, position, visibility); edited in the replay with F7.");

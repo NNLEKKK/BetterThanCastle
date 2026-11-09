@@ -120,7 +120,7 @@ namespace BetterThanCastle
         // ---- raw value layout (also the wire layout; append only) ----
         internal const int V_LOSS = 0, V_OWNED = 1, V_ALIVE = 2, V_ENERGY = 3, V_CRYS = 4, V_CRYSEC = 5, V_HOLDSUM = 6, V_HOLDN = 7,
             V_IDLE = 8, V_TRADE = 9, V_FREE = 10, V_CRAFT = 11, V_BUILT = 12, V_ILOST = 13, V_BLOST = 14, V_SCORE = 15, V_AUTH = 16,
-            V_PROF0 = 17, NPROF = 7, V_RES0 = V_PROF0 + NPROF, NRES = 12, V_BARREL = V_RES0 + NRES, NV = V_BARREL + 1;
+            V_PROF0 = 17, NPROF = 7, V_RES0 = V_PROF0 + NPROF, NRES = 12, V_BARREL = V_RES0 + NRES, V_ACT60 = V_BARREL + 1, V_ACTT = V_ACT60 + 1, V_EFF60 = V_ACTT + 1, V_APMPEAK = V_EFF60 + 1, NV = V_APMPEAK + 1;
 
         // per-item breakdown categories (BtcMsFaction.Det)
         internal const int D_CRAFT = 0, D_BUILT = 1, D_ILOST = 2, D_BLOST = 3, ND = 4;
@@ -269,6 +269,8 @@ namespace BetterThanCastle
             _t0 = Time.time;
             _auth = NetworkServer.active && BtcReplay.Mode != BtcReplay.State.Playing;
             _matchSeq++;
+            BtcApm.OnMatchStart();
+            PeakRing.Clear();
             int id = (System.Environment.TickCount & 0x3FFFFFFF) ^ (_matchSeq << 20);
             if (id == 0) id = 1;
             Local.Clear(id);
@@ -299,6 +301,41 @@ namespace BetterThanCastle
         {
             try { if (_active) { _active = false; BtcLog.Info("MatchStats", "replay rewind: reset"); } }
             catch (Exception e) { BtcLog.Error("MatchStats", "rewind: " + e); }
+        }
+
+        /// <summary>True while the host collector runs (BtcApm counts actions only then, or while recording a replay).</summary>
+        internal static bool Collecting { get { return _active && _auth; } }
+
+        private static readonly Dictionary<int, int[]> PeakRing = new Dictionary<int, int[]>();
+
+        /// <summary>Presses of a player since the last sample (BtcPovRec, recording): V_ACT60 += 60 per press.</summary>
+        internal static void NoteInputs(int facId, int n, int eff)
+        {
+            if (!_active || !_auth || n <= 0) return;
+            int[] v = Local.Get(facId, true).V;
+            v[V_ACT60] += 60 * n;
+            v[V_EFF60] += 60 * eff;
+            // peak APM over any 10 s window: ring of 1 s buckets per player
+            int[] ring;
+            if (!PeakRing.TryGetValue(facId, out ring)) { ring = new int[11]; PeakRing[facId] = ring; }
+            int sec = (int)Time.unscaledTime;
+            int last = ring[10];
+            if (sec != last)
+            {
+                for (int q = Mathf.Min(10, sec - last); q >= 1; q--) ring[(sec - q + 1) % 10] = 0;
+                ring[10] = sec;
+            }
+            ring[sec % 10] += n;
+            int sum = 0;
+            for (int q = 0; q < 10; q++) sum += ring[q];
+            if (sum * 6 > v[V_APMPEAK]) v[V_APMPEAK] = sum * 6;
+        }
+
+        /// <summary>Unused since presses are counted (BtcApm command fallback only): V_ACT60 += 60, so ACT60 / seconds = actions per minute (stat row Kind 2).</summary>
+        internal static void NoteAction(Faction f)
+        {
+            if (!_active || !_auth || f == null) return;
+            Local.Get(f.ID, true).V[V_ACT60] += 60;
         }
 
         /// <summary>Called every frame (ResourcePackManager.Update).</summary>
@@ -337,6 +374,7 @@ namespace BetterThanCastle
                     ResolveTrades(gt);
                     if (now >= _nextRes) { _nextRes = now + 5f; PollStockpiles(); }
                     Finish();
+                    for (int i = 0; i < Local.Factions.Count; i++) Local.Factions[i].V[V_ACTT] = Mathf.Max(1, (int)gt);
                     Local.T = gt;
                     Local.Version++;
                 }

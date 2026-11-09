@@ -1,5 +1,5 @@
 # STATUS (read first; keep <=60 lines; update at the end of every session)
-Updated: 2026-11-07 (v0.3.0 released: replay instant seek).
+Updated: 2026-11-08 (v0.3.3 released: replay bar rework, 30 Hz camera recording).
 
 ## Done (code committed; user confirmed in game: hotkeys, input lock, menu look, thumbnail scale, handicap dmg/hp/income/penalty, symmetry crystal)
 - Port complete (125 patches after Anim Sync removal), net core, replay, ResourcePackManager menu, perf fixes (see git log).
@@ -33,6 +33,7 @@ Updated: 2026-11-07 (v0.3.0 released: replay instant seek).
 - 2026-11-05 replay UI: layout editor (Replay/BtcReplayLayout.cs, F7: scale/move/hide modules, templates), 3D view cones (BtcPovCone.cs), client POV recording FIXED (msg 93 collided with BtcPlate; ids 100-105 now, see ARCHITECTURE), marks H (home crystal lost = flag) / N (crystal neutralised), death mark dedupe, POV list from tracks. Test plan docs/test-plans.md 'Replay UI'.
 
 ## NEXT
+0000. RELEASED v0.3.3 (2026-11-08, public e5a52bd): replay bottom bar (icons, POV list, Shift+A/D, panel height), camera/cursor 30 Hz + jump flag (UNTESTED in game), changelog since 0.3.0. OPEN: POV fog flicker NOT fixed (UpdateHostVisibility postfix did not help; ask which objects flicker). Memory: project-replay-bar-2026-11-08, feedback-russian-encoding (no mojibake rule in CLAUDE.md).
 000. LOAD SPEED (2026-11-08, single player first): LoadTimer overlay (cfg Display/LoadTimer), menu panel reuse while loading (cfg Loading/ReuseMenuPanels), host load ~24 -> ~20.7 s. User must check the in-game UI after load (all panels/buttons OK?). Left: terrain step2 4.5 s, Lua GameMenu ~5 s, GC 1.1 s, Awake 1.2 s; MP (6e5e312): early client UI was dead (mcs loop condition after body), revived: client builds Lua UI while waiting for HostLoaded, waits for home FireflyNest (30 s), auto fallback to vanilla LoadUI; same-PC test shows client UI done at 18 s vs host 21 s, but real 2-PC gain UNVERIFIED (user must test, scenario mp-load). Details: docs/lessons.md 2026-11-08, scenario load-host.
 00. RELEASED v0.3.0 (2026-11-07, public abca5d8): replay v4 instant seek merged into refactor/main (keyframes: terrain layers, crystals, trees, dropped items, containers, orphan sweep + re-listing, host freeze skip). User confirmed seek OK on new replays and Komorebi spam. Memory project-replay-v4 has the details and open leads.
 0. v0.2.3 released (2026-11-04): jump-off line (tag JumpLine), chop 1x1 (confirmed), rack kit filter (tag RackFilter/Livre; untested: Alt icon, save/load, MP host apply, hover pie), window mode + skip intro. User tests these.

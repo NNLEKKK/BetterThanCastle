@@ -35,6 +35,8 @@ namespace BetterThanCastle
             internal int Mu, Mv;            // mouse on screen, 0..1000 (v up)
             internal int Fl;                // 1 LMB, 2 RMB, 4 MMB, 8 pie open, 16 world cursor valid, 32 camera jump (do not interpolate from the previous sample)
             internal int Pr;                // pie opening progress 0..255 (0 = none)
+            internal int[] K;               // codes of the presses since the previous sample (KeyCode, 320 left mouse, 321 right mouse); stored in the trailing "K" section
+            internal int Ac;                // presses since the previous sample: low nibble all, high nibble effective (not spam); stored in the trailing "A" section
         }
 
         internal sealed class Track
@@ -43,6 +45,10 @@ namespace BetterThanCastle
             internal string Name, Col;
             internal List<S> L = new List<S>();
             internal int Hint;
+            internal string PlainName;                                 // nick without colour tags (cursor label)
+            internal byte[] Bind;                                      // the player's key bindings (deflated table), from the trailing "B" section
+            internal Dictionary<int, List<string>> BindD;              // decoded on the first hover
+            internal List<int> KT = new List<int>(), KC = new List<int>();   // press times (ms) and codes, built at load
         }
 
         private static readonly Dictionary<int, Track> RecTracks = new Dictionary<int, Track>();
@@ -97,13 +103,35 @@ namespace BetterThanCastle
 
         private static bool Same(S a, S b)
         {
-            return a.Cx == b.Cx && a.Cy == b.Cy && a.Cz == b.Cz && a.Rx == b.Rx && a.Ry == b.Ry && a.Rz == b.Rz && a.D == b.D
+            return a.Ac == 0 && b.Ac == 0 && a.K == null && b.K == null && a.Cx == b.Cx && a.Cy == b.Cy && a.Cz == b.Cz && a.Rx == b.Rx && a.Ry == b.Ry && a.Rz == b.Rz && a.D == b.D
                 && a.Wx == b.Wx && a.Wy == b.Wy && a.Wz == b.Wz && a.Mu == b.Mu && a.Mv == b.Mv && a.Fl == b.Fl && a.Pr == b.Pr;
         }
 
         // ------------------------------------------------------------------ recording
+        private static readonly Dictionary<int, byte[]> RecBind = new Dictionary<int, byte[]>();
+        private static readonly Dictionary<int, byte[][]> BindParts = new Dictionary<int, byte[][]>();
+        private static float _nextHostBind;
+        private const int ChunkLen = 400;
+
+        /// <summary>Client binding table arrives in chunks (a few hundred bytes per batch, so no message gets near the MTU); the host reassembles it per faction.</summary>
+        private static void StoreChunk(int fac, int idx, int total, byte[] chunk)
+        {
+            if (total < 1 || total > 32 || idx < 0 || idx >= total || chunk == null) return;
+            byte[][] parts;
+            if (!BindParts.TryGetValue(fac, out parts) || parts.Length != total || idx == 0) { parts = new byte[total][]; BindParts[fac] = parts; }
+            parts[idx] = chunk;
+            int len = 0;
+            for (int i = 0; i < total; i++) { if (parts[i] == null) return; len += parts[i].Length; }
+            byte[] all = new byte[len];
+            int o = 0;
+            for (int i = 0; i < total; i++) { Buffer.BlockCopy(parts[i], 0, all, o, parts[i].Length); o += parts[i].Length; }
+            RecBind[fac] = all;
+            BindParts.Remove(fac);
+        }
+
         internal static void OnRecordStart()
         {
+            RecBind.Clear(); BindParts.Clear(); _nextHostBind = 0f;
             RecTracks.Clear();
             NetBuf.Clear();
             _rxFacs.Clear();
@@ -115,6 +143,7 @@ namespace BetterThanCastle
         {
             Track t;
             if (!RecTracks.TryGetValue(fac, out t)) { t = new Track { Fac = fac, Name = name, Col = col }; RecTracks[fac] = t; }
+            if (s.Ac != 0) BtcMatchStats.NoteInputs(fac, s.Ac & 15, (s.Ac >> 4) & 15);
             if (t.L.Count > 0)
             {
                 S last = t.L[t.L.Count - 1];
@@ -159,26 +188,32 @@ namespace BetterThanCastle
             if (u == null || u.faction == null || !BtcMatchStats.Tracks(u.faction)) { _havePrev = false; return; }
             S s;
             if (!Capture(out s)) { _havePrev = false; return; }
+            BtcApm.PollInput(now);
             bool recMode = rec && (NetworkServer.active || BtcReplay.Mode == BtcReplay.State.Recording);
             if (recMode)
             {
                 float t = BtcReplay.RecTime;
                 if (t < 0f) { _havePrev = false; return; }
                 s.T = Mathf.RoundToInt(t * 1000f);
+                if (now >= _nextHostBind) { _nextHostBind = now + 60f; byte[] hb = BtcApm.BindBlob(); if (hb != null) RecBind[u.faction.ID] = hb; }
             }
             else s.T = Mathf.RoundToInt(now * 1000f);
             bool jump = _havePrev && Jumped(_prevS, s, Mathf.Min(Time.unscaledDeltaTime, 0.5f));
             bool due = now >= _nextSample;
             if (jump)
             {
-                Emit(_prevS, recMode, u);   // the pose right before the jump (Add drops it when it equals the last sample)
+                S pp = _prevS; pp.Ac = 0; pp.K = null;
+                Emit(pp, recMode, u);   // the pose right before the jump (Add drops it when it equals the last sample)
                 s.Fl |= 32;
             }
             if (jump || due)
             {
                 _nextSample = now + SampleEvery;
+                s.Ac = BtcApm.TakeActions();
+                s.K = BtcApm.TakeKeys();
                 Emit(s, recMode, u);
             }
+            s.Ac = 0; s.K = null;
             _prevS = s;
             _havePrev = true;
             if (!recMode && now >= _nextSend) { _nextSend = now + SendEvery; SendBatch(u); }
@@ -249,7 +284,9 @@ namespace BetterThanCastle
                 if (msg.col == null || msg.col.Length != 6) return;
                 string name = msg.name ?? "?";
                 if (name.Length > 40) name = name.Substring(0, 40);
-                List<S> l = DecodeBatch(msg.data);
+                byte[] bch; int bci, bct;
+                List<S> l = DecodeBatch(msg.data, out bch, out bci, out bct);
+                if (bch != null) StoreChunk(msg.fac, bci, bct, bch);
                 if (l.Count == 0) return;
                 int span = l[l.Count - 1].T;
                 int now = Mathf.RoundToInt(rt * 1000f);
@@ -323,17 +360,85 @@ namespace BetterThanCastle
                 PutSample(ms, a, prev);
                 prev = a;
             }
+            ms.WriteByte((byte)'A');
+            PutAcList(ms, l);
+            ms.WriteByte((byte)'K');
+            PutKList(ms, l);
+            int ci, ct; byte[] cb;
+            if (BtcApm.NextBindChunk(ChunkLen, out ci, out ct, out cb)) { ms.WriteByte((byte)'B'); ms.WriteByte((byte)ci); ms.WriteByte((byte)ct); PutV(ms, (uint)cb.Length); ms.Write(cb, 0, cb.Length); }
             return ms.ToArray();
         }
 
-        private static List<S> DecodeBatch(byte[] b)
+        /// <summary>Trailing press counts: K entries of (index delta, packed counts). Old readers stop after the samples and never see it.</summary>
+        private static void PutAcList(Stream o, List<S> l)
         {
+            int k = 0;
+            for (int i = 0; i < l.Count; i++) if (l[i].Ac != 0) k++;
+            PutV(o, (uint)k);
+            int last = -1;
+            for (int i = 0; i < l.Count; i++)
+                if (l[i].Ac != 0) { PutV(o, (uint)(i - last)); last = i; o.WriteByte((byte)l[i].Ac); }
+        }
+
+        private static void PutKList(Stream o, List<S> l)
+        {
+            int k = 0;
+            for (int i = 0; i < l.Count; i++) if (l[i].K != null) k++;
+            PutV(o, (uint)k);
+            int last = -1;
+            for (int i = 0; i < l.Count; i++)
+                if (l[i].K != null)
+                {
+                    PutV(o, (uint)(i - last)); last = i;
+                    PutV(o, (uint)l[i].K.Length);
+                    for (int j = 0; j < l[i].K.Length; j++) PutV(o, (uint)l[i].K[j]);
+                }
+        }
+
+        private static void GetKList(byte[] b, ref int p, List<S> l)
+        {
+            int k = (int)GetV(b, ref p), idx = -1;
+            for (int j = 0; j < k && p < b.Length; j++)
+            {
+                idx += (int)GetV(b, ref p);
+                int n = (int)GetV(b, ref p);
+                if (n < 0 || n > 16) return;
+                int[] codes = new int[n];
+                for (int q = 0; q < n; q++) codes[q] = (int)GetV(b, ref p);
+                if (idx >= 0 && idx < l.Count) { S s = l[idx]; s.K = codes; l[idx] = s; }
+            }
+        }
+
+        private static void GetAcList(byte[] b, ref int p, List<S> l)
+        {
+            int k = (int)GetV(b, ref p), idx = -1;
+            for (int j = 0; j < k && p < b.Length; j++)
+            {
+                idx += (int)GetV(b, ref p);
+                if (p >= b.Length) return;
+                int ac = b[p++];
+                if (idx >= 0 && idx < l.Count) { S s = l[idx]; s.Ac = ac; l[idx] = s; }
+            }
+        }
+
+        private static List<S> DecodeBatch(byte[] b, out byte[] chunk, out int ci, out int ct)
+        {
+            chunk = null; ci = 0; ct = 0;
             List<S> l = new List<S>();
             int p = 0;
             int n = (int)GetV(b, ref p);
             if (n > 64) return l;
             S prev = new S();
             for (int i = 0; i < n && p < b.Length; i++) { prev = GetSample(b, ref p, prev); l.Add(prev); }
+            if (p < b.Length && b[p] == (byte)'A') { p++; GetAcList(b, ref p, l); }
+            if (p < b.Length && b[p] == (byte)'K') { p++; GetKList(b, ref p, l); }
+            if (p + 3 < b.Length && b[p] == (byte)'B')
+            {
+                p++;
+                ci = b[p++]; ct = b[p++];
+                int cl = (int)GetV(b, ref p);
+                if (cl > 0 && cl <= ChunkLen && p + cl <= b.Length) { chunk = new byte[cl]; Buffer.BlockCopy(b, p, chunk, 0, cl); }
+            }
             return l;
         }
 
@@ -359,6 +464,16 @@ namespace BetterThanCastle
                     PutV(raw, (uint)t.L.Count);
                     S prev = new S();
                     for (int i = 0; i < t.L.Count; i++) { PutSample(raw, t.L[i], prev); prev = t.L[i]; }
+                }
+                raw.WriteByte((byte)'A');
+                foreach (KeyValuePair<int, Track> kv in RecTracks) PutAcList(raw, kv.Value.L);
+                raw.WriteByte((byte)'K');
+                foreach (KeyValuePair<int, Track> kv in RecTracks) PutKList(raw, kv.Value.L);
+                raw.WriteByte((byte)'B');
+                foreach (KeyValuePair<int, Track> kv in RecTracks)
+                {
+                    byte[] bb;
+                    if (RecBind.TryGetValue(kv.Key, out bb)) { PutV(raw, (uint)bb.Length); raw.Write(bb, 0, bb.Length); } else PutV(raw, 0);
                 }
                 MemoryStream outp = new MemoryStream();
                 using (DeflateStream ds = new DeflateStream(outp, CompressionMode.Compress, true))
@@ -427,6 +542,20 @@ namespace BetterThanCastle
                     for (int k = 0; k < cnt && p < r.Length; k++) { prev = GetSample(r, ref p, prev); t.L.Add(prev); }
                     Play.Add(t);
                 }
+                if (p < r.Length && r[p] == (byte)'A') { p++; for (int i = 0; i < Play.Count && p < r.Length; i++) GetAcList(r, ref p, Play[i].L); }
+                if (p < r.Length && r[p] == (byte)'K') { p++; for (int i = 0; i < Play.Count && p < r.Length; i++) GetKList(r, ref p, Play[i].L); }
+                if (p < r.Length && r[p] == (byte)'B')
+                {
+                    p++;
+                    for (int i = 0; i < Play.Count && p < r.Length; i++)
+                    {
+                        int bl = (int)GetV(r, ref p);
+                        if (bl > 0 && p + bl <= r.Length) { Play[i].Bind = new byte[bl]; Buffer.BlockCopy(r, p, Play[i].Bind, 0, bl); p += bl; }
+                    }
+                }
+                for (int i = 0; i < Play.Count; i++)
+                    for (int k = 0; k < Play[i].L.Count; k++)
+                        if (Play[i].L[k].K != null) for (int j = 0; j < Play[i].L[k].K.Length; j++) { Play[i].KT.Add(Play[i].L[k].T); Play[i].KC.Add(Play[i].L[k].K[j]); }
                 BtcLog.Info("PovRec", "replay has " + Play.Count + " player track(s)");
             }
             catch (Exception e) { BtcLog.Error("PovRec", "ParsePending: " + e.Message); Play.Clear(); }
@@ -649,9 +778,10 @@ namespace BetterThanCastle
                 {
                     Rect lr = new Rect(pos.x + sz * 0.55f, pos.y + sz * 0.45f, sz * 8f, sz * 0.7f);
                     _name.normal.textColor = new Color(0f, 0f, 0f, 0.8f);
-                    GUI.Label(new Rect(lr.x + 1f, lr.y + 1f, lr.width, lr.height), t.Name, _name);
+                    if (t.PlainName == null) t.PlainName = BtcStr.Plain(t.Name);
+                    GUI.Label(new Rect(lr.x + 1f, lr.y + 1f, lr.width, lr.height), t.PlainName, _name);
                     _name.normal.textColor = new Color(c.r * 0.5f + 0.5f, c.g * 0.5f + 0.5f, c.b * 0.5f + 0.5f, 1f);
-                    GUI.Label(lr, t.Name, _name);
+                    GUI.Label(lr, t.PlainName, _name);
                 }
             }
         }

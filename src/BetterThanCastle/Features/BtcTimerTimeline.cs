@@ -46,6 +46,7 @@ namespace BetterThanCastle
         {
             BtcAutoMarks.OnRecordStart();
             BtcPovRec.OnRecordStart();
+            BtcApm.OnRecordStart();
             Rec.Clear();
             MarkLast.Clear();
             MarkCount.Clear();
@@ -92,6 +93,8 @@ namespace BetterThanCastle
         {
             StringBuilder sb = new StringBuilder(512);
             sb.Append(BtcPovRec.TlToken());
+            string apm = BtcApm.Payload();
+            if (apm.Length > 0) { if (sb.Length > 0) sb.Append(';'); sb.Append(apm); }
             // structure events first, marks last (dropped first when the region is full)
             for (int pass = 0; pass < 2; pass++)
             {
@@ -184,6 +187,7 @@ namespace BetterThanCastle
         internal static void LoadTl(string s)
         {
             BtcAutoMarks.ClearPlay();
+            BtcApm.ClearPlay();
             Play.Clear();
             _markColsN = -1;
             HiddenCols.Clear();
@@ -198,6 +202,7 @@ namespace BetterThanCastle
                 {
                     string[] p = items[i].Split(',');
                     if (p.Length < 2 || p[0].Length != 1) continue;
+                    if (BtcApm.TryParse(p, c)) continue;
                     if (BtcAutoMarks.TryParse(p, c)) continue;
                     TlEv e = new TlEv { K = p[0][0], T = float.Parse(p[1], c) };
                     if (e.K == 'S' && p.Length >= 5) { e.A = float.Parse(p[2], c); e.B = float.Parse(p[3], c); e.D = float.Parse(p[4], c); }

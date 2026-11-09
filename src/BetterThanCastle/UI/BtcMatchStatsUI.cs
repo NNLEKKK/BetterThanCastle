@@ -69,6 +69,9 @@ namespace BetterThanCastle
             string[] rt = { "St", "Lg", "Fe", "Br", "Pl", "Pk", "Bk", "In", "Gl", "Cg", "Rp", "Fb" };
             for (int i = 0; i < re.Length; i++) S("Gathered: " + re[i], "Добыто: " + rr[i], rt[i], 0, BtcMatchStats.V_RES0 + i, 0, 0, false, false);
             S("Barrels exploded", "Взорвано бочек", "Bx", 0, BtcMatchStats.V_BARREL, 0, 0, true, false);
+            S("Actions per minute (avg)", "Действий в минуту (ср.)", "Apm", 2, BtcMatchStats.V_ACT60, BtcMatchStats.V_ACTT, 0, true, false);
+            S("Effective actions per minute (EPM, no spam)", "Эффективных действий в минуту (EPM, без спама)", "Epm", 2, BtcMatchStats.V_EFF60, BtcMatchStats.V_ACTT, 0, true, false);
+            S("Peak APM (10 s window)", "Пик APM (окно 10 с)", "ApmPk", 0, BtcMatchStats.V_APMPEAK, 0, 0, true, false);
             Expand = new bool[Stats.Count];
             InBar = new bool[Stats.Count];
             InPanel = new bool[Stats.Count];

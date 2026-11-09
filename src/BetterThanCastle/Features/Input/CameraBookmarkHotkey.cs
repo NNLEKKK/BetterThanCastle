@@ -919,7 +919,7 @@ namespace Brix.Input
 		private void OnGUI()
 		{
 			this.EnsureOverlayStyles();
-			bool flag = BtcHotkeys.Enabled && this._overlayVisible;
+			bool flag = BtcHotkeys.Enabled && this._overlayVisible && BtcReplay.Mode != BtcReplay.State.Playing;
 			bool flag2 = flag;
 			if (flag2)
 			{

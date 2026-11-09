@@ -5,7 +5,7 @@ namespace BetterThanCastle
     /// <summary>Tiny icons for the replay bar, drawn from filled rects (no textures, no font glyphs) plus a hover tooltip.</summary>
     internal static class BtcReplayIcons
     {
-        internal const int Monitor = 0, Camera = 1, Cursor = 2, Blueprint = 3, View = 4, Layout = 5, Play = 6, Pause = 7, Slow = 8, Fast = 9, Back10 = 10, Fwd10 = 11, Stop = 12, Prev = 13, Next = 14;
+        internal const int Monitor = 0, Camera = 1, Cursor = 2, Blueprint = 3, View = 4, Layout = 5, Play = 6, Pause = 7, Slow = 8, Fast = 9, Back10 = 10, Fwd10 = 11, Stop = 12, Prev = 13, Next = 14, Map = 15, Wave = 16, Keys = 17, Snow = 18, Fire = 19, PeakMark = 20;
 
         private static string _tip;
         private static Rect _tipAnchor;
@@ -74,6 +74,43 @@ namespace BetterThanCastle
                 case Stop: R(x + p, y + p, 6f * p, 6f * p, c); break;
                 case Prev: Tri(x + 2.2f * p, y, p, false, c); break;
                 case Next: Tri(x + 2.2f * p, y, p, true, c); break;
+                case Keys:
+                    Frame(x, y + 1.5f * p, 8f * p, 5f * p, p * 0.8f, c);
+                    for (int i = 0; i < 3; i++) R(x + (1.2f + i * 2.2f) * p, y + 2.6f * p, 1.2f * p, 1.2f * p, c);
+                    R(x + 2f * p, y + 4.6f * p, 4f * p, 0.9f * p, c);
+                    break;
+                case Snow:
+                    R(x + 3.5f * p, y, p, 8f * p, c);
+                    R(x, y + 3.5f * p, 8f * p, p, c);
+                    R(x + 1.2f * p, y + 1.2f * p, p, p, c); R(x + 5.8f * p, y + 1.2f * p, p, p, c);
+                    R(x + 1.2f * p, y + 5.8f * p, p, p, c); R(x + 5.8f * p, y + 5.8f * p, p, p, c);
+                    R(x + 2.3f * p, y + 2.3f * p, 3.4f * p, 3.4f * p, new Color(c.r, c.g, c.b, c.a * 0.55f));
+                    break;
+                case Fire:
+                    R(x + 1.5f * p, y + 5.6f * p, 5f * p, 2.4f * p, c);
+                    R(x + 1f * p, y + 3.6f * p, 4f * p, 2.2f * p, c);
+                    R(x + 2.6f * p, y + 1.6f * p, 3.2f * p, 2.2f * p, c);
+                    R(x + 3.4f * p, y, 1.6f * p, 1.8f * p, c);
+                    R(x + 5f * p, y + 3.2f * p, 1.8f * p, 2.6f * p, c);
+                    break;
+                case PeakMark:
+                    R(x + 3.5f * p, y, p, p, c);
+                    R(x + 2.5f * p, y + p, 3f * p, p, c);
+                    R(x + 1.5f * p, y + 2f * p, 5f * p, p, c);
+                    R(x + 0.5f * p, y + 3f * p, 7f * p, p, c);
+                    R(x + 2.5f * p, y + 4f * p, 3f * p, 3.8f * p, c);
+                    break;
+                case Wave:
+                {
+                    float[] hs = { 5f, 2.5f, 4f, 1f, 3.5f, 6f, 3f };
+                    for (int i = 0; i < hs.Length; i++) R(x + i * 1.15f * p, y + (7f - hs[i]) * p, p * 0.9f, (hs[i] + 1f) * p, c);
+                    break;
+                }
+                case Map:
+                    Frame(x, y, 8f * p, 8f * p, p * 0.8f, c);
+                    R(x + 1.6f * p, y + 4.6f * p, 2.2f * p, 1.8f * p, c);
+                    R(x + 4.6f * p, y + 1.6f * p, 1.8f * p, 2.2f * p, c);
+                    break;
                 case Layout:
                     R(x, y, 5f * p, 4f * p, c);
                     R(x + 5.7f * p, y, 2.3f * p, 4f * p, c);
@@ -81,6 +118,9 @@ namespace BetterThanCastle
                     break;
             }
         }
+
+        /// <summary>A bare glyph (no button background), e.g. the marks over the APM wave.</summary>
+        internal static void Glyph(int kind, Rect r, Color c) { Draw(kind, r, c); }
 
         /// <summary>Square icon toggle; tip is shown above the bar while hovered. Returns true on click.</summary>
         internal static bool Button(Rect r, int kind, bool on, string tip)

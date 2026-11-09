@@ -48,6 +48,7 @@ namespace BetterThanCastle.Patches
 #if DEV
                 BetterThanCastle.Dev.BtcDevEcoTrace.Cmd(original.Name, args);
 #endif
+                BtcApm.Note(original.Name, args);
                 if (BtcReplay.Active && BtcReplay.Intercept(self, original.Name, args)) return false;
             }
             catch (Exception e)

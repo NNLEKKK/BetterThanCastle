@@ -292,6 +292,7 @@ public static class BtcHotkeys
 					}
 				}
 				result = (Input.GetKeyDown(keys[keys.Length - 1]) && !BtcHotkeys.ExtraModifiersHeld(keys));
+				if (result) BtcApm.NoteEffect();
 			}
 		}
 		return result;

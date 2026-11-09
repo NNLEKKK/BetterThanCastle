@@ -1178,7 +1178,7 @@ namespace BetterThanCastle
                 GUI.Label(new Rect(42f, 14f, 220f, 22f), text, s.connectionOverlayLabelStyle);
                 GUI.color = old;
             }
-            if (NetworkServer.active && BtcConfig.ShowPauseLabel.Value)
+            if (BtcReplay.Mode != BtcReplay.State.Playing && NetworkServer.active && BtcConfig.ShowPauseLabel.Value)
             {
                 EnsureConnectionOverlayLabelStyle(s);
                 Color old2 = GUI.color;
@@ -1186,7 +1186,7 @@ namespace BetterThanCastle
                 GUI.Label(new Rect(14f, 42f, 260f, 18f), s.clientsCanVoluntaryPause ? "Client pause: allowed" : "Client pause: DISABLED", s.connectionOverlayLabelStyle);
                 GUI.color = old2;
             }
-            if (BtcConfig.ShowPing.Value && (NetworkServer.active || (m.LocalNetworkClient != null && m.LocalNetworkClient.isConnected)))
+            if (BtcReplay.Mode != BtcReplay.State.Playing && BtcConfig.ShowPing.Value && (NetworkServer.active || (m.LocalNetworkClient != null && m.LocalNetworkClient.isConnected)))
             {
                 EnsureConnectionOverlayLabelStyle(s);
                 EnsureConnectionOverlayTexture(s);

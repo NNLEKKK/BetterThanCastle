@@ -147,10 +147,9 @@ namespace BetterThanCastle
             {
                 Vector3 d = Dirs[i];
                 float t = d.y < -0.02f ? (gy - apex.y) / d.y : -1f;
-                if (t > 0f && t <= far) { c.Ring[i] = apex + d * t; continue; }
-                float hl = Mathf.Sqrt(d.x * d.x + d.z * d.z);
-                Vector2 h = hl > 1e-4f ? new Vector2(d.x, d.z) / hl * far : Vector2.zero;
-                c.Ring[i] = new Vector3(apex.x + h.x, gy, apex.z + h.y);
+                // hits the ground plane within the far distance: the footprint; otherwise (looking level or up, or too far) the true frustum edge at the far distance
+                // along the ray, so any camera angle gives a full 3D pyramid instead of a flat fan lying on the ground
+                c.Ring[i] = apex + d * (t > 0f && t <= far ? t : far);
             }
             c.Has = true;
         }

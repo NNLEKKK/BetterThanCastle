@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.3.4
+Replay analytics release. Items marked (BC) need BetterConnection ON; with it OFF the mod stays vanilla on the wire. New data is appended to the replay file in trailing sections, so older versions still open these replays and older replays still open here (they just have no new data).
+
+### Activity graph (APM / EPM)
+- A step graph above the timeline, inside the replay bar: the actions per minute of every player in their colour (presses of the trailing 10 s, sharp edges, zero hidden under the timeline line). Click on it to seek. Hover shows the value of each player at that moment.
+- The bar icon cycles APM / EPM (no spam) / hidden. Marks follow the chosen series.
+- Auto marks as frames with a duration: idle (snowflake: a strong drop below the player's average for 20 s), surge (flame: clearly above the average) and the personal peak. Hover shows the kind, the player and the length.
+- What counts (StarCraft style, recorded per player): left / right mouse clicks, and key taps that really did something (the selection or the input mode changed, a menu shortcut ran, an advanced hotkey fired). Camera movement / rotation keys, held keys, modifiers alone, typing in a text field and keys without an effect do not count. EPM also ignores the same key repeated within 0.15 s. The detection is the same on the host and on clients. (BC) for clients.
+- Match statistics got three rows: actions per minute (average), EPM and peak APM (10 s window). They are filled while a replay is recorded; old replays show 0.
+
+### Pressed keys of the watched player
+- Bar icon cycles feed / mini keyboard / hidden. Feed: pills with the key or mouse button, newest on top, fading. Keyboard: flat tiles in the bar style, the pressed key takes the player's colour, Shift / Ctrl / Alt / Caps stay lit while held; middle and side mouse buttons included.
+- Hover a key or a pill to see what it is bound to. The player's own key bindings (advanced hotkeys + the game's bindings) are recorded into the replay, clients send them to the host in small chunks (BC); replays without them show your own bindings and say so.
+- The block sits above the bar on the right and can be moved, scaled or hidden in the F7 editor ("Pressed keys").
+- Only new replays carry key data.
+
+### Replay view
+- The mini map in a replay is pinned flush into the top-left corner and can be hidden with a bar icon; the big scoreboard panel behind it (background, header, timer) is always hidden in replays.
+- View cones are now a true 3D pyramid at any camera angle (looking level or up no longer gives a flat fan).
+- The control groups overlay and the ping / client pause labels are hidden in replays.
+- Player cursors in the replay show the nick without colour tags, tinted in the player's colour.
+
+**По-русски:** график активности APM / EPM над таймлайном (клик перематывает, иконка переключает APM / EPM / скрыто), авто-метки простоя, всплеска и пика рамками, подсчёт по нажатиям как в StarCraft (только клики и клавиши, давшие эффект), три новые строки в статистике, показ нажатых клавиш наблюдаемого игрока (лента или мини-клавиатура) с подсказкой, на что назначена клавиша, и записью раскладки игроков в реплей, миникарта в углу с кнопкой скрытия, полноценный 3D-конус обзора, скрыты оверлей групп и пинг, ник у курсора без цветовых тегов.
+
 ## 0.3.3
 Includes everything since 0.3.0 (0.3.0a, 0.3.1a, 0.3.2 and new work). Items marked (BC) need BetterConnection ON; with it OFF the mod stays vanilla on the wire.
 
