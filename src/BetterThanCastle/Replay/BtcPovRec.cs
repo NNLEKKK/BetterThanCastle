@@ -829,8 +829,7 @@ namespace BetterThanCastle
                 pts[i] = new Vector2(sp.x, Screen.height - sp.y);
             }
             Color lc = new Color(c.r, c.g, c.b, 0.85f);
-            if (ok && !ConesOn)
-                for (int i = 0; i < 4; i++) Line(pts[i], pts[(i + 1) % 4], lc, 2.5f);
+            if (!ConesOn) return;   // cones off: cursors only, no crooked ground frame and no look-at cross
             Vector3 ls = cam.WorldToScreenPoint(look);
             if (ls.z > 0f)
             {

@@ -12,7 +12,7 @@ using UnityEngine.SceneManagement;
 
 namespace BetterThanCastle
 {
-public static class BtcNick
+public static partial class BtcNick
 {
 	private static string CfgPath
 	{
@@ -25,6 +25,7 @@ public static class BtcNick
 	private static void Load()
 	{
 		BtcNick._loaded = true;
+		BtcNick._styleOn = BtcMenuState.Bool("profile:on", true);
 		BtcNick._enforceUntil = Time.unscaledTime + 20f;
 		try
 		{
@@ -1276,7 +1277,7 @@ public static class BtcNick
 			BtcFx.SetBase(@base);
 			BtcNick._animKFor = -1;
 		}
-		bool flag4 = !BtcNick._anim || !inLobby || BtcNick._aPlain.Length == 0 || BtcNick.Active() != 0;
+		bool flag4 = !BtcNick._styleOn || !BtcNick._anim || !inLobby || BtcNick._aPlain.Length == 0 || BtcNick.Active() != 0;
 		bool flag5 = flag4;
 		bool flag6 = flag5;
 		bool flag7 = flag6;
@@ -1422,7 +1423,7 @@ public static class BtcNick
 		string result;
 		if (flag3)
 		{
-			result = BtcNick._nick[a];
+			result = (BtcNick._styleOn || BtcNick._nick[a].Length == 0) ? BtcNick._nick[a] : BtcNick.Plain(BtcNick._nick[a]);
 		}
 		else
 		{

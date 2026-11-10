@@ -31,6 +31,9 @@ public static class BtcSaveFormat
 						{
 							string a = array[i].Substring(0, num).Trim();
 							string text = array[i].Substring(num + 1).Trim();
+							if (a == "shareOn") { BtcSaveFormat.ShareOn = (text == "1"); continue; }
+							if (a == "sendBtcs") { BtcSaveFormat.SendBtcs = (text == "1"); continue; }
+							if (a == "sendThumb") { BtcSaveFormat.SendThumb = (text == "1"); continue; }
 							bool flag4 = a == "includeThumb";
 							if (flag4)
 							{
@@ -67,6 +70,9 @@ public static class BtcSaveFormat
 			File.WriteAllLines(BtcPaths.Config("share.txt"), new string[]
 			{
 				"includeThumb=" + (BtcSaveFormat.IncludeThumb ? "1" : "0"),
+				"shareOn=" + (BtcSaveFormat.ShareOn ? "1" : "0"),
+				"sendBtcs=" + (BtcSaveFormat.SendBtcs ? "1" : "0"),
+				"sendThumb=" + (BtcSaveFormat.SendThumb ? "1" : "0"),
 				"thumbFactor=" + Math.Max(1, Math.Min(15, BtcSaveFormat.ThumbFactor)).ToString()
 			});
 		}
@@ -1242,6 +1248,29 @@ public static class BtcSaveFormat
 	}
 
 	public static bool IncludeThumb = true;
+
+	/// <summary>Host sends the map to BTC clients as a .btcs instead of the vanilla lzip zip (BetterConnection ON only).</summary>
+	public static bool SendBtcs = true;
+
+	/// <summary>Master switch of the Share tab: off = the host uses the plain vanilla map transfer (zip with thumbnail).</summary>
+	public static bool ShareOn = true;
+
+	/// <summary>Host also sends thumbnail.png to clients (off by default: clients do not need it).</summary>
+	public static bool SendThumb = false;
+
+	public static bool IsBtcsMagic(byte[] h)
+	{
+		return h != null && h.Length >= 4 && h[0] == BtcSaveFormat.Magic[0] && h[1] == BtcSaveFormat.Magic[1] && h[2] == BtcSaveFormat.Magic[2] && h[3] == BtcSaveFormat.Magic[3];
+	}
+
+	/// <summary>Pack a map folder for the network (thumbnail optional, never touches the user's Share settings).</summary>
+	public static bool PackForSend(string folder, string outFile, bool withThumb, out string err)
+	{
+		bool old = BtcSaveFormat.IncludeThumb;
+		BtcSaveFormat.IncludeThumb = withThumb;
+		try { return BtcSaveFormat.Pack(folder, outFile, true, out err); }
+		finally { BtcSaveFormat.IncludeThumb = old; }
+	}
 
 	public static int ThumbFactor = 8;
 

@@ -175,6 +175,7 @@ public static class BtcKick
 				BtcKick.RemoveId(BtcKick._fSpec, c.connectionId);
 				BtcKick._handled.Add(c.connectionId);
 				BtcKick.Drop(c);
+				BtcHud.Notice(BtcReplayUI.T("Kicked: " + name, "Исключён: " + name), BtcReplayIcons.Cross, BtcHud.Danger);
 				Debug.Log(string.Concat(new object[]
 				{
 					"BtcKick: kicked '",
@@ -249,6 +250,16 @@ public static class BtcKick
 			}
 		}
 	}
+
+	/// <summary>Remote connections of the host in the same order as BtcNetManager.PingLines (menu rows; empty for clients).</summary>
+	internal static NetworkConnection[] RemoteConns()
+	{
+		if (!NetworkServer.active) return new NetworkConnection[0];
+		BtcKick.Remote();
+		return BtcKick._tmp.ToArray();
+	}
+
+	internal static string PlayerOfLine(string line) { return BtcKick.NameFromLine(line); }
 
 	private static string NameFromLine(string line)
 	{

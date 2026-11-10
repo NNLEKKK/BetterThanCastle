@@ -68,7 +68,7 @@ public partial class ResourcePackManager : MonoBehaviour
 		GUI.DrawTexture(new Rect(box.x + 2f, box.y + 2f, box.width - 4f, box.height - 4f), this.whiteTex);
 		if (on)
 		{
-			GUI.color = new Color(0.55f, 0.85f, 0.55f, 1f);
+			GUI.color = BtcMenu.AccentA(1f);
 			GUI.DrawTexture(new Rect(box.x + 4f, box.y + 4f, box.width - 8f, box.height - 8f), this.whiteTex);
 		}
 		GUI.color = color;
@@ -101,7 +101,7 @@ public partial class ResourcePackManager : MonoBehaviour
 			}
 			if (accent)
 			{
-				GUI.color = new Color(0.55f, 0.85f, 0.55f, 1f);
+				GUI.color = BtcMenu.AccentA(1f);
 				GUI.DrawTexture(new Rect(row.x, row.y + row.height * 0.2f, 3f, row.height * 0.6f), this.whiteTex);
 			}
 			GUI.color = old;

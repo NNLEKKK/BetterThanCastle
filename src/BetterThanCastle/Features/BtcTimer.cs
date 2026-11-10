@@ -75,6 +75,9 @@ namespace BetterThanCastle
             iLimit = BtcGameplay.Idx("timer.limit");
         }
 
+        /// <summary>Local display option (Visuals tab): show milliseconds in the game timer. It was a synced host rule before; it is not a rule.</summary>
+        internal static bool ShowMs { get { return BtcMenuState.Bool("visual:timerms", false); } set { BtcMenuState.SetBool("visual:timerms", value); } }
+
         private static float Val(int i, float def)
         {
             float[] e = BtcGameplay.E;
@@ -505,7 +508,7 @@ namespace BetterThanCastle
         internal static string PanelText(bool count = true)
         {
             if (Cur == Phase.None) return null;
-            float t = Val(iMs, 0f) > 0.5f ? Elapsed : Mathf.Floor(Elapsed + 0.5f);   // the panel samples about once a second: rounding keeps it from lagging behind
+            float t = ShowMs ? Elapsed : Mathf.Floor(Elapsed + 0.5f);   // the panel samples about once a second: rounding keeps it from lagging behind
             if (count) { _asks++; _lastAskT = Time.unscaledTime; }
             if (count && !_panelLogged && BtcReplay.Mode == BtcReplay.State.Playing) { _panelLogged = true; BtcLog.Info("Timer", "panel clock asked during replay, t=" + t.ToString("F1")); }
             string col = "#D1D1D1";
@@ -542,7 +545,7 @@ namespace BetterThanCastle
         internal static string Clock(float s)
         {
             int n = Mathf.Max(0, Mathf.FloorToInt(s));
-            string ms = Val(iMs, 0f) > 0.5f ? "." + Mathf.Clamp(Mathf.FloorToInt((Mathf.Max(0f, s) - n) * 1000f), 0, 999).ToString("000") : string.Empty;
+            string ms = ShowMs ? "." + Mathf.Clamp(Mathf.FloorToInt((Mathf.Max(0f, s) - n) * 1000f), 0, 999).ToString("000") : string.Empty;
             if (n < 3600) return (n / 60) + ":" + (n % 60).ToString("00") + ms;
             return (n / 3600) + ":" + (n / 60 % 60).ToString("00") + ":" + (n % 60).ToString("00") + ms;
         }
@@ -550,41 +553,101 @@ namespace BetterThanCastle
         private static void DrawCount(float sc)
         {
             int n = Mathf.Max(1, Mathf.CeilToInt(Count));
+            int fs = BtcHud.Fs + 1;
+            BtcReplayUI.Ensure(fs);
+            float s = fs * 9f;
+            Rect r = new Rect((Screen.width - s) * 0.5f, Screen.height * 0.22f, s, s * 1.05f);
+            float frac = Mathf.Clamp01(Count - Mathf.Floor(Count));
+            BtcReplayUI.Fill(r, BtcHud.Panel);
+            BtcReplayUI.Fill(new Rect(r.x, r.y, 3f, r.height), BtcMenu.Accent);
+            // the bar under the digit drains with the current second
+            BtcReplayUI.Fill(new Rect(r.x + fs * 0.8f, r.yMax - fs * 1.6f, (r.width - fs * 1.6f) * (Count > 1f ? frac : Mathf.Clamp01(Count)), 3f), new Color(BtcMenu.Accent.r, BtcMenu.Accent.g, BtcMenu.Accent.b, 0.8f));
             int old = _lbl.fontSize;
-            _lbl.fontSize = Mathf.RoundToInt(110 * sc);
-            Shadow(new Rect(0f, Screen.height * 0.25f, Screen.width, 140f * sc), n.ToString(), _lbl, new Color(1f, 0.95f, 0.5f));
+            Color oc = GUI.contentColor;
+            _lbl.fontSize = Mathf.RoundToInt(fs * 5.2f);
+            GUI.contentColor = Color.white;
+            GUI.Label(new Rect(r.x, r.y + fs * 0.4f, r.width, r.height - fs * 2.6f), n.ToString(), _lbl);
             _lbl.fontSize = old;
+            GUI.contentColor = new Color(1f, 1f, 1f, 0.6f);
+            GUI.Label(new Rect(r.x, r.yMax - fs * 2.5f, r.width, fs * 1.2f), BtcGameplay.T("Game starts", "Старт игры"), BtcReplayUI.sVal);
+            GUI.contentColor = oc;
+        }
+
+        private static bool FlatButton(Rect r, string text, bool enabled, bool accent)
+        {
+            Event e = Event.current;
+            bool hov = enabled && r.Contains(e.mousePosition);
+            Color a = accent ? BtcMenu.Accent : new Color(1f, 1f, 1f, 1f);
+            BtcReplayUI.Fill(r, new Color(a.r, a.g, a.b, enabled ? (hov ? (accent ? 0.34f : 0.16f) : (accent ? 0.22f : 0.08f)) : 0.05f));
+            if (enabled) BtcReplayUI.Fill(new Rect(r.x, r.yMax - 2f, r.width, 2f), new Color(a.r, a.g, a.b, accent ? 0.9f : 0.3f));
+            Color oc = GUI.contentColor;
+            GUI.contentColor = new Color(1f, 1f, 1f, enabled ? 0.95f : 0.45f);
+            GUI.Label(r, text, BtcReplayUI.sVal);
+            GUI.contentColor = oc;
+            bool prev = GUI.enabled;
+            GUI.enabled = enabled;
+            bool c = BtcSfx.Btn(r, "", BtcReplayUI.sBtn);
+            GUI.enabled = prev;
+            return c;
         }
 
         private static void DrawWaiting(float sc)
         {
-            float w = 440f * sc, h = 120f * sc;
-            Rect r = new Rect((Screen.width - w) * 0.5f, 4f * sc, w, h);
-            Box(r, new Color(0f, 0f, 0f, 0.55f));
+            int fs = BtcHud.Fs + 1;
+            BtcReplayUI.Ensure(fs);
+            GUI.depth = -1050;
+            Event e = Event.current;
             int ready = 0;
             for (int i = 0; i < Shown.Count; i++) if (Shown[i].Value) ready++;
-            string title = Resume ? BtcGameplay.T("Resume: waiting for players ", "Продолжение: ждём игроков ") : BtcGameplay.T("Waiting for players ", "Ждём игроков ");
-            title += ready + "/" + Mathf.Max(Shown.Count, 1);
-            Shadow(new Rect(r.x, r.y + 2f * sc, w, 30f * sc), title, _small, Color.white);
-            StringBuilder sb = new StringBuilder();
+            string title = Resume ? BtcGameplay.T("Resume: waiting for players", "Продолжение: ждём игроков") : BtcGameplay.T("Waiting for players", "Ждём игроков");
+            float w = Mathf.Min(Screen.width * 0.55f, fs * 36f), pad = fs * 0.8f;
+            GUIStyle lab = BtcReplayUI.sLabel, bold = BtcReplayUI.sBarLabel ?? BtcReplayUI.sLabel;
+            // player chips flow in rows
+            float head = fs * 2.4f, chipH = fs * 1.7f, gap = fs * 0.35f;
+            float cx = pad, cy = 0f;
+            Rect[] chips = new Rect[Shown.Count];
             for (int i = 0; i < Shown.Count; i++)
             {
-                if (i > 0) sb.Append("   ");
-                sb.Append(Shown[i].Value ? "[x] " : "[ ] ").Append(Shown[i].Key);
+                float cw = lab.CalcSize(new GUIContent(Shown[i].Key)).x + fs * 2.6f;
+                if (cx + cw > w - pad && cx > pad) { cx = pad; cy += chipH + gap; }
+                chips[i] = new Rect(cx, cy, cw, chipH);
+                cx += cw + gap;
             }
-            Shadow(new Rect(r.x, r.y + 26f * sc, w, 26f * sc), sb.ToString(), _small, new Color(0.8f, 0.9f, 1f));
-            Event e = Event.current;
+            float chipsH = Shown.Count == 0 ? 0f : cy + chipH + gap;
+            float btnH = fs * 2.2f;
+            float h = head + chipsH + btnH + pad * 1.2f;
+            Rect r = new Rect((Screen.width - w) * 0.5f, fs * 0.5f, w, h);
+            BtcReplayUI.Fill(r, BtcHud.Panel);
+            BtcReplayUI.Fill(new Rect(r.x, r.y, 3f, r.height), BtcMenu.Accent);
+            float g = fs * 1.4f;
+            BtcReplayIcons.Glyph(BtcReplayIcons.Group, new Rect(r.x + pad, r.y + (head - g) * 0.5f, g, g), BtcMenu.Accent);
+            Color oc = GUI.contentColor;
+            GUI.contentColor = Color.white;
+            GUI.Label(new Rect(r.x + pad + g + fs * 0.6f, r.y, w * 0.6f, head), title, bold);
+            GUI.contentColor = BtcMenu.Accent;
+            GUI.Label(new Rect(r.xMax - pad - fs * 4f, r.y, fs * 4f, head), ready + "/" + Mathf.Max(Shown.Count, 1), BtcReplayUI.sVal);
+            GUI.contentColor = oc;
+            for (int i = 0; i < Shown.Count; i++)
+            {
+                bool ok = Shown[i].Value;
+                Rect cr = new Rect(r.x + chips[i].x, r.y + head + chips[i].y, chips[i].width, chips[i].height);
+                Color cc = ok ? BtcHud.Ok : new Color(1f, 1f, 1f, 0.45f);
+                BtcReplayUI.Fill(cr, new Color(cc.r, cc.g, cc.b, ok ? 0.16f : 0.06f));
+                BtcReplayIcons.Glyph(ok ? BtcReplayIcons.Check : BtcReplayIcons.Ring, new Rect(cr.x + fs * 0.45f, cr.y + (cr.height - fs * 1.1f) * 0.5f, fs * 1.1f, fs * 1.1f), cc);
+                GUI.contentColor = new Color(1f, 1f, 1f, ok ? 0.95f : 0.65f);
+                GUI.Label(new Rect(cr.x + fs * 1.9f, cr.y, cr.width - fs * 2f, cr.height), Shown[i].Key, lab);
+                GUI.contentColor = oc;
+            }
             MouseOver = e != null && r.Contains(e.mousePosition);
             bool me = LocalIsReady();
-            float bw = (Host ? 190f : 260f) * sc, bh = 34f * sc;
-            Rect b1 = new Rect(r.x + (Host ? 18f * sc : (w - bw) * 0.5f), r.y + h - bh - 10f * sc, bw, bh);
-            GUI.enabled = !me;
-            if (GUI.Button(b1, me ? BtcGameplay.T("Ready (waiting)", "Готов (ждём)") : BtcGameplay.T("Ready", "Готов"))) PressReady();
-            GUI.enabled = true;
+            float bw = Host ? (w - pad * 2f - gap) * 0.5f : Mathf.Min(w - pad * 2f, fs * 14f);
+            float by = r.yMax - btnH - pad * 0.6f;
+            Rect b1 = new Rect(r.x + (Host ? pad : (w - bw) * 0.5f), by, bw, btnH);
+            if (FlatButton(b1, me ? BtcGameplay.T("Ready (waiting)", "Готов (ждём)") : BtcGameplay.T("Ready", "Готов"), !me, true)) PressReady();
             if (Host)
             {
-                Rect b2 = new Rect(r.x + w - bw - 18f * sc, b1.y, bw, bh);
-                if (GUI.Button(b2, BtcGameplay.T("Start now (host)", "Начать (хост)"))) StartNow("host force");
+                Rect b2 = new Rect(b1.xMax + gap, by, bw, btnH);
+                if (FlatButton(b2, BtcGameplay.T("Start now (host)", "Начать (хост)"), true, false)) StartNow("host force");
             }
         }
     }

@@ -66,6 +66,70 @@ public static class BtcAvatar
 		return result;
 	}
 
+	internal static void Bump()
+	{
+		BtcAvatar._ver++;
+	}
+
+	internal static string[] FilesList
+	{
+		get
+		{
+			BtcAvatar.EnsureFiles(false);
+			return BtcAvatar._files;
+		}
+	}
+
+	internal static string CurrentFile
+	{
+		get
+		{
+			BtcAvatar.LoadCfg();
+			return BtcAvatar._file;
+		}
+	}
+
+	internal static string StatusText
+	{
+		get
+		{
+			return BtcAvatar._status;
+		}
+	}
+
+	internal static string FolderPath
+	{
+		get
+		{
+			return BtcAvatar.Dir;
+		}
+	}
+
+	internal static void Choose(string name)
+	{
+		BtcAvatar.Select(name);
+	}
+
+	internal static void Rescan()
+	{
+		BtcAvatar.EnsureFiles(true);
+	}
+
+	internal static void UiSeen()
+	{
+		BtcAvatar._uiSeen = Time.unscaledTime;
+		BtcAvatar.LoadCfg();
+		BtcAvatar.EnsureFiles(false);
+	}
+
+	internal static Texture2D LocalTex
+	{
+		get
+		{
+			return (BtcAvatar._local != null) ? BtcAvatar._local.tex : null;
+		}
+	}
+
 	public static void Tick()
 	{
 		bool flag = Time.frameCount == BtcAvatar._lastFrame;
@@ -1248,7 +1312,7 @@ public static class BtcAvatar
 		{
 			BtcAvatar._annVer = BtcAvatar._ver;
 			BtcAvatar._cOut.Clear();
-			List<BtcAvatar.AvaMsg> list = BtcAvatar.MakeMsgs(BtcAvatar._packed, BtcAvatar._ver, 0U);
+			List<BtcAvatar.AvaMsg> list = BtcAvatar.MakeMsgs(BtcNick.StyleOn ? BtcAvatar._packed : null, BtcAvatar._ver, 0U);
 			for (int i = 0; i < list.Count; i++)
 			{
 				BtcAvatar._cOut.Enqueue(list[i]);
@@ -1266,7 +1330,7 @@ public static class BtcAvatar
 			BtcAvatar._hostVer = BtcAvatar._ver;
 			uint value = me.netId.Value;
 			BtcAvatar.Rx srv = BtcAvatar.GetSrv(value);
-			List<BtcAvatar.AvaMsg> list = BtcAvatar.MakeMsgs(BtcAvatar._packed, BtcAvatar._ver, value);
+			List<BtcAvatar.AvaMsg> list = BtcAvatar.MakeMsgs(BtcNick.StyleOn ? BtcAvatar._packed : null, BtcAvatar._ver, value);
 			BtcAvatar.Reset(srv, BtcAvatar._ver, (list.Count == 1 && list[0].count == 0) ? 0 : list.Count);
 			for (int i = 0; i < list.Count; i++)
 			{

@@ -1,0 +1,7 @@
+# Opens the Report and Changelog tabs and logs what they collect / parse ([ReportDev] lines).
+wait 20
+tabtest 9
+wait 3
+tabtest 10
+wait 3
+quit

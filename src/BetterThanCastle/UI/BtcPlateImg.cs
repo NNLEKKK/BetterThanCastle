@@ -49,6 +49,42 @@ public static class BtcPlateImg
 		}
 	}
 
+	internal static string[] FilesList
+	{
+		get
+		{
+			BtcPlateImg.LoadCfg();
+			BtcPlateImg.EnsureFiles(false);
+			return BtcPlateImg._files;
+		}
+	}
+
+	internal static string StatusText
+	{
+		get
+		{
+			return BtcPlateImg._status;
+		}
+	}
+
+	internal static string FolderPath
+	{
+		get
+		{
+			return BtcPlateImg.Dir;
+		}
+	}
+
+	internal static void Choose(string name)
+	{
+		BtcPlateImg.Select(name);
+	}
+
+	internal static void Rescan()
+	{
+		BtcPlateImg.EnsureFiles(true);
+	}
+
 	public static bool TakeSelected()
 	{
 		bool justSelected = BtcPlateImg._justSelected;

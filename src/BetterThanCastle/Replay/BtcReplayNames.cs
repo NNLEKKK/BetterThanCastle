@@ -43,7 +43,7 @@ namespace BetterThanCastle
                       .Append(((int)(Mathf.Clamp01(c.r) * 255f)).ToString("X2"))
                       .Append(((int)(Mathf.Clamp01(c.g) * 255f)).ToString("X2"))
                       .Append(((int)(Mathf.Clamp01(c.b) * 255f)).ToString("X2")).Append(':')
-                      .Append(Convert.ToBase64String(Encoding.UTF8.GetBytes(u.ScreenName)));
+                      .Append(Convert.ToBase64String(Encoding.UTF8.GetBytes(u.ScreenName))).Append(':').Append(u.TeamNumber.ToString(CultureInfo.InvariantCulture));
                 }
             }
             catch (Exception e) { BtcLog.Error("Replay", "names header: " + e.Message); }

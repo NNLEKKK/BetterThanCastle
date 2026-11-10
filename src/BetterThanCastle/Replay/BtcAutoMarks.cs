@@ -780,7 +780,7 @@ namespace BetterThanCastle
             _chipRow = cs + 6f;
             float povH = 6f;
             Rect strip = new Rect(bar.x, panel.y - povH - _lane, bar.width, _lane);
-            if (_items.Count > 0) Box(strip, new Color(0f, 0f, 0f, 0.42f));
+
 
             // fight spans on the bar
             if (!HiddenKinds.Contains('F'))
@@ -790,7 +790,7 @@ namespace BetterThanCastle
                     if (f.K != 'F') continue;
                     float x0 = bar.x + bar.width * Mathf.Clamp01(f.T / total);
                     float x1 = bar.x + bar.width * Mathf.Clamp01(f.A / total);
-                    Box(new Rect(x0, bar.yMax - 3f, Mathf.Max(3f, x1 - x0), 3f), new Color(1f, 0.25f, 0.15f, 0.9f));
+                    Box(new Rect(x0, bar.y - 1f, Mathf.Max(3f, x1 - x0), bar.height + 2f), new Color(1f, 0.3f, 0.2f, 0.95f));
                 }
 
             Item hover = null;
@@ -801,7 +801,10 @@ namespace BetterThanCastle
                 float y = strip.yMax - 3f - (it.Row + 1) * rowH + 2f;
                 Rect ir = new Rect(cx - iw * 0.5f, y, iw, iw);
                 // thin stem to the bar
-                Box(new Rect(cx - 0.5f, ir.yMax, 1f, Mathf.Max(0f, strip.yMax - ir.yMax)), new Color(1f, 1f, 1f, 0.28f));
+                Color sc = ParseCol(it.C1);
+                Box(new Rect(cx - 0.5f, ir.yMax, 1f, Mathf.Max(0f, strip.yMax - ir.yMax)), new Color(sc.r, sc.g, sc.b, 0.4f));
+                Box(new Rect(cx - 2f, strip.yMax - 1f, 4f, 4f), new Color(sc.r, sc.g, sc.b, 0.85f));
+                Box(new Rect(ir.x - 2f, ir.y - 2f, ir.width + 4f, ir.height + 4f), new Color(0.02f, 0.03f, 0.04f, 0.72f));
                 DrawIcon(it.K, ir, it.C1, it.C2);
                 if (it.N > 1 && it.K != 'Z')
                 {

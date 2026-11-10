@@ -82,6 +82,8 @@ namespace BetterThanCastle
             internal string cachedHostName;
             internal bool isLoadingLevel;
             internal float loadingLevelStartTime;
+            internal float levelLiveAt;          // time the level became playable for everyone (GameSignals.LevelReady); MaxValue while loading
+            internal bool wasLive = true;
             internal Texture2D connectionOverlayTexture;
             internal GUIStyle connectionOverlayLabelStyle;
             internal Action<GameSignals.loadingContext> loadingHandler;
@@ -247,6 +249,7 @@ namespace BetterThanCastle
             s.clientsCanVoluntaryPause = true;
             if (s.voluntaryPauseActive) SetVoluntaryPause(m, s, false, NoVoluntaryPauseOwner, null);
             if (s.hardPauseActive) ApplyHardPause(m, s, false);
+            BtcNetCheck.OnServerStarted(m);
             BtcLog.Info("Net", "BetterConnection server session started (handlers 64,70-74 registered)");
         }
 
@@ -280,6 +283,7 @@ namespace BetterThanCastle
             s.recoveryDrainScheduled = false;
             s.reconnectRecoveryInProgress = false;
             if (s.hardPauseActive) ApplyHardPause(m, s, false);
+            BtcNetCheck.OnClientConnected(m);
             BtcLog.Info("Net", "BetterConnection client connected (handlers 64,70-77 registered)");
         }
 
@@ -322,6 +326,7 @@ namespace BetterThanCastle
             if (user == null || BtcSpectate.IsSpec(conn)) return false;
             BtcLog.Warn("Net", "Server: connection " + conn.connectionId + " dropped, keeping player " + user.name + " alive and waiting for reconnect.");
             user.NetworkReady = false;
+            BtcHud.Notice(BtcReplayUI.T(user.name + " lost connection", user.name + " потерял связь"), BtcReplayIcons.Cross, BtcHud.Warn);
             s.pendingReconnectUsers.Add(user);
             ApplyHardPause(m, s, true);
             return true;
@@ -340,6 +345,7 @@ namespace BetterThanCastle
                 if (user != null)
                 {
                     BtcLog.Info("Net", "Server: re-attaching returning player " + user.name + " to connection " + conn.connectionId + ".");
+                    BtcHud.Notice(BtcReplayUI.T(user.name + " reconnected", user.name + " вернулся"), BtcReplayIcons.Check, BtcHud.Ok);
                     NetworkServer.ReplacePlayerForConnection(conn, user.gameObject, 0);
                     NetworkServer.SetClientReady(conn);
                     user.NetworkReady = true;
@@ -352,7 +358,7 @@ namespace BetterThanCastle
         internal static bool CanReconnect(UNetManager m)
         {
             State s = Peek(m);
-            return s != null && (s.wasConnected || s.reconnectRecoveryInProgress) && !NetworkServer.active;
+            return s != null && (s.wasConnected || s.reconnectRecoveryInProgress) && !NetworkServer.active && NetLive(m, s);
         }
 
         internal static bool ReconnectRecoveryInProgress(UNetManager m)
@@ -389,6 +395,7 @@ namespace BetterThanCastle
         {
             string name = Enum.GetName(typeof(NetworkError), errorCode);
             BcFileLog("OnClientError code=" + errorCode + " (" + name + "), BetterConnection ON");
+            BtcNetCheck.OnClientError(true);
             UNetManager.BrixNetworkError error;
             if (!UNetManager.ToBrixNetworkErrorMap.TryGetValue((NetworkError)errorCode, out error)) error = UNetManager.BrixNetworkError.UsageError;
             if (!IsFatalBrixNetworkError(error))
@@ -432,12 +439,26 @@ namespace BetterThanCastle
             }
             if (!s.bcSession) return;
             CachePlayerNames(m, s);
+            BtcNetCheck.Tick(m);
             if (Time.unscaledTime >= s.lastHeartbeatSendTime + HeartbeatInterval)
             {
                 s.lastHeartbeatSendTime = Time.unscaledTime;
                 SendHeartbeat(m);
             }
-            if (m._currentSceneName != null && m._currentSceneName != m.lobbyScene && !s.isLoadingLevel)
+            bool live = NetLive(m, s);
+            if (live && !s.wasLive)
+            {
+                // the load is over: silence during it was not a fault, start the link monitor from a clean slate
+                float now = Time.unscaledTime;
+                s.lastHeartbeatUnscaledTimeClient = now;
+                BtcNetCheck.HeartbeatFrom(-1);
+                List<int> ids = new List<int>(s.lastHeartbeatUnscaledTimeByConnection.Keys);
+                for (int i = 0; i < ids.Count; i++) s.lastHeartbeatUnscaledTimeByConnection[ids[i]] = now;
+                s.connectionDegraded = false;
+                s.recoveryDrainScheduled = false;
+            }
+            s.wasLive = live;
+            if (live && m._currentSceneName != null && m._currentSceneName != m.lobbyScene && !s.isLoadingLevel)
                 MonitorConnectionQuality(m, s);
             if (Time.unscaledTime >= s.lastPingSendTime + PingInterval)
             {
@@ -519,11 +540,28 @@ namespace BetterThanCastle
         }
 
         // ------------------------------------------------------------------ pause
+        private const float LiveGrace = 5f;
+        private const float LiveFallback = 150f;
+
+        /// <summary>
+        /// False while a map is loading: from the load start until vanilla says the level is ready for every player
+        /// (GameSignals.LevelReady) plus a short grace. Packet loss during the load is normal, so no hard pause,
+        /// silence detection or reconnect runs until then. In the lobby it is always true.
+        /// </summary>
+        internal static bool NetLive(UNetManager m, State s)
+        {
+            if (s == null) return true;
+            if (m != null && m._currentSceneName == m.lobbyScene) return true;
+            float now = Time.unscaledTime;
+            if (s.levelLiveAt != float.MaxValue && now >= s.levelLiveAt + LiveGrace) return true;
+            return s.isLoadingLevel == false && s.loadingLevelStartTime > 0f && now >= s.loadingLevelStartTime + LiveFallback;
+        }
+
         private static void ApplyHardPause(UNetManager m, State s, bool pause)
         {
-            if (pause && s.isLoadingLevel)
+            if (pause && (s.isLoadingLevel || !NetLive(m, s)))
             {
-                DiagLog("ApplyHardPause - BLOCKED engage attempt while isLoadingLevel=true");
+                DiagLog("ApplyHardPause - BLOCKED engage attempt while the level is loading");
                 return;
             }
             s.hardPauseActive = pause;
@@ -681,6 +719,9 @@ namespace BetterThanCastle
                 State s = Get(m);
                 s.isLoadingLevel = true;
                 s.loadingLevelStartTime = Time.unscaledTime;
+                s.levelLiveAt = float.MaxValue;
+                s.wasLive = false;
+                GameSignals.Once(GameSignals.LevelReady, delegate { s.levelLiveAt = Time.unscaledTime; }, null);
                 if (s.voluntaryPauseActive)
                 {
                     SetVoluntaryPause(m, s, false, NoVoluntaryPauseOwner, null);
@@ -718,11 +759,12 @@ namespace BetterThanCastle
             float now = Time.unscaledTime;
             if (NetworkServer.active)
             {
-                if (message.conn != null) s.lastHeartbeatUnscaledTimeByConnection[message.conn.connectionId] = now;
+                if (message.conn != null) { s.lastHeartbeatUnscaledTimeByConnection[message.conn.connectionId] = now; BtcNetCheck.HeartbeatFrom(message.conn.connectionId); }
             }
             else
             {
                 s.lastHeartbeatUnscaledTimeClient = now;
+                BtcNetCheck.HeartbeatFrom(-1);
             }
         }
 
@@ -1022,6 +1064,7 @@ namespace BetterThanCastle
         private struct PingRowInfo
         {
             public string Label;
+            public float Ms;
             public bool ShowVoluntaryPauseBadge;
             public bool ShowAwaitingRecoveryBadge;
         }
@@ -1037,10 +1080,12 @@ namespace BetterThanCastle
                     if (c == null || IsLocalConnection(c)) continue;
                     float ms;
                     string ping = s.pingMsByConnection.TryGetValue(c.connectionId, out ms) ? string.Format("{0:0}ms", ms) : "...";
+                    if (ping == "...") ms = -1f;
                     bool owner = s.voluntaryPauseActive && s.voluntaryPauseOwnerConnectionId == c.connectionId;
                     list.Add(new PingRowInfo
                     {
                         Label = string.Format("{0}: {1}", ResolvePlayerName(m, s, c), ping),
+                        Ms = ms,
                         ShowVoluntaryPauseBadge = owner,
                         ShowAwaitingRecoveryBadge = !owner && IsConnectionAwaitingRecovery(m, s, c)
                     });
@@ -1059,6 +1104,7 @@ namespace BetterThanCastle
                 list.Add(new PingRowInfo
                 {
                     Label = host + ": " + ping,
+                    Ms = s.pingMsToHost,
                     ShowVoluntaryPauseBadge = s.voluntaryPauseActive && s.voluntaryPauseOwnerConnectionId == HostOwnerId,
                     ShowAwaitingRecoveryBadge = false
                 });
@@ -1158,64 +1204,62 @@ namespace BetterThanCastle
             if (!BtcNetworkGate.Enabled || m == null) return;
             State s = Peek(m);
             if (s == null || !s.bcSession) return;
+            BtcHud.BeginLeft();
             bool hard = (s.connectionDegraded && !s.recoveryDrainScheduled) || (s.hardPauseActive && !s.connectionDegraded);
             bool recovering = s.connectionDegraded && s.recoveryDrainScheduled;
             bool voluntary = s.voluntaryPauseActive && !hard && !recovering;
-            if (m._currentSceneName != m.lobbyScene && (hard || recovering || voluntary))
+            bool inGame = m._currentSceneName != m.lobbyScene;
+            string owner = string.IsNullOrEmpty(s.voluntaryPauseOwnerName) ? "?" : s.voluntaryPauseOwnerName;
+            if (inGame && BtcReplay.Mode != BtcReplay.State.Playing)
             {
-                EnsureConnectionOverlayTexture(s);
-                EnsureConnectionOverlayLabelStyle(s);
-                Color old = GUI.color;
-                float b = 1.5f;
-                GUI.color = Color.black;
-                GUI.DrawTexture(new Rect(14f - b, 14f - b, 22f + b * 2f, 22f + b * 2f), s.connectionOverlayTexture, ScaleMode.StretchToFill, true);
-                GUI.color = voluntary ? new Color(0.2f, 0.75f, 0.25f, 1f) : (hard ? new Color(0.85f, 0.16f, 0.16f, 1f) : new Color(0.95f, 0.78f, 0.1f, 1f));
-                GUI.DrawTexture(new Rect(14f, 14f, 22f, 22f), s.connectionOverlayTexture, ScaleMode.StretchToFill, true);
-                GUI.color = old;
-                string owner = string.IsNullOrEmpty(s.voluntaryPauseOwnerName) ? "?" : s.voluntaryPauseOwnerName;
-                string text = voluntary ? ("PAUSED BY " + owner) : (hard ? "HARDPAUSED" : "RECOVERING...");
-                GUI.color = Color.white;
-                GUI.Label(new Rect(42f, 14f, 220f, 22f), text, s.connectionOverlayLabelStyle);
-                GUI.color = old;
+                int st = hard ? 1 : (recovering ? 2 : (voluntary ? 3 : 0));
+                if (st != _noticeState && Event.current.type == EventType.Repaint)
+                {
+                    if (st == 1) BtcHud.Notice(BtcReplayUI.T("Connection lost: the game is paused", "Связь потеряна: игра на паузе"), BtcReplayIcons.Cross, BtcHud.Danger);
+                    else if (st == 2) BtcHud.Notice(BtcReplayUI.T("Reconnecting...", "Переподключение..."), BtcReplayIcons.Refresh, BtcHud.Warn);
+                    else if (st == 3) { }
+                    else if (_noticeState != -1) BtcHud.Notice(BtcReplayUI.T("The game continues", "Игра продолжается"), BtcReplayIcons.Play, BtcHud.Ok);
+                    _noticeState = st;
+                }
+            }
+            else _noticeState = -1;
+            if (inGame && (hard || recovering || voluntary) && BtcConfig.ShowPauseLabel.Value)
+            {
+                if (voluntary)
+                {
+                    // stays on screen until the pause is released
+                    BtcHud.Card("pause", BtcReplayIcons.Pause, BtcHud.Ok, BtcReplayUI.T("Paused by " + owner, "Пауза: " + owner), null, null, false);
+                }
+                else
+                {
+                    string text = hard ? BtcReplayUI.T("Hard pause", "Жёсткая пауза") : BtcReplayUI.T("Recovering...", "Восстановление...");
+                    BtcHud.Plate("pauseplate", hard ? BtcReplayIcons.Cross : BtcReplayIcons.Refresh, hard ? BtcHud.Danger : BtcHud.Warn, text);
+                }
             }
             if (BtcReplay.Mode != BtcReplay.State.Playing && NetworkServer.active && BtcConfig.ShowPauseLabel.Value)
             {
-                EnsureConnectionOverlayLabelStyle(s);
-                Color old2 = GUI.color;
-                GUI.color = s.clientsCanVoluntaryPause ? Color.white : new Color(0.85f, 0.16f, 0.16f, 1f);
-                GUI.Label(new Rect(14f, 42f, 260f, 18f), s.clientsCanVoluntaryPause ? "Client pause: allowed" : "Client pause: DISABLED", s.connectionOverlayLabelStyle);
-                GUI.color = old2;
+                bool can = s.clientsCanVoluntaryPause;
+                BtcHud.Plate("clientpause", can ? BtcReplayIcons.Check : BtcReplayIcons.Cross, can ? BtcHud.Ok : BtcHud.Danger, can ? BtcReplayUI.T("Client pause: allowed", "Пауза клиентов: разрешена") : BtcReplayUI.T("Client pause: DISABLED", "Пауза клиентов: ЗАПРЕЩЕНА"));
             }
             if (BtcReplay.Mode != BtcReplay.State.Playing && BtcConfig.ShowPing.Value && (NetworkServer.active || (m.LocalNetworkClient != null && m.LocalNetworkClient.isConnected)))
             {
-                EnsureConnectionOverlayLabelStyle(s);
-                EnsureConnectionOverlayTexture(s);
                 List<PingRowInfo> rows = BuildPingRows(m, s);
                 if (rows.Count == 0) return;
-                Color old3 = GUI.color;
-                float rowH = 18f, top = 60f, badge = 14f;
+                string[] labels = new string[rows.Count];
+                Color[] dots = new Color[rows.Count];
+                float worst = -1f;
                 for (int i = 0; i < rows.Count; i++)
                 {
-                    PingRowInfo r = rows[i];
-                    float y = top + i * rowH;
-                    if (r.ShowVoluntaryPauseBadge || r.ShowAwaitingRecoveryBadge)
-                    {
-                        GUI.color = r.ShowVoluntaryPauseBadge ? new Color(0.2f, 0.75f, 0.25f, 1f) : new Color(0.85f, 0.16f, 0.16f, 1f);
-                        GUI.DrawTexture(new Rect(10f, y + 1f, badge, badge), s.connectionOverlayTexture, ScaleMode.StretchToFill, true);
-                        GUI.color = old3;
-                        if (r.ShowVoluntaryPauseBadge)
-                        {
-                            GUI.color = Color.white;
-                            GUI.Label(new Rect(10f, y - 1f, badge, badge), "P", s.connectionOverlayLabelStyle);
-                            GUI.color = old3;
-                        }
-                    }
-                    GUI.color = Color.white;
-                    GUI.Label(new Rect(10f + badge + 4f, y, 220f, rowH), r.Label, s.connectionOverlayLabelStyle);
-                    GUI.color = old3;
+                    labels[i] = rows[i].Label;
+                    dots[i] = rows[i].ShowVoluntaryPauseBadge ? BtcHud.Ok : (rows[i].ShowAwaitingRecoveryBadge ? BtcHud.Danger : new Color(0f, 0f, 0f, 0f));
+                    if (rows[i].Ms > worst) worst = rows[i].Ms;
                 }
+                Color pc = worst < 0f ? new Color(1f, 1f, 1f, 0.6f) : (worst < 90f ? BtcHud.Ok : (worst < 170f ? BtcHud.Warn : BtcHud.Danger));
+                BtcHud.Chip("ping", BtcReplayIcons.Wave, pc, worst < 0f ? "..." : string.Format("{0:0} ms", worst), labels, dots);
             }
         }
+
+        private static int _noticeState = -1;
 
         private static void EnsureConnectionOverlayTexture(State s)
         {

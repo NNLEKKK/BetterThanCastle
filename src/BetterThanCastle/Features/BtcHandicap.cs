@@ -193,6 +193,15 @@ public static class BtcHandicap
 		return (instance != null && instance.LocalLobbyPlayer != null) ? instance.LocalLobbyPlayer.playerName : string.Empty;
 	}
 
+	// ---- accessors for the Gameplay tab handicap page (UI/Gameplay/BtcHandicapPage.cs)
+	internal static int[] Mine { get { BtcHandicap.LoadMine(); return BtcHandicap._mine; } }
+	internal static int[] Defaults { get { return BtcHandicap.Def; } }
+	internal static int[] Lows { get { return BtcHandicap.Lo; } }
+	internal static int[] Highs { get { return BtcHandicap.Hi; } }
+	internal static void MineEdited() { BtcHandicap.Clamp(BtcHandicap._mine); BtcHandicap.MineChanged(); }
+	internal static string SummaryOf(int[] h) { return BtcHandicap.Summary(h); }
+	internal static List<KeyValuePair<string, int[]>> Players() { return new List<KeyValuePair<string, int[]>>(BtcHandicap._tab); }
+
 	private static void LoadMine()
 	{
 		bool loaded = BtcHandicap._loaded;
@@ -805,7 +814,7 @@ public static class BtcHandicap
 
 	private static Texture2D _white;
 
-	private static readonly Color Accent = new Color(0.55f, 0.85f, 0.55f, 1f);
+	private static Color Accent { get { return BtcMenu.Accent; } }
 
 	private static readonly Color Warn = new Color(1f, 0.45f, 0.45f, 1f);
 

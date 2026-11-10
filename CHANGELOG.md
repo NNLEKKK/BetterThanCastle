@@ -1,5 +1,62 @@
 # Changelog
 
+## Unreleased (next version)
+
+### Bug report + in-game changelog (new menu tabs)
+- New rail tab with a bug icon: "Report a bug". A form (area, severity, title, what happened, steps, expected) with the diagnostics attached automatically: system and GPU, game state (scene, multiplayer, replay, fps), installed BepInEx mods, changed mod settings, errors and warnings from the BepInEx log, the log tail, latest replay names (off by default). Every part has a switch and an optional preview of exactly what will be attached; the Windows user name is removed from paths. "Send to GitHub" saves the full report to reports/ in the BetterThanCastle user folder, copies it to the clipboard and opens a prefilled GitHub issue (Ctrl+V pastes the full diagnostics). No token or server is involved: nothing is sent without the player pressing the button. Copy, save, open folder and Ctrl+Z for the form are there too.
+- New rail tab "What's new": the changelog inside the game, newest release first, every change with a kind icon (new / improved / fixed / removed) and an area tag, filters by kind and area, search. Entries that belong to a menu place carry a link chip: a click opens that tab (and the exact Visuals page or hotkey bind). The rail icon shows a dot until you open the tab after an update. The content is a plain embedded text file (src/BetterThanCastle/Resources/changelog.btcl, format in its header).
+
+- The bug and changelog buttons sit in the bottom corner of the rail (small, above the sound button; the bug one is red) instead of the tab list. The changelog got a "Reworked" kind. Tooltips near the top edge open below the icon.
+- The update card is redone in the menu style (flat dark card, icon, sounds). It shows a download progress bar; after a successful update the game restarts by itself (Steam copies through steam://, otherwise the exe) and opens the changelog.
+
+**По-русски:** новая вкладка «Сообщить о баге» (значок жука): форма (область, серьёзность, заголовок, что произошло, шаги, ожидание) и диагностика, которая прикладывается сама: система и видеокарта, состояние игры, моды BepInEx, изменённые настройки мода, ошибки и предупреждения из лога, хвост лога. У каждой части свой переключатель и предпросмотр того, что уйдёт; имя пользователя Windows вырезается. «Отправить на GitHub» сохраняет отчёт в папку reports, копирует его в буфер и открывает готовую заявку (Ctrl+V вставляет полную диагностику). Токенов и серверов нет: без нажатия кнопки ничего не отправляется. Новая вкладка «Что нового»: ченджлог внутри игры с иконками типа изменения, фильтрами, поиском и кликабельными ссылками, которые переносят во вкладку или к нужной настройке; на значке точка, пока не откроешь после обновления.
+
+### Replay
+- GIF clips (EXPERIMENTAL, the quality is poor: 252 colours at most, no sound, big files). One bar icon: click it, drag the clip range on the timeline, see the length and the estimated size, tune the width / FPS / colours / dither / optimize, then "Clip it". The replay plays the range once and the screen is recorded as you see it (your camera or the watched player's POV, cursors, cones). The GIF is saved to Clips/ in the BetterThanCastle user folder and copied to the clipboard (pastes as a file). Up to 30 s.
+- APM graph: only the personal peak mark is shown by default (idle / surge are optional); the scale caption is replaced by the single top value; new F7 settings for the graph (height, line width, opacity, fill, grid, top value, which marks).
+- New replay loading screen in the style of the replay bar (replaces the old "REPLAY / Cancel" box and the plain black plate): dark cover, overall progress bar, steps with icons (reading the file, loading the world, placing keyframes for instant seek with a percentage), elapsed time, exit button (Esc). A lighter card is shown when a forward seek takes longer than a moment.
+- The old scene rewind is removed: every backward seek uses the keyframes (a click near the very start restores the first keyframe instead of reloading the replay). While keyframes are still being placed, rewinding back is declined with a message.
+- The Replay tab in the main menu is reworked: a grid of cards with a map relief thumbnail (read from the heightmap inside the replay, cached under previews/), mode, duration, date, size, player colours and a "keyframes ready" icon; search (map, player, name), sorting, MP/SP filter, favourites, folders, custom names (stored in Replays/replays-meta.txt), date groups. A click opens a details panel with the players and file info and icon actions (play, favourite, folder, copy file, share link, delete). The recording and playback settings moved behind the gear icon.
+- The replay timeline got a new look: a thin line that swells under the pointer, time ticks under it, the played part in the accent colour (amber while seeking), a slim playhead with a halo; the marks (deaths, crystals, fights, pauses, player marks) sit on the line with colour stems, dots and dark backings, fights and pauses are drawn as bright segments on the line.
+- Match format on every replay (cards, list, compact lines, details, search): 1v1, 2v2, 3v1, 2v2v2, FFA3, FFA4... The recording ghost client ("REC") is not counted as a player. Teams are recorded into the replay header since this version (new replays only); older replays are guessed from the player count and marked with "?" (for example "FFA4?").
+- The main mod menu is full screen and closes when a replay starts; the rules / editor banners are not shown in replays.
+- The "Show UI" button is a small corner icon in the bar style (F8 still works).
+- With view cones off and only cursors on, the crooked ground frame and the look-at cross are no longer drawn.
+
+### Undo (Ctrl+Z)
+- Ctrl+Z reverts accidental changes in the Hotkeys tab (binds, vanilla binds, sliders, switches, favourites, profiles, resets) and in the Replay tab (favourites, folders, names, recording settings, deleted replays), as many steps as you like. The bottom of the menu shows what was undone, with an undo icon. Deleted replays move to Replays/.trash (restored by undo, cleaned after 14 days) instead of vanishing at once.
+- UI sounds are now minimal and neutral: very short quiet ticks, no melodies.
+
+**По-русски:** Ctrl+Z откатывает случайные изменения во вкладке хоткеев (бинды, ванильные бинды, слайдеры, переключатели, избранное, профили, сбросы) и во вкладке реплеев (избранное, папки, названия, настройки записи, удалённые реплеи), сколько угодно шагов. Внизу меню пишется, что откатилось, с иконкой отката. Удалённые реплеи уходят в Replays/.trash (откат возвращает, чистится через 14 дней). Звуки интерфейса стали минималистичными и нейтральными.
+
+### Menu sounds
+- UI sound feedback in the mod menu and the replay bar: a soft tick on hover (menu only), clicks, rising / falling tones for switches, typing and backspace ticks in text fields, a thud on delete / reset, a short chime when a key is captured or a profile is saved. The sounds are synthesized in code (no files) and play through Windows directly, so the game's audio settings do not matter. The speaker icon at the bottom of the menu rail cycles off / low / medium / high (config Display/UiSound). Muted while the game is muted.
+- Menu sections fold (state is remembered), text fields release the keyboard on a click outside.
+
+**По-русски:** звуки интерфейса: тихий тик при наведении (в меню), клики, разные тона для включения и выключения, звук печати и стирания, глухой звук при удалении и сбросе, короткий сигнал при записи клавиши и сохранении профиля. Звуки синтезируются в коде (без файлов) и играют напрямую через Windows. Значок динамика внизу рельсы меню переключает выкл / тихо / средне / громко.
+
+### Visuals tab (the old "Overlays" tab, fully reworked)
+- The tab is renamed to "Visuals" (RU: "Визуал"): it holds everything that changes how the game looks. Pages on a small icon rail: Rings, World overlays, Plates and HUD, Match statistics, Screen, Profiles. A Simple / Expert switch (icons in the header): Simple shows only switches and choices, Expert adds sliders, colours, palette fine tuning and the ring shader overrides. Search across the colored-HP settings, foldable sections with an "on / total" counter, expand / collapse all, reset.
+- Colour bands of the HP / stamina / ammo rings are edited on a colour bar: drag a boundary to move it, click a band to recolour it, + adds a band; next to it you see how a ring looks at 100 / 75 / 50 / 25 / 10 %.
+- New colour picker everywhere (palettes, numbers, damage, explosion map colours, overlays): square + hue strip, hex field, copy / paste a colour code, recent colours and a preset strip.
+- Profiles page: presets (Clean, Competitive, Everything), your own named profiles (visual-profiles folder), copy / paste a profile as text to share it, reset to defaults. Everything is one Ctrl+Z step.
+- Window mode, skip intro, Discord presence, menu pause / input block, enemy skin and brightness moved to the Screen page. Match statistics settings have their own page; the chat fade lives with the plates and HUD.
+- New hotkey "Hold to see the vanilla look" (Hotkeys tab, View): colored HP and the world overlays go off while it is held.
+- One master switch in the header of every Visuals page turns all visuals (colored rings and world overlays) off and back on. A star next to any setting, palette or section adds it to the new Favourites page; the new "All settings" page lists every visual in order without sections.
+- Ctrl+Z works in the Visuals tab. Cycling buttons (several states in a row) are not undoable yet.
+
+### Advanced Hotkeys tab (reworked)
+- New look in the style of the Replay tab: a category rail inside the tab (all, camera and view, control groups, orders and units, match and replay, safety, vanilla, favourites, keyboard map, profiles), search by name or key, a flat row per bind with one chip per key combo, tooltips, conflict / changed filters.
+- One bind can have any number of key combos: click "+" to add another, click a chip to change it, right click or the cross to remove. Any of them fires the bind (stored as `A+B|C` in hotkeys.txt; old files keep working).
+- The vanilla key bindings are editable in the same tab (keyboard keys; one key or a modifier + key, as vanilla allows; extra slots work too). They are saved through the game's own file (Info/Lua/userconfigs.lua) exactly like the vanilla options menu does. Mouse binds are shown read-only.
+- Key finder: press any key while the tab is open: it shows what is bound to it (mod and vanilla); press it again to jump to that bind (more presses go through the others).
+- Keyboard map page: every key lit by mod / vanilla / both / conflict, layers for Shift / Ctrl / Alt, a click lists the binds of a key and jumps to one.
+- Favourites (star on a row) and profiles (hotkey-profiles/*.txt: apply, overwrite, delete, copy as text, paste from the clipboard; mod and vanilla keyboard binds).
+
+**По-русски:** вкладка Advanced Hotkeys переделана в стиле вкладки реплеев: рельса категорий внутри вкладки, поиск по названию или клавише, строка на бинд с чипами комбинаций, подсказки, фильтры конфликтов и изменённых. На один бинд можно навесить сколько угодно комбинаций (плюс, клик по чипу - изменить, правый клик или крестик - убрать), срабатывает любая. Ванильные бинды правятся в той же вкладке (через файл игры userconfigs.lua, как в ванильных настройках). Поиск по клавише: нажми клавишу - покажет, что на ней висит, нажми ещё раз - перейдёт к бинду. Карта клавиатуры, избранное и профили биндов (текстом, можно копировать и вставлять).
+
+**По-русски:** GIF-клипы (ЭКСПЕРИМЕНТАЛЬНАЯ функция, качество плохое: не больше 252 цветов, без звука, файлы большие). Одна иконка в панели: выбор диапазона мышью на таймлайне, длительность и примерный размер, настройки ширины, FPS, цветов, дизеринга и оптимизации; GIF сохраняется в Clips/ и копируется в буфер. В APM по умолчанию только метка пика, вместо подписи шкалы одно число сверху, новые настройки графика в F7. При выключенных конусах и включённых курсорах больше не рисуется кривая рамка.
+
 ## 0.3.4
 Replay analytics release. Items marked (BC) need BetterConnection ON; with it OFF the mod stays vanilla on the wire. New data is appended to the replay file in trailing sections, so older versions still open these replays and older replays still open here (they just have no new data).
 

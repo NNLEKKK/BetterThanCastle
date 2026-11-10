@@ -2,6 +2,7 @@
     [Parameter(Mandatory=$true)][string]$Version,   # e.g. 0.2.0
     [string]$Notes = '',                            # changelog text for the release (also add it to CHANGELOG.md)
     [switch]$Prerelease,                            # GitHub pre-release (updater ignores it: /releases/latest skips pre-releases)
+    [string]$Title = '',                            # release name appended to the GitHub title
     [switch]$Publish                                # push `public` to GitHub main + tag, create the release with both files
 )
 # Local by default: bumps Plugin.Version + csproj Version, Release build + verify-dist, installer, commit on the current
@@ -58,7 +59,7 @@ git push origin public:main
 if ($LASTEXITCODE -ne 0) { throw "push public failed" }
 git push origin $tag
 if ($LASTEXITCODE -ne 0) { throw "push tag failed" }
-$args2 = @('release', 'create', $tag, $dll, $setup, '--repo', $repo, '--verify-tag', '--title', "Better Than Castle $Version", '--notes-file', $notesFile)
+$args2 = @('release', 'create', $tag, $dll, $setup, '--repo', $repo, '--verify-tag', '--title', ("Better Than Castle $Version" + $(if ($Title) { " - $Title" } else { '' })), '--notes-file', $notesFile)
 if ($Prerelease) { $args2 += '--prerelease' }
 & $gh @args2
 if ($LASTEXITCODE -ne 0) { throw "gh release create failed" }

@@ -161,6 +161,31 @@ namespace BetterThanCastle.Dev
                 case "duelfps": { int tf = (int)F(p, 1, 0f); QualitySettings.vSyncCount = 0; Application.targetFrameRate = tf > 0 ? tf : -1; } break;
                 case "duelskipdelay": BtcDuelBot.SkipDelayMs = F(p, 1, 350f); break;
                 case "duelrematch": if (BtcDuel.Match != null) BtcDuel.Match.Rematch(); break;
+                case "visualtest": ResourcePackManager.DevVisual((int)F(p, 1, 0f), F(p, 2, 0f) > 0.5f); break;
+                case "profiletest": ResourcePackManager.DevProfile((int)F(p, 1, 0f)); break;
+                case "uitest": BtcMenuState.SetInt("uiedit:page", (int)F(p, 1, 0f)); ResourcePackManager.GoTab(12); break;
+                case "gsearch": BtcGlobalSearch.DevSet(p.Length > 1 ? p[1] : ""); break;
+                case "gameplaytest": BtcGameplayTab.UseLegacy = false; BtcGameplayTab.Page = (int)F(p, 1, 0f); ResourcePackManager.GoTab(4); break;
+                case "gameplayrec": BtcMenuState.SetInt("gameplay:rec:g", (int)F(p, 1, -1f)); BtcMenuState.SetInt("gameplay:rec:k", (int)F(p, 2, -1f)); break;
+                case "updtest": BtcUpdater.DevShow((int)F(p, 1, 1f)); break;
+                case "tabtest":
+                    {
+                        int tt = (int)F(p, 1, 0f);
+                        ResourcePackManager.GoTab(tt);
+                        if (tt == 9)
+                        {
+                            BtcReportData.Form tf = new BtcReportData.Form { Title = "dev test", What = "dev test report body" };
+                            string full = BtcReportData.Full(tf);
+                            BtcLog.Info("ReportDev", "full report chars=" + full.Length + " lines=" + BtcReportData.Lines(full) + " url=" + BtcReportData.IssueUrl(tf).Length);
+                            for (int si = 0; si < BtcReportData.Sections.Count; si++) BtcLog.Info("ReportDev", BtcReportData.Sections[si].Key + " lines=" + BtcReportData.Lines(BtcReportData.Text(BtcReportData.Sections[si])));
+                        }
+                        if (tt == 10)
+                        {
+                            int en = 0; for (int ri = 0; ri < BtcChangelog.Releases.Count; ri++) en += BtcChangelog.Releases[ri].Entries.Count;
+                            BtcLog.Info("ReportDev", "changelog releases=" + BtcChangelog.Releases.Count + " entries=" + en);
+                        }
+                    }
+                    break;
                 case "waitgame": _wait = "game"; _waitUntil = now + F(p, 1, 240f); break;
                 case "waitspawn": _wait = "spawn"; _waitUntil = now + F(p, 1, 120f); break;
                 case "spawn": BtcDevMatch.QueueSpawn(p.Length > 1 ? p[1] : "bricktron", (int)F(p, 2, 10f)); break;

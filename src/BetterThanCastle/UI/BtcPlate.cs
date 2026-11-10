@@ -14,7 +14,7 @@ using UnityEngine.UI;
 
 namespace BetterThanCastle
 {
-public static class BtcPlate
+public static partial class BtcPlate
 {
 	public static void Bind(Image bg, Image av, LobbyPlayer p, bool local)
 	{
@@ -276,7 +276,19 @@ public static class BtcPlate
 		return result;
 	}
 
+	internal static void Resend()
+	{
+		BtcPlate.Changed();
+	}
+
+	private static readonly BtcPlate.Data _ldOff = new BtcPlate.Data();
+
 	private static BtcPlate.Data LocalData()
+	{
+		return BtcNick.StyleOn ? BtcPlate.FieldsData() : BtcPlate._ldOff;
+	}
+
+	private static BtcPlate.Data FieldsData()
 	{
 		BtcPlate._ld.style = (byte)BtcPlate._style;
 		BtcPlate._ld.a = BtcPlate._a;
@@ -302,8 +314,8 @@ public static class BtcPlate
 		BtcPlate._ld.nxi = (byte)BtcPlate._nxi;
 		BtcPlate._ld.ph = (byte)BtcPlate._ph;
 		BtcPlate._ld.sc = (byte)BtcPlate._sc;
-		BtcPlate._ld.ax = (byte)(BtcPlate._ax + 60);
-		BtcPlate._ld.ay = (byte)(BtcPlate._ay + 60);
+		BtcPlate._ld.ax = (byte)((BtcPlate._ax + 120) / 2);
+		BtcPlate._ld.ay = (byte)((BtcPlate._ay + 120) / 2);
 		BtcPlate._ld.im = (byte)BtcPlate._im;
 		BtcPlate._ld.io = (byte)BtcPlate._io;
 		BtcPlate._ld.idm = (byte)BtcPlate._idm;
@@ -366,7 +378,7 @@ public static class BtcPlate
 			fs = (byte)Mathf.Clamp((int)m.fs, 0, 4),
 			nf = BtcPlate.CleanFont(m.nf),
 			na = (byte)Mathf.Clamp((int)m.na, 0, 9),
-			ox = (byte)Mathf.Clamp((int)m.ox, 0, 200),
+			ox = (byte)Mathf.Clamp((int)m.ox, 0, 255),
 			oy = (byte)Mathf.Clamp((int)m.oy, 0, 200),
 			nsz = (byte)Mathf.Clamp((int)m.nsz, 10, 60),
 			asz = (byte)Mathf.Clamp((int)m.asz, 10, 60),
@@ -375,8 +387,8 @@ public static class BtcPlate
 			nxi = (byte)Mathf.Clamp((int)m.nxi, 1, 10),
 			ph = (byte)Mathf.Clamp((int)m.ph, 10, 30),
 			sc = (byte)Mathf.Clamp((int)m.sc, 0, 1),
-			ax = (byte)Mathf.Clamp((int)m.ax, 0, 120),
-			ay = (byte)Mathf.Clamp((int)m.ay, 0, 120),
+			ax = (byte)Mathf.Clamp((int)m.ax, 0, 255),
+			ay = (byte)Mathf.Clamp((int)m.ay, 0, 255),
 			im = (byte)Mathf.Clamp((int)m.im, 0, 2),
 			io = (byte)Mathf.Clamp((int)m.io, 1, 20),
 			idm = (byte)Mathf.Clamp((int)m.idm, 0, 16)
@@ -423,7 +435,7 @@ public static class BtcPlate
 				BtcPlate._fs = BtcPlate.IntKey("fs", 0, 0, 4);
 				BtcPlate._nf = BtcPlate.CleanFont(BtcPaths.ReadKey("btc_plate.txt", "nf", ""));
 				BtcPlate._na = BtcPlate.IntKey("na", 0, 0, 9);
-				BtcPlate._ox = BtcPlate.IntKey("ox", 0, -200, 200);
+				BtcPlate._ox = BtcPlate.IntKey("ox", 0, -200, 310);
 				BtcPlate._oy = BtcPlate.IntKey("oy", 0, -200, 200);
 				BtcPlate._nsz = BtcPlate.IntKey("nsz", 20, 10, 60);
 				BtcPlate._asz = BtcPlate.IntKey("asz", 20, 10, 60);
@@ -432,8 +444,8 @@ public static class BtcPlate
 				BtcPlate._nxi = BtcPlate.IntKey("nxi", 5, 1, 10);
 				BtcPlate._ph = BtcPlate.IntKey("ph", 10, 10, 30);
 				BtcPlate._sc = BtcPlate.IntKey("sc", 1, 0, 1);
-				BtcPlate._ax = BtcPlate.IntKey("ax", 0, -60, 60);
-				BtcPlate._ay = BtcPlate.IntKey("ay", 0, -60, 60);
+				BtcPlate._ax = BtcPlate.IntKey("ax", 0, -120, 390);
+				BtcPlate._ay = BtcPlate.IntKey("ay", 0, -120, 390);
 				BtcPlate._im = BtcPlate.IntKey("im", 0, 0, 2);
 				BtcPlate._io = BtcPlate.IntKey("io", 20, 1, 20);
 				BtcPlate._idm = BtcPlate.IntKey("idm", 0, 0, 16);
@@ -1076,6 +1088,10 @@ public static class BtcPlate
 			BtcPlate.ApplyHeight(s, data);
 			BtcPlate.ApplyImage(s, data);
 			BtcPlate.ApplyAvatar(s, data);
+			if (local)
+			{
+				BtcPlate.GeoCapture(s, data);
+			}
 		}
 	}
 
@@ -1726,7 +1742,7 @@ public static class BtcPlate
 		return stripRes;
 	}
 
-	private static float DrawPreview(float x, float y, float w, float row, GUIStyle label, Texture2D px)
+	internal static float DrawPreview(float x, float y, float w, float row, GUIStyle label, Texture2D px)
 	{
 		float num = 8f;
 		BtcPlate.Data data = BtcPlate.LocalData();
@@ -1799,7 +1815,7 @@ public static class BtcPlate
 		BtcPlate._pvStyle.fontSize = num8;
 		BtcPlate._pvOut.fontSize = num8;
 		float num9 = Mathf.Min(num3 * (float)data.asz / 20f * BtcPlate.PlateK(data), rect.height * 1.5f);
-		BtcPlate.Box(new Rect(rect.xMax - num9 - 6f + (float)(data.ax - 60), rect.y + (rect.height - num9) * 0.5f - (float)(data.ay - 60), num9, num9), new Color(0.15f, 0.15f, 0.15f, 1f), px);
+		BtcPlate.Box(new Rect(rect.xMax - num9 - 6f + (float)(data.ax * 2 - 120), rect.y + (rect.height - num9) * 0.5f - (float)(data.ay * 2 - 120), num9, num9), new Color(0.15f, 0.15f, 0.15f, 1f), px);
 		TextAnchor alignment = (TextAnchor)((data.na > 0) ? (data.na - 1) : 3);
 		BtcPlate._pvStyle.alignment = alignment;
 		BtcPlate._pvOut.alignment = alignment;
@@ -2154,7 +2170,7 @@ public static class BtcPlate
 							s.avOff = s.avGo.AddComponent<BtcPlate.AvOff>();
 						}
 					}
-					Vector2 offset = flag2 ? new Vector2((float)(d.ax - 60), (float)(d.ay - 60)) : Vector2.zero;
+					Vector2 offset = flag2 ? new Vector2((float)(d.ax * 2 - 120), (float)(d.ay * 2 - 120)) : Vector2.zero;
 					s.avOff.SetOffset(offset);
 				}
 			}

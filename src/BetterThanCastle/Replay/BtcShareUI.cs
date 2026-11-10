@@ -8,7 +8,7 @@ namespace BetterThanCastle
 {
 public static class BtcShareUI
 {
-	private static string T(string en, string ru)
+	internal static string T(string en, string ru)
 	{
 		return BtcLang.Russian ? ru : en;
 	}
@@ -19,7 +19,7 @@ public static class BtcShareUI
 		BtcShareUI.confirmKey = null;
 	}
 
-	private static void Refresh()
+	internal static void Refresh()
 	{
 		BtcShareUI.listLoaded = true;
 		List<BtcShareUI.Entry> list = new List<BtcShareUI.Entry>();
@@ -93,7 +93,7 @@ public static class BtcShareUI
 		BtcShareUI.list = list;
 	}
 
-	private static void ReloadBtcs(BtcShareUI.Entry en)
+	internal static void ReloadBtcs(BtcShareUI.Entry en)
 	{
 		en.hasBtcs = false;
 		en.err = null;
@@ -120,13 +120,13 @@ public static class BtcShareUI
 		}
 	}
 
-	private static void Say(string m)
+	internal static void Say(string m)
 	{
 		BtcShareUI.msg = m;
 		BtcShareUI.msgUntil = Time.unscaledTime + 8f;
 	}
 
-	private static void StartPack(BtcShareUI.Entry en)
+	internal static void StartPack(BtcShareUI.Entry en)
 	{
 		bool flag = en.job == 1;
 		if (!flag)
@@ -159,7 +159,7 @@ public static class BtcShareUI
 		}
 	}
 
-	private static void StartNormal(BtcShareUI.Entry en)
+	internal static void StartNormal(BtcShareUI.Entry en)
 	{
 		bool flag = en.job == 1;
 		if (!flag)
@@ -190,7 +190,7 @@ public static class BtcShareUI
 		}
 	}
 
-	private static void PollJobs()
+	internal static void PollJobs()
 	{
 		for (int i = 0; i < BtcShareUI.list.Count; i++)
 		{
@@ -231,7 +231,7 @@ public static class BtcShareUI
 		}
 	}
 
-	private static void PollImport()
+	internal static void PollImport()
 	{
 		bool flag = BtcShareUI.dl == null || !BtcShareUI.dl.isDone;
 		if (!flag)
@@ -251,7 +251,7 @@ public static class BtcShareUI
 		}
 	}
 
-	private static string SafeName(string n)
+	internal static string SafeName(string n)
 	{
 		bool flag = string.IsNullOrEmpty(n);
 		string result;
@@ -272,7 +272,7 @@ public static class BtcShareUI
 		return result;
 	}
 
-	private static string Unique(string dir, string baseName, string ext)
+	internal static string Unique(string dir, string baseName, string ext)
 	{
 		string text = Path.Combine(dir, baseName + ext);
 		int num = 1;
@@ -284,7 +284,7 @@ public static class BtcShareUI
 		return text;
 	}
 
-	private static string ImportBytes(byte[] b)
+	internal static string ImportBytes(byte[] b)
 	{
 		int num = 0;
 		int num2 = 0;
@@ -389,7 +389,7 @@ public static class BtcShareUI
 		return result;
 	}
 
-	private static void PlaceFile(string file, ref int saves, ref int maps, ref int replays, ref string firstErr)
+	internal static void PlaceFile(string file, ref int saves, ref int maps, ref int replays, ref string firstErr)
 	{
 		byte[] array = new byte[4];
 		int num;
@@ -444,7 +444,7 @@ public static class BtcShareUI
 		}
 	}
 
-	private static void Ensure(int fs)
+	internal static void Ensure(int fs)
 	{
 		bool flag = BtcShareUI.white == null;
 		if (flag)
@@ -478,7 +478,7 @@ public static class BtcShareUI
 			BtcShareUI.sNote.normal.textColor = new Color(1f, 1f, 1f, 0.55f);
 			BtcShareUI.sHead = new GUIStyle(BtcShareUI.sLabel);
 			BtcShareUI.sHead.fontStyle = FontStyle.Bold;
-			BtcShareUI.sHead.normal.textColor = new Color(0.55f, 0.85f, 0.55f, 0.95f);
+			BtcShareUI.sHead.normal.textColor = BtcMenu.AccentA(0.95f);
 			BtcShareUI.sBtn = BtcUiStyle.Button(fs);
 			BtcShareUI.sVal = new GUIStyle(BtcShareUI.sLabel);
 			BtcShareUI.sVal.alignment = TextAnchor.MiddleCenter;
@@ -486,7 +486,7 @@ public static class BtcShareUI
 		}
 	}
 
-	private static void SetColors(GUIStyle st, Color normal, Color hover)
+	internal static void SetColors(GUIStyle st, Color normal, Color hover)
 	{
 		st.normal.textColor = normal;
 		st.hover.textColor = hover;
@@ -498,7 +498,7 @@ public static class BtcShareUI
 		st.focused.background = null;
 	}
 
-	private static void Fill(Rect r, Color c)
+	internal static void Fill(Rect r, Color c)
 	{
 		bool flag = Event.current.type == EventType.Repaint;
 		if (flag)
@@ -510,18 +510,18 @@ public static class BtcShareUI
 		}
 	}
 
-	private static float Note(float y, float w, int fs, string text)
+	internal static float Note(float y, float w, int fs, string text)
 	{
 		float num = BtcShareUI.sNote.CalcHeight(new GUIContent(text), w - (float)fs * 2f);
 		GUI.Label(new Rect((float)fs, y + 2f, w - (float)fs * 2f, num), text, BtcShareUI.sNote);
 		return y + num + 6f;
 	}
 
-	private static bool CheckRow(ref float y, float w, float rowH, int fs, string label, bool on)
+	internal static bool CheckRow(ref float y, float w, float rowH, int fs, string label, bool on)
 	{
 		Rect rect = new Rect(0f, y, w, rowH);
 		y += rowH;
-		BtcShareUI.Fill(rect, on ? new Color(0.55f, 0.85f, 0.55f, 0.08f) : new Color(1f, 1f, 1f, 0.03f));
+		BtcShareUI.Fill(rect, on ? BtcMenu.AccentA(0.08f) : new Color(1f, 1f, 1f, 0.03f));
 		float num = (float)fs * 1.1f;
 		Rect r = new Rect((float)fs, rect.y + (rowH - num) * 0.5f, num, num);
 		BtcShareUI.Fill(r, new Color(1f, 1f, 1f, 0.5f));
@@ -533,7 +533,7 @@ public static class BtcShareUI
 		return GUI.Button(rect, label, BtcShareUI.sRow);
 	}
 
-	private static bool Button(Rect r, string text, Color c)
+	internal static bool Button(Rect r, string text, Color c)
 	{
 		BtcShareUI.Fill(r, new Color(1f, 1f, 1f, 0.07f));
 		Color contentColor = GUI.contentColor;
@@ -543,7 +543,7 @@ public static class BtcShareUI
 		return result;
 	}
 
-	private static int Slider(Rect r, int val, int min, int max)
+	internal static int Slider(Rect r, int val, int min, int max)
 	{
 		int controlID = GUIUtility.GetControlID(FocusType.Passive);
 		Event current = Event.current;
@@ -582,14 +582,14 @@ public static class BtcShareUI
 			float num4 = r.y + r.height * 0.5f;
 			BtcShareUI.Fill(new Rect(num2, num4 - 2f, num3, 4f), new Color(1f, 1f, 1f, 0.2f));
 			float num5 = (max > min) ? ((float)(val - min) / (float)(max - min)) : 0f;
-			BtcShareUI.Fill(new Rect(num2, num4 - 2f, num3 * num5, 4f), new Color(0.55f, 0.85f, 0.55f, 0.8f));
+			BtcShareUI.Fill(new Rect(num2, num4 - 2f, num3 * num5, 4f), BtcMenu.AccentA(0.8f));
 			float num6 = r.height * 0.6f;
 			BtcShareUI.Fill(new Rect(num2 + num3 * num5 - num6 * 0.5f, num4 - num6 * 0.5f, num6, num6), BtcShareUI.Green);
 		}
 		return Mathf.Clamp(val, min, max);
 	}
 
-	private static string Size(long b)
+	internal static string Size(long b)
 	{
 		bool flag = b < 1048576L;
 		string result;
@@ -845,7 +845,7 @@ public static class BtcShareUI
 
 	public static float ContentH;
 
-	private static readonly string[] RootPaths = new string[]
+	internal static readonly string[] RootPaths = new string[]
 	{
 		"Info/Saves",
 		"Info/UGC/Saves",
@@ -855,47 +855,47 @@ public static class BtcShareUI
 		"Info/Downloads/Maps"
 	};
 
-	private static List<BtcShareUI.Entry> list = new List<BtcShareUI.Entry>();
+	internal static List<BtcShareUI.Entry> list = new List<BtcShareUI.Entry>();
 
-	private static bool listLoaded;
+	internal static bool listLoaded;
 
-	private static string msg;
+	internal static string msg;
 
-	private static float msgUntil;
+	internal static float msgUntil;
 
-	private static string confirmKey;
+	internal static string confirmKey;
 
-	private static float confirmUntil;
+	internal static float confirmUntil;
 
-	private static string importUrl = string.Empty;
+	internal static string importUrl = string.Empty;
 
-	private static WWW dl;
+	internal static WWW dl;
 
-	private static Texture2D white;
+	internal static Texture2D white;
 
-	private static GUIStyle sRow;
+	internal static GUIStyle sRow;
 
-	private static GUIStyle sLabel;
+	internal static GUIStyle sLabel;
 
-	private static GUIStyle sNote;
+	internal static GUIStyle sNote;
 
-	private static GUIStyle sHead;
+	internal static GUIStyle sHead;
 
-	private static GUIStyle sBtn;
+	internal static GUIStyle sBtn;
 
-	private static GUIStyle sVal;
+	internal static GUIStyle sVal;
 
-	private static GUIStyle sField;
+	internal static GUIStyle sField;
 
-	private static int styleFs;
+	internal static int styleFs;
 
-	private static readonly Color Green = new Color(0.55f, 0.85f, 0.55f, 1f);
+	internal static Color Green { get { return BtcMenu.Accent; } }
 
-	private static readonly Color Red = new Color(1f, 0.45f, 0.4f, 1f);
+	internal static readonly Color Red = new Color(1f, 0.45f, 0.4f, 1f);
 
-	private static bool settingsDirty;
+	internal static bool settingsDirty;
 
-	private sealed class Entry
+	internal sealed class Entry
 	{
 		public string name;
 

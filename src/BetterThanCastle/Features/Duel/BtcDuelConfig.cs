@@ -4,7 +4,7 @@ using BepInEx.Configuration;
 
 namespace BetterThanCastle
 {
-    internal enum BtcDuelUnit { Worker = 0, BarrelWorker, Knight, Archer, Halberdier, Arbalist, Alchemist, Geomancer }
+    internal enum BtcDuelUnit { Worker = 0, BarrelWorker, Knight, Archer, Halberdier, Arbalist, Alchemist, Artificer }
 
     internal enum BtcDuelDifficulty { Easy = 0, Medium, Hard, Extreme, Chosen, Custom, BreaktronZero }
 
@@ -12,7 +12,7 @@ namespace BetterThanCastle
     internal static class BtcDuelConfig
     {
         internal static readonly int UnitKinds = Enum.GetValues(typeof(BtcDuelUnit)).Length;
-        internal static readonly string[] UnitNames = { "Worker", "Barrel worker", "Knight", "Archer", "Halberdier", "Arbalist", "Alchemist", "Geomancer" };
+        internal static readonly string[] UnitNames = { "Worker", "Barrel worker", "Knight", "Archer", "Halberdier", "Arbalist", "Alchemist", "Artificer" };
 
         internal static int[] PlayerCount = new int[UnitKinds];
         internal static int[] BotCount = new int[UnitKinds];
@@ -28,7 +28,7 @@ namespace BetterThanCastle
 
         internal static void Init(ConfigFile cfg)
         {
-            _cPlayer = cfg.Bind("Duel", "PlayerUnits", "0,0,0,0,5,0,0,0", "Player start units, order: Worker,BarrelWorker,Knight,Archer,Halberdier,Arbalist,Alchemist,Geomancer.");
+            _cPlayer = cfg.Bind("Duel", "PlayerUnits", "0,0,0,0,5,0,0,0", "Player start units, order: Worker,BarrelWorker,Knight,Archer,Halberdier,Arbalist,Alchemist,Artificer.");
             _cBot = cfg.Bind("Duel", "BotUnits", "0,0,0,0,5,0,0,0", "Bot start units (same order).");
             _cDiff = cfg.Bind("Duel", "Difficulty", "Chosen", "Easy, Medium, Hard, Extreme, Chosen, Custom, BreaktronZero (B0; old names LuminaZero/LuminaAI are read as BreaktronZero).");
             _cSkip = cfg.Bind("Duel", "SkipAnims", true, "ON: the vanilla animation-skip trick (move-attack right before a hit) works. OFF: every melee unit keeps the full strike cycle.");

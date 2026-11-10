@@ -285,6 +285,35 @@ public static class BtcSymmetry
 		}
 	}
 
+	// ---- accessors for the Gameplay tab map page (UI/Gameplay/BtcMapPage.cs) and the per-map preset (BtcMapPreset)
+	internal static string StateString() { BtcSymmetry.LoadPrefsOnce(); return BtcSymmetry.Encode(); }
+	internal static bool ApplyState(string s) { BtcSymmetry.LoadPrefsOnce(); if (!BtcSymmetry.Decode(s)) return false; BtcSymmetry.Changed(); return true; }
+	internal static void UiPrepare() { BtcSymmetry.Tick(); BtcSymmetry.LoadPrefsOnce(); BtcSymmetry.EnsurePreview(); }
+	internal static void Commit() { BtcSymmetry.Changed(); }
+	internal static int Keep { get { return BtcSymmetry._keep; } set { BtcSymmetry._keep = Mathf.Clamp(value, 0, 3); } }
+	internal static int Dx { get { return BtcSymmetry._dx; } set { BtcSymmetry._dx = Mathf.Clamp(value, -400, 400); } }
+	internal static int Dz { get { return BtcSymmetry._dz; } set { BtcSymmetry._dz = Mathf.Clamp(value, -400, 400); } }
+	internal static bool Obj { get { return BtcSymmetry._obj; } set { BtcSymmetry._obj = value; } }
+	internal static int Go { get { return BtcSymmetry._go; } set { BtcSymmetry._go = Mathf.Clamp(value, 0, 7); } }
+	internal static int Seed { get { return BtcSymmetry._seed; } set { BtcSymmetry._seed = Mathf.Clamp(value, 0, 999999); BtcSymmetry._seedStr = BtcSymmetry._seed.ToString(); } }
+	internal static bool HasNoise { get { return BtcSymmetry._hasNoise; } }
+	/// <summary>The map after the symmetry (the Alt preview): texture and marks, false when it cannot be built.</summary>
+	internal static bool AltPreview(int mode, int sx, int sz, out Texture2D tex, out List<float[]> marks)
+	{
+		tex = null; marks = null;
+		if (!BtcSymmetry.EnsureSym(mode, sx, sz)) return false;
+		tex = BtcSymmetry._symTex; marks = BtcSymmetry._symMarks;
+		return tex != null;
+	}
+
+	internal static string KeepLabel(int m, int k) { return BtcSymmetry.KeepText(m, k); }
+	internal static bool PreviewData(out Texture2D tex, out int minX, out int minZ, out int pw, out int ph, out int defSx, out int defSz, out List<float[]> marks)
+	{
+		tex = BtcSymmetry._pvTex; minX = BtcSymmetry._pvMinX; minZ = BtcSymmetry._pvMinZ; pw = BtcSymmetry._pvW; ph = BtcSymmetry._pvH;
+		defSx = BtcSymmetry._defSx; defSz = BtcSymmetry._defSz; marks = BtcSymmetry._marks;
+		return BtcSymmetry._pvOk && BtcSymmetry._pvTex != null;
+	}
+
 	private static void Changed()
 	{
 		PlayerPrefs.SetString("BtcSymmetry", BtcSymmetry.Encode());

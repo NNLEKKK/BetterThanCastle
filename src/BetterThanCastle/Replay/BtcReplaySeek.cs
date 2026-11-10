@@ -281,6 +281,17 @@ namespace BetterThanCastle
             return Jump(pk, tms, true);
         }
 
+        /// <summary>Target is before the first keyframe (start of the replay): restore the earliest keyframe instead of the old scene rewind.</summary>
+        internal static bool TryJumpEarliest(float target)
+        {
+            EnsureCfg();
+            if (!_enabled || _failed || _state == 1 || BtcReplayAnchor.Busy) return false;
+            Pk first = null;
+            foreach (KeyValuePair<int, Pk> kv in Pks) if (first == null || kv.Value.Ms < first.Ms) first = kv.Value;
+            if (first == null) return false;
+            return Jump(first, first.Ms, true);
+        }
+
         /// <summary>DEV self-check: restore PK slot (exact, no feed) and compare, then feed to the next PK position and compare again.</summary>
         internal static string VerifyPair(int slot)
         {
@@ -1007,6 +1018,12 @@ namespace BetterThanCastle
 
         internal static string Plate { get { return _quietOn ? _plate : null; } }
 
+        /// <summary>Progress 0..1 of the keyframe preparation pass (BtcReplayLoadUI).</summary>
+        internal static float PrepFraction;
+
+        /// <summary>The first keyframe pass has not started yet but will (long replay, no cache): the loading screen stays up so the world is not shown in between.</summary>
+        internal static bool Settling { get { EnsureCfg(); return _state == 0 && _enabled && !_failed && _preprocess && !DevNoPreprocess && BtcReplay.Mode == BtcReplay.State.Playing && BtcReplay.PlayTotal >= 20f && !BtcReplay.FeedEnded; } }
+
         // objects the keyframe had hidden (stored/carried items, wards): spawned ones are re-shown by the game a frame or two later;
         // keep them hidden for a short window right after the jump (20 frames and at most 0.3 s of replay time)
         private static readonly List<GameObject> _keepOff = new List<GameObject>(512);
@@ -1078,6 +1095,7 @@ namespace BetterThanCastle
                 {
                     int pct = total > 0f ? Mathf.Clamp((int)(100f * clock / total), 0, 100) : 0;
                     _plate = (BtcLang.Russian ? "Подготовка реплея для быстрой перемотки... " : "Preparing the replay for instant seek... ") + pct + "%";
+                    PrepFraction = pct / 100f;
                     return;
                 }
                 _state = 2;
@@ -1094,6 +1112,23 @@ namespace BetterThanCastle
 
         private const int CacheMagic = 0x53435442; // "BTCS"
         private const int CacheVersion = 22;
+
+        /// <summary>True when the keyframe cache of a replay file exists (replay list: "keyframes ready").</summary>
+        internal static bool HasCacheFor(string f)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(f) || !System.IO.File.Exists(f)) return false;
+                System.IO.FileInfo fi = new System.IO.FileInfo(f);
+                string name = System.IO.Path.GetFileNameWithoutExtension(f);
+                char[] bad = System.IO.Path.GetInvalidFileNameChars();
+                for (int i = 0; i < bad.Length; i++) name = name.Replace(bad[i], '_');
+                if (name.Length > 60) name = name.Substring(0, 60);
+                string dir = System.IO.Path.Combine(BtcPaths.Root, "cash");
+                return System.IO.File.Exists(System.IO.Path.Combine(dir, name + "_" + fi.Length.ToString("x") + "_" + fi.LastWriteTimeUtc.Ticks.ToString("x") + ".btcs"));
+            }
+            catch (Exception) { return false; }
+        }
 
         private static string CachePath()
         {

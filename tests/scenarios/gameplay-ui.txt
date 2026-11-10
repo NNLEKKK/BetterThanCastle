@@ -1,0 +1,24 @@
+# Draws every page of the Gameplay tab at the main menu (recipes: a bench recipe, a furnace recipe, groups); errors show in the digest.
+wait 20
+gameplaytest 0
+wait 3
+gameplaytest 1
+wait 3
+gameplaytest 2
+wait 3
+gameplaytest 3
+wait 3
+gameplayrec 5 10
+gameplaytest 4
+wait 3
+gameplayrec 7 19
+gameplaytest 4
+wait 3
+gameplayrec 1 0
+gameplaytest 4
+wait 3
+gameplaytest 5
+wait 3
+gameplaytest 6
+wait 3
+quit

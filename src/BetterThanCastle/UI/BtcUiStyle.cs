@@ -6,7 +6,7 @@ namespace BetterThanCastle
 	// Shared look for all BTC menu tabs (matches the Resource Packs menu: dark panel, green accent, flat rows).
 	internal static class BtcUiStyle
 	{
-		public static readonly Color Accent = new Color(0.55f, 0.85f, 0.55f, 1f);
+		public static Color Accent { get { return BtcMenu.Accent; } }
 		public static readonly Color Panel = new Color(0.06f, 0.06f, 0.08f, 0.93f);
 		public static readonly Color Text = new Color(1f, 1f, 1f, 0.85f);
 		public static readonly Color Dim = new Color(1f, 1f, 1f, 0.55f);
@@ -117,7 +117,7 @@ namespace BetterThanCastle
 			_cache[fs] = z;
 			Texture2D _btnN = Solid(new Color(1f, 1f, 1f, 0.07f));
 			Texture2D _btnH = Solid(new Color(1f, 1f, 1f, 0.15f));
-			Texture2D _btnA = Solid(new Color(0.55f, 0.85f, 0.55f, 0.3f));
+			Texture2D _btnA = Solid(BtcMenu.AccentA(0.3f));
 			Texture2D _fieldBg = Solid(new Color(0.02f, 0.02f, 0.03f, 0.9f));
 			int s = Mathf.Max(12, Mathf.RoundToInt(fs * 1.1f));
 			Texture2D _boxOff = Box(s, false);

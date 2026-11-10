@@ -7,6 +7,7 @@ namespace BetterThanCastle
         internal static ConfigEntry<int> WindowMode;
         internal static ConfigEntry<bool> SkipIntro;
         internal static ConfigEntry<bool> LoadTimer;
+        internal static ConfigEntry<int> UiSound;
         internal static ConfigEntry<bool> ReuseMenuPanels;
         internal static ConfigEntry<bool> BetterConnection;
         internal static ConfigEntry<bool> ShowPing;
@@ -25,7 +26,8 @@ namespace BetterThanCastle
         internal static ConfigEntry<bool> PovShowCone;
         internal static ConfigEntry<int> ReplayUnitDots;
         internal static ConfigEntry<bool> ReplaySkipPauses, ReplayAutoMarks, ReplayMinimapFights, ReplayRecordPov, PovFollowCam, PovShowCursor, ReplayInfo, ReplayHideMinimap, ReplayShowApm;
-        internal static ConfigEntry<int> ReplayKeysMode, ReplayApmMode;
+        internal static ConfigEntry<int> ReplayKeysMode, ReplayApmMode, GifWidth, GifFps, GifColors;
+        internal static ConfigEntry<bool> GifDither, GifDiff;
         internal static ConfigEntry<string> ReplayHiddenKinds, ReplayUiLayout;
         internal static ConfigEntry<float> ReplayFreezeGap;
         internal static ConfigEntry<bool> StatsEnabled, StatsBar, StatsBarBottom;
@@ -37,6 +39,7 @@ namespace BetterThanCastle
             BtcDuelConfig.Init(cfg);
             WindowMode = cfg.Bind("Display", "WindowMode", 3, "0 = keep the game setting, 1 = fullscreen, 2 = windowed, 3 = borderless.");
             SkipIntro = cfg.Bind("Display", "SkipIntro", true, "Skip the logo screens on startup (applies on next launch).");
+            UiSound = cfg.Bind("Display", "UiSound", 2, "Sound feedback of the mod menu (hover, clicks, typing, delete): 0 = off, 1 = low, 2 = medium, 3 = high.");
             LoadTimer = cfg.Bind("Display", "LoadTimer", true, "Show how many seconds the world load has been running (and the total after it).");
             ReuseMenuPanels = cfg.Bind("Loading", "ReuseMenuPanels", true, "While the world loads, reuse already built menu panels instead of destroying and re-creating them (faster load). Turn off if the in-game UI looks wrong.");
             UpdateCheck = cfg.Bind("Update", "CheckOnStart", true, "Check GitHub Releases at game start and offer to update the mod.");
@@ -69,6 +72,11 @@ namespace BetterThanCastle
             ReplayShowApm = cfg.Bind("Replay", "ShowApm", true, "Replay: draw the actions-per-minute graph of every player above the timeline (replays recorded since this feature only).");
             ReplayKeysMode = cfg.Bind("Replay", "PressedKeysMode", 1, "Replay: pressed keys of the watched player (0 hidden, 1 feed, 2 keyboard).");
             ReplayApmMode = cfg.Bind("Replay", "ApmGraphMode", 1, "Replay: graph above the timeline (0 hidden, 1 APM, 2 EPM without spam).");
+            GifWidth = cfg.Bind("Replay", "GifWidth", 480, "Replay clip GIF: width in pixels (height follows the screen aspect).");
+            GifFps = cfg.Bind("Replay", "GifFps", 12, "Replay clip GIF: frames per second.");
+            GifColors = cfg.Bind("Replay", "GifColors", 0, "Replay clip GIF: palette size, 0 = 252 colours, 1 = 125, 2 = 64, 3 = 27 (fewer = smaller file).");
+            GifDither = cfg.Bind("Replay", "GifDither", true, "Replay clip GIF: ordered dithering (nicer gradients, bigger file).");
+            GifDiff = cfg.Bind("Replay", "GifOptimize", true, "Replay clip GIF: skip pixels that did not change since the previous frame (much smaller file for calm scenes).");
             PovShowCone = cfg.Bind("Replay", "ShowViewCones", true, "Replay: draw the field of view of every player as a translucent pyramid over the map.");
             ReplayUnitDots = cfg.Bind("Replay", "UnitOwnerDots", 1, "Replay: coloured owner dot over every unit. 0 off, 1 only while Alt is held, 2 always.");
             ReplayUiLayout = cfg.Bind("Replay", "UiLayout", "", "Replay player UI layout (scale, position, visibility); edited in the replay with F7.");

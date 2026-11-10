@@ -628,6 +628,8 @@ public partial class ResourcePackManager : MonoBehaviour
 		}
 	}
 
+	internal static readonly int[] TabOrder = { 0, 1, 2, 3, 4, 11, 5, 6, 7, 8, 9, 10, 12, 13 };
+
 	private int[] tabIds = new int[0];
 
 	private Rect[] tabLay = new Rect[0];
@@ -640,23 +642,28 @@ public partial class ResourcePackManager : MonoBehaviour
 		this.tabNames = new string[]
 		{
 			BtcLang.Tr("Resource Packs"),
-			BtcLang.Tr("Overlays"),
+			BtcReplayUI.T("Visuals", "Визуал"),
 			"BetterConnection",
 			BtcLang.Tr("Advanced Hotkeys"),
 			BtcGameplay.T("Gameplay Settings", "Настройки геймплея"),
 			"Share",
 			BtcLang.Tr("Profile"),
 			BtcReplayUI.T("Replay", "Реплеи"),
-			BtcGameplay.T("Duel", "Дуэль")
+			BtcGameplay.T("Duel", "Дуэль"),
+			BtcGameplay.T("Report a bug", "Сообщить о баге"),
+			BtcGameplay.T("What's new", "Что нового"),
+			BtcReplayUI.T("Statistics", "Статистика"),
+				BtcReplayUI.T("UI editor", "UI редактор"),
+				BtcReplayUI.T("Notifications", "Уведомления")
 		};
 		int num = BtcReplay.FeatureOn ? this.tabNames.Length : (this.tabNames.Length - 1);
 		this.tabIds = new int[num];
 		this.tabLay = new Rect[num];
 		float[] array = new float[num];
 		int tabN = 0;
-		for (int i = 0; i < this.tabNames.Length; i++)
+		for (int oi = 0; oi < this.tabNames.Length; oi++)
 		{
-			if (i == 7 && !BtcReplay.FeatureOn) continue;
+			int i = ResourcePackManager.TabOrder[oi]; if (i == 7 && !BtcReplay.FeatureOn) continue;
 			this.tabIds[tabN] = i;
 			array[tabN] = this.menuTabActiveStyle.CalcSize(new GUIContent(this.tabNames[i])).x + pad * 2f;
 			tabN++;
@@ -716,6 +723,9 @@ public partial class ResourcePackManager : MonoBehaviour
 			BtcNick.TabActive = false;
 			BtcGameplayUI.TabActive = false;
 			BtcDuelUI.TabActive = false;
+			BtcReportTab.TabActive = false;
+			BtcChangelogTab.TabActive = false;
+			BtcMenu.CurrentId = 0;
 			BtcReplayUI.OnMenuOpen();
 			BtcShareUI.OnMenuOpen();
 			BtcNick.OnMenuOpen();
@@ -723,6 +733,8 @@ public partial class ResourcePackManager : MonoBehaviour
 			this.pickOv = null;
 			this.pickNum = false;
 			this.pickExtra = 0;
+			int lastTab = BtcMenuState.Int("tab", 0);   // reopen where the menu was closed
+			if (lastTab > 0 && lastTab <= 12 && ResourcePackManager.TabEnabledFn(lastTab)) this.SelectTab(lastTab);
 		}
 	}
 
@@ -762,7 +774,7 @@ public partial class ResourcePackManager : MonoBehaviour
 			this.menuBannerStyle.alignment = TextAnchor.MiddleCenter;
 			this.menuBannerStyle.fontSize = Mathf.RoundToInt((float)fontSize * 1.7f);
 			this.menuBannerStyle.fontStyle = FontStyle.Bold;
-			this.menuBannerStyle.normal.textColor = new Color(0.55f, 0.85f, 0.55f, 1f);
+			this.menuBannerStyle.normal.textColor = BtcMenu.AccentA(1f);
 			this.menuBannerSubStyle = new GUIStyle(GUI.skin.label);
 			this.menuBannerSubStyle.alignment = TextAnchor.UpperCenter;
 			this.menuBannerSubStyle.fontSize = Mathf.Max(10, Mathf.RoundToInt((float)fontSize * 0.75f));
@@ -776,7 +788,7 @@ public partial class ResourcePackManager : MonoBehaviour
 			ResourcePackManager.SetStyleColors(this.menuItemStyle, new Color(1f, 1f, 1f, 0.85f), Color.white);
 			this.menuActiveStyle = new GUIStyle(this.menuItemStyle);
 			this.menuActiveStyle.fontStyle = FontStyle.Bold;
-			Color color = new Color(0.55f, 0.85f, 0.55f, 1f);
+			Color color = BtcMenu.AccentA(1f);
 			ResourcePackManager.SetStyleColors(this.menuActiveStyle, color, color);
 			this.menuTabStyle = new GUIStyle(this.menuItemStyle);
 			this.menuTabStyle.alignment = TextAnchor.MiddleCenter;
@@ -802,7 +814,7 @@ public partial class ResourcePackManager : MonoBehaviour
 			this.menuValueStyle.normal.textColor = new Color(1f, 1f, 1f, 0.7f);
 			this.menuHeaderStyle = new GUIStyle(this.menuLabelStyle);
 			this.menuHeaderStyle.fontStyle = FontStyle.Bold;
-			this.menuHeaderStyle.normal.textColor = new Color(0.55f, 0.85f, 0.55f, 0.95f);
+			this.menuHeaderStyle.normal.textColor = BtcMenu.AccentA(0.95f);
 			this.menuNoteStyle = new GUIStyle(this.menuLabelStyle);
 			this.menuNoteStyle.fontSize = Mathf.Max(10, Mathf.RoundToInt((float)fontSize * 0.85f));
 			this.menuNoteStyle.wordWrap = true;
@@ -813,23 +825,25 @@ public partial class ResourcePackManager : MonoBehaviour
 
 	private void DrawMenu()
 	{
-		int num = Mathf.Max(14, Screen.height / 38);
+		int num = BtcUiEdit.MenuFs;
 		this.EnsureMenuStyles(num);
 		float num2 = (float)num * 2f;
 		float num3 = num2 * 1.1f;
 		float num4 = (float)num * 0.6f;
-		bool flag = this.menuHp || this.menuBc || BtcHotkeysUI.TabActive || BtcGameplayUI.TabActive || BtcReplayUI.TabActive || BtcShareUI.TabActive || BtcNick.TabActive || BtcDuelUI.TabActive || this.hatsOpen;
-		float num5 = Mathf.Min((float)Screen.width * 0.92f, (float)num * (flag ? 58f : 52f));
+		bool flag = this.menuHp || this.menuBc || BtcHotkeysUI.TabActive || BtcGameplayUI.TabActive || BtcReplayUI.TabActive || BtcShareUI.TabActive || BtcNick.TabActive || BtcDuelUI.TabActive || BtcReportTab.TabActive || BtcChangelogTab.TabActive || this.hatsOpen;
+		float railW = BtcMenu.RailWidth(num);
+		float num5 = (float)Screen.width - railW;   // full screen menu minus the tab rail
 		float tabRowH = num3;
 		int tabRows = this.LayoutTabs(num5 - num4 * 2f, (float)num * 0.6f);
-		num3 = tabRowH * (float)tabRows;
+		num3 = 0f;   // no tab strip: the tabs are the rail
 		int num6 = this.menuPacks.Count + 1 + 1 + (this.hatsOpen ? (ResourcePackManager.HatOrder.Count + 1) : 0);
 		float num7 = BtcDuelUI.TabActive ? BtcDuelUI.ContentH : BtcNick.TabActive ? BtcNick.ContentH : (BtcShareUI.TabActive ? BtcShareUI.ContentH : (BtcGameplayUI.TabActive ? BtcGameplayUI.ContentH : (BtcReplayUI.TabActive ? BtcReplayUI.ContentH : (BtcHotkeysUI.TabActive ? BtcHotkeysUI.ContentH : (this.menuHp ? this.hpContentH : (this.menuBc ? this.bcContentH : ((float)num6 * num2 + this.dbgContentH + num2)))))));
-		float num8 = this.menuHp ? (((this.hpCfg != null) ? num2 : 0f) + num2 + num2 + num2 * 2f) : 0f;
+		float num8 = 0f;
 		float num9 = num2 * 1.75f;
-		float num10 = flag ? ((float)Screen.height * 0.85f) : Mathf.Min(num9 + num3 + num8 + num7 + num4 * 2f, (float)Screen.height * 0.7f);
-		Rect rect = new Rect(((float)Screen.width - num5) * 0.5f, ((float)Screen.height - num10) * 0.5f, num5, num10);
+		float num10 = (float)Screen.height;
+		Rect rect = new Rect(railW, 0f, num5, num10);
 		Event current = Event.current;
+		BtcTour.Input();
 		bool flag2 = current.rawType == EventType.MouseUp;
 		bool flag3 = flag2;
 		bool flag4 = flag3;
@@ -844,7 +858,7 @@ public partial class ResourcePackManager : MonoBehaviour
 		{
 			this.hpDragId = 0;
 		}
-		bool flag12 = current.type == EventType.MouseDown && !rect.Contains(current.mousePosition);
+		bool flag12 = current.type == EventType.MouseDown && !new Rect(0f, 0f, (float)Screen.width, (float)Screen.height).Contains(current.mousePosition);
 		bool flag13 = flag12;
 		bool flag14 = flag13;
 		bool flag15 = flag14;
@@ -892,13 +906,11 @@ public partial class ResourcePackManager : MonoBehaviour
 				bool flag41 = flag40;
 				if (flag41)
 				{
-					GUI.color = new Color(0.06f, 0.06f, 0.08f, 0.93f);
-					GUI.DrawTexture(rect, this.whiteTex);
+					GUI.color = Color.white;
+					BtcMenu.DrawBackground(rect);
 				}
 				GUI.color = color;
-				GUI.Label(new Rect(rect.x, rect.y + num4 * 0.4f, rect.width, num2 * 1.15f), BtcLang.Tr("Better Than Castle"), this.menuBannerStyle);
-				GUI.Label(new Rect(rect.x, rect.y + num4 * 0.4f + num2 * 1.1f, rect.width, num2 * 0.6f), "v" + BtcPlugin.Version, this.menuBannerSubStyle);
-				this.DrawLangButton(rect, num2, num4);
+				// language button moved to the rail (BtcMenu.DrawRail, globe icon)
 				bool flag42 = current.type == EventType.Repaint;
 				bool flag43 = flag42;
 				bool flag44 = flag43;
@@ -916,46 +928,16 @@ public partial class ResourcePackManager : MonoBehaviour
 					GUI.color = color;
 				}
 				Rect rect2 = new Rect(rect.x + num4, rect.y + num9 + num4 * 0.5f, rect.width - num4 * 2f, num3);
-				int num11 = BtcDuelUI.TabActive ? 8 : BtcReplayUI.TabActive ? 7 : (BtcNick.TabActive ? 6 : (BtcShareUI.TabActive ? 5 : (BtcGameplayUI.TabActive ? 4 : (BtcHotkeysUI.TabActive ? 3 : (this.menuBc ? 2 : (this.menuHp ? 1 : 0))))));
-				for (int i = 0; i < this.tabIds.Length; i++)
+				int num11 = BtcMenu.CurrentId == 13 ? 13 : BtcMenu.CurrentId == 12 ? 12 : BtcMenu.CurrentId == 11 ? 11 : BtcChangelogTab.TabActive ? 10 : BtcReportTab.TabActive ? 9 : BtcDuelUI.TabActive ? 8 : BtcReplayUI.TabActive ? 7 : (BtcNick.TabActive ? 6 : (BtcShareUI.TabActive ? 5 : (BtcGameplayUI.TabActive ? 4 : (BtcHotkeysUI.TabActive ? 3 : (this.menuBc ? 2 : (this.menuHp ? 1 : 0))))));
+				BtcMenu.DrawHeader(rect, num, num11 >= 0 && num11 < this.tabNames.Length ? this.tabNames[num11] : "");
+				int railClick = BtcMenu.DrawRail(new Rect(0f, 0f, railW, (float)Screen.height), num, this.tabIds, this.tabNames, num11, ResourcePackManager.TabEnabledFn);
+				int cornerClick = BtcMenu.DrawCorner(rect, num, num11, this.tabNames);
+				BtcGlobalSearch.DrawField(num);
+					if (cornerClick >= 0) railClick = cornerClick;
+					if (railClick >= 0 && railClick != num11)
 				{
-					int id = this.tabIds[i];
-					Rect position = new Rect(rect2.x + this.tabLay[i].x, rect2.y + this.tabLay[i].y * tabRowH, this.tabLay[i].width, tabRowH);
-					if (current.type == EventType.Repaint)
-					{
-						GUI.color = ((id == num11) ? new Color(0.55f, 0.85f, 0.55f, 0.18f) : new Color(1f, 1f, 1f, 0.05f));
-						GUI.DrawTexture(new Rect(position.x + 1f, position.y, position.width - 2f, position.height - 1f), this.whiteTex);
-						GUI.color = color;
-					}
-					bool enabled = GUI.enabled;
-					if (id == 4 && !BtcBc.BcEnabled)
-					{
-						GUI.enabled = false;
-					}
-					bool clicked = GUI.Button(position, this.tabNames[id], (id == num11) ? this.menuTabActiveStyle : this.menuTabStyle) && id != num11;
-					GUI.enabled = enabled;
-					if (clicked)
-					{
-						this.menuHp = (id == 1);
-						this.menuBc = (id == 2);
-						BtcHotkeysUI.TabActive = (id == 3);
-						BtcGameplayUI.TabActive = (id == 4);
-						BtcShareUI.TabActive = (id == 5);
-						BtcNick.TabActive = (id == 6);
-						BtcReplayUI.TabActive = (id == 7);
-							BtcDuelUI.TabActive = (id == 8);
-						if (id == 6)
-						{
-							BtcNick.OnMenuOpen();
-						}
-						BtcHotkeys.CancelCapture();
-						this.menuScroll = Vector2.zero;
-						this.pickStop = null;
-						this.pickOv = null;
-						this.pickNum = false;
-						this.pickExtra = 0;
-						return;
-					}
+					this.SelectTab(railClick);
+					return;
 				}
 				bool flag78 = num8 > 0f;
 				bool flag79 = flag78;
@@ -1047,6 +1029,16 @@ public partial class ResourcePackManager : MonoBehaviour
 					}
 					this.DrawDisplayHeader(current, rect4.y + num2, rect, num2, num, num14, color);
 				}
+				if (BtcGlobalSearch.Active) { BtcGlobalSearch.DrawResults(new Rect(rect.x, rect.y + num9, rect.width, rect.height - num9), num); BtcReplayIcons.DrawTip(num, rect.xMax, false); GUI.color = color; return; }
+				BtcMenuTab nt = BtcMenu.ActiveTab();
+				BtcMenu.HandleUndo(nt, current);
+				if (nt != null)
+				{
+					nt.Draw(new Rect(rect.x, rect.y + num9, rect.width, rect.height - num9), num);
+					if (current.type == EventType.MouseDown && rect.Contains(current.mousePosition)) current.Use();
+					GUI.color = color;
+					return;
+				}
 				Rect position2 = new Rect(rect.x, rect.y + num9 + num3 + num4 * 0.5f + num8, rect.width, rect.height - num9 - num3 - num4 * 1.5f - num8);
 				Rect viewRect = new Rect(0f, 0f, position2.width - ((num7 > position2.height) ? 16f : 0f), num7);
 				this.menuScroll = GUI.BeginScrollView(position2, this.menuScroll, viewRect);
@@ -1122,7 +1114,7 @@ public partial class ResourcePackManager : MonoBehaviour
 								bool flag183 = flag182;
 								if (flag183)
 								{
-									BtcHotkeysUI.Draw(current, viewRect.width, num2, num, color);
+									// migrated: BtcHotkeysTab draws through BtcMenu.ActiveTab()
 								}
 								else
 								{

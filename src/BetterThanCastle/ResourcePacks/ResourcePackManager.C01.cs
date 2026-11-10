@@ -174,6 +174,7 @@ public partial class ResourcePackManager : MonoBehaviour
 
 	private void Update()
 	{
+		BtcUpdater.PollPostUpdate();
 		bool capturing = BtcHotkeys.Capturing;
 		bool escBlocked = BtcHotkeys.EscBlocked;
 		bool flag = BtcHotkeys.MenuOpen != this.menuOpen;
@@ -191,6 +192,7 @@ public partial class ResourcePackManager : MonoBehaviour
 		BtcHotkeys.Tick();
 		BtcDiscord.Poll();
 		BtcOverlays.Tick();
+		BtcVisualCompare.Tick();
 		BtcUnitPlates.Tick();
 		BtcInterface.Tick();
 		BtcMatchStats.Tick();
@@ -216,7 +218,7 @@ public partial class ResourcePackManager : MonoBehaviour
 		bool flag20 = flag19;
 		if (flag20)
 		{
-			bool flag21 = Input.GetKeyDown(KeyCode.PageDown) && !capturing;
+			bool flag21 = BtcMenu.MenuKeyDown() && !capturing && !BtcMenu.PgDownRecentlyHandled;
 			bool flag22 = flag21;
 			bool flag23 = flag22;
 			bool flag24 = flag23;
@@ -231,6 +233,7 @@ public partial class ResourcePackManager : MonoBehaviour
 			{
 				this.ToggleMenu();
 			}
+			if (BtcMenu.UiEditorKeyDown() && !capturing) ResourcePackManager.ToggleUiEditor();
 			bool flag32 = this.menuOpen && Input.GetKeyDown(KeyCode.Escape) && !escBlocked;
 			bool flag33 = flag32;
 			bool flag34 = flag33;
@@ -846,6 +849,8 @@ public partial class ResourcePackManager : MonoBehaviour
 		BtcGameplayUI.OnGUI();
 		BtcSessionTick.OnGUI();
 		BtcNick.OnGUI();
+		BtcMenuLauncher.OnGUI();
+		BtcNetCheck.Draw();
 		ResourcePackManager.HpConfig hpConfig = this.hpCfg;
 		bool flag = this.AltShow(hpConfig, hpConfig != null && hpConfig.altAmmo);
 		bool flag2 = flag;
@@ -927,6 +932,8 @@ public partial class ResourcePackManager : MonoBehaviour
 		if (flag54)
 		{
 			this.DrawMenu();
+			BtcMenu.DrawTip();
+			BtcTour.Draw(BtcUiEdit.MenuFs);
 		}
 		this.DrawMessage();
 	}

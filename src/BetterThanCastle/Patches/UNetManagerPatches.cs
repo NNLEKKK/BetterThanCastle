@@ -363,7 +363,7 @@ namespace BetterThanCastle.Patches
     {
         private static bool Prefix(UNetManager __instance, NetworkConnection conn, int errorCode)
         {
-            if (!BtcNetworkGate.Enabled) return true;
+            if (!BtcNetworkGate.Enabled) { try { BtcNetCheck.OnClientError(false); } catch (Exception) { } return true; }
             try { BtcNetManager.OnClientError(__instance, conn, errorCode); return false; }
             catch (Exception e) { BtcLog.Error("Hook", "UNetManager.OnClientError: " + e); return true; }
         }

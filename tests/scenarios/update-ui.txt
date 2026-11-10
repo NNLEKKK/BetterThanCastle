@@ -1,0 +1,15 @@
+# Shows the update card in every phase and the new rail corner buttons; errors land in the digest.
+wait 20
+updtest 1
+wait 2
+updtest 2
+wait 2
+updtest 3
+wait 2
+updtest 4
+wait 2
+tabtest 9
+wait 2
+tabtest 10
+wait 2
+quit

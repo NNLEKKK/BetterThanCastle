@@ -25,6 +25,13 @@ namespace BetterThanCastle
         internal static float MarkScale = 0.701f, CursorScale = 1.009f, LabelScale = 1f, ConeAlpha = 0.43f, BarScale = 1f;
         internal static bool Edit;
 
+        // APM/EPM graph look: height factor, line opacity, area fill opacity, line width (px), top-value label, grid, marks mask (1 idle, 2 surge, 4 peak)
+        internal static float ApmHeight = 1f, ApmAlpha = 0.95f, ApmFill = 0.07f, ApmWidth = 1.5f;
+        internal static bool ApmLabel = true, ApmGrid = true;
+        internal static int ApmMarks = 4;
+        /// <summary>Changes whenever a look setting that needs the graph texture rebuilt changes.</summary>
+        internal static int ApmSig { get { return (int)(ApmAlpha * 100f) * 7 + (int)(ApmFill * 1000f) * 131 + (int)(ApmWidth * 10f) * 977 + (ApmGrid ? 1 : 0); } }
+
         private static bool _loaded, _dirty;
         private static Matrix4x4 _saved;
         private static int _cur = -1, _drag = -1;
@@ -43,12 +50,29 @@ namespace BetterThanCastle
             catch (Exception e) { BtcLog.Error("ReplayUI", "layout parse: " + e.Message); }
         }
 
+        // ---- UI editor access (the old F7 window is gone: the UI editor tab edits these)
+        internal static void GetMod(int id, out float scale, out float ox, out float oy, out bool vis) { Ensure(); scale = Scale[id]; ox = Ox[id]; oy = Oy[id]; vis = Vis[id]; }
+
+        internal static void SetMod(int id, float scale, float ox, float oy, bool vis)
+        {
+            Ensure();
+            Scale[id] = Mathf.Clamp(scale, 0.3f, 3f); Ox[id] = Mathf.Clamp(ox, -1.5f, 1.5f); Oy[id] = Mathf.Clamp(oy, -1.5f, 1.5f); Vis[id] = vis;
+        }
+
+        /// <summary>Saves the look settings after the editor changed them.</summary>
+        internal static void Commit() { Ensure(); Save(); }
+
+        internal static void Restore(string snapshot) { Ensure(); Parse(snapshot); Save(); }
+
+        internal static string ModName(int id) { return Tt(Names[id], NamesRu[id]); }
+
         internal static bool Visible(int id) { Ensure(); return Vis[id]; }
 
         internal static void Reset()
         {
             for (int i = 0; i < N; i++) { Scale[i] = 1f; Ox[i] = 0f; Oy[i] = 0f; Vis[i] = true; }
             MarkScale = 0.701f; CursorScale = 1.009f; LabelScale = BarScale = 1f; ConeAlpha = 0.43f;
+            ApmHeight = 1f; ApmAlpha = 0.95f; ApmFill = 0.07f; ApmWidth = 1.5f; ApmLabel = ApmGrid = true; ApmMarks = 4;
             _dirty = true;
         }
 
@@ -67,6 +91,8 @@ namespace BetterThanCastle
             for (int i = 0; i < N; i++)
                 sb.Append("m").Append(i).Append('=').Append(F(Scale[i])).Append(',').Append(F(Ox[i])).Append(',').Append(F(Oy[i])).Append(',').Append(Vis[i] ? 1 : 0).Append(';');
             sb.Append("mk=").Append(F(MarkScale)).Append(";cs=").Append(F(CursorScale)).Append(";ls=").Append(F(LabelScale)).Append(";ca=").Append(F(ConeAlpha)).Append(";bs=").Append(F(BarScale));
+            sb.Append(";ah=").Append(F(ApmHeight)).Append(";aa=").Append(F(ApmAlpha)).Append(";af=").Append(F(ApmFill)).Append(";aw=").Append(F(ApmWidth))
+              .Append(";al=").Append(ApmLabel ? 1 : 0).Append(";ag=").Append(ApmGrid ? 1 : 0).Append(";am=").Append(ApmMarks);
             return sb.ToString();
         }
 
@@ -100,6 +126,13 @@ namespace BetterThanCastle
                 else if (key == "ls") LabelScale = Mathf.Clamp(P(val, 1f), 0.4f, 3f);
                 else if (key == "ca") ConeAlpha = Mathf.Clamp(P(val, 1f), 0f, 2f);
                 else if (key == "bs") BarScale = Mathf.Clamp(P(val, 1f), 0.6f, 1.6f);
+                else if (key == "ah") ApmHeight = Mathf.Clamp(P(val, 1f), 0.5f, 3f);
+                else if (key == "aa") ApmAlpha = Mathf.Clamp(P(val, 0.95f), 0.1f, 1f);
+                else if (key == "af") ApmFill = Mathf.Clamp(P(val, 0.07f), 0f, 0.5f);
+                else if (key == "aw") ApmWidth = Mathf.Clamp(P(val, 1.5f), 0.5f, 5f);
+                else if (key == "al") ApmLabel = val != "0";
+                else if (key == "ag") ApmGrid = val != "0";
+                else if (key == "am") ApmMarks = Mathf.Clamp((int)P(val, 4f), 0, 7);
             }
         }
 
@@ -194,7 +227,7 @@ namespace BetterThanCastle
             float rowH = fs * 1.6f;
             float w = fs * 27f;
             if (_presets == null) LoadPresets();
-            float h = rowH * (4f + N + 6f + 2f + 1f + Mathf.Min(_presets.Count, 6)) + fs;
+            float h = rowH * (4f + N + 6f + 2f + 1f + 6f + Mathf.Min(_presets.Count, 6)) + fs;
             if (_win.x < 0f) _win = new Vector2(Screen.width - w - fs, fs * 2f);
             _win.x = Mathf.Clamp(_win.x, 0f, Mathf.Max(0f, Screen.width - w));
             _win.y = Mathf.Clamp(_win.y, 0f, Mathf.Max(0f, Screen.height - h));
@@ -227,6 +260,26 @@ namespace BetterThanCastle
             LabelScale = Slider(win, ref y, Tt("Nick text", "Текст ников"), LabelScale, 0.4f, 3f, fs, rowH);
             ConeAlpha = Slider(win, ref y, Tt("View cone", "Конус обзора"), ConeAlpha, 0f, 2f, fs, rowH);
             BarScale = Slider(win, ref y, Tt("Panel height", "Высота панели"), BarScale, 0.6f, 1.6f, fs, rowH);
+            ApmHeight = Slider(win, ref y, Tt("APM height", "Высота APM"), ApmHeight, 0.5f, 3f, fs, rowH);
+            ApmWidth = Slider(win, ref y, Tt("APM line width", "Толщина линии"), ApmWidth, 0.5f, 5f, fs, rowH);
+            ApmAlpha = Slider(win, ref y, Tt("APM line opacity", "Яркость линии"), ApmAlpha, 0.1f, 1f, fs, rowH);
+            ApmFill = Slider(win, ref y, Tt("APM area fill", "Заливка под линией"), ApmFill, 0f, 0.5f, fs, rowH);
+            float tw3 = (w - fs * 2.8f) / 3f;
+            bool lb = GUI.Toggle(new Rect(win.x + fs * 0.7f, y, tw3, rowH), ApmLabel, Tt(" top value", " макс."));
+            bool gr = GUI.Toggle(new Rect(win.x + fs * 1.4f + tw3, y, tw3, rowH), ApmGrid, Tt(" grid", " сетка"));
+            if (lb != ApmLabel) { ApmLabel = lb; _dirty = true; }
+            if (gr != ApmGrid) { ApmGrid = gr; _dirty = true; }
+            y += rowH;
+            GUI.Label(new Rect(win.x + fs * 0.7f, y, fs * 5f, rowH), Tt("APM marks:", "Метки APM:"), BtcReplayUI.sLabel);
+            string[] mn = { Tt(" idle", " простой"), Tt(" surge", " всплеск"), Tt(" peak", " пик") };
+            float mw = (w - fs * 6.4f) / 3f;
+            for (int mi = 0; mi < 3; mi++)
+            {
+                bool on = (ApmMarks & (1 << mi)) != 0;
+                bool nn = GUI.Toggle(new Rect(win.x + fs * 5.7f + mi * mw, y, mw, rowH), on, mn[mi]);
+                if (nn != on) { ApmMarks = nn ? (ApmMarks | (1 << mi)) : (ApmMarks & ~(1 << mi)); _dirty = true; }
+            }
+            y += rowH;
             if (BtcReplayUI.Button(new Rect(win.x + fs * 0.7f, y + 2f, w - fs * 1.4f, rowH - 4f), Tt("Unit owner dots: ", "Точки владельца: ") + (BtcUnitDots.Mode == 0 ? Tt("off", "выкл") : (BtcUnitDots.Mode == 1 ? Tt("while Alt", "с Alt") : Tt("always", "всегда"))), Color.white)) BtcUnitDots.Cycle();
             y += rowH;
             float bw = (w - fs * 2.1f) / 2f;

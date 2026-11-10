@@ -28,6 +28,11 @@ public static class BtcHotkeys
 		bool flag3 = flag2;
 		if (flag3)
 		{
+			if (!BtcUndo.Suspended)
+			{
+				bool was = BtcHotkeys._enabled;
+				BtcUndo.Push("hotkeys", BtcReplayUI.T("Advanced Hotkeys switch", "Выключатель Advanced Hotkeys"), delegate { BtcHotkeys.SetEnabled(was); });
+			}
 			BtcHotkeys._enabled = on;
 			BtcHotkeys._blockFrame = -1;
 			bool flag4 = !on;
@@ -49,7 +54,9 @@ public static class BtcHotkeys
 		}
 		set
 		{
+			bool changed = BtcHotkeys._menuOpen != value;
 			BtcHotkeys._menuOpen = value;
+			if (changed) { if (value) BtcSfx.Open(); else BtcSfx.Close(); }
 			BtcHotkeys._blockFrame = -1;
 			bool flag = !value && BtcHotkeys._capId != null;
 			bool flag2 = flag;
@@ -107,46 +114,86 @@ public static class BtcHotkeys
 	{
 		BtcHotkeys.EnsureLoaded();
 		KeyCode[] array;
-		bool flag = BtcHotkeys._keyCache.TryGetValue(name, out array);
-		bool flag2 = flag;
-		bool flag3 = flag2;
-		KeyCode[] result;
-		if (flag3)
+		if (BtcHotkeys._keyCache.TryGetValue(name, out array))
 		{
-			result = array;
+			return array;
+		}
+		KeyCode[][] alts = null;
+		string value;
+		if (!(BtcHotkeys._raw.TryGetValue(name, out value) && BtcHotkeys.TryParseAlts(value, out alts)))
+		{
+			BtcHotkeys.Def def;
+			if (!(BtcHotkeys._defById.TryGetValue(name, out def) && BtcHotkeys.TryParseAlts(def.def, out alts)))
+			{
+				alts = null;
+			}
+		}
+		if (alts == null)
+		{
+			array = fallback ?? new KeyCode[0];
 		}
 		else
 		{
-			KeyCode[] array2 = null;
-			string value;
-			bool flag4 = BtcHotkeys._raw.TryGetValue(name, out value) && BtcHotkeys.TryParseCombo(value, out array2);
-			bool flag5 = flag4;
-			bool flag6 = flag5;
-			if (flag6)
+			array = (alts.Length > 0) ? alts[0] : new KeyCode[0];
+			if (alts.Length > 1)
 			{
-				BtcHotkeys._keyCache[name] = array2;
-				result = array2;
-			}
-			else
-			{
-				BtcHotkeys.Def def;
-				bool flag7 = BtcHotkeys._defById.TryGetValue(name, out def) && BtcHotkeys.TryParseCombo(def.def, out array2);
-				bool flag8 = flag7;
-				bool flag9 = flag8;
-				if (flag9)
+				if (BtcHotkeys._alts.Count > 1024)
 				{
-					BtcHotkeys._keyCache[name] = array2;
-					result = array2;
+					BtcHotkeys._alts.Clear();
 				}
-				else
-				{
-					KeyCode[] array3 = fallback ?? new KeyCode[0];
-					BtcHotkeys._keyCache[name] = array3;
-					result = array3;
-				}
+				BtcHotkeys._alts[array] = alts;
 			}
 		}
-		return result;
+		BtcHotkeys._keyCache[name] = array;
+		return array;
+	}
+
+	/// <summary>All non-empty alternatives of a bind (a combo each), primary first. One bind can fire from any of them.</summary>
+	public static KeyCode[][] GetAlts(string id)
+	{
+		KeyCode[] primary = BtcHotkeys.GetKeys(id, null);
+		KeyCode[][] result;
+		if (BtcHotkeys._alts.TryGetValue(primary, out result))
+		{
+			return result;
+		}
+		return (primary.Length == 0) ? new KeyCode[0][] : new KeyCode[][] { primary };
+	}
+
+	private sealed class RefEq : IEqualityComparer<KeyCode[]>
+	{
+		public bool Equals(KeyCode[] a, KeyCode[] b)
+		{
+			return object.ReferenceEquals(a, b);
+		}
+
+		public int GetHashCode(KeyCode[] a)
+		{
+			return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(a);
+		}
+	}
+
+	private static readonly Dictionary<KeyCode[], KeyCode[][]> _alts = new Dictionary<KeyCode[], KeyCode[][]>(new BtcHotkeys.RefEq());
+
+	private static bool TryParseAlts(string value, out KeyCode[][] alts)
+	{
+		string[] parts = (value ?? string.Empty).Split(new char[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
+		List<KeyCode[]> list = new List<KeyCode[]>();
+		for (int i = 0; i < parts.Length; i++)
+		{
+			KeyCode[] combo;
+			if (!BtcHotkeys.TryParseCombo(parts[i], out combo))
+			{
+				alts = null;
+				return false;
+			}
+			if (combo.Length > 0)
+			{
+				list.Add(combo);
+			}
+		}
+		alts = list.ToArray();
+		return true;
 	}
 
 	public static KeyCode[] GetJobKeys(Occupation.Job job, KeyCode[] fallback)
@@ -222,6 +269,23 @@ public static class BtcHotkeys
 
 	public static bool IsSuppressed(KeyCode[] combo)
 	{
+		KeyCode[][] alts;
+		if (combo != null && BtcHotkeys._alts.TryGetValue(combo, out alts))
+		{
+			for (int i = 0; i < alts.Length; i++)
+			{
+				if (!BtcHotkeys.IsSuppressedOne(alts[i]))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+		return BtcHotkeys.IsSuppressedOne(combo);
+	}
+
+	private static bool IsSuppressedOne(KeyCode[] combo)
+	{
 		BtcHotkeys.EnsureLoaded();
 		bool flag = BtcHotkeys.GlobalBlocked();
 		bool flag2 = flag;
@@ -261,6 +325,23 @@ public static class BtcHotkeys
 	}
 
 	public static bool ComboPressed(KeyCode[] keys)
+	{
+		KeyCode[][] alts;
+		if (keys != null && BtcHotkeys._alts.TryGetValue(keys, out alts))
+		{
+			for (int i = 0; i < alts.Length; i++)
+			{
+				if (BtcHotkeys.ComboPressedOne(alts[i]))
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+		return BtcHotkeys.ComboPressedOne(keys);
+	}
+
+	private static bool ComboPressedOne(KeyCode[] keys)
 	{
 		bool flag = keys == null || keys.Length == 0;
 		bool flag2 = flag;
@@ -309,6 +390,23 @@ public static class BtcHotkeys
 
 	public static bool AllHeld(KeyCode[] keys)
 	{
+		KeyCode[][] alts;
+		if (BtcHotkeys._alts.TryGetValue(keys, out alts))
+		{
+			for (int a = 0; a < alts.Length; a++)
+			{
+				if (BtcHotkeys.AllHeldOne(alts[a]))
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+		return BtcHotkeys.AllHeldOne(keys);
+	}
+
+	private static bool AllHeldOne(KeyCode[] keys)
+	{
 		for (int i = 0; i < keys.Length; i++)
 		{
 			bool flag = !Input.GetKey(keys[i]);
@@ -323,6 +421,23 @@ public static class BtcHotkeys
 	}
 
 	public static bool ContainsKey(KeyCode[] combo, KeyCode key)
+	{
+		KeyCode[][] alts;
+		if (combo != null && BtcHotkeys._alts.TryGetValue(combo, out alts))
+		{
+			for (int i = 0; i < alts.Length; i++)
+			{
+				if (BtcHotkeys.ContainsKeyOne(alts[i], key))
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+		return BtcHotkeys.ContainsKeyOne(combo, key);
+	}
+
+	private static bool ContainsKeyOne(KeyCode[] combo, KeyCode key)
 	{
 		bool flag = combo == null;
 		bool flag2 = flag;
@@ -365,6 +480,89 @@ public static class BtcHotkeys
 		return false;
 	}
 
+	/// <summary>The key that went down this frame (any keyboard / mouse key, modifiers included), or None. Used by the menu key finder.</summary>
+	public static KeyCode AnyKeyDown()
+	{
+		KeyCode[] keys = BtcHotkeys.CaptureKeys();
+		for (int i = 0; i < keys.Length; i++)
+		{
+			if (Input.GetKeyDown(keys[i]))
+			{
+				return keys[i];
+			}
+		}
+		for (int j = 0; j < BtcHotkeys.ModKeys.Length; j++)
+		{
+			if (Input.GetKeyDown(BtcHotkeys.ModKeys[j]))
+			{
+				return BtcHotkeys.ModKeys[j];
+			}
+		}
+		return KeyCode.None;
+	}
+
+	/// <summary>Ids of the Key binds that have the key in any of their combos.</summary>
+	public static List<string> IdsUsingKey(KeyCode key)
+	{
+		BtcHotkeys.EnsureLoaded();
+		List<string> list = new List<string>();
+		for (int i = 0; i < BtcHotkeys._defs.Count; i++)
+		{
+			BtcHotkeys.Def def = BtcHotkeys._defs[i];
+			if (def.kind != BtcHotkeys.Kind.Key)
+			{
+				continue;
+			}
+			KeyCode[][] alts = BtcHotkeys.GetAlts(def.id);
+			for (int a = 0; a < alts.Length; a++)
+			{
+				if (BtcHotkeys.ContainsKeyOne(alts[a], key))
+				{
+					list.Add(def.id);
+					break;
+				}
+			}
+		}
+		return list;
+	}
+
+	/// <summary>Every setting as "id=value" lines (a bind profile).</summary>
+	public static List<string> ExportLines()
+	{
+		BtcHotkeys.EnsureLoaded();
+		List<string> list = new List<string>();
+		for (int i = 0; i < BtcHotkeys._defs.Count; i++)
+		{
+			list.Add(BtcHotkeys._defs[i].id + "=" + BtcHotkeys.Effective(BtcHotkeys._defs[i].id));
+		}
+		return list;
+	}
+
+	/// <summary>Applies "id=value" lines; unknown ids are ignored. Returns the number of settings set.</summary>
+	public static int ImportLines(IList<string> lines)
+	{
+		BtcHotkeys.EnsureLoaded();
+		BtcHotkeys.RecordAll(BtcReplayUI.T("Profile applied", "Применение профиля"));
+		int n = 0;
+		for (int i = 0; i < lines.Count; i++)
+		{
+			string t = lines[i].Trim();
+			int eq = t.IndexOf('=');
+			if (t.Length == 0 || t[0] == '#' || eq <= 0)
+			{
+				continue;
+			}
+			string id = t.Substring(0, eq).Trim();
+			if (BtcHotkeys._defById.ContainsKey(id))
+			{
+				BtcHotkeys._raw[id] = t.Substring(eq + 1).Trim();
+				n++;
+			}
+		}
+		BtcHotkeys.AfterBulkChange();
+		return n;
+	}
+
 	public static BtcHotkeys.Def GetDef(string id)
 	{
 		BtcHotkeys.EnsureLoaded();
@@ -403,8 +601,65 @@ public static class BtcHotkeys
 	{
 		BtcHotkeys.EnsureLoaded();
 		BtcHotkeys.Def def = BtcHotkeys.GetDef(id);
-		string sep = (def != null && def.any) ? "," : "+";
-		BtcHotkeys.SetRaw(id, BtcHotkeys.Join(keys, sep));
+		if (def != null && def.any)
+		{
+			BtcHotkeys.SetRaw(id, BtcHotkeys.Join(keys, ","));
+			return;
+		}
+		BtcHotkeys.ReplaceAlt(id, 0, keys);
+	}
+
+	private static string JoinAlts(IList<KeyCode[]> alts)
+	{
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < alts.Count; i++)
+		{
+			if (alts[i] == null || alts[i].Length == 0)
+			{
+				continue;
+			}
+			if (sb.Length > 0)
+			{
+				sb.Append('|');
+			}
+			sb.Append(BtcHotkeys.Join(alts[i], "+"));
+		}
+		return sb.ToString();
+	}
+
+	/// <summary>Replaces alternative idx of a bind; idx outside the list appends a new alternative (the "+" button). An identical combo is not added twice.</summary>
+	public static void ReplaceAlt(string id, int idx, KeyCode[] combo)
+	{
+		BtcHotkeys.EnsureLoaded();
+		List<KeyCode[]> list = new List<KeyCode[]>(BtcHotkeys.GetAlts(id));
+		string norm = BtcHotkeys.ComboNorm(combo);
+		for (int i = 0; i < list.Count; i++)
+		{
+			if (i != idx && BtcHotkeys.ComboNorm(list[i]) == norm)
+			{
+				return;
+			}
+		}
+		if (idx >= 0 && idx < list.Count)
+		{
+			list[idx] = combo;
+		}
+		else
+		{
+			list.Add(combo);
+		}
+		BtcHotkeys.SetRaw(id, BtcHotkeys.JoinAlts(list));
+	}
+
+	public static void RemoveAlt(string id, int idx)
+	{
+		BtcHotkeys.EnsureLoaded();
+		List<KeyCode[]> list = new List<KeyCode[]>(BtcHotkeys.GetAlts(id));
+		if (idx >= 0 && idx < list.Count)
+		{
+			list.RemoveAt(idx);
+			BtcHotkeys.SetRaw(id, BtcHotkeys.JoinAlts(list));
+		}
 	}
 
 	public static void Unbind(string id)
@@ -429,6 +684,7 @@ public static class BtcHotkeys
 	public static void SetFloat(string id, float value)
 	{
 		BtcHotkeys.EnsureLoaded();
+		BtcHotkeys.RecordOne(id);
 		BtcHotkeys._raw[id] = value.ToString("0.###", CultureInfo.InvariantCulture);
 		BtcHotkeys._keyCache.Remove(id);
 		BtcHotkeys._guardCache = null;
@@ -458,6 +714,7 @@ public static class BtcHotkeys
 	public static void ClearAll()
 	{
 		BtcHotkeys.EnsureLoaded();
+		BtcHotkeys.RecordAll(BtcReplayUI.T("Unbind all functions", "Снятие всех биндов"));
 		for (int i = 0; i < BtcHotkeys._defs.Count; i++)
 		{
 			BtcHotkeys.Def def = BtcHotkeys._defs[i];
@@ -475,6 +732,7 @@ public static class BtcHotkeys
 	public static void ResetAll()
 	{
 		BtcHotkeys.EnsureLoaded();
+		BtcHotkeys.RecordAll(BtcReplayUI.T("Reset all binds", "Сброс всех биндов"));
 		for (int i = 0; i < BtcHotkeys._defs.Count; i++)
 		{
 			BtcHotkeys.Def def = BtcHotkeys._defs[i];
@@ -508,6 +766,16 @@ public static class BtcHotkeys
 		{
 			result = BtcLang.Tr("(not set)");
 		}
+		else if (BtcHotkeys.GetAlts(id).Length > 1)
+		{
+			KeyCode[][] alts = BtcHotkeys.GetAlts(id);
+			string[] parts = new string[alts.Length];
+			for (int a = 0; a < alts.Length; a++)
+			{
+				parts[a] = BtcHotkeys.ComboLabel(alts[a], false);
+			}
+			result = string.Join(" | ", parts);
+		}
 		else
 		{
 			string[] array = new string[keys.Length];
@@ -518,6 +786,20 @@ public static class BtcHotkeys
 			result = string.Join((def != null && def.any) ? " / " : " + ", array);
 		}
 		return result;
+	}
+
+	public static string ComboLabel(KeyCode[] keys, bool any)
+	{
+		if (keys == null || keys.Length == 0)
+		{
+			return string.Empty;
+		}
+		string[] array = new string[keys.Length];
+		for (int i = 0; i < keys.Length; i++)
+		{
+			array[i] = BtcHotkeys.KeyName(keys[i]);
+		}
+		return string.Join(any ? " / " : " + ", array);
 	}
 
 	public static string KeyName(KeyCode k)
@@ -592,8 +874,15 @@ public static class BtcHotkeys
 
 	public static void BeginCapture(string id)
 	{
+		BtcHotkeys.BeginCapture(id, 0);
+	}
+
+	/// <summary>alt = index of the alternative to replace, or -1 to add a new one.</summary>
+	public static void BeginCapture(string id, int alt)
+	{
 		BtcHotkeys.EnsureLoaded();
 		BtcHotkeys._capId = id;
+		BtcHotkeys._capAlt = alt;
 		BtcHotkeys._capStartFrame = Time.frameCount;
 		BtcHotkeys._capMods.Clear();
 		BtcHotkeys._blockFrame = -1;
@@ -634,6 +923,7 @@ public static class BtcHotkeys
 		if (flag3)
 		{
 			bool keyDown = Input.GetKeyDown(KeyCode.Escape);
+			if (keyDown) BtcSfx.Back();
 			bool flag4 = keyDown;
 			bool flag5 = flag4;
 			if (flag5)
@@ -708,6 +998,7 @@ public static class BtcHotkeys
 	private static void FinishCapture(KeyCode[] combo)
 	{
 		string capId = BtcHotkeys._capId;
+		int capAlt = BtcHotkeys._capAlt;
 		BtcHotkeys.CancelCapture();
 		bool flag = combo != null && combo.Length != 0 && BtcHotkeys.IsMouseClickKey(combo[combo.Length - 1]);
 		bool flag2 = flag;
@@ -721,9 +1012,51 @@ public static class BtcHotkeys
 		bool flag5 = flag4;
 		if (flag5)
 		{
-			BtcHotkeys.SetKeys(capId, combo);
+			if (capId.StartsWith("v:") && BtcHotkeys.ExternalCapture != null)
+			{
+				BtcSfx.Ok();
+				BtcHotkeys.ExternalCapture(capId.Substring(2), capAlt, combo);
+				return;
+			}
+			BtcSfx.Ok();
+			BtcHotkeys.Def cd = BtcHotkeys.GetDef(capId);
+			if (cd != null && cd.any)
+			{
+				BtcHotkeys.SetKeys(capId, combo);
+			}
+			else
+			{
+				BtcHotkeys.ReplaceAlt(capId, capAlt, combo);
+			}
 		}
 	}
+
+	/// <summary>Capture ids "v:action" are vanilla binds: the menu tab handles them (action, alternative index, combo).</summary>
+	public static Action<string, int, KeyCode[]> ExternalCapture;
+
+	/// <summary>Changes on every bind edit (the menu rebuilds its caches).</summary>
+	public static int Version
+	{
+		get
+		{
+			return BtcHotkeys._version;
+		}
+	}
+
+	public static string ComboKey(KeyCode[] combo)
+	{
+		return BtcHotkeys.ComboNorm(combo);
+	}
+
+	public static int CaptureAlt
+	{
+		get
+		{
+			return BtcHotkeys._capAlt;
+		}
+	}
+
+	private static int _capAlt;
 
 	private static KeyCode[] CaptureKeys()
 	{
@@ -901,8 +1234,41 @@ public static class BtcHotkeys
 		}
 	}
 
+	private static void RecordOne(string id)
+	{
+		if (BtcUndo.Suspended)
+		{
+			return;
+		}
+		string old = BtcHotkeys.Effective(id);
+		BtcHotkeys.Def d = BtcHotkeys.GetDef(id);
+		BtcUndo.Push("hotkeys", BtcReplayUI.T("Bind: ", "Бинд: ") + (d != null ? d.Title : id), delegate
+		{
+			BtcHotkeys.SetRaw(id, old);
+		}, id);
+	}
+
+	private static void RecordAll(string label)
+	{
+		if (BtcUndo.Suspended)
+		{
+			return;
+		}
+		Dictionary<string, string> snap = new Dictionary<string, string>(BtcHotkeys._raw, StringComparer.OrdinalIgnoreCase);
+		BtcUndo.Push("hotkeys", label, delegate
+		{
+			BtcHotkeys._raw.Clear();
+			foreach (KeyValuePair<string, string> kv in snap)
+			{
+				BtcHotkeys._raw[kv.Key] = kv.Value;
+			}
+			BtcHotkeys.AfterBulkChange();
+		});
+	}
+
 	private static void SetRaw(string id, string value)
 	{
+		BtcHotkeys.RecordOne(id);
 		BtcHotkeys._raw[id] = value;
 		BtcHotkeys._keyCache.Remove(id);
 		BtcHotkeys._guardCache = null;
@@ -913,6 +1279,7 @@ public static class BtcHotkeys
 	private static void AfterBulkChange()
 	{
 		BtcHotkeys._keyCache.Clear();
+		BtcHotkeys._alts.Clear();
 		BtcHotkeys._guardCache = null;
 		BtcHotkeys._version++;
 		BtcHotkeys.SaveNow();
@@ -1153,20 +1520,22 @@ public static class BtcHotkeys
 			bool flag3 = flag2;
 			if (flag3)
 			{
-				string text = BtcHotkeys.ComboNorm(BtcHotkeys.GetKeys(def.id, null));
-				bool flag4 = text.Length == 0;
-				bool flag5 = !flag4;
-				bool flag6 = flag5;
-				if (flag6)
+				KeyCode[][] alts = BtcHotkeys.GetAlts(def.id);
+				for (int a = 0; a < alts.Length; a++)
 				{
-					string item;
-					bool flag7 = dictionary.TryGetValue(text, out item);
-					bool flag8 = flag7;
-					bool flag9 = flag8;
-					if (flag9)
+					string text = BtcHotkeys.ComboNorm(alts[a]);
+					if (text.Length == 0)
 					{
-						BtcHotkeys._conflicts.Add(item);
-						BtcHotkeys._conflicts.Add(def.id);
+						continue;
+					}
+					string item;
+					if (dictionary.TryGetValue(text, out item))
+					{
+						if (item != def.id)
+						{
+							BtcHotkeys._conflicts.Add(item);
+							BtcHotkeys._conflicts.Add(def.id);
+						}
 					}
 					else
 					{
@@ -1210,6 +1579,9 @@ public static class BtcHotkeys
 		}
 		BtcHotkeys._curSub = null;
 		group = "View";
+		BtcHotkeys.AddKey("Mod menu", "menu_toggle", "Open / close the mod menu", 0, "PageDown", false);
+		BtcHotkeys.AddKey("Mod menu", "ui_editor", "Open / close the UI editor (customise the whole mod interface)", 0, "F7", false);
+		BtcHotkeys.AddKey(group, "visual_compare", "Hold to see the vanilla look (colored HP and overlays off), release to get yours back", 0, string.Empty, false);
 		BtcHotkeys.AddKey(group, "xray_toggle", "Toggle X-Ray view", 0, "LeftShift+T", false);
 		BtcHotkeys.AddKey(group, "camera_focus_selection", "Jump camera to the selection", 0, "Home", false);
 		BtcHotkeys.AddKey(group, "overlay_toggle", "Show / hide the groups panel", 0, "O", false);
@@ -1263,7 +1635,7 @@ public static class BtcHotkeys
 		BtcHotkeys.AddFloat(group, "line_move_nearest", "Line-move: pick the nearest free unit for each block (0 = selection order, 1 = nearest)", "1", 0f, 1f, 1f, "0", string.Empty);
 		BtcHotkeys.AddKey(group, "line_move_diagonal", "Hold and sweep over blocks: like line-move, but units go only on diagonals (like a chess bishop)", 0, string.Empty, false);
 		group = "Match statistics";
-		BtcHotkeys.AddKey(group, "match_stats_panel", "Open / close the match statistics panel (graphs and table; Esc closes)", 0, "F7", false);
+		BtcHotkeys.AddKey(group, "match_stats_panel", "Open / close the match statistics panel (graphs and table; Esc closes)", 0, "LeftShift+F7", false);
 		group = "Select all units of a profession";
 		BtcHotkeys.AddKey(group, "job_Builder", "Select all Builders", 0, string.Empty, false);
 		BtcHotkeys.AddKey(group, "job_Halberdier", "Select all Halberdiers", 0, string.Empty, false);

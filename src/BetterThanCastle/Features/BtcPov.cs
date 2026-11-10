@@ -513,7 +513,6 @@ public static class BtcPov
 		{
 			BtcReplayUI.ToggleHidden(); // F8 hides the replay panel, the game UI stays
 		}
-		if (Input.GetKeyDown(KeyCode.F7) && BtcReplay.Mode == BtcReplay.State.Playing) BtcReplayLayout.ToggleEdit();
 		bool flag3 = now < BtcPov.nextUi;
 		bool flag4 = !flag3;
 		bool flag5 = flag4;

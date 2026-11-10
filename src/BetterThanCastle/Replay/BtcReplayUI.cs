@@ -19,7 +19,7 @@ public static class BtcReplayUI
 		BtcReplayUI.confirmPath = null;
 	}
 
-	private static void Refresh()
+	internal static void Refresh()
 	{
 		BtcReplayUI.list = BtcReplay.ListReplays();
 		BtcReplayUI.listLoaded = true;
@@ -73,7 +73,7 @@ public static class BtcReplayUI
 			BtcReplayUI.sNote.normal.textColor = new Color(1f, 1f, 1f, 0.55f);
 			BtcReplayUI.sHead = new GUIStyle(BtcReplayUI.sLabel);
 			BtcReplayUI.sHead.fontStyle = FontStyle.Bold;
-			BtcReplayUI.sHead.normal.textColor = new Color(0.55f, 0.85f, 0.55f, 0.95f);
+			BtcReplayUI.sHead.normal.textColor = BtcMenu.AccentA(0.95f);
 			BtcReplayUI.sBtn = BtcUiStyle.Button(fs);
 			BtcReplayUI.sVal = new GUIStyle(BtcReplayUI.sLabel);
 			BtcReplayUI.sVal.alignment = TextAnchor.MiddleCenter;
@@ -123,7 +123,7 @@ public static class BtcReplayUI
 	{
 		Rect rect = new Rect(0f, y, w, rowH);
 		y += rowH;
-		BtcReplayUI.Fill(rect, on ? new Color(0.55f, 0.85f, 0.55f, 0.08f) : new Color(1f, 1f, 1f, 0.03f));
+		BtcReplayUI.Fill(rect, on ? BtcMenu.AccentA(0.08f) : new Color(1f, 1f, 1f, 0.03f));
 		float num = (float)fs * 1.1f;
 		Rect r = new Rect((float)fs, rect.y + (rowH - num) * 0.5f, num, num);
 		BtcReplayUI.Fill(r, new Color(1f, 1f, 1f, 0.5f));
@@ -132,7 +132,7 @@ public static class BtcReplayUI
 		{
 			BtcReplayUI.Fill(new Rect(r.x + 3f, r.y + 3f, r.width - 6f, r.height - 6f), BtcReplayUI.Green);
 		}
-		return GUI.Button(rect, label, BtcReplayUI.sRow);
+		return BtcSfx.Btn(rect, label, BtcReplayUI.sRow);
 	}
 
 	internal static bool Button(Rect r, string text, Color c)
@@ -140,7 +140,7 @@ public static class BtcReplayUI
 		BtcReplayUI.Fill(r, new Color(1f, 1f, 1f, 0.07f));
 		Color contentColor = GUI.contentColor;
 		GUI.contentColor = c;
-		bool result = GUI.Button(r, text, BtcReplayUI.sBtn);
+		bool result = BtcSfx.Btn(r, text, BtcReplayUI.sBtn);
 		GUI.contentColor = contentColor;
 		return result;
 	}
@@ -198,396 +198,14 @@ public static class BtcReplayUI
 			BtcReplayUI.Refresh();
 		}
 		float num = 0f;
-		num = BtcReplayUI.Note(num, w, fs, BtcReplayUI.T("Records the full network stream the host sends to clients (everything a spectator sees: spawns, movement, animations) into a compressed file. During the game recording only copies packets into a buffer, compression and disk writes run on a background thread. Replays are stored in BetterThanCastle/Replays.", "Записывает полный сетевой поток, который хост отправляет клиентам (всё, что видит зритель: спавн, движение, анимации), в сжатый файл. Во время игры запись лишь копирует пакеты в буфер, сжатие и запись на диск идут в фоновом потоке. Реплеи лежат в BetterThanCastle/Replays."));
-		bool flag9 = BtcReplayUI.CheckRow(e, ref num, w, rowH, fs, BtcReplayUI.T("Record replays automatically at match start (when you host)", "Автозапись реплея при старте матча (когда вы хост)"), BtcReplay.GetRecordEnabled());
-		bool flag10 = flag9;
-		bool flag11 = flag10;
-		bool flag12 = flag11;
-		bool flag13 = flag12;
-		bool flag14 = flag13;
-		bool flag15 = flag14;
-		bool flag16 = flag15;
-		if (flag16)
-		{
-			BtcReplay.SetRecordEnabled(!BtcReplay.GetRecordEnabled());
-		}
-		bool flag17 = BtcReplayUI.CheckRow(e, ref num, w, rowH, fs, BtcReplayUI.T("Also record singleplayer games", "Записывать и одиночные игры"), BtcReplay.GetRecordSingleplayer());
-		bool flag18 = flag17;
-		bool flag19 = flag18;
-		bool flag20 = flag19;
-		bool flag21 = flag20;
-		bool flag22 = flag21;
-		bool flag23 = flag22;
-		bool flag24 = flag23;
-		if (flag24)
-		{
-			BtcReplay.SetRecordSingleplayer(!BtcReplay.GetRecordSingleplayer());
-		}
-		bool flag25 = BtcReplayUI.CheckRow(e, ref num, w, rowH, fs, BtcReplayUI.T("Show REC indicator with timer and size", "Показывать индикатор REC с таймером и размером"), BtcReplay.GetShowIndicator());
-		bool flag26 = flag25;
-		bool flag27 = flag26;
-		bool flag28 = flag27;
-		bool flag29 = flag28;
-		bool flag30 = flag29;
-		bool flag31 = flag30;
-		bool flag32 = flag31;
-		if (flag32)
-		{
-			BtcReplay.SetShowIndicator(!BtcReplay.GetShowIndicator());
-		}
-		if (BtcReplayUI.CheckRow(e, ref num, w, rowH, fs, BtcReplayUI.T("Auto-skip pauses and host freezes when playing a replay", "Автоматически перематывать паузы и фризы хоста в реплее"), BtcReplayKeys.SkipPauses))
-		{
-			BtcReplayKeys.SkipPauses = !BtcReplayKeys.SkipPauses;
-		}
-		if (BtcReplayUI.CheckRow(e, ref num, w, rowH, fs, BtcReplayUI.T("Download the replay from the host after a match (when you are a client)", "Загружать реплей у хоста после матча (когда вы клиент)"), BtcConfig.ReplayDownloadFromHost.Value))
-		{
-			BtcConfig.ReplayDownloadFromHost.Value = !BtcConfig.ReplayDownloadFromHost.Value;
-		}
-		if (BtcReplayUI.CheckRow(e, ref num, w, rowH, fs, BtcReplayUI.T("Send the replay to all clients after a match (when you host)", "Отправлять реплей всем клиентам после матча (когда вы хост)"), BtcConfig.ReplayAutoShare.Value))
-		{
-			BtcConfig.ReplayAutoShare.Value = !BtcConfig.ReplayAutoShare.Value;
-		}
-		bool flag49 = BtcReplayUI.CheckRow(e, ref num, w, rowH, fs, BtcReplayBoost.UiFastNature(), BtcReplayBoost.GetFastNature());
-		bool flag50 = flag49;
-		bool flag51 = flag50;
-		if (flag51)
-		{
-			BtcReplayBoost.SetFastNature(!BtcReplayBoost.GetFastNature());
-		}
-		bool flag52 = BtcReplayUI.CheckRow(e, ref num, w, rowH, fs, BtcReplayBoost.UiFastWaits(), BtcReplayBoost.GetFastWaits());
-		bool flag53 = flag52;
-		bool flag54 = flag53;
-		if (flag54)
-		{
-			BtcReplayBoost.SetFastWaits(!BtcReplayBoost.GetFastWaits());
-		}
-		int num4 = BtcReplayUI.StepRow(num, w, rowH, fs, BtcReplayBoost.UiBudget(), BtcReplayBoost.GetBudgetMs().ToString() + " ms");
-		num += rowH;
-		bool flag55 = num4 != 0;
-		bool flag56 = flag55;
-		bool flag57 = flag56;
-		if (flag57)
-		{
-			BtcReplayBoost.StepBudget(num4);
-		}
-		num = BtcReplayUI.Note(num, w, fs, BtcReplayBoost.UiNote());
-		Color red = new Color(1f, 1f, 1f, 0.7f);
-		bool flag58 = BtcReplay.Mode == BtcReplay.State.Recording;
-		bool flag59 = flag58;
-		bool flag60 = flag59;
-		bool flag61 = flag60;
-		bool flag62 = flag61;
-		bool flag63 = flag62;
-		bool flag64 = flag63;
-		bool flag65 = flag64;
-		string text;
-		if (flag65)
-		{
-			text = string.Concat(new object[]
-			{
-				"REC  ",
-				BtcReplayUI.Clock(BtcReplay.RecSeconds),
-				"  -  ",
-				BtcReplayUI.Size(BtcReplay.RecBytes),
-				"  -  ",
-				BtcReplay.RecKeyframes,
-				" ",
-				BtcReplayUI.T("keyframes", "ключ. кадров"),
-				"  -  ",
-				BtcReplay.RecFile
-			});
-			red = BtcReplayUI.Red;
-		}
-		else
-		{
-			text = BtcReplayUI.T("Not recording.", "Запись не идёт.");
-		}
-		Color contentColor = GUI.contentColor;
-		GUI.contentColor = red;
-		GUI.Label(new Rect((float)fs, num, w - (float)fs * 2f, rowH), text, BtcReplayUI.sLabel);
-		GUI.contentColor = contentColor;
-		num += rowH;
-		bool flag66 = !string.IsNullOrEmpty(BtcReplay.Message) && Time.unscaledTime < BtcReplay.MessageUntil;
-		bool flag67 = flag66;
-		bool flag68 = flag67;
-		bool flag69 = flag68;
-		bool flag70 = flag69;
-		bool flag71 = flag70;
-		bool flag72 = flag71;
-		bool flag73 = flag72;
-		if (flag73)
-		{
-			num = BtcReplayUI.Note(num, w, fs, BtcReplay.Message);
-		}
+		if (BtcReplayLibrary.SettingsOpen) num = BtcReplaySettings.Draw(e, num, w, fs);
 		num += rowH * 0.3f;
-		GUI.Label(new Rect((float)fs, num, w * 0.5f, rowH), string.Concat(new object[]
-		{
-			BtcReplayUI.T("Saved replays", "Сохранённые реплеи"),
-			" (",
-			BtcReplayUI.list.Count,
-			")"
-		}), BtcReplayUI.sHead);
-		float num5 = (float)fs * 8f;
-		bool flag74 = BtcReplayUI.Button(new Rect(w - num5 * 2f - (float)fs * 1.5f, num + rowH * 0.1f, num5, rowH * 0.8f), BtcReplayUI.T("Refresh", "Обновить"), Color.white);
-		bool flag75 = flag74;
-		bool flag76 = flag75;
-		bool flag77 = flag76;
-		bool flag78 = flag77;
-		bool flag79 = flag78;
-		bool flag80 = flag79;
-		bool flag81 = flag80;
-		if (flag81)
-		{
-			BtcReplayUI.Refresh();
-		}
-		bool flag82 = BtcReplayUI.Button(new Rect(w - num5 - (float)fs, num + rowH * 0.1f, num5, rowH * 0.8f), BtcReplayUI.T("Open folder", "Открыть папку"), Color.white);
-		bool flag83 = flag82;
-		bool flag84 = flag83;
-		bool flag85 = flag84;
-		bool flag86 = flag85;
-		bool flag87 = flag86;
-		bool flag88 = flag87;
-		bool flag89 = flag88;
-		if (flag89)
-		{
-			BtcReplayUI.OpenFolder();
-		}
-		num += rowH;
-		num = BtcReplayUI.Note(num, w, fs, BtcReplayUI.T("Press Play to watch a replay as a spectator (free camera, whole map). Start it from the main menu, outside of a game. Replays recorded by older versions have no world snapshot and cannot be played.", "Нажмите «Играть», чтобы смотреть реплей как зритель (свободная камера, вся карта). Запускайте из главного меню, вне игры. Реплеи, записанные старыми версиями, без снимка мира и не проигрываются."));
-		bool flag90 = BtcReplay.Mode == BtcReplay.State.Playing;
-		bool flag91 = flag90;
-		bool flag92 = flag91;
-		bool flag93 = flag92;
-		bool flag94 = flag93;
-		bool flag95 = flag94;
-		bool flag96 = flag95;
-		bool flag97 = flag96;
-		if (flag97)
-		{
-			num = BtcReplayUI.Note(num, w, fs, string.IsNullOrEmpty(BtcReplay.PlayStatus) ? BtcReplayUI.T("Replay is running.", "Реплей идёт.") : BtcReplay.PlayStatus);
-		}
-		bool flag98 = BtcReplayUI.list.Count == 0;
-		bool flag99 = flag98;
-		bool flag100 = flag99;
-		bool flag101 = flag100;
-		bool flag102 = flag101;
-		bool flag103 = flag102;
-		bool flag104 = flag103;
-		bool flag105 = flag104;
-		if (flag105)
-		{
-			num = BtcReplayUI.Note(num, w, fs, BtcReplayUI.T("No replays yet. Start a match and the replay appears here when it ends.", "Пока нет реплеев. Начните матч, реплей появится здесь, когда он закончится."));
-		}
-		float num6 = (float)fs * 6f;
-		for (int i = 0; i < BtcReplayUI.list.Count; i++)
-		{
-			BtcReplay.Data data = BtcReplayUI.list[i];
-			Rect r = new Rect(0f, num, w, rowH);
-			num += rowH;
-			BtcReplayUI.Fill(r, (i % 2 == 0) ? new Color(1f, 1f, 1f, 0.03f) : new Color(1f, 1f, 1f, 0f));
-			bool flag106 = data.Error != null;
-			bool flag107 = flag106;
-			bool flag108 = flag107;
-			bool flag109 = flag108;
-			bool flag110 = flag109;
-			bool flag111 = flag110;
-			bool flag112 = flag111;
-			bool flag113 = flag112;
-			string text2;
-			if (flag113)
-			{
-				text2 = data.FileName + "   " + data.Error;
-			}
-			else
-			{
-				text2 = string.Concat(new object[]
-				{
-					(data.Ticks > 0L) ? new DateTime(data.Ticks).ToString("yyyy-MM-dd HH:mm") : data.FileName,
-					"   ",
-					string.IsNullOrEmpty(data.MapName) ? "?" : data.MapName,
-					"   ",
-					data.Multiplayer ? "MP" : "SP",
-					"   ",
-					data.Players.Count,
-					" ",
-					BtcReplayUI.T("pl.", "игр."),
-					"   ",
-					data.Complete ? BtcReplayUI.Clock(data.Duration) : BtcReplayUI.T("incomplete", "не завершён"),
-					"   ",
-					BtcReplayUI.Size(data.FileBytes)
-				});
-			}
-			bool flag114 = data.Error == null && data.Complete && data.SnapBytes > 0;
-			GUI.Label(new Rect((float)fs, r.y, w - num6 * 4.5f - (float)fs * 5.5f, rowH), text2, BtcReplayUI.sLabel);
-			bool flag115 = false;
-			bool flag116 = data.Error == null;
-			bool flag117 = flag116;
-			bool flag118 = flag117;
-			bool flag119 = flag118;
-			bool flag120 = flag119;
-			bool flag121 = flag120;
-			bool flag122 = flag121;
-			if (flag122)
-			{
-				Rect r2 = new Rect(w - num6 * 2f - (float)fs * 2f, r.y + rowH * 0.1f, num6, rowH * 0.8f);
-				flag115 = BtcReplayUI.Button(r2, flag114 ? BtcReplayUI.T("Play", "Играть") : BtcReplayUI.T("No snapshot", "Нет снимка"), flag114 ? BtcReplayUI.Green : new Color(1f, 1f, 1f, 0.35f));
-			}
-			bool flag123 = data.Error == null && data.Complete;
-			int num7 = flag123 ? BtcReplayShare.State(data.FilePath) : 0;
-			bool flag124 = flag123;
-			bool flag125 = flag124;
-			bool flag126 = flag125;
-			if (flag126)
-			{
-				Rect r3 = new Rect(w - num6 * 3.25f - (float)fs * 3f, r.y + rowH * 0.1f, num6 * 1.25f, rowH * 0.8f);
-				bool flag127 = num7 == 1;
-				bool flag128 = flag127;
-				bool flag129 = flag128;
-				if (flag129)
-				{
-					BtcReplayUI.Button(r3, BtcReplayShare.UiUploading(), new Color(1f, 1f, 1f, 0.5f));
-				}
-				else
-				{
-					bool flag130 = num7 == 2;
-					bool flag131 = flag130;
-					bool flag132 = flag131;
-					if (flag132)
-					{
-						BtcReplayUI.Button(r3, BtcReplayShare.UiCreate(), new Color(1f, 1f, 1f, 0.35f));
-					}
-					else
-					{
-						bool flag133 = BtcReplayUI.Button(r3, (num7 == 3) ? BtcReplayShare.UiRetry() : BtcReplayShare.UiCreate(), Color.white);
-						bool flag134 = flag133;
-						bool flag135 = flag134;
-						if (flag135)
-						{
-							BtcReplayShare.Create(data.FilePath);
-						}
-					}
-				}
-			}
-			bool flag136 = data.Error == null;
-			bool flag137 = flag136;
-			if (flag137)
-			{
-				Rect r4 = new Rect(w - num6 * 4.5f - (float)fs * 4f, r.y + rowH * 0.1f, num6 * 1.25f, rowH * 0.8f);
-				bool flag138 = BtcReplayShare.FileCopied(data.FilePath);
-				bool flag139 = BtcReplayUI.Button(r4, BtcReplayShare.UiCopyFile(flag138), flag138 ? BtcReplayUI.Green : Color.white);
-				bool flag140 = flag139;
-				bool flag141 = flag140;
-				if (flag141)
-				{
-					BtcReplayShare.CopyFile(data.FilePath);
-				}
-			}
-			bool flag142 = flag115;
-			bool flag143 = flag142;
-			bool flag144 = flag143;
-			bool flag145 = flag144;
-			bool flag146 = flag145;
-			bool flag147 = flag146;
-			bool flag148 = flag147;
-			if (flag148)
-			{
-				bool flag149 = flag114;
-				bool flag150 = flag149;
-				bool flag151 = flag150;
-				bool flag152 = flag151;
-				bool flag153 = flag152;
-				bool flag154 = flag153;
-				bool flag155 = flag154;
-				if (flag155)
-				{
-					BtcReplay.StartReplay(data);
-				}
-				else
-				{
-					BtcReplay.Say(data.Complete ? BtcReplayUI.T("This replay has no world snapshot (recorded by an older version).", "В этом реплее нет снимка мира (записан старой версией).") : BtcReplayUI.T("The replay is incomplete.", "Реплей не завершён."));
-				}
-			}
-			Rect r5 = new Rect(w - num6 - (float)fs, r.y + rowH * 0.1f, num6, rowH * 0.8f);
-			bool flag156 = BtcReplayUI.confirmPath == data.FilePath && Time.unscaledTime < BtcReplayUI.confirmUntil;
-			bool flag157 = BtcReplayUI.Button(r5, flag156 ? BtcReplayUI.T("Sure?", "Точно?") : BtcReplayUI.T("Delete", "Удалить"), BtcReplayUI.Red);
-			bool flag158 = flag157;
-			bool flag159 = flag158;
-			bool flag160 = flag159;
-			bool flag161 = flag160;
-			bool flag162 = flag161;
-			bool flag163 = flag162;
-			bool flag164 = flag163;
-			if (flag164)
-			{
-				bool flag165 = flag156;
-				bool flag166 = flag165;
-				bool flag167 = flag166;
-				bool flag168 = flag167;
-				bool flag169 = flag168;
-				bool flag170 = flag169;
-				bool flag171 = flag170;
-				bool flag172 = flag171;
-				if (flag172)
-				{
-					bool flag173 = BtcReplay.Delete(data.FilePath);
-					bool flag174 = flag173;
-					bool flag175 = flag174;
-					bool flag176 = flag175;
-					bool flag177 = flag176;
-					bool flag178 = flag177;
-					bool flag179 = flag178;
-					bool flag180 = flag179;
-					if (flag180)
-					{
-						BtcReplayUI.confirmPath = null;
-						BtcReplayUI.Refresh();
-						BtcReplayUI.ContentH = num + rowH;
-						return false;
-					}
-					BtcReplay.Say(BtcReplayUI.T("Cannot delete this file.", "Не удалось удалить файл."));
-				}
-				else
-				{
-					BtcReplayUI.confirmPath = data.FilePath;
-					BtcReplayUI.confirmUntil = Time.unscaledTime + 3f;
-				}
-			}
-			bool flag181 = num7 == 2 || num7 == 3;
-			bool flag182 = flag181;
-			bool flag183 = flag182;
-			if (flag183)
-			{
-				float num8 = rowH * 0.9f;
-				Rect r6 = new Rect(0f, num, w, num8);
-				num += num8;
-				BtcReplayUI.Fill(r6, (i % 2 == 0) ? new Color(1f, 1f, 1f, 0.03f) : new Color(1f, 1f, 1f, 0f));
-				bool flag184 = num7 == 2;
-				bool flag185 = flag184;
-				bool flag186 = flag185;
-				if (flag186)
-				{
-					string text3 = BtcReplayShare.Url(data.FilePath) + (BtcReplayShare.IsTemp(data.FilePath) ? BtcReplayShare.UiTempNote() : string.Empty);
-					GUI.Label(new Rect((float)fs * 2f, r6.y, w - num6 * 3.25f - (float)fs * 5.5f, num8), text3, BtcReplayUI.sLabel);
-					bool flag187 = BtcReplayShare.Copied(data.FilePath);
-					bool flag188 = BtcReplayUI.Button(new Rect(w - num6 * 3.25f - (float)fs * 3f, r6.y + num8 * 0.1f, num6 * 1.25f, num8 * 0.8f), BtcReplayShare.UiCopy(flag187), flag187 ? BtcReplayUI.Green : Color.white);
-					bool flag189 = flag188;
-					bool flag190 = flag189;
-					if (flag190)
-					{
-						BtcReplayShare.Copy(data.FilePath);
-					}
-				}
-				else
-				{
-					GUI.Label(new Rect((float)fs * 2f, r6.y, w - (float)fs * 4f, num8), BtcReplayShare.UiFailed(BtcReplayShare.Error(data.FilePath)), BtcReplayUI.sLabel);
-				}
-			}
-		}
+		num = BtcReplayLibrary.Draw(e, num, w, rowH, fs);
 		BtcReplayUI.ContentH = num + rowH * 0.5f;
 		return false;
 	}
 
-	private static void OpenFolder()
+	internal static void OpenFolder()
 	{
 		try
 		{
@@ -669,7 +287,6 @@ public static class BtcReplayUI
 
 	static BtcReplayUI()
 	{
-		BtcReplayUI.Green = new Color(0.55f, 0.85f, 0.55f, 1f);
 		BtcReplayUI.Red = new Color(1f, 0.45f, 0.4f, 1f);
 	}
 
@@ -710,7 +327,7 @@ public static class BtcReplayUI
 		return result;
 	}
 
-	private static string Size(long b)
+	internal static string Size(long b)
 	{
 		bool flag = b < 1048576L;
 		bool flag2 = flag;
@@ -753,35 +370,24 @@ public static class BtcReplayUI
 		bool flag6 = flag5;
 		if (flag6)
 		{
-			Rect r = new Rect((float)Screen.width * 0.5f - (float)num * 12f, (float)Screen.height * 0.5f - num2, (float)num * 24f, num2 * 2f);
-			BtcReplayUI.Fill(r, new Color(0f, 0f, 0f, 0.6f));
-			GUI.Label(new Rect(r.x + (float)num, r.y, r.width - (float)num * 2f, num2), BtcReplayUI.T("REPLAY", "РЕПЛЕЙ") + ": " + BtcReplay.PlayStatus, BtcReplayUI.sLabel);
-			bool flag7 = BtcReplayUI.Button(new Rect(r.x + (float)num, r.y + num2, (float)num * 6f, num2 * 0.9f), BtcReplayUI.T("Cancel", "Отмена"), BtcReplayUI.Red);
-			bool flag8 = flag7;
-			bool flag9 = flag8;
-			bool flag10 = flag9;
-			bool flag11 = flag10;
-			bool flag12 = flag11;
-			bool flag13 = flag12;
-			if (flag13)
-			{
-				BtcReplay.StopReplay();
-			}
+			BtcReplayLoadUI.EnsureHost();
 		}
 		else if (BtcReplayUI.Hidden || !BtcReplayLayout.Visible(BtcReplayLayout.Bar))
 		{
 			// Replay panel hidden (button or F8): only a faint corner button brings it back; the game UI is untouched.
-			Rect rb = new Rect((float)num * 0.5f, (float)Screen.height - num2 * 1.2f, (float)num * 8f, num2);
-			if (BtcReplayUI.Hidden && BtcReplayUI.Button(rb, BtcReplayUI.T("Show UI (F8)", "Показать UI (F8)"), new Color(1f, 1f, 1f, 0.35f)))
+			float sb = (float)num * 1.9f;
+			Rect rb = new Rect((float)num * 0.5f, (float)Screen.height - sb - (float)num * 0.5f, sb, sb);
+			if (BtcReplayUI.Hidden && BtcReplayIcons.Button(rb, BtcReplayIcons.Monitor, false, BtcReplayUI.T("Show UI (F8)", "Показать UI (F8)")))
 			{
 				BtcReplayUI.ToggleHidden();
 			}
+			BtcReplayIcons.DrawTip(num);
 		}
 		else
 		{
 			float num4 = (float)Screen.width;
 			float hs = BtcReplayLayout.BarScale;
-			float apmH = (BtcConfig.ReplayApmMode.Value != 0 && BtcApm.Has) ? (float)num * 1.7f * hs : 0f;
+			float apmH = (BtcConfig.ReplayApmMode.Value != 0 && BtcApm.Has) ? (float)num * 1.7f * hs * BtcReplayLayout.ApmHeight : 0f;
 			float barH = (float)num * 4.5f * hs + apmH;
 			Rect rect = new Rect(0f, (float)Screen.height - barH, num4, barH);
 			BtcReplayLayout.Begin(BtcReplayLayout.Bar, rect);
@@ -792,12 +398,13 @@ public static class BtcReplayUI
 			float height = (float)num * 1.9f * hs;
 			Rect r2 = new Rect(rect.x + (float)num * 0.5f, by + (float)num * 0.9f * hs, num4 - (float)num, (float)num * 0.8f * hs);
 			Rect rect2 = new Rect(r2.x, by + (float)num * 0.2f * hs, r2.width, (float)num * 1.9f * hs);
-			Rect waveR = new Rect(r2.x, rect.y + 2f, r2.width, apmH > 0f ? Mathf.Max(0f, r2.y - rect.y - 3f) : 0f);   // down to the timeline line
+			Rect waveR = new Rect(r2.x, rect.y + 2f, r2.width, apmH > 0f ? Mathf.Max(0f, r2.center.y - 6f - rect.y) : 0f);   // down to the timeline line
 			if (apmH > 0f) rect2 = Rect.MinMaxRect(rect2.x, waveR.y, rect2.xMax, rect2.yMax);   // the wave is part of the seek area
 			float num6 = Mathf.Max(0.001f, BtcReplay.PlayTotal);
 			float num7 = BtcReplay.Seeking ? BtcReplay.SeekTarget : BtcReplay.PlayClock;
 			Event current = Event.current;
-			bool flag14 = current.type == EventType.MouseDown && current.button == 0 && rect2.Contains(current.mousePosition);
+			BtcReplayGif.HandleTrack(rect2, r2, num6);
+				bool flag14 = current.type == EventType.MouseDown && current.button == 0 && rect2.Contains(current.mousePosition);
 			bool flag15 = flag14;
 			bool flag16 = flag15;
 			bool flag17 = flag16;
@@ -827,7 +434,7 @@ public static class BtcReplayUI
 				if (flag31)
 				{
 					BtcReplayUI.seekDrag = false;
-					BtcReplay.SeekTo(num7);
+					BtcSfx.Jump(); BtcReplay.SeekTo(num7);
 					current.Use();
 				}
 				else
@@ -845,12 +452,10 @@ public static class BtcReplayUI
 				}
 			}
 			float num8 = Mathf.Clamp01(num7 / num6);
-			BtcReplayUI.Fill(r2, new Color(1f, 1f, 1f, 0.18f));
-			BtcReplayUI.Fill(new Rect(r2.x, r2.y, r2.width * num8, r2.height), BtcReplay.Seeking ? new Color(1f, 0.75f, 0.2f, 0.95f) : BtcReplayUI.Green);
-			BtcReplayUI.Fill(new Rect(r2.x + r2.width * num8 - 2f, r2.y - num2 * 0.1f, 4f, r2.height + num2 * 0.2f), Color.white);
-			float autoLift = BtcAutoMarks.DrawLane(r2, num2 * BtcReplayLayout.MarkScale, num6, rect);
-			if (apmH > 0f) BtcApm.Draw(waveR, num6, (float)num);
-			BtcTimer.DrawTimeline(r2,num2 * BtcReplayLayout.MarkScale, num6, new Rect(rect.x, rect.y - autoLift, rect.width, rect.height));
+			BtcReplayTrack.Draw(r2, num8, BtcReplay.Seeking, BtcReplayUI.seekDrag || rect2.Contains(current.mousePosition), num6, num);
+			float autoLift = BtcAutoMarks.DrawLane(BtcReplayTrack.Line(r2), num2 * BtcReplayLayout.MarkScale, num6, rect);
+			BtcReplayGif.DrawRange(r2, num6); if (apmH > 0f) BtcApm.Draw(waveR, num6, (float)num);
+			BtcTimer.DrawTimeline(BtcReplayTrack.Line(r2), num2 * BtcReplayLayout.MarkScale, num6, new Rect(rect.x, rect.y - autoLift, rect.width, rect.height));
 			bool flag38 = BtcReplayUI.seekDrag || rect2.Contains(current.mousePosition);
 			bool flag39 = flag38;
 			bool flag40 = flag39;
@@ -861,7 +466,7 @@ public static class BtcReplayUI
 			{
 				float num9 = BtcReplayUI.seekDrag ? BtcReplayUI.seekFrac : Mathf.Clamp01((current.mousePosition.x - r2.x) / r2.width);
 				float num10 = r2.x + r2.width * num9;
-				BtcReplayUI.Fill(new Rect(num10 - 1f, r2.y - num2 * 0.05f, 2f, r2.height + num2 * 0.1f), new Color(1f, 1f, 1f, 0.6f));
+				BtcReplayUI.Fill(new Rect(num10 - 0.5f, r2.center.y - 11f, 1f, 22f), new Color(1f, 1f, 1f, 0.5f));
 				bool flag44 = BtcReplayUI.sTip == null;
 				bool flag45 = flag44;
 				bool flag46 = flag45;
@@ -937,7 +542,7 @@ public static class BtcReplayUI
 			BtcReplayUI.Fill(nameR, new Color(1f, 1f, 1f, nameR.Contains(current.mousePosition) || BtcReplayUI.povOpen ? 0.12f : 0.05f));
 			GUI.Label(new Rect(cx + u * 0.4f, y, u * 7.6f, height), povName, BtcReplayUI.sBarLabel);
 			GUI.contentColor = oldCc;
-			if (GUI.Button(nameR, "", BtcReplayUI.sBtn)) BtcReplayUI.povOpen = !BtcReplayUI.povOpen;
+			if (BtcSfx.Btn(nameR, "", BtcReplayUI.sBtn)) BtcReplayUI.povOpen = !BtcReplayUI.povOpen;
 			cx += u * 8f + gap;
 			if (BtcReplayIcons.Plain(new Rect(cx, iy, ib, ib), BtcReplayIcons.Next, wc, BtcReplayUI.T("Next (Shift+D)", "Следующий (Shift+D)"))) BtcPov.Cycle(1);
 			cx += ib + u * 1.5f;
@@ -965,14 +570,15 @@ public static class BtcReplayUI
 			bool hideMm = BtcConfig.ReplayHideMinimap.Value;
 			if (BtcReplayIcons.Button(new Rect(cx, iy, ib, ib), BtcReplayIcons.Map, hideMm, BtcReplayUI.T("Hide minimap", "Скрыть миникарту"))) BtcConfig.ReplayHideMinimap.Value = !hideMm;
 			cx += ib + gap;
-			if (BtcReplayIcons.Button(new Rect(cx, iy, ib, ib), BtcReplayIcons.Layout, BtcReplayLayout.Edit, BtcReplayUI.T("UI settings (F7)", "Настройки UI (F7)"))) BtcReplayLayout.ToggleEdit();
+			if (BtcReplayIcons.Button(new Rect(cx, iy, ib, ib), BtcReplayIcons.Layout, false, BtcReplayUI.T("UI editor (F7)", "UI редактор (F7)"))) ResourcePackManager.OpenUiEditor(true); cx += ib + gap; BtcReplayGif.DrawButton(ref cx, iy, ib, gap);
 			if (BtcReplayIcons.Plain(new Rect((float)Screen.width - (float)num * 0.5f - ib, iy, ib, ib), BtcReplayIcons.Stop, BtcReplayUI.Red, BtcReplayUI.T("Exit replay", "Выйти из реплея"))) BtcReplay.StopReplay();
 			BtcReplayLayout.End();
-			BtcReplayInput.Draw((float)num, rect.y - autoLift - 4f);
+			BtcReplayInput.Draw((float)num, rect.y - autoLift - 4f); BtcReplayGif.DrawPanel(rect, autoLift, (float)num);
 			BtcReplayIcons.DrawTip(num);
 			BtcReplayUI.DrawPovList(nameR, num);
 		}
 		BtcReplayLayout.DrawWindow(num);
+		BtcReplayLoadUI.EnsureHost();
 	}
 
 	internal static GUIStyle sBarLabel, sBarVal;
@@ -1019,12 +625,12 @@ public static class BtcReplayUI
 		{
 			Rect row = new Rect(box.x + 2f, box.y + 2f + rowH * i, w - 4f, rowH);
 			bool cur = i == 0 ? !BtcPov.Active : (players[i - 1].faction == BtcPov.PovFaction);
-			BtcReplayUI.Fill(row, cur ? new Color(0.5f, 1f, 0.55f, 0.16f) : new Color(1f, 1f, 1f, row.Contains(e.mousePosition) ? 0.14f : 0.04f));
+			BtcReplayUI.Fill(row, cur ? BtcMenu.AccentA(0.16f) : new Color(1f, 1f, 1f, row.Contains(e.mousePosition) ? 0.14f : 0.04f));
 			Color old = GUI.contentColor;
 			if (i > 0) { Color fc = players[i - 1].faction.FactionColor; GUI.contentColor = new Color(fc.r, fc.g, fc.b, 1f); }
 			GUI.Label(new Rect(row.x + (float)fs * 0.6f, row.y, row.width - (float)fs * 0.6f, rowH), i == 0 ? BtcReplayUI.T("Spectator", "Спектатор") : players[i - 1].name, BtcReplayUI.sBarLabel);
 			GUI.contentColor = old;
-			if (GUI.Button(row, "", BtcReplayUI.sBtn))
+			if (BtcSfx.Btn(row, "", BtcReplayUI.sBtn))
 			{
 				if (i == 0) BtcPov.Reset(); else BtcPov.SetPov(players[i - 1].faction, players[i - 1].name);
 				BtcReplayUI.povOpen = false;
@@ -1038,7 +644,7 @@ public static class BtcReplayUI
 
 	public static float ContentH;
 
-	private static List<BtcReplay.Data> list = new List<BtcReplay.Data>();
+	internal static List<BtcReplay.Data> list = new List<BtcReplay.Data>();
 
 	private static bool listLoaded;
 
@@ -1060,7 +666,7 @@ public static class BtcReplayUI
 
 	private static int styleFs;
 
-	internal static readonly Color Green;
+	internal static Color Green { get { return BtcMenu.Accent; } }
 
 	internal static readonly Color Red;
 

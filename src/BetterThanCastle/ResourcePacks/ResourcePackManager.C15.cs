@@ -493,6 +493,47 @@ public partial class ResourcePackManager : MonoBehaviour
 
 	private static ResourcePackManager instance;
 
+	/// <summary>The accent changed (UI editor): recolour the styles that baked the colour in.</summary>
+	internal static void RecolorStyles()
+	{
+		ResourcePackManager m = ResourcePackManager.instance;
+		if (m == null) return;
+		if (m.menuBannerStyle != null) m.menuBannerStyle.normal.textColor = BtcMenu.AccentA(1f);
+		if (m.menuHeaderStyle != null) m.menuHeaderStyle.normal.textColor = BtcMenu.AccentA(0.95f);
+		if (m.menuActiveStyle != null) ResourcePackManager.SetStyleColors(m.menuActiveStyle, BtcMenu.AccentA(1f), BtcMenu.AccentA(1f));
+	}
+
+	/// <summary>Closes the main mod menu (e.g. when a replay starts from its list).</summary>
+	internal static bool MenuIsOpen { get { return ResourcePackManager.instance != null && ResourcePackManager.instance.menuOpen; } }
+
+	/// <summary>Opens the main menu on the UI editor (replayPage = on its Replay page).</summary>
+	internal static void OpenUiEditor(bool replayPage)
+	{
+		ResourcePackManager m = ResourcePackManager.instance;
+		if (m == null) return;
+		if (!m.menuOpen) m.ToggleMenu();
+		if (replayPage) BtcMenuState.SetInt("uiedit:page", BtcUiEditorTab.PReplay);
+		m.SelectTab(12);
+	}
+
+	/// <summary>F7: opens the UI editor everywhere, closes the menu when the editor is already open.</summary>
+	internal static void ToggleUiEditor()
+	{
+		if (ResourcePackManager.MenuIsOpen && BtcMenu.CurrentId == 12) ResourcePackManager.CloseMenu();
+		else ResourcePackManager.OpenUiEditor(BtcReplay.Mode == BtcReplay.State.Playing);
+	}
+
+	/// <summary>Opens the main mod menu (launcher button).</summary>
+	internal static void OpenMenu()
+	{
+		if (ResourcePackManager.instance != null && !ResourcePackManager.instance.menuOpen) ResourcePackManager.instance.ToggleMenu();
+	}
+
+	internal static void CloseMenu()
+	{
+		if (ResourcePackManager.instance != null) ResourcePackManager.instance.menuOpen = false;
+	}
+
 	private readonly Dictionary<int, ResourcePackManager.Entry> entries;
 
 	private readonly HashSet<int> noMatch;

@@ -289,12 +289,12 @@ namespace BetterThanCastle
                     case 'Z':
                         {
                             float w = Mathf.Max(3f, bar.width * Mathf.Clamp01((v.A - v.T) / total));
-                            Box2(new Rect(x, bar.y, w, bar.height), new Color(1f, 0.6f, 0.1f, 0.75f));
+                            Box2(new Rect(x, bar.y - 1f, w, bar.height + 2f), new Color(1f, 0.65f, 0.15f, 0.95f));
                             break;
                         }
-                    case 'S': Box2(new Rect(x - 1.5f, bar.y - h * 0.15f, 3f, bar.height + h * 0.3f), new Color(1f, 1f, 1f, 0.95f)); break;
-                    case 'P': Box2(new Rect(x - 1.5f, bar.y - h * 0.15f, 3f, bar.height + h * 0.3f), new Color(0.35f, 0.9f, 0.4f, 0.95f)); break;
-                    case 'L': Box2(new Rect(x - 1.5f, bar.y - h * 0.15f, 3f, bar.height + h * 0.3f), new Color(1f, 0.25f, 0.2f, 0.95f)); break;
+                    case 'S': Box2(new Rect(x - 1f, bar.y - h * 0.2f, 2f, bar.height + h * 0.4f), new Color(1f, 1f, 1f, 0.95f)); break;
+                    case 'P': Box2(new Rect(x - 1f, bar.y - h * 0.2f, 2f, bar.height + h * 0.4f), new Color(0.35f, 0.9f, 0.4f, 0.95f)); break;
+                    case 'L': Box2(new Rect(x - 1f, bar.y - h * 0.2f, 2f, bar.height + h * 0.4f), new Color(1f, 0.25f, 0.2f, 0.95f)); break;
                     case 'M':
                         if (cols == null) cols = new List<string>();
                         if (!cols.Contains(v.Col)) cols.Add(v.Col);

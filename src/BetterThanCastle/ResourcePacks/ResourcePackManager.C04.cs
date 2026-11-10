@@ -1129,7 +1129,7 @@ public partial class ResourcePackManager : MonoBehaviour
 			Rect position = new Rect(hit.x, hit.y + hit.height * 0.5f - 2f, hit.width, 4f);
 			GUI.color = new Color(1f, 1f, 1f, 0.22f);
 			GUI.DrawTexture(position, this.whiteTex);
-			GUI.color = new Color(0.55f, 0.85f, 0.55f, 1f);
+			GUI.color = BtcMenu.AccentA(1f);
 			GUI.DrawTexture(new Rect(position.x, position.y, position.width * num4, position.height), this.whiteTex);
 			GUI.color = Color.white;
 			float num5 = hit.height * 0.5f;
@@ -1195,7 +1195,7 @@ public partial class ResourcePackManager : MonoBehaviour
 		if (flag8)
 		{
 			Color color = GUI.color;
-			GUI.color = (selected ? new Color(0.55f, 0.85f, 0.55f, 1f) : new Color(1f, 1f, 1f, 0.7f));
+			GUI.color = (selected ? BtcMenu.AccentA(1f) : new Color(1f, 1f, 1f, 0.7f));
 			GUI.DrawTexture(r, this.whiteTex);
 			c.a = 1f;
 			GUI.color = c;

@@ -1026,7 +1026,7 @@ public static class BtcOverlays
 	{
 		BtcOverlays.Load();
 		bool flag = false;
-		bool flag2 = i == 0 && check(BtcLang.Russian ? "ВСЕ оверлеи (мастер-выключатель)" : "ALL overlays (master switch)", BtcOverlays.master);
+		bool flag2 = false && check(BtcLang.Russian ? "ВСЕ оверлеи (мастер-выключатель)" : "ALL overlays (master switch)", BtcOverlays.master);
 		bool flag3 = flag2;
 		bool flag4 = flag3;
 		if (flag4)
@@ -1248,6 +1248,12 @@ public static class BtcOverlays
 	public static readonly string[] Names;
 
 	private static bool master = true;
+
+	/// <summary>Master switch of the world overlays (saved).</summary>
+	internal static bool Master { get { BtcOverlays.Load(); return BtcOverlays.master; } set { BtcOverlays.Load(); BtcOverlays.master = value; BtcOverlays.Save(); } }
+
+	/// <summary>Master switch of the world overlays without saving (used by the vanilla-compare hold key).</summary>
+	internal static bool MasterOn { get { return BtcOverlays.master; } set { BtcOverlays.master = value; } }
 
 	private class Line
 	{

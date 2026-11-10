@@ -1,0 +1,53 @@
+# Draws the UI editor pages, the global search and the launcher at the main menu and in a game; errors show in the digest.
+wait 20
+uitest 0
+wait 2
+uitest 1
+wait 2
+uitest 4
+wait 2
+uitest 5
+wait 2
+tabtest 13
+wait 2
+tabtest 3
+wait 2
+uitest 2
+wait 2
+uitest 3
+wait 2
+uitest 4
+wait 2
+uitest 5
+wait 2
+tabtest 13
+wait 2
+tabtest 3
+wait 2
+uitest 0
+gsearch hp
+wait 2
+gsearch rule
+wait 2
+gsearch zzzzqq
+wait 2
+gsearch
+newgame
+waitgame 240
+uitest 0
+wait 2
+uitest 1
+wait 2
+uitest 4
+wait 2
+uitest 5
+wait 2
+tabtest 13
+wait 2
+tabtest 3
+wait 2
+gsearch map
+wait 2
+gsearch
+wait 2
+quit

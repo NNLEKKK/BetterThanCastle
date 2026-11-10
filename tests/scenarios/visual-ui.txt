@@ -1,0 +1,39 @@
+# Draws every page of the Visuals tab (Simple and Expert) at the main menu and in a game; errors show in the digest.
+wait 20
+visualtest 0 0
+wait 2
+visualtest 0 1
+wait 2
+visualtest 1 0
+wait 2
+visualtest 1 1
+wait 2
+visualtest 2 1
+wait 2
+visualtest 3 1
+wait 2
+visualtest 4 1
+wait 2
+visualtest 5 1
+wait 2
+visualtest 6 0
+wait 2
+visualtest 6 1
+wait 2
+visualtest 7 1
+wait 2
+newgame
+waitgame 240
+visualtest 0 1
+wait 2
+visualtest 1 1
+wait 2
+visualtest 2 1
+wait 2
+visualtest 3 1
+wait 2
+visualtest 4 1
+wait 2
+visualtest 5 0
+wait 2
+quit

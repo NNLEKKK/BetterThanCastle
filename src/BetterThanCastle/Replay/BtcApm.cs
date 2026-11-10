@@ -669,7 +669,7 @@ namespace BetterThanCastle
             _px[idx] = new Color32((byte)((c.r * a + d.r / 255f * k) / oa * 255f), (byte)((c.g * a + d.g / 255f * k) / oa * 255f), (byte)((c.b * a + d.b / 255f * k) / oa * 255f), (byte)(oa * 255f));
         }
 
-        private static int _builtMode;
+        private static int _builtMode, _builtSig;
 
         private static void Rebuild(float total)
         {
@@ -679,11 +679,13 @@ namespace BetterThanCastle
             float max = 60f;
             for (int i = 0; i < Play.Count; i++) { float[] sv = SeriesOf(Play[i]); for (int k = 0; k < sv.Length; k++) max = Mathf.Max(max, sv[k]); }
             _builtMode = BtcConfig.ReplayApmMode.Value;
+            _builtSig = BtcReplayLayout.ApmSig;
+            float lw = BtcReplayLayout.ApmWidth, la = BtcReplayLayout.ApmAlpha, fillA = BtcReplayLayout.ApmFill;
             _scale = Mathf.Ceil(max * 1.12f / 20f) * 20f;
             float top = 3f, bottom = _texH + 1f;   // zero sits just below the strip: invisible on the timeline line
             float ph = bottom - top;
             // faint grid at 1/2 and full scale
-            for (int g = 1; g <= 2; g++)
+            for (int g = 1; g <= (BtcReplayLayout.ApmGrid ? 2 : 0); g++)
             {
                 int gy = Mathf.RoundToInt(bottom - ph * g / 2f);
                 for (int x = 0; x < _texW; x++) if ((x / 6) % 2 == 0) Over(Mathf.Clamp(gy, 0, _texH - 1) * _texW + x, Color.white, 0.12f);
@@ -696,14 +698,14 @@ namespace BetterThanCastle
                 {
                     float y0 = _col[x], y1 = _col[x + 1];
                     float lo = Mathf.Min(y0, y1), hi = Mathf.Max(y0, y1);
-                    int ylo = Mathf.Max(0, Mathf.FloorToInt(lo - 3f));
+                    int ylo = Mathf.Max(0, Mathf.FloorToInt(lo - lw - 1.5f));
                     // area under the line, faint
-                    for (int y = Mathf.FloorToInt(lo); y < _texH; y++) if (y >= 0) Over(y * _texW + x, l.C, 0.07f);
-                    for (int y = ylo; y < _texH && y <= hi + 3f; y++)
+                    for (int y = Mathf.FloorToInt(lo); y < _texH; y++) if (y >= 0) Over(y * _texW + x, l.C, fillA);
+                    for (int y = ylo; y < _texH && y <= hi + lw + 1.5f; y++)
                     {
                         float py = y + 0.5f;
                         float dist = py < lo ? lo - py : (py > hi ? py - hi : 0f);
-                        float a = Mathf.Clamp01(1.5f + 0.5f - dist) * 0.95f;
+                        float a = Mathf.Clamp01(lw + 0.5f - dist) * la;
                         if (a > 0f) Over(y * _texW + x, l.C, a);
                     }
                 }
@@ -724,14 +726,24 @@ namespace BetterThanCastle
         internal static void Draw(Rect r, float total, float fs)
         {
             if (!Has) return;
-            if (_dirty || _builtMode != BtcConfig.ReplayApmMode.Value || Mathf.Abs(_total - Mathf.Max(1f, total)) > 0.5f) Rebuild(total);
+            if (_dirty || _builtMode != BtcConfig.ReplayApmMode.Value || _builtSig != BtcReplayLayout.ApmSig || Mathf.Abs(_total - Mathf.Max(1f, total)) > 0.5f) Rebuild(total);
             if (Event.current.type != EventType.Repaint) return;
             GUI.DrawTexture(r, _tex, ScaleMode.StretchToFill, true);
+            if (BtcReplayLayout.ApmLabel)
+            {
+                // only the value at the top of the graph (the scale), no caption
+                Color old = GUI.contentColor;
+                GUI.contentColor = new Color(1f, 1f, 1f, 0.55f);
+                GUI.Label(new Rect(r.x + 3f, r.y - 2f, fs * 6f, fs * 1.3f), _scale.ToString("0"), BtcReplayUI.sBarLabel);
+                GUI.contentColor = old;
+            }
             DrawSpans(r, fs);
         }
 
         private static readonly Color[] KindCol = { new Color(0.55f, 0.82f, 1f, 1f), new Color(1f, 0.55f, 0.15f, 1f), new Color(1f, 0.85f, 0.25f, 1f) };
         private static readonly int[] KindIcon = { BtcReplayIcons.Snow, BtcReplayIcons.Fire, BtcReplayIcons.PeakMark };
+
+        private static bool Shown(Span s) { return (BtcReplayLayout.ApmMarks & (1 << s.Kind)) != 0; }
 
         private static string KindName(int kind)
         {
@@ -748,6 +760,7 @@ namespace BetterThanCastle
                 for (int k = 0; k < SpansOf(l).Count; k++)
                 {
                     Span s = SpansOf(l)[k];
+                    if (!Shown(s)) continue;
                     float x0 = r.x + r.width * Mathf.Clamp01(s.T0 / _total), x1 = r.x + r.width * Mathf.Clamp01(s.T1 / _total);
                     Rect f = new Rect(x0, r.y, Mathf.Max(5f, x1 - x0), r.height);
                     Color kc = KindCol[s.Kind];
@@ -769,7 +782,7 @@ namespace BetterThanCastle
             float t = frac * _total;
             BtcReplayUI.Fill(new Rect(x - 1f, wave.y, 2f, wave.height), new Color(1f, 1f, 1f, 0.5f));
             int spans = 0;
-            for (int i = 0; i < Play.Count; i++) for (int k = 0; k < SpansOf(Play[i]).Count; k++) if (t >= SpansOf(Play[i])[k].T0 && t <= SpansOf(Play[i])[k].T1) spans++;
+            for (int i = 0; i < Play.Count; i++) for (int k = 0; k < SpansOf(Play[i]).Count; k++) if (Shown(SpansOf(Play[i])[k]) && t >= SpansOf(Play[i])[k].T0 && t <= SpansOf(Play[i])[k].T1) spans++;
             float rowH = fs * 1.35f, w = fs * 15f, h = rowH * (Play.Count + 1 + spans);
             Rect tip = new Rect(Mathf.Clamp(x - w * 0.5f, 2f, Screen.width - w - 2f), bottomY - h, w, h);
             BtcReplayUI.Fill(tip, new Color(0f, 0f, 0f, 0.88f));
@@ -779,7 +792,7 @@ namespace BetterThanCastle
                 for (int k = 0; k < SpansOf(Play[i]).Count; k++)
                 {
                     Span s = SpansOf(Play[i])[k];
-                    if (t < s.T0 || t > s.T1) continue;
+                    if (!Shown(s) || t < s.T0 || t > s.T1) continue;
                     float sy = tip.y + rowH * (Play.Count + 1 + sr);
                     sr++;
                     BtcReplayIcons.Glyph(KindIcon[s.Kind], new Rect(tip.x + 6f, sy + rowH * 0.1f, rowH * 0.8f, rowH * 0.8f), KindCol[s.Kind]);

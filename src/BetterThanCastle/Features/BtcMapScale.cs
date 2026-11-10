@@ -128,6 +128,14 @@ public static class BtcMapScale
 		}
 	}
 
+	// ---- accessors for the Gameplay tab map page and the per-map preset
+	internal static string StateString() { BtcMapScale.LoadPrefsOnce(); return BtcMapScale.Encode(); }
+	internal static bool ApplyState(string s) { BtcMapScale.LoadPrefsOnce(); if (!BtcMapScale.Decode(s)) return false; BtcMapScale.Changed(); return true; }
+	internal static void UiPrepare() { BtcMapScale.Tick(); BtcMapScale.LoadPrefsOnce(); }
+	internal static void Commit() { BtcMapScale.Changed(); }
+	internal static int ScatterSeed { get { return BtcMapScale._seed; } set { BtcMapScale._seed = Mathf.Clamp(value, 0, 999999); } }
+	internal static string LastBuild { get { return BtcMapScale._info; } }
+
 	private static void Changed()
 	{
 		PlayerPrefs.SetString("BtcMapScale", BtcMapScale.Encode());
@@ -1688,7 +1696,6 @@ public static class BtcMapScale
 		BtcMapScale._mRes = true;
 		BtcMapScale._dRes = 100;
 		BtcMapScale._vox = true;
-		BtcMapScale.Accent = new Color(0.55f, 0.85f, 0.55f, 1f);
 		BtcMapScale.Warn = new Color(1f, 0.45f, 0.45f, 1f);
 		BtcMapScale.ChangedC = new Color(1f, 0.85f, 0.4f, 1f);
 	}
@@ -2344,7 +2351,7 @@ public static class BtcMapScale
 
 	private static MethodInfo _symRestore;
 
-	private static readonly Color Accent;
+	private static Color Accent { get { return BtcMenu.Accent; } }
 
 	private static readonly Color Warn;
 

@@ -29,6 +29,24 @@ public static class BtcLang
 		}
 	}
 
+	public static void SetRussian(bool ru)
+	{
+		BtcLang.Load();
+		if (BtcLang.ru != ru)
+		{
+			BtcLang.Toggle();
+		}
+	}
+
+	/// <summary>The Russian text of an English key whatever language is selected (search index); the key itself when there is no translation.</summary>
+	public static string RuOf(string en)
+	{
+		BtcLang.Load();
+		string t;
+		if (!string.IsNullOrEmpty(en) && BtcLang.RuDict.TryGetValue(en.Trim(), out t)) return t;
+		return en;
+	}
+
 	public static string Tr(string en)
 	{
 		BtcLang.Load();

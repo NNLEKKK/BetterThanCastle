@@ -945,7 +945,7 @@ namespace Brix.Input
 				this._overlayCountStyle.alignment = TextAnchor.MiddleLeft;
 				this._overlayCountStyle.fontSize = 11;
 				this._overlayCountStyle.fontStyle = FontStyle.Bold;
-				this._overlayCountStyle.normal.textColor = new Color(0.12f, 0.09f, 0.02f, 1f);
+				this._overlayCountStyle.normal.textColor = new Color(1f, 1f, 1f, 0.95f);
 				this._overlaySlotTextStyle = new GUIStyle(GUI.skin.label);
 				this._overlaySlotTextStyle.alignment = TextAnchor.MiddleCenter;
 				this._overlaySlotTextStyle.fontSize = 10;
@@ -960,83 +960,74 @@ namespace Brix.Input
 			}
 		}
 
+		private static bool _grpOpen = true;   // always expanded (user rule 2026-11-10)
+
+		// control groups (1-5) and camera slots (1-5) in the menu style: compact strip, the groups expand into rows with unit icons on hover
 		private void DrawOverlay()
 		{
 			CameraScript instance = CameraScript.Instance;
-			float num = 45f;
-			float num2 = 166f;
-			float num3 = 136f;
-			float num4 = (float)Screen.width - num2 - num;
-			float num5 = 0f;
-			float num6 = num4 + 8f;
-			float num7 = num5 + 8f;
+			BtcHud.Slot sl = BtcHud.SlotOf("groups");
+			if (!sl.Enabled)
+			{
+				return;
+			}
+			Event ev = Event.current;
+			int fs = Mathf.RoundToInt((float)BtcHud.Fs * sl.Scale);
+			BtcReplayUI.Ensure(fs);
+			float a = sl.Alpha;
+			float cell = (float)fs * 1.9f, gap = (float)fs * 0.2f, pad = (float)fs * 0.4f, rowH = (float)fs * 1.9f;
+			float wCol = 5f * cell + 4f * gap + pad * 2f;
+			float wExp = (float)fs * 12f + pad * 2f;
+			float hCol = pad * 2f + cell * 2f + gap;
+			float hExp = pad * 2f + rowH * 5f + gap * 5f + cell;
+			float w = _grpOpen ? wExp : wCol, h = _grpOpen ? hExp : hCol;
+			Rect panel = new Rect((float)Screen.width - 45f - w + sl.Offset.x, (float)fs * 0.5f + sl.Offset.y, w, h);
+			Rect trigger = new Rect((float)Screen.width - 45f - wCol + sl.Offset.x, panel.y, wCol, panel.height);
+			Color pc = BtcHud.Panel;
+			BtcReplayUI.Fill(panel, new Color(pc.r, pc.g, pc.b, pc.a * a));
 			List<GameObject> source = new List<GameObject>();
 			UIGameSelector.GetSelectedEverything(ref source);
 			List<GameObject> list = CameraBookmarkHotkey.FilterToUnits(source);
+			GUIStyle num = BtcReplayUI.sVal;
+			Color oc = GUI.contentColor;
+			float y = panel.y + pad;
 			for (int i = 0; i < 5; i++)
 			{
-				Rect rect = new Rect(num6, num7 + (float)i * 28f, 150f, 24f);
 				List<GameObject> list2 = CameraBookmarkHotkey.FilterToUnits(this._groups[i]);
 				Color color = (list2.Count > 0 && this._groupCycleCursor == i && list.Count == list2.Count) ? CameraBookmarkHotkey.ColorActive : ((list2.Count > 0) ? CameraBookmarkHotkey.ColorOccupied : CameraBookmarkHotkey.ColorEmpty);
-				this.DrawRect(rect, color);
-				bool flag = list2.Count > 0;
-				bool flag2 = flag;
-				bool flag3 = flag2;
-				bool flag4 = flag3;
-				bool flag5 = flag4;
-				bool flag6 = flag5;
-				if (flag6)
+				Rect rect = _grpOpen ? new Rect(panel.x + pad, y, panel.width - pad * 2f, rowH) : new Rect(panel.x + pad + (float)i * (cell + gap), y, cell, cell);
+				BtcReplayUI.Fill(rect, new Color(color.r, color.g, color.b, (list2.Count > 0 ? 0.22f : 0.07f) * a));
+				BtcReplayUI.Fill(new Rect(rect.x, rect.y, 3f, rect.height), new Color(color.r, color.g, color.b, (list2.Count > 0 ? 1f : 0.35f) * a));
+				GUI.contentColor = new Color(1f, 1f, 1f, (list2.Count > 0 ? 0.95f : 0.4f) * a);
+				GUI.Label(_grpOpen ? new Rect(rect.x + (float)fs * 0.2f, rect.y, (float)fs * 1.4f, rect.height) : rect, (i + 1).ToString(), num);
+				GUI.contentColor = oc;
+				if (_grpOpen)
 				{
-					this.DrawGroupIcons(rect, list2, 18f);
+					if (list2.Count > 0)
+					{
+						this.DrawGroupIcons(new Rect(rect.x + (float)fs * 1.6f, rect.y, rect.width - (float)fs * 1.6f, rect.height), list2, (float)fs * 1.3f);
+					}
+					y += rowH + gap;
 				}
 			}
-			num7 += num3 + 10f;
-			float num8 = 116f;
-			float num9 = num6 + (150f - num8) * 0.5f;
+			if (!_grpOpen)
+			{
+				y += cell + gap;
+			}
+			float x0 = panel.x + pad;
 			for (int j = 0; j < 5; j++)
 			{
-				Rect rect2 = new Rect(num9 + (float)j * 24f, num7, 20f, 20f);
+				Rect rect2 = new Rect(x0 + (float)j * (cell + gap), y, cell, cell);
 				bool flag7 = this._stableSlotSet[j] && CameraBookmarkHotkey.IsCameraAtState(instance, this._stableSlots[j]);
 				bool flag8 = this._stableActiveSlot == j && flag7;
-				bool flag9 = flag8;
-				bool flag10 = flag9;
-				bool flag11 = flag10;
-				bool flag12 = flag11;
-				Color color2;
-				if (flag12)
-				{
-					color2 = CameraBookmarkHotkey.ColorReturnMode;
-				}
-				else
-				{
-					bool flag13 = flag7;
-					bool flag14 = flag13;
-					bool flag15 = flag14;
-					bool flag16 = flag15;
-					bool flag17 = flag16;
-					if (flag17)
-					{
-						color2 = CameraBookmarkHotkey.ColorActive;
-					}
-					else
-					{
-						bool flag18 = this._stableSlotSet[j];
-						bool flag19 = flag18;
-						bool flag20 = flag19;
-						bool flag21 = flag20;
-						bool flag22 = flag21;
-						if (flag22)
-						{
-							color2 = CameraBookmarkHotkey.ColorOccupied;
-						}
-						else
-						{
-							color2 = CameraBookmarkHotkey.ColorEmpty;
-						}
-					}
-				}
-				this.DrawRect(rect2, color2);
-				GUI.Label(rect2, (j + 1).ToString(), this._overlaySlotTextStyle);
+				Color color2 = flag8 ? CameraBookmarkHotkey.ColorReturnMode : (flag7 ? CameraBookmarkHotkey.ColorActive : (this._stableSlotSet[j] ? CameraBookmarkHotkey.ColorOccupied : CameraBookmarkHotkey.ColorEmpty));
+				bool set = this._stableSlotSet[j];
+				BtcReplayUI.Fill(rect2, new Color(color2.r, color2.g, color2.b, (set ? 0.22f : 0.07f) * a));
+				BtcReplayUI.Fill(new Rect(rect2.x, rect2.yMax - 2f, rect2.width, 2f), new Color(color2.r, color2.g, color2.b, (set ? 1f : 0.35f) * a));
+				GUI.contentColor = new Color(1f, 1f, 1f, (set ? 0.95f : 0.4f) * a);
+				GUI.Label(rect2, (j + 1).ToString(), num);
+				GUI.contentColor = oc;
+				BtcReplayIcons.Hint(rect2, BtcReplayUI.T("Camera slot ", "Слот камеры ") + (j + 1));
 			}
 		}
 

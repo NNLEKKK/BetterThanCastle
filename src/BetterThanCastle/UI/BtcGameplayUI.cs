@@ -25,6 +25,15 @@ public static class BtcGameplayUI
 			BtcGameplayUI._dragId = 0;
 		}
 		float num = 0f;
+		if (BtcGameplayTab.UseLegacy)
+		{
+			Rect backR = new Rect((float)fs, num + rowH * 0.05f, Mathf.Min(w * 0.4f, (float)fs * 16f), rowH * 0.85f);
+			if (BtcGameplayUI.Button(e, backR, BtcGameplayUI.T("New view", "Новый вид"), BtcGameplayUI.Accent, old, true))
+			{
+				BtcGameplayTab.UseLegacy = false;
+			}
+			num += rowH;
+		}
 		bool isHost = BtcGameplay.IsHost;
 		bool inSession = BtcGameplay.InSession;
 		bool flag3 = !BtcGameplay.Enabled;
@@ -78,7 +87,7 @@ public static class BtcGameplayUI
 				}
 			}
 			num += rowH;
-			float[] shown = isHost ? BtcGameplay.Active : (BtcGameplayUI._draft ? BtcGameplay.Proposal : BtcGameplay.Active);
+			float[] shown = isHost ? BtcGameplay.Raw : (BtcGameplayUI._draft ? BtcGameplay.Proposal : BtcGameplay.Raw);
 			bool interact = (isHost && BtcGameplay.CanEdit) || (!isHost && inSession && BtcGameplayUI._draft);
 			bool flag11 = isHost && BtcGameplay.Pending.Count > 0;
 			bool flag12 = flag11;
@@ -772,94 +781,42 @@ public static class BtcGameplayUI
 		{
 			BtcGameplay.Tick();
 		}
+		if (BtcReplay.Mode == BtcReplay.State.Playing)
+		{
+			// replays: no "host changed the rules / enabled the editor" banners (they come from the recorded lobby messages)
+			BtcGameplay.Warn = 0;
+			BtcGameplay.EditorWarn = false;
+			return;
+		}
+		BtcGameplayTab.DrawRequestCard();
 		bool yellow = BtcGameplay.Warn != 0 && BtcGameplay.Enabled;
 		bool red = BtcGameplay.EditorWarn && BtcGameplay.Enabled;
 		if (!yellow && !red)
 		{
 			return;
 		}
-		int num = Mathf.Max(14, Screen.height / 38);
-		BtcGameplayUI.EnsureStyles(num);
-		GUI.depth = -1100;
-		float top = (float)num * 0.5f;
-		if (red)
-		{
-			bool ok;
-			float h = BtcGameplayUI.DrawWarnBanner(current, num, top, new Color(0.45f, 0.06f, 0.06f, 0.97f), BtcGameplayUI.T("The host enabled the editor panel", "Хост включил эдитор-панель"), BtcGameplayUI.T("The editor panel is on in this game. This may cause unfair play.", "В этой игре включена эдитор-панель. Это может привести к нечестной игре."), false, out ok);
-			top += h + (float)num * 0.3f;
-			if (ok)
+			if (red)
 			{
-				BtcGameplay.EditorWarn = false;
+				if (BtcHud.Card("editor", BtcReplayIcons.Gear, BtcHud.Danger, BtcGameplayUI.T("The host enabled the editor panel", "Хост включил эдитор-панель"), BtcGameplayUI.T("The editor panel is on in this game. This may cause unfair play.", "В этой игре включена эдитор-панель. Это может привести к нечестной игре."), null, true))
+				{
+					BtcGameplay.EditorWarn = false;
+				}
+			}
+			if (yellow)
+			{
+				float[] wd = BtcGameplay.WarnData ?? BtcGameplay.Raw;
+				int critN, minorN;
+				BtcGameplayTab.Count(wd, BtcGameplay.Vanilla, out critN, out minorN);
+				string head = (BtcGameplay.Warn == 1) ? BtcGameplayUI.T("This is not a vanilla game", "Это неванильная игра") : BtcGameplayUI.T("The host changed the rules", "Хост изменил правила");
+				string counts = BtcGameplayUI.T(critN + " critical, " + minorN + " minor changes from vanilla.", "Отличий от ванили: " + critN + " критичных, " + minorN + " незначительных.");
+				string text2 = ((BtcGameplay.Warn == 1) ? BtcGameplayUI.T("The host plays with custom gameplay rules. Damage, HP, speed or economy may differ from what you know. ", "Хост играет с изменёнными правилами. Урон, ХП, скорость или экономика могут отличаться от привычных. ") : BtcGameplayUI.T("The host changed the gameplay rules while you are in the lobby. ", "Хост изменил правила геймплея, пока вы в лобби. ")) + counts;
+				if (BtcHud.Card("rules", BtcReplayIcons.Swords, critN > 0 ? BtcHud.Warn : BtcHud.Ok, head + " (" + (critN + minorN) + ")", text2, null, true, BtcGameplayUI.T("See all differences", "Показать все отличия"), delegate { BtcGameplayTab.OpenPage(1); }))
+				{
+					BtcGameplay.Warn = 0;
+				}
 			}
 		}
-		if (yellow)
-		{
-			int count = BtcGameplay.DiffLines(BtcGameplay.WarnData ?? BtcGameplay.Active).Count;
-			string text = (BtcGameplay.Warn == 1) ? BtcGameplayUI.T("This is not a vanilla game", "Это неванильная игра") : BtcGameplayUI.T("The host changed the rules", "Хост изменил правила");
-			string text2 = (BtcGameplay.Warn == 1) ? BtcGameplayUI.T("The host plays with custom gameplay rules (" + count + " changes from vanilla). Damage, HP, speed or economy may differ from what you know.", "Хост играет с изменёнными правилами (" + count + " отличий от ванили). Урон, ХП, скорость или экономика могут отличаться от привычных.") : BtcGameplayUI.T("The host changed the gameplay rules while you are in the lobby (" + count + " changes from vanilla now).", "Хост изменил правила геймплея, пока вы в лобби (сейчас " + count + " отличий от ванили).");
-			bool ok;
-			BtcGameplayUI.DrawWarnBanner(current, num, top, new Color(0.30f, 0.24f, 0.02f, 0.97f), text, text2, true, out ok);
-			if (ok)
-			{
-				BtcGameplay.Warn = 0;
-				BtcGameplayUI._warnList = false;
-			}
-		}
-	}
 
-	// Compact non-blocking banner at the top of the screen. Returns its height. ok = OK pressed.
-	private static float DrawWarnBanner(Event current, int num, float top, Color bg, string title, string text, bool canList, out bool ok)
-	{
-		ok = false;
-		float lineH = (float)num * 1.6f;
-		float width = Mathf.Min((float)Screen.width * 0.6f, (float)num * 40f);
-		float inner = width - (float)num * 2f;
-		float textH = BtcGameplayUI._note.CalcHeight(new GUIContent(text), inner);
-		bool list = canList && BtcGameplayUI._warnList;
-		float listH = list ? lineH * 5f : 0f;
-		float height = lineH + textH + listH + lineH * 1.1f + (float)num * 0.6f;
-		Rect position = new Rect(((float)Screen.width - width) * 0.5f, top, width, height);
-		Color color = GUI.color;
-		if (current.type == EventType.Repaint)
-		{
-			GUI.color = bg;
-			GUI.DrawTexture(position, BtcGameplayUI.White());
-			GUI.color = color;
-		}
-		GUI.Label(new Rect(position.x, position.y + (float)num * 0.2f, position.width, lineH), title, BtcGameplayUI._title);
-		float y = position.y + lineH * 1.1f;
-		GUI.Label(new Rect(position.x + (float)num, y, inner, textH), text, BtcGameplayUI._note);
-		y += textH + (float)num * 0.2f;
-		if (list)
-		{
-			List<string> lines = BtcGameplay.DiffLines(BtcGameplay.WarnData ?? BtcGameplay.Active);
-			Rect view = new Rect(position.x + (float)num, y, inner, listH);
-			Rect content = new Rect(0f, 0f, inner - (float)num, Mathf.Max(listH, (float)(lines.Count * num) * 1.3f));
-			BtcGameplayUI._warnScroll = GUI.BeginScrollView(view, BtcGameplayUI._warnScroll, content);
-			for (int i = 0; i < lines.Count; i++)
-			{
-				GUI.Label(new Rect(0f, (float)(i * num) * 1.3f, content.width, (float)num * 1.3f), lines[i], BtcGameplayUI._label);
-			}
-			GUI.EndScrollView();
-			y += listH + (float)num * 0.2f;
-		}
-		float bw = canList ? (inner * 0.5f - 4f) : (inner * 0.4f);
-		float by = position.yMax - lineH * 1.05f;
-		if (canList)
-		{
-			Rect r = new Rect(position.x + (float)num, by, bw, lineH * 0.9f);
-			if (BtcGameplayUI.Button(current, r, BtcGameplayUI._warnList ? BtcGameplayUI.T("Hide changes", "Скрыть изменения") : BtcGameplayUI.T("View changes", "Посмотреть изменения"), Color.white, color, true))
-			{
-				BtcGameplayUI._warnList = !BtcGameplayUI._warnList;
-			}
-		}
-		Rect r2 = new Rect(position.xMax - (float)num - bw, by, bw, lineH * 0.9f);
-		if (BtcGameplayUI.Button(current, r2, "OK", BtcGameplayUI.Accent, color, true))
-		{
-			ok = true;
-		}
-		return height;
-	}
 
 	private static bool GroupHeader(Event e, ref float y, float w, float rowH, int fs, Color old, string title, bool open, int changed)
 	{
@@ -1100,7 +1057,6 @@ public static class BtcGameplayUI
 			"eco"
 		};
 		BtcGameplayUI._presetName = "My preset";
-		BtcGameplayUI.Accent = new Color(0.55f, 0.85f, 0.55f, 1f);
 		BtcGameplayUI.Warn = new Color(1f, 0.45f, 0.45f, 1f);
 		BtcGameplayUI.Changed = new Color(1f, 0.85f, 0.4f, 1f);
 		BtcGameplayUI.Dim = new Color(1f, 1f, 1f, 0.35f);
@@ -1523,9 +1479,9 @@ public static class BtcGameplayUI
 
 	private const int SubPresets = 3;
 
-	private static int _subTab;
+	internal static int _subTab;
 
-	private static bool _draft;
+	internal static bool _draft;
 
 	private static int _dragId;
 
@@ -1543,7 +1499,7 @@ public static class BtcGameplayUI
 
 	private static Vector2 _warnScroll;
 
-	private static readonly Color Accent;
+	private static Color Accent { get { return BtcMenu.Accent; } }
 
 	private static readonly Color Warn;
 

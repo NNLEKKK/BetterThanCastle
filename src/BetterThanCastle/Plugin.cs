@@ -9,15 +9,18 @@ namespace BetterThanCastle
     {
         public const string Guid = "com.btc.betterthancastle";
         public const string Name = "Better Than Castle";
-        public const string Version = "0.3.4";
+        public const string Version = "0.4.0";
         // BepInEx parses the plugin version with System.Version: no letter suffix allowed here (the mod is skipped otherwise)
-        public const string BepVersion = "0.3.4";
+        public const string BepVersion = "0.4.0";
 
         internal static ManualLogSource Log;
         internal static Harmony Harmony;
 
+        internal static BtcPlugin Inst;
+
         private void Awake()
         {
+            Inst = this;
             Log = Logger;
             BtcConfig.Init(Config);
 #if DEV

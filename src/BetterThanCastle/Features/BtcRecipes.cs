@@ -384,7 +384,7 @@ public static class BtcRecipes
 			if (BtcRecipes._cur == null || BtcRecipes._van == null || BtcRecipes._rec == null || !BtcBc.BcEnabled) return;
 			for (int i = 0; i < BtcRecipes._rec.Length; i++)
 			{
-				if (BtcRecipes.Differs(BtcRecipes._cur, i)) list.Add(BtcRecipes.T("Recipe: ", "Рецепт: ") + BtcRecipes.T(BtcRecipes._en[i], BtcRecipes._ru[i]));
+				if (!BtcRecipes.Hidden(i) && BtcRecipes.Differs(BtcRecipes._cur, i)) list.Add(BtcRecipes.T("Recipe: ", "Рецепт: ") + BtcRecipes.T(BtcRecipes._en[i], BtcRecipes._ru[i]));
 			}
 		}
 		catch (Exception)
@@ -1125,6 +1125,82 @@ public static class BtcRecipes
 		}
 	}
 
+	// ---- accessors for the Gameplay tab recipes page (UI/Gameplay/BtcRecipesPage.cs); the wire format and the legacy Draw are untouched
+	internal const int IntsPer = 15;
+
+	internal static void Ensure()
+	{
+		BtcRecipes.Init();
+	}
+
+	internal static int Count
+	{
+		get { BtcRecipes.Init(); return BtcRecipes._rec.Length; }
+	}
+
+	/// <summary>Firefly is not a real craftable item: hidden in the UI and left out of the difference lists.</summary>
+	internal static bool Hidden(int k)
+	{
+		return k == 30;
+	}
+
+	internal static string Name(int k) { return BtcRecipes.T(BtcRecipes._en[k], BtcRecipes._ru[k]); }
+	internal static IconKey RecipeIcon(int k) { return BtcRecipes._rec[k].icon; }
+	internal static int ResCount { get { return BtcRecipes.NRes; } }
+	internal static string ResName(int r) { return BtcRecipes.T(BtcRecipes._resEn[r], BtcRecipes._resRu[r]); }
+	internal static IconKey ResIcon(int r) { return BtcRecipes._resIcon[r]; }
+	internal static int[] Cur { get { return BtcRecipes._cur; } }
+	internal static int[] Prop { get { return BtcRecipes._prop; } }
+	internal static int[] Van { get { return BtcRecipes._van; } }
+	internal static int GroupCount { get { return BtcRecipes._groups.Length; } }
+	internal static string GroupName(int g) { return BtcRecipes.T(BtcRecipes._groups[g].En, BtcRecipes.GroupRu(g)); }
+	internal static int[] GroupItems(int g) { return BtcRecipes._groups[g].Idx; }
+	internal static int MyState { get { return BtcRecipes._myState; } }
+	internal static int PendingCount { get { return BtcRecipes._pending.Count; } }
+	internal static string PendingName(int i) { return BtcRecipes._pending[i].Name; }
+	internal static int[] PendingVals(int i) { return BtcRecipes._pending[i].Vals; }
+	internal static void ResolvePending(int i, bool approve) { BtcRecipes.Resolve(BtcRecipes._pending[i], approve); }
+	internal static void SendMine() { BtcRecipes.SendRequest(); }
+
+	/// <summary>A recipe was edited: the host applies, saves and broadcasts; a client marks the draft as unsent.</summary>
+	internal static void Edited(bool isHost)
+	{
+		if (isHost) BtcRecipes.HostChanged();
+		else { BtcRecipes._propDirty = true; BtcRecipes._myState = 0; }
+	}
+
+	internal static bool DiffersFrom(int[] a, int[] b, int k)
+	{
+		int n = k * IntsPer;
+		for (int i = 0; i < IntsPer; i++) if (a[n + i] != b[n + i]) return true;
+		return false;
+	}
+
+	/// <summary>0 = same, 1 = only work/heat differ (minor), 2 = output or ingredients differ (critical).</summary>
+	internal static int Level(int[] a, int[] b, int k)
+	{
+		int n = k * IntsPer;
+		for (int i = 2; i < IntsPer; i++) if (a[n + i] != b[n + i]) return 2;
+		return (a[n] != b[n] || a[n + 1] != b[n + 1]) ? 1 : 0;
+	}
+
+	/// <summary>Draws a game icon fitted into r keeping the aspect ratio (the legacy DrawIcon stretched it) and without sampling the neighbours in the atlas.</summary>
+	internal static void DrawIconFit(Rect r, IconKey key)
+	{
+		if (key == null || Event.current.type != EventType.Repaint) return;
+		Sprite sprite;
+		if (!BtcRecipes._sprites.TryGetValue(key, out sprite)) { sprite = key.Get64(); BtcRecipes._sprites[key] = sprite; }
+		if (sprite == null || sprite.texture == null) return;
+		Texture2D tex = sprite.texture;
+		Rect tr = sprite.textureRect;
+		float s = Mathf.Min(r.width / tr.width, r.height / tr.height);
+		Rect d = new Rect(r.center.x - tr.width * s * 0.5f, r.center.y - tr.height * s * 0.5f, tr.width * s, tr.height * s);
+		float ix = 0.5f / tex.width, iy = 0.5f / tex.height;
+		GUI.DrawTextureWithTexCoords(d, tex, new Rect(tr.x / tex.width + ix, tr.y / tex.height + iy, tr.width / tex.width - ix * 2f, tr.height / tex.height - iy * 2f));
+	}
+
+	private static string GroupRu(int g) { return BtcRecipes._groups[g].Ru; }
+
 	private const int NRes = 12;
 
 	private const int Stride = 15;
@@ -1201,7 +1277,7 @@ public static class BtcRecipes
 
 	private static GUIStyle _small;
 
-	private static readonly Color Accent = new Color(0.55f, 0.85f, 0.55f, 1f);
+	private static Color Accent { get { return BtcMenu.Accent; } }
 
 	private static readonly Color Warn = new Color(1f, 0.45f, 0.45f, 1f);
 

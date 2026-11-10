@@ -727,7 +727,7 @@ public partial class ResourcePackManager : MonoBehaviour
 		bool flag9 = flag8;
 		if (flag9)
 		{
-			GUI.color = (flag ? new Color(0.55f, 0.85f, 0.55f, 0.12f) : new Color(1f, 1f, 1f, 0.04f));
+			GUI.color = (flag ? BtcMenu.AccentA(0.12f) : new Color(1f, 1f, 1f, 0.04f));
 			GUI.DrawTexture(rect, this.whiteTex);
 			GUI.color = old;
 		}

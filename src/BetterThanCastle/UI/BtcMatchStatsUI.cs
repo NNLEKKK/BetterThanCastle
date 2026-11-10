@@ -15,11 +15,11 @@ namespace BetterThanCastle
     internal static class BtcMatchStatsUI
     {
         internal const string HotkeyId = "match_stats_panel";
-        private static readonly KeyCode[] DefKeys = { KeyCode.F7 };
+        private static readonly KeyCode[] DefKeys = { KeyCode.LeftShift, KeyCode.F7 };
 
         internal static bool PanelOpen;
 
-        private sealed class DStat
+        internal sealed class DStat
         {
             internal string En, Ru, Tag;
             internal int Kind; // 0 raw, 1 survival %, 2 average (A / B)
@@ -30,8 +30,8 @@ namespace BetterThanCastle
             internal string Name { get { return BtcLang.Russian ? Ru : En; } }
         }
 
-        private static readonly List<DStat> Stats = new List<DStat>();
-        private static int NS { get { return Stats.Count; } }
+        internal static readonly List<DStat> Stats = new List<DStat>();
+        internal static int NS { get { return Stats.Count; } }
         private const int FirstProf = 15;
         private static int FirstRes;
         private const int StatCrystals = 4;
@@ -77,13 +77,13 @@ namespace BetterThanCastle
             InPanel = new bool[Stats.Count];
         }
 
-        private static bool[] InBar, InPanel, Expand;
+        internal static bool[] InBar, InPanel, Expand;
         private static string _barCfg, _panelCfg;
 
         // ------------------------------------------------------------------ config
         private static bool Enabled { get { return BtcConfig.StatsEnabled == null || BtcConfig.StatsEnabled.Value; } }
 
-        private static void SyncMasks()
+        internal static void SyncMasks()
         {
             string b = BtcConfig.StatsBarList != null ? BtcConfig.StatsBarList.Value : "0,1,2,3,4,7,9";
             if (!ReferenceEquals(b, _barCfg)) { _barCfg = b; Parse(b, InBar, false); }
@@ -114,7 +114,7 @@ namespace BetterThanCastle
         private static bool B(BepInEx.Configuration.ConfigEntry<bool> e, bool def) { return e != null ? e.Value : def; }
 
         // ------------------------------------------------------------------ values
-        private static double Value(DStat s, int[] v)
+        internal static double Value(DStat s, int[] v)
         {
             if (v == null) return 0;
             switch (s.Kind)
@@ -130,12 +130,12 @@ namespace BetterThanCastle
             return v[s.A];
         }
 
-        private static bool Avail(DStat s, int[] v)
+        internal static bool Avail(DStat s, int[] v)
         {
             return !s.Auth || (v != null && v[BtcMatchStats.V_AUTH] != 0);
         }
 
-        private static string Fmt(DStat s, double x, bool signed)
+        internal static string Fmt(DStat s, double x, bool signed)
         {
             string sign = signed && x > 0.0005 ? "+" : string.Empty;
             switch (s.Fmt)
@@ -147,7 +147,7 @@ namespace BetterThanCastle
             return sign + Math.Round(x).ToString("0");
         }
 
-        private static string FmtTime(double sec)
+        internal static string FmtTime(double sec)
         {
             bool neg = sec < 0;
             double a = Math.Abs(sec);
@@ -160,11 +160,11 @@ namespace BetterThanCastle
 
         // ------------------------------------------------------------------ cache (4 Hz)
         private const int MaxFac = 8;
-        private static readonly List<BtcMsFaction> Vis = new List<BtcMsFaction>();
-        private static readonly string[] FName = new string[MaxFac];
-        private static readonly Color[] FCol = new Color[MaxFac];
-        private static readonly Sprite[] FFlag = new Sprite[MaxFac];
-        private static readonly Sprite[] FCrys = new Sprite[MaxFac];
+        internal static readonly List<BtcMsFaction> Vis = new List<BtcMsFaction>();
+        internal static readonly string[] FName = new string[MaxFac];
+        internal static readonly Color[] FCol = new Color[MaxFac];
+        internal static readonly Sprite[] FFlag = new Sprite[MaxFac];
+        internal static readonly Sprite[] FCrys = new Sprite[MaxFac];
         private static readonly int[] BarIdx = new int[64];
         private static int _barN;
         private static readonly string[,] BarTxt = new string[MaxFac, 64];
@@ -192,14 +192,14 @@ namespace BetterThanCastle
         private static int _styleFs = -1;
         private static Vector2 _scroll;
 
-        private static bool SpectatorView()
+        internal static bool SpectatorView()
         {
             if (BtcReplay.Mode == BtcReplay.State.Playing) return true;
             User u = User.LocalUser;
             return u == null || u.faction == null || u.faction.IsSpectator;
         }
 
-        private static void Collect()
+        internal static void Collect()
         {
             Vis.Clear();
             BtcMsStore st = BtcMatchStats.Current;
@@ -217,7 +217,7 @@ namespace BetterThanCastle
             }
         }
 
-        private static double DiffOf(DStat s, int fi)
+        internal static double DiffOf(DStat s, int fi)
         {
             BtcMsFaction f = Vis[fi];
             double v = Value(s, f.V);
@@ -231,7 +231,7 @@ namespace BetterThanCastle
             return old != null ? v - Value(s, old.V) : 0.0;
         }
 
-        private static Color Good(DStat s, double d)
+        internal static Color Good(DStat s, double d)
         {
             if (Math.Abs(d) < 0.0005) return BtcUiStyle.Text;
             bool good = s.LowerBetter ? d < 0 : d > 0;
@@ -310,6 +310,33 @@ namespace BetterThanCastle
             BuildGraph();
         }
 
+        /// <summary>For the menu tab: refresh Vis (visible factions) with names, colours and icons. No bar/panel layout.</summary>
+        internal static void RefreshFactions()
+        {
+            SyncMasks();
+            Collect();
+            for (int i = 0; i < Vis.Count; i++)
+            {
+                Faction fac = BtcMatchStats.FactionOf(Vis[i].Id);
+                string nm = BtcReplayNames.NickOf(Vis[i].Id);
+                if (string.IsNullOrEmpty(nm)) { try { if (fac != null && fac.Owner != null) nm = fac.Owner.ScreenName; } catch { } }
+                if (string.IsNullOrEmpty(nm)) nm = fac != null ? fac.name : ("#" + Vis[i].Id);
+                if (nm != null) nm = System.Text.RegularExpressions.Regex.Replace(nm, "<[^>]*>", string.Empty).Trim();
+                if (string.IsNullOrEmpty(nm)) nm = "#" + Vis[i].Id;
+                if (nm.Length > 20) nm = nm.Substring(0, 20);
+                FName[i] = nm;
+                FCol[i] = fac != null ? fac.FactionColor : Color.gray;
+                FCol[i].a = 1f;
+                FFlag[i] = fac != null ? fac.FactionIcon : null;
+                FCrys[i] = fac != null ? fac.CrystalIcon : null;
+            }
+        }
+
+        internal static void SaveBarMask() { if (BtcConfig.StatsBarList == null) return; BtcConfig.StatsBarList.Value = Join(InBar, true); _barCfg = BtcConfig.StatsBarList.Value; _nextCache = 0f; }
+        internal static void SavePanelMask() { if (BtcConfig.StatsPanelHidden == null) return; BtcConfig.StatsPanelHidden.Value = Join(InPanel, false); _panelCfg = BtcConfig.StatsPanelHidden.Value; _nextCache = 0f; }
+        internal static void Poke() { _nextCache = 0f; }
+        internal static string HotkeyText() { return KeysText(); }
+
         private static void Cell(DStat s, int i, double v, double d)
         {
             string val = Fmt(s, v, false);
@@ -353,7 +380,7 @@ namespace BetterThanCastle
             }
         }
 
-        private static float SampleValue(DStat s, BtcMsFaction f, int k, bool diff)
+        internal static float SampleValue(DStat s, BtcMsFaction f, int k, bool diff)
         {
             BtcMsSample smp = f.Series[k];
             double v = Value(s, smp.V);
@@ -440,7 +467,12 @@ namespace BetterThanCastle
                 {
                     if (Input.GetKeyDown(KeyCode.Escape) || (keys != null && keys.Length > 0 && Input.GetKeyDown(keys[keys.Length - 1]))) PanelOpen = false;
                 }
-                else if (BtcHotkeys.ComboPressed(keys)) PanelOpen = true;
+                else if (BtcHotkeys.ComboPressed(keys))
+                {
+                    // the bind opens the Statistics tab of the mod menu (the old floating panel is no longer used)
+                    if (BtcHotkeys.MenuOpen && BtcMenu.CurrentId == 11) ResourcePackManager.CloseMenu();
+                    else ResourcePackManager.GoTab(11);
+                }
                 float now = Time.unscaledTime;
                 bool needBar = B(BtcConfig.StatsBar, true);
                 if ((needBar || PanelOpen) && now >= _nextCache)
@@ -568,7 +600,7 @@ namespace BetterThanCastle
             {
                 float ry = r * rowH;
                 int k = RowIdx[r];
-                if (k == _graphStat && !RowSub[r]) Box(new Rect(0f, ry, content.width, rowH), new Color(0.55f, 0.85f, 0.55f, 0.14f));
+                if (k == _graphStat && !RowSub[r]) Box(new Rect(0f, ry, content.width, rowH), BtcMenu.AccentA(0.14f));
                 else if ((r & 1) == 1) Box(new Rect(0f, ry, content.width, rowH), BtcUiStyle.Hover);
                 GUI.color = RowSub[r] ? BtcUiStyle.Dim : BtcUiStyle.Text;
                 if (GUI.Button(new Rect(0f, ry, nameW - 4f, rowH), RowName[r], _lbl)) { if (Stats[k].Det >= 0 && !RowSub[r]) Expand[k] = !Expand[k]; _graphStat = k; _nextCache = 0f; }

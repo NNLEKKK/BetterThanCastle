@@ -2242,7 +2242,7 @@ public static class BtcReplay
 							BtcReplay.mode = BtcReplay.State.Playing;
 							BtcReplay.Active = true;
 							BtcReplayFix.OnStart(d.FilePath);
-							BtcReplay.playStatus = BtcReplay.T("Unpacking the replay...", "Распаковка реплея...");
+							BtcReplay.playStatus = BtcReplay.T("Unpacking the replay...", "Распаковка реплея..."); BtcReplay.LoadStep = 1;
 							BtcReplay.Log(string.Concat(new object[]
 							{
 								"StartReplay: ",
@@ -2464,7 +2464,7 @@ public static class BtcReplay
 			BtcReplayAnchor.Clear();
 			BtcReplaySeek.Reset();
 			BtcReplay.playEnded = false;
-			BtcReplay.playStatus = null;
+			BtcReplay.playStatus = null; BtcReplay.LoadStep = 0;
 			try
 			{
 				BtcReplay.CallSpec("StopHold", new object[]
@@ -2904,7 +2904,7 @@ public static class BtcReplay
 					BtcReplay.Log("Scene '" + text + "' sent to the loader");
 					BtcReplay.playStage = 2;
 					BtcReplay.playT0 = Time.unscaledTime;
-					BtcReplay.playStatus = BtcReplay.T("Loading the world...", "Загрузка мира...");
+					BtcReplay.playStatus = BtcReplay.T("Loading the world...", "Загрузка мира..."); BtcReplay.LoadStep = 2;
 					result = true;
 				}
 				else
@@ -3044,7 +3044,7 @@ public static class BtcReplay
 		BtcReplay.playLastHb = now;
 		BtcReplay.playGo = false;
 		BtcReplay.playFeedT0 = now;
-		BtcReplay.playStatus = BtcReplay.T("Loading the world...", "Загрузка мира...");
+		BtcReplay.playStatus = BtcReplay.T("Loading the world...", "Загрузка мира..."); BtcReplay.LoadStep = 2;
 		BtcReplay.SetSpec("_hudAt", now + 3f);
 		BtcReplay.SetSpec("_hudPass", 0);
 		BtcReplay.SetSpec("_probeAt", now + 6f);
@@ -3340,7 +3340,7 @@ public static class BtcReplay
 			if (flag49)
 			{
 				BtcReplay.playGo = true;
-				BtcReplay.playStatus = null;
+				BtcReplay.playStatus = null; BtcReplay.LoadStep = 0;
 				BtcReplay.HookSignals();
 				BtcReplay.terrainDirty = false;
 				BtcReplay.terrainBaseHash = BtcReplay.TerrainFingerprint("baseline");
@@ -4172,14 +4172,22 @@ public static class BtcReplay
 				bool flag24 = flag23;
 				if (flag24)
 				{
-					BtcReplay.BeginRewind(seconds);
+					BtcReplay.SeekBackNoRewind(seconds);
 				}
 				else
 				{
-					BtcReplay.RestartViaMenu(seconds);
+					BtcReplay.SeekBackNoRewind(seconds);
 				}
 			}
 		}
+	}
+
+	/// <summary>Backward seek that the keyframes did not take: the old scene rewind is gone. Before the first keyframe: jump to the earliest one; otherwise tell the user.</summary>
+	private static void SeekBackNoRewind(float seconds)
+	{
+		if (BtcReplaySeek.TryJumpEarliest(seconds)) return;
+		BtcReplay.Log("seek back to " + seconds.ToString("0.0", BtcReplay.Inv) + " s ignored: keyframes not ready");
+		BtcReplay.Say(BtcReplay.T("Rewind is not ready yet (keyframes are still being placed)", "Перемотка назад ещё не готова (идёт расстановка ключевых кадров)"));
 	}
 
 	private static void StartSeekForward(float t)
@@ -4918,7 +4926,7 @@ public static class BtcReplay
 						BtcReplay.rwHold = false;
 						BtcSpectate.RewindKeep = false;
 						BtcReplay.playGo = true;
-						BtcReplay.playStatus = null;
+						BtcReplay.playStatus = null; BtcReplay.LoadStep = 0;
 						BtcReplay.Log(string.Concat(new string[]
 						{
 							"rewind: objects spawned",
@@ -5698,6 +5706,9 @@ public static class BtcReplay
 	private static string playErr;
 
 	private static string playStatus;
+
+	/// <summary>Loading screen step: 1 reading the file, 2 loading the world, 0 none (BtcReplayLoadUI).</summary>
+	internal static int LoadStep;
 
 	private static string playDir;
 

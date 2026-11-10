@@ -102,7 +102,7 @@ namespace BetterThanCastle
                     occ.SetOccupation(Occupation.Type.Archer, false);
                     tb.EquipTool(Accessories.Backpack); tb.EquipTool(Accessories.Bonnet);
                     break;
-                case BtcDuelUnit.Geomancer:
+                case BtcDuelUnit.Artificer:
                     occ.SetOccupation(Occupation.Type.Archer, false);
                     tb.EquipTool(Accessories.Staff); tb.EquipTool(Accessories.Sachel); tb.EquipTool(Accessories.ArtificerHat);
                     break;

@@ -124,13 +124,23 @@ public static class BtcGameplay
 		return array;
 	}
 
+	/// <summary>The rules the game and the features use (vanilla values while the host's master switch is off).</summary>
 	public static float[] Active
 	{
 		get
 		{
-			return BtcGameplay.V;
+			return (BtcGameplay.RulesOn || !BtcGameplay.IsHost) ? BtcGameplay.V : BtcGameplay.VanillaArr;
 		}
 	}
+
+	/// <summary>The configured values (host) or the values received from the host (client), regardless of the master switch.</summary>
+	public static float[] Raw { get { return BtcGameplay.V; } }
+
+	/// <summary>The local player's own saved rules (what they host with).</summary>
+	public static float[] Mine { get { return BtcGameplay.Own; } }
+
+	/// <summary>Vanilla values of every row.</summary>
+	public static float[] Vanilla { get { return BtcGameplay.VanillaArr; } }
 
 	public static float[] Edit
 	{
@@ -246,7 +256,20 @@ public static class BtcGameplay
 
 	public static void Refresh()
 	{
-		BtcGameplay.E = (BtcBc.BcEnabled ? BtcGameplay.V : BtcGameplay.VanillaArr);
+		BtcGameplay.E = ((BtcBc.BcEnabled && (BtcGameplay.RulesOn || !BtcGameplay.IsHost)) ? BtcGameplay.V : BtcGameplay.VanillaArr);
+	}
+
+	/// <summary>Master switch of the Gameplay tab (host side): off = the game plays by vanilla rules and clients receive vanilla; the values stay saved.</summary>
+	public static bool RulesOn
+	{
+		get { return BtcMenuState.Bool("gameplay:on", true); }
+		set
+		{
+			if (RulesOn == value) return;
+			BtcMenuState.SetBool("gameplay:on", value);
+			BtcGameplay.Refresh();
+			BtcGameplay.MarkDirty();
+		}
 	}
 
 	public static void Tick()
@@ -309,6 +332,7 @@ public static class BtcGameplay
 			BtcGameplay.SaveOwn();
 		}
 		BtcGameplay.SampleNest();
+		BtcMapPreset.Tick();
 	}
 
 	public static float Snap(int i, float v)
@@ -598,7 +622,7 @@ public static class BtcGameplay
 		BtcGameplay.Presets.Add(new BtcGameplay.Preset
 		{
 			Name = "Competitive",
-			Data = "eco.stable=1;eco.penFixed=30;mov.items=1;mov.allies=1;mov.retry=1;mov.cancel=1;",
+			Data = "eco.stable=1;eco.penFixed=30;rng.max.j4#m=1;rng.min.j3=0;rng.min.j4=0.5;rng.min.j5#m=1;rng.min.j5#n=0;rng.min.j6#m=1;gen.maxp=8;gcol.0.0=90;sent.range#m=1;mov.items=1;mov.retry=1;mov.cancel=1;bai.delayOn=1;bai.wait=1;bai.build=1;bai.hold=5;timer.peace=5;timer.limit=40;craft.max=40;",   // the user's own config of 2026-11-10 (spec.ask left out: client UX, not a rule)
 			BuiltIn = true
 		});
 		try
@@ -829,7 +853,7 @@ public static class BtcGameplay
 		return new BtcGameplay.GsMsg
 		{
 			kind = 0,
-			data = BtcGameplay.Encode(BtcGameplay.V),
+			data = BtcGameplay.Encode(BtcGameplay.RulesOn ? BtcGameplay.V : BtcGameplay.VanillaArr),
 			rid = (BtcGameplay.InLobby ? 1 : 0)
 		};
 	}
@@ -2016,6 +2040,14 @@ public static class BtcGameplay
 		BtcGameplay.iOreBrim = BtcGameplay.Idx("ore.brim");
 	}
 
+	/// <summary>Sets the three deep-layer rows at once (no linking), used by the ore editor and its undo.</summary>
+	public static void SetOre(float stone, float iron, float brim)
+	{
+		BtcGameplay.SetRaw(BtcGameplay.iOreStone, stone);
+		BtcGameplay.SetRaw(BtcGameplay.iOreIron, iron);
+		BtcGameplay.SetRaw(BtcGameplay.iOreBrim, brim);
+	}
+
 	private static void LinkOre(int i, float v)
 	{
 		bool flag = v < 0f;
@@ -2131,7 +2163,7 @@ public static class BtcGameplay
 	}
 
 	// Rows that never count as a rules change (client-only repair toggles, UX).
-	private static readonly string[] NonRuleIds = new string[] { "spec.facfix", "spec.facidle", "spec.facsel", "spec.facspec", "spec.faclua", "spec.hudfix", "spec.mapfix", "spec.pause", "spec.ask" };
+	private static readonly string[] NonRuleIds = new string[] { "spec.facfix", "spec.facidle", "spec.facsel", "spec.facspec", "spec.faclua", "spec.hudfix", "spec.mapfix", "spec.pause", "spec.ask", "timer.ms" };
 
 	public static bool IsRule(int i)
 	{

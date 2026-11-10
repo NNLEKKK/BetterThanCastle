@@ -8,7 +8,7 @@
     <Nullable>disable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <Version>0.3.4</Version>
+    <Version>0.4.0</Version>
     <DebugType>portable</DebugType>
     <ImplicitUsings>disable</ImplicitUsings>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
@@ -24,6 +24,8 @@
     <Compile Remove="obj\**;bin\**" />
     <!-- lab/Btc.Shared: engine-neutral duel AI code shared with the lab simulator (DuelView, DuelObs, DuelActions, MlpPolicy) -->
     <Compile Include="..\..\lab\Btc.Shared\*.cs" Link="Shared\%(Filename)%(Extension)" />
+    <!-- in-game changelog (menu tab "What's new"); format in the file header -->
+    <EmbeddedResource Include="Resources\changelog.btcl" LogicalName="BetterThanCastle.changelog.btcl" />
     <!-- LuminaZero duel policy exported by `btclab export` (lab/policies/luminazero.btcpol); optional -->
     <EmbeddedResource Include="..\..\lab\policies\luminazero.btcpol" LogicalName="BetterThanCastle.luminazero.btcpol" Condition="Exists('..\..\lab\policies\luminazero.btcpol')" />
   </ItemGroup>

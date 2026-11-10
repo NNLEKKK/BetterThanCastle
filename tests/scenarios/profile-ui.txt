@@ -1,0 +1,15 @@
+# Draws every page of the Profile tab at the main menu; errors show in the digest.
+wait 20
+profiletest 0
+wait 3
+profiletest 1
+wait 3
+profiletest 2
+wait 3
+profiletest 3
+wait 3
+profiletest 4
+wait 3
+profiletest 5
+wait 3
+quit
