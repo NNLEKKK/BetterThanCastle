@@ -5,7 +5,7 @@ namespace BetterThanCastle
     /// <summary>Tiny icons for the replay bar, drawn from filled rects (no textures, no font glyphs) plus a hover tooltip.</summary>
     internal static class BtcReplayIcons
     {
-        internal const int Monitor = 0, Camera = 1, Cursor = 2, Blueprint = 3, View = 4, Layout = 5, Play = 6, Pause = 7, Slow = 8, Fast = 9, Back10 = 10, Fwd10 = 11, Stop = 12, Prev = 13, Next = 14, Map = 15, Wave = 16, Keys = 17, Snow = 18, Fire = 19, PeakMark = 20, ClipIn = 21, ClipOut = 22, Gif = 23, Cross = 24, Check = 25, Star = 26, Folder = 27, Trash = 28, Share = 29, Copy = 30, Gear = 31, Sort = 32, Refresh = 33, Search = 34, Grid = 35, List = 36, Lines = 37, ChevR = 38, ChevD = 39, Group = 40, Swords = 41, Lock = 42, Plus = 43, Bolt = 44, Speaker = 45, Undo = 46, Eye = 47, Ring = 48, Palette = 49, Num = 50, Target = 51, PathI = 52, Bomb = 53, Sun = 54, Chat = 55, Chart = 56, Plate = 57, Import = 58, Export = 59, Diamond = 60, Bug = 61, News = 62, Pumpkin = 63, Image = 64, Globe = 65;
+        internal const int Monitor = 0, Camera = 1, Cursor = 2, Blueprint = 3, View = 4, Layout = 5, Play = 6, Pause = 7, Slow = 8, Fast = 9, Back10 = 10, Fwd10 = 11, Stop = 12, Prev = 13, Next = 14, Map = 15, Wave = 16, Keys = 17, Snow = 18, Fire = 19, PeakMark = 20, ClipIn = 21, ClipOut = 22, Gif = 23, Cross = 24, Check = 25, Star = 26, Folder = 27, Trash = 28, Share = 29, Copy = 30, Gear = 31, Sort = 32, Refresh = 33, Search = 34, Grid = 35, List = 36, Lines = 37, ChevR = 38, ChevD = 39, Group = 40, Swords = 41, Lock = 42, Plus = 43, Bolt = 44, Speaker = 45, Undo = 46, Eye = 47, Ring = 48, Palette = 49, Num = 50, Target = 51, PathI = 52, Bomb = 53, Sun = 54, Chat = 55, Chart = 56, Plate = 57, Import = 58, Export = 59, Diamond = 60, Bug = 61, News = 62, Pumpkin = 63, Image = 64, Globe = 65, Shield = 66;
 
         private static string _tip;
         internal static Rect TipAnchor { get { return _tipAnchor; } }
@@ -297,6 +297,12 @@ namespace BetterThanCastle
                     R(x + 2f * p, y, 4f * p, p, c); R(x + 2f * p, y + 7f * p, 4f * p, p, c); R(x, y + 2f * p, p, 4f * p, c); R(x + 7f * p, y + 2f * p, p, 4f * p, c);
                     R(x + p, y + p, p, p, c); R(x + 6f * p, y + p, p, p, c); R(x + p, y + 6f * p, p, p, c); R(x + 6f * p, y + 6f * p, p, p, c);
                     R(x + 3.5f * p, y + p, p, 6f * p, c); R(x + p, y + 3.5f * p, 6f * p, p, c); R(x + 2.1f * p, y + 1.8f * p, 0.8f * p, 4.4f * p, c); R(x + 5.1f * p, y + 1.8f * p, 0.8f * p, 4.4f * p, c);
+                    break;
+                case Shield:
+                    R(x, y, 8f * p, p, c); R(x, y + p, p, 3.5f * p, c); R(x + 7f * p, y + p, p, 3.5f * p, c);
+                    R(x + p, y + 4.5f * p, p, 1.2f * p, c); R(x + 6f * p, y + 4.5f * p, p, 1.2f * p, c);
+                    R(x + 2f * p, y + 5.7f * p, p, p, c); R(x + 5f * p, y + 5.7f * p, p, p, c); R(x + 3f * p, y + 6.7f * p, 2f * p, 1.3f * p, c);
+                    R(x + 3.5f * p, y + 2f * p, p, 3.5f * p, c); R(x + 2.2f * p, y + 3.2f * p, 3.6f * p, p, c);
                     break;
                 case Layout:
                     R(x, y, 5f * p, 4f * p, c);

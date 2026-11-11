@@ -9,6 +9,7 @@ namespace BetterThanCastle
         internal static ConfigEntry<bool> LoadTimer;
         internal static ConfigEntry<int> UiSound;
         internal static ConfigEntry<bool> ReuseMenuPanels;
+        internal static ConfigEntry<bool> EarlyClientUi;
         internal static ConfigEntry<bool> BetterConnection;
         internal static ConfigEntry<bool> ShowPing;
         internal static ConfigEntry<bool> ShowPauseLabel;
@@ -42,6 +43,7 @@ namespace BetterThanCastle
             UiSound = cfg.Bind("Display", "UiSound", 2, "Sound feedback of the mod menu (hover, clicks, typing, delete): 0 = off, 1 = low, 2 = medium, 3 = high.");
             LoadTimer = cfg.Bind("Display", "LoadTimer", true, "Show how many seconds the world load has been running (and the total after it).");
             ReuseMenuPanels = cfg.Bind("Loading", "ReuseMenuPanels", true, "While the world loads, reuse already built menu panels instead of destroying and re-creating them (faster load). Turn off if the in-game UI looks wrong.");
+            EarlyClientUi = cfg.Bind("Loading", "EarlyClientUi", true, "MP client: build the in-game UI while the host finishes loading (measured 2026-11-11: client ready 10 s sooner). Off = vanilla order.");
             UpdateCheck = cfg.Bind("Update", "CheckOnStart", true, "Check GitHub Releases at game start and offer to update the mod.");
             UpdateSkipped = cfg.Bind("Update", "SkippedVersion", "", "Version the player chose to skip.");
             BetterConnection = cfg.Bind("Network", "BetterConnection", true,
@@ -49,7 +51,7 @@ namespace BetterThanCastle
                 "OFF: the mod behaves exactly like vanilla on the wire (play with vanilla clients/hosts).");
             ShowPing = cfg.Bind("Network", "ShowPing", true, "Show ping overlay (BetterConnection only).");
             ShowPauseLabel = cfg.Bind("Network", "ShowPauseLabel", true, "Show the pause label (BetterConnection only).");
-            DiagLog = cfg.Bind("Network", "DiagLog", true, "Write network diagnostics to the log.");
+            DiagLog = cfg.Bind("Network", "DiagLog2", false, "Write detailed network diagnostics files (BetterThanCastle/debug/unet_netdiag_*.log, max 20 MB per session). Normal [Net] lines in the BepInEx log are always written.");
             LogMove = cfg.Bind("Logging", "PathBlocks", false, "Write path blocks to BetterThanCastle/qol_blocked.log (debug).");
             LogBuildAi = cfg.Bind("Logging", "BuildAI", false, "Log build AI decisions to btc_netdiag.txt (debug).");
             LogVis = cfg.Bind("Logging", "VisObjects", false, "Log object names and categories of the vision rules (debug).");

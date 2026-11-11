@@ -80,6 +80,32 @@ namespace BetterThanCastle.Dev
                     Lab("cancel K=" + CancelK + " mode=" + CancelMode);
                     return true;
                 case "dueldump": Dump(); return true;
+                case "shieldbar":
+                    {
+                        // shieldbar <side> <x> <z>: a base-shield barrier owned by that side's faction at an arena point (y of the side's first unit)
+                        Ensure();
+                        List<BtcDuelUnitRef> us = Pick((int)F(p, 1, 0f), "0");
+                        if (us.Count == 0) { Lab("shieldbar: no unit"); return true; }
+                        Vector3 w = W(F(p, 2, 50f), F(p, 3, 10f)); w.y = us[0].Tf.position.y;
+                        Brix.Game.Faction f = us[0].Labor.faction;
+                        BtcShield.DevAddBar(f != null ? f.ID : -1, w);
+                        Lab("shieldbar side=" + F(p, 1, 0f) + " fac=" + (f != null ? f.ID : -1) + " at=" + w);
+                        return true;
+                    }
+                case "duellift":
+                    {
+                        // duellift <side> <idx> <dy>: put units dy above where they stand (they fall)
+                        Ensure();
+                        foreach (BtcDuelUnitRef u in Pick((int)F(p, 1, 0f), p.Length > 2 ? p[2] : "0"))
+                        {
+                            Locomotion4 l = u.Go.GetComponent<Locomotion4>();
+                            Vector3 w = u.Tf.position + Vector3.up * F(p, 3, 10f);
+                            if (l != null) l.SetPosition(w, true); else u.Tf.position = w;
+                            Lab("lift u" + u.Id + " y=" + u.Tf.position.y.ToString("0.0"));
+                        }
+                        return true;
+                    }
+                case "shielddump": Lab("shield " + (p.Length > 1 ? p[1] : "-") + " " + BtcShield.DevDump()); return true;
                 case "duellog": Lab("mark " + (p.Length > 1 ? p[1] : "-")); return true;
                 case "duelplace":
                     {

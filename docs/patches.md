@@ -8,6 +8,9 @@
 | AssetGamemodePatches.cs | typeof(Asset_Gamemode), "Disk_ReadFactionPrototypes" |
 | AssetGamemodeStartWorkersPatches.cs | typeof(Asset_Gamemode), "Disk_LoadGamemode" |
 | AssetMapPatches.cs | typeof(Asset_Map), "Disk_WriteThumbnail" |
+| AutoMarkPatches.cs | typeof(BricktronDamageReceiver), "_Kill" |
+| AutoMarkPatches.cs | [HarmonyPatch(typeof(BricktronDamageReceiver), "ApplyDamage", |
+| AutoMarkPatches.cs | typeof(Architecte), "ExplosionSimple", new Type[] { typeof(GameObject), typeof(Vector3), typeof(float), typeof(string) } |
 | BlocLibrePatches.cs | typeof(BlocLibre), "Initialize" |
 | BuildGoalPatches.cs | typeof(BuildGoal), "OnBlueprintStateChanged" |
 | BuildGoalPatches.cs | typeof(BuildGoal), "PriorityFor" |
@@ -15,11 +18,23 @@
 | BuildGoalProviderPatches.cs | typeof(BuildGoalProvider.FulfillableEnumerator), "MoveNext" |
 | BuilderPatches.cs | typeof(Builder), "CanPassThrough" |
 | BuilderUtilityPatches.cs | typeof(BuilderUtility), "RefreshTree", new Type[] { typeof(IMenu), typeof(bool) } |
+| BuilderUtilityPatches.cs | typeof(BuilderUtility), "InstantiateTree" |
 | CallToArmsPatches.cs | typeof(UIGameObserver), "lua_CallToArms" |
 | CameraScriptPatches.cs | typeof(CameraScript), "Start" |
 | CameraScriptPatches.cs | typeof(CameraScript), "DisableEditorCamera" |
+| CaptureProgressPatches.cs | typeof(CaptureProgress), "OnDeserialize" |
+| CaptureProgressPatches.cs | typeof(CrystalVisuals), "EndTransition" |
+| ChopBlockPatches.cs | typeof(VolumePreprocessor), "GetIndexedVSettings", new Type[] { typeof(Factory.AssetKey), typeof(int), typeof(int) } |
+| ChopBlockPatches.cs | typeof(VolumePreprocessor), "GetIndexedVSettings", new Type[] { typeof(Factory.AssetKey), typeof(Quaternion), typeof(int) } |
+| ChopBlockPatches.cs | typeof(VolumePreprocessor), "GetVSettingsIndices", new Type[] { typeof(Factory.AssetKey), typeof(int), typeof(int) } |
+| ChopBlockPatches.cs | typeof(VolumePreprocessor), "GetVSettingsIndices", new Type[] { typeof(Factory.AssetKey), typeof(Quaternion), typeof(int) } |
+| CleanUpGoalProviderPatches.cs | typeof(CleanUpGoalProvider), "RefreshCleanupGoals" |
+| CleanUpGoalProviderPatches.cs | typeof(LitterGoalProvider), "Refresh" |
 | CorpsePatches.cs | typeof(Corpse), "GetRefundEnergy" |
 | CorruptronPatches.cs | typeof(Minitron), "CanMakeWay" |
+| CraftQueuePatches.cs | typeof(CraftingLabor), "QueueRecipe" |
+| CraftQueuePatches.cs | typeof(CraftingState), "SetRecipes" |
+| CraftQueuePatches.cs | typeof(CraftingLabor), "get_QueuedRecipes" |
 | CrystalVisualsPatches.cs | typeof(CrystalVisuals), "FactionChanged" |
 | CrystalVisualsPatches.cs | typeof(CrystalVisuals), "StartTransition" |
 | CrystalVisualsPatches.cs | typeof(CrystalVisuals), "EndTransition" |
@@ -46,20 +61,44 @@
 | GameLoaderPatches.cs | typeof(GameLoader), "AwakeStep" |
 | GameLoaderPatches.cs | typeof(GameLoader), "BuildStep" |
 | GameLoaderPatches.cs | typeof(GameLoader), "StartStep" |
+| GameLoaderPatches.cs | typeof(Brix.NewUI.LoadingScreen.LoadingScreen), "SetLoadingTitle" |
+| GameLoaderPatches.cs | typeof(GameLoader), "LoadBasicTerrain" |
+| GameLoaderPatches.cs | typeof(GameLoader), "InitTerrainGravity" |
+| GameLoaderPatches.cs | typeof(GameLoader), "LoadNature" |
+| GameLoaderPatches.cs | typeof(GameLoader), "BuildTerrainMeshes" |
+| GameLoaderPatches.cs | typeof(GameLoader), "LoadGameObjects" |
 | GameParamPatches.cs | typeof(GameParam), "Map", MethodType.Setter |
 | GameParamPatches.cs | typeof(GameParam), "GetMaxFactions" |
 | GameParamPatches.cs | typeof(GameParam), "RefreshFactions" |
+| GarnotteEaterPatches.cs | typeof(Garnotte), "Initialize" |
+| GarnotteEaterPatches.cs | typeof(Garnotte), "ResetComponent" |
+| GarnotteEaterPatches.cs | typeof(GarnotteEater), "AbsorbGarnottes", new Type[] { typeof(HashSet<GameObject>) } |
+| GarnotteEaterPatches.cs | typeof(GarnotteEater), "EatOnly" |
+| GarnotteEaterPatches.cs | typeof(GarnotteEater), "EatOnlySimilarsTo" |
+| GarnotteEaterPatches.cs | typeof(GarnotteEater), "Starve" |
+| GarnotteEaterPatches.cs | typeof(Garnotte), "OnEnable" |
+| GarnotteEaterPatches.cs | typeof(Brix.Game.Semantique.Recepteur), "DropAll", new Type[] { typeof(List<GameObject>) } |
 | GarnottePatches.cs | typeof(Garnotte), "Initialize" |
 | GeneralRulesPatches.cs | typeof(GeneralRules), "bricktronCap", MethodType.Getter |
 | GeneralRulesPatches.cs | typeof(GeneralRules), "GetHomeCrystalSpawnRequiredEnergy" |
 | IdleProjectPatches.cs | typeof(IdleProject), "DecideWhatToDo" |
+| InfHealPatches.cs | typeof(Asset_Map), "Disk_Save" |
+| InfHealPatches.cs | typeof(Asset_Map), "Disk_ReadGameObjects" |
+| InfHealPatches.cs | typeof(Brix.Game.Components.ArtificerStaff), "ToHealing" |
+| InstructionsRackPatches.cs | typeof(Instructions), "Batire" |
+| JumpLinePatches.cs | typeof(DirectOrderProject), "GoAndJumpTo" |
+| JumpLinePatches.cs | typeof(Formation), "Init", new Type[] { typeof(Vector3), typeof(List<GameObject>) } |
+| JumpOffPatches.cs | typeof(NavigationNodes), "FindBestObstacle" |
+| KeyBindingsPatches.cs | typeof(KeyBindingsUtility), "RegisterAction" |
 | KnowledgeFinderPatches.cs | typeof(KnowledgeDisjointRegionsFinder), MethodType.Constructor, new Type[0] |
 | KnowledgeFinderPatches.cs | typeof(KnowledgeConnectedAccessFinder), MethodType.Constructor, new Type[0] |
 | LaborPatches.cs | typeof(Labor), "GetReadyForNextTask" |
+| LivrePatches.cs | typeof(Livre), "Lire", new[] { typeof(string), typeof(string) } |
 | LobbyPlayerPatches.cs | typeof(LobbyPlayer), "OnNameChange" |
 | LobbyPlayerPatches.cs | typeof(LobbyPlayer), "CmdSetPlayerName" |
 | LobbyTeamInfosPatches.cs | typeof(NetworkPlayersMenu), "GetPlayerBuilders" |
 | LocalFactionVisionPatches.cs | typeof(LocalFactionVision), "OnRequested" |
+| LocalFactionVisionPatches.cs | typeof(LocalFactionVision), "UpdateHostVisibility" |
 | LocalFactionVisionPatches.cs | typeof(LocalFactionVision), "ResetComponent" |
 | LocalFactionVisionPatches.cs | typeof(LocalFactionVision), "IsVisibleForFaction" |
 | LocalFactionVisionPatches.cs | typeof(LocalFactionVision), "GetAlliedVision" |
@@ -75,11 +114,13 @@
 | MatchStatsPatches.cs | typeof(CraftingLabor), "FinishRecipe" |
 | MatchStatsPatches.cs | typeof(Recipe), "SpawnAll" |
 | MatchStatsPatches.cs | typeof(Recepteur), "AddObject", new Type[] { typeof(GameObject), typeof(bool) } |
-| MatchStatsPatches.cs | typeof(ExplodeOnDeath), "Explode" |
 | MeleeAttackPatches.cs | typeof(MeleeAttack), "Apply", new Type[] { typeof(IDamageReceiver) } |
 | NavigateOrderDataPatches.cs | typeof(Navigation.NavigateOrderData), "InitSearch" |
 | NavigationNodesPatches.cs | typeof(NavigationNodes), "RunToExactly", new Type[] { typeof(Labor), typeof(Location) } |
 | NavigationNodesPatches.cs | typeof(NavigationNodes), "RunToward", new Type[] { typeof(Labor), typeof(Location), typeof(bool), typeof(bool) } |
+| NetworkChatMenuPatches.cs | typeof(ChatBoxDriver), "ReceivedChatMessage" |
+| NetworkChatMenuPatches.cs | typeof(ChatBoxDriver), "Initialize" |
+| NoSkipPatches.cs | typeof(AttackInfo), "Strike" |
 | OverheadDisplayDriverPatches.cs | typeof(OverheadDisplayDriver), "BrixUpdate" |
 | PathUnrollPatches.cs | typeof(PathUnroll), "RemoveInvalidNodes" |
 | PickerOrderGiverPatches.cs | typeof(PickerOrderGiver), "DirectOrder", new Type[] { typeof(List<GameObject>), typeof(Vector3) } |
@@ -95,14 +136,29 @@
 | ProjectileAimingPatches.cs | typeof(ProjectileAiming), "IsArcheryTargetFarEnough" |
 | ProjectileAttackPatches.cs | typeof(ProjectileAttack), "Apply", new Type[] { typeof(IDamageReceiver) } |
 | RadialLayoutGroupPatches.cs | typeof(RadialLayoutGroup), "SetCreationTime" |
+| RecepteurOverheadPatches.cs | typeof(RecepteurOverheadDisplayDriver), "SetBigIcon" |
+| RecepteurPatches.cs | typeof(Recepteur), "ObjectUntracked" |
+| ShareSendPatches.cs | typeof(UNetManager), "SendFiles" |
+| ShareSendPatches.cs | typeof(UNetFileTransferMessageHandler), "FileDataCompletedMessageReceived" |
 | SharedFactionVisionPatches.cs | typeof(SharedFactionVision), "AddToRegularTracking" |
 | SharedFactionVisionPatches.cs | typeof(SharedFactionVision), "RemoveFromRegularTracking" |
+| ShieldPatches.cs | typeof(CaptureClock), "SetUnitsInCaptureZone" |
+| ShieldPatches.cs | typeof(CatapultProjectile), "Start" |
+| ShieldPatches.cs | typeof(KinematicProjectile), "Update" |
 | SimpleHostScriptPatches.cs | typeof(SimpleHostScript), "Run" |
 | SimpleHostScriptPatches.cs | typeof(SimpleHostScript), "PopulateFactionsLocally" |
+| SplashScreenPatches.cs | typeof(Brix.UI.SplashScreen), "Start" |
 | TaskPatches.cs | typeof(Task), "OnPathFailed" |
+| TimerPatches.cs | typeof(Asset_Map), "Disk_Overwrite" |
+| TimerPatches.cs | typeof(Asset_Map), "Disk_WriteAsNew" |
+| TimerPatches.cs | typeof(Brix.Lua.LuaTimer), "FormatedElapsedSeconds" |
 | ToolPatches.cs | typeof(Tool), "DropFrom" |
+| ToolRackPatches.cs | typeof(ToolRack), "RefreshExclusivity" |
+| ToolRackPatches.cs | typeof(ToolRack), "Start" |
 | TrackingRegistryPatches.cs | typeof(TrackingRegistry.TrackingGroup), MethodType.Constructor |
 | TrackingRegistryPatches.cs | typeof(TrackingRegistry.TrackingGroup), "ResetObject" |
+| TrapReplayPatches.cs | typeof(LocalFactionVision), "OnRebuildObservers" |
+| TrapReplayPatches.cs | typeof(BearTrapTrigger), "Start" |
 | UIGameObserverPatches.cs | typeof(UIGameObserver), "lua_SetModeVictoryTextureAsync" |
 | UIGameObserverPatches.cs | typeof(UIGameObserver), "lua_SetModeDefeatTextureAsync" |
 | UIGameObserverPatches.cs | typeof(UIGameObserver), "Start" |
@@ -128,6 +184,9 @@
 | UNetManagerPatches.cs | typeof(UNetManager), "OnServerError" |
 | UNetManagerPatches.cs | typeof(UNetManager), "OnClientError" |
 | UNetManagerPatches.cs | typeof(UNetManager), "GetLobbyPlayerNameFromConnection" |
+| UNetTransformPatches.cs | typeof(UNetTransform), "OnDeserialize" |
 | VolumePatches.cs | typeof(Volume), "Initialize" |
+| VoxelRequestBatcherPatches.cs | typeof(VoxelRequestBatcher), "ProcessDebloc" |
 | WardAttackPatches.cs | typeof(WardAttack), "AttackRange", MethodType.Getter |
+| WardAttackPatches.cs | typeof(WardAttack), "UnitsRefresh" |
 | WardAttackPatches.cs | typeof(WardAttack), "FixedUpdate" |

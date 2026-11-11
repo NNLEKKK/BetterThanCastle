@@ -131,6 +131,27 @@ namespace BetterThanCastle
             }
         }
 
+        /// <summary>Builds a pinned WAV buffer for other sound sets (base shields); keep the pointer, the buffer stays pinned for the session.</summary>
+        internal static IntPtr Pin(float[] s)
+        {
+            byte[] b = ToWav(s);
+            return GCHandle.Alloc(b, GCHandleType.Pinned).AddrOfPinnedObject();
+        }
+
+        /// <summary>Plays a buffer from <see cref="Pin"/> (async, replaces the current sound). Respects the game mute, not the UI sound level.</summary>
+        internal static void PlayPtr(IntPtr p)
+        {
+            if (_broken || p == IntPtr.Zero) return;
+            try
+            {
+                if (Brix.Audio.SoundEngine.mute) return;
+                _lastAny = Time.realtimeSinceStartup;
+                _lastStrong = _lastAny;
+                PlaySoundMem(p, IntPtr.Zero, 0x1 | 0x2 | 0x4);
+            }
+            catch (Exception e) { _broken = true; BtcLog.Warn("Sfx", "sounds disabled: " + e.Message); }
+        }
+
         private static void Ensure(int lvl)
         {
             if (_built == lvl) return;
@@ -158,7 +179,7 @@ namespace BetterThanCastle
         }
 
         /// <summary>A dry tick: a fixed-pitch sine with a very fast decay plus an optional low-passed noise tap, one-pole low-passed.</summary>
-        private static float[] Tick(float f, float dur, float decay, float amp, float noise, float cutoff)
+        internal static float[] Tick(float f, float dur, float decay, float amp, float noise, float cutoff)
         {
             int n = Mathf.Max(8, (int)(dur * SR));
             float[] s = new float[n];
@@ -186,7 +207,7 @@ namespace BetterThanCastle
         }
 
         /// <summary>A soft sine note: f0 -> f1 glide, smooth attack (att, seconds), exponential decay, tiny 2nd harmonic, one-pole low-pass at cutoff Hz.</summary>
-        private static float[] Soft(float f0, float f1, float dur, float decay, float amp, float att, float cutoff)
+        internal static float[] Soft(float f0, float f1, float dur, float decay, float amp, float att, float cutoff)
         {
             int n = Mathf.Max(8, (int)(dur * SR));
             float[] s = new float[n];
@@ -206,7 +227,7 @@ namespace BetterThanCastle
             return s;
         }
 
-        private static float[] Cat(params float[][] parts)
+        internal static float[] Cat(params float[][] parts)
         {
             int n = 0;
             for (int i = 0; i < parts.Length; i++) n += parts[i].Length;

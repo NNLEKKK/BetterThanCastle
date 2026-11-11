@@ -225,8 +225,8 @@ namespace BetterThanCastle.Dev
                     float v;
                     if (s != null && s.pingMsByConnection.TryGetValue(c.connectionId, out v)) { sum += v; n++; }
                     trMax = Math.Max(trMax, Rtt(c));
-                    float hb;
-                    if (s != null && s.lastHeartbeatUnscaledTimeByConnection.TryGetValue(c.connectionId, out hb)) sm.Hb = Math.Max(sm.Hb, Time.unscaledTime - hb);
+                    BtcNetManager.Peer pr;
+                    if (s != null && s.peers.TryGetValue(c.connectionId, out pr)) sm.Hb = Math.Max(sm.Hb, pr.silence);
                     cnt++;
                 }
                 if (n > 0) sm.Mod = sum / n;
@@ -237,7 +237,7 @@ namespace BetterThanCastle.Dev
                 conn = m.LocalNetworkClient.isConnected;
                 if (s != null && s.pingMsToHost >= 0f) sm.Mod = s.pingMsToHost;
                 sm.Tr = Rtt(m.LocalNetworkClient.connection);
-                if (s != null && s.lastHeartbeatUnscaledTimeClient > 0f) sm.Hb = Time.unscaledTime - s.lastHeartbeatUnscaledTimeClient;
+                if (s != null && s.hostPeer.seen) sm.Hb = s.hostPeer.silence;
             }
             if (_lastConn && !conn) { _disc++; BtcLog.Warn("MP", "connection lost (disc#" + _disc + ")"); }
             if (!_lastConn && conn) BtcLog.Info("MP", "connection up");
@@ -246,6 +246,36 @@ namespace BetterThanCastle.Dev
             if (hard && !_lastHard) { _hard++; BtcLog.Warn("MP", "hard pause / degraded #" + _hard); }
             _lastHard = hard;
             if (conn) { Ring.Add(sm); if (Ring.Count > 7200) Ring.RemoveRange(0, 1200); }
+        }
+
+        /// <summary>Scenario "netdrop": cut the transport connection (client: to the host; host: every remote client) like a real drop.</summary>
+        internal static void Drop()
+        {
+            try
+            {
+                byte err;
+                if (NetworkServer.active)
+                {
+                    for (int i = 0; i < NetworkServer.connections.Count; i++)
+                    {
+                        NetworkConnection c = NetworkServer.connections[i];
+                        if (c == null || c.hostId < 0 || BtcNetManager.IsLocalConnection(c)) continue;
+                        NetworkTransport.Disconnect(c.hostId, c.connectionId, out err);
+                        BtcLog.Info("MP", "netdrop conn " + c.connectionId + " err=" + err);
+                    }
+                }
+                else
+                {
+                    UNetManager m = UNetManager.instance;
+                    NetworkConnection c = m != null && m.LocalNetworkClient != null ? m.LocalNetworkClient.connection : null;
+                    if (c == null) { BtcLog.Warn("MP", "netdrop: no client connection"); return; }
+                    NetworkTransport.Disconnect(c.hostId, c.connectionId, out err);
+                    BtcLog.Info("MP", "netdrop client err=" + err);
+                    // a local Disconnect raises no event here: deliver the disconnect like a real drop (UNET MsgType.Disconnect)
+                    c.InvokeHandlerNoData(MsgType.Disconnect);
+                }
+            }
+            catch (Exception e) { BtcLog.Warn("MP", "netdrop: " + e.Message); }
         }
 
         private static float Rtt(NetworkConnection c)

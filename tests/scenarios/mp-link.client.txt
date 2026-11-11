@@ -1,0 +1,23 @@
+# BCv2 link lab, client side (see mp-link.txt for the expected host log).
+prof start
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 90
+ready 120
+waitgame 240
+wait 40
+hitch 3
+wait 10
+netstat
+hitch 6
+wait 12
+netstat
+hbmute 8
+wait 15
+netstat
+wait 20
+netdrop
+wait 40
+netstat
+wait 30
+quit

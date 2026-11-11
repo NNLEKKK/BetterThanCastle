@@ -1,0 +1,30 @@
+# shield-lab: base shield barrier on the duel arena (DEV shieldbar): edge stop, no damage inside, trapped unit DoT, owner attacks out.
+duelunits 4 2 2
+duelskip 1
+duelheal 0
+duelplayerbot -1
+duelnobot 1
+duelnorules 1
+duel
+waitduel 240
+gameplay shield.on=1;shield.ai=1;shield.peace=0;shield.radius=10;shield.dps=20
+wait 3
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 all 100 30 90
+duelplace 1 0 122 30 270
+duelplace 1 1 104 30 270
+wait 2
+shieldbar 0 100 30
+wait 2
+shielddump t0
+duelo 1 0 attack 0 0
+duelo 1 1 attack 0 1
+wait 4
+shielddump t4
+wait 6
+shielddump t10
+duelo 0 0 attack 1 0
+wait 8
+shielddump t18
+quit

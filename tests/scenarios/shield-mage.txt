@@ -1,0 +1,36 @@
+# shield-mage: artificer suppression. Side 1 artificer (unit 2) out of reach -> barrier up; moves within reach -> down for side 1; leaves -> back up after the delay, side 1 halberdier inside gets trapped.
+duelunits 4 2 2
+duelunits 7 0 1
+duelskip 1
+duelheal 0
+duelplayerbot -1
+duelnobot 1
+duelnorules 1
+duel
+waitduel 240
+gameplay shield.on=1;shield.peace=0;shield.mage=1;shield.mageR=15;shield.mageD=4;shield.radius=10;shield.dps=20
+wait 3
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 all 100 30 90
+duelplace 1 0 122 30 270
+duelplace 1 1 124 34 270
+duelplace 1 2 135 30 270
+wait 2
+shieldbar 0 100 30
+wait 2
+shielddump t0-far
+duelo 1 0 attack 0 0
+wait 4
+shielddump t4-pushed
+duelo 1 2 move 112 30
+wait 5
+shielddump t9-mage-near
+wait 4
+shielddump t13-inside
+duelo 1 2 move 140 30
+wait 4
+shielddump t17-leaving
+wait 5
+shielddump t22-back-up
+quit

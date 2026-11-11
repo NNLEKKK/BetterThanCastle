@@ -98,3 +98,23 @@ Untested at the time of writing: items 1-5 in real MP, header patch with a real 
 - Slow motion: x0.25 / x0.5: units, animations, arrows, particles really slow down; pause freezes the world; x4/x8 speeds everything up; camera and UI stay at normal speed. replay.txt `TimeScale=0` = old behaviour.
 - Instant seek: first open shows "Preparing seek N%" (fast forward to the end, then back); afterwards clicking anywhere on the timeline (back or forward) is near-instant. Second open of the same replay skips the preparation (cache in BetterThanCastle/cash/*.btcs). Log `[ReplaySeek] jump ... total N ms`.
 - After jumps check: carried items in hands, items on racks/stockpiles, buildings/blueprints, crafting queues, dug terrain and fallen trees look like normal playback at that time. Old replays (v0.2.x) play and seek the same way. Fallback: replay.txt `InstantSeek=0`.
+
+## Base shields (2026-11-11, Gameplay > shield page, BC ON on every PC)
+- Host: Gameplay > shield page: master row "Base shields" on, summary card reads the rules in plain words; dependent rows appear only with their parent on. Client sees the host's values.
+- Match (2 PCs, advanced timer with peace 2-3 min): spheres around home crystals; enemy units ordered inside are knocked back 2-3 blocks by a weak smash and halt; a unit jumping onto the dome slides off and lands outside; artificer drop needs the barrier edge in its reach; arrows vanish at the edge; catapult shots bounce off; digging/blowing blocks inside from outside does nothing; owner shoots and fights out freely. Top-left chip "Shields" with rows and timers; notices + sounds when a shield goes up/down.
+- Peace end with only "Up during peace": all shields fall at once (sound + notice). With "Drop by captured crystals" N=1: capture one neutral crystal -> enemy shields open for you only (chip says "open for you"); lose it -> back up, your units inside lose 20 HP/s and cannot hit anything until they walk out.
+- Artificer mode: walk an artificer near an enemy crystal -> its shield falls for you; walk away -> countdown (ticks in the last 5 s) -> back up.
+- Captured crystal shield goes up right after the capture; enemies on it are trapped.
+- Gameplay shield page has a small link line to Visuals > World overlays > Base shields: opacity slider, volume slider (preview while dragging), per-sound switches, notices, HUD chip; all survive a restart.
+- BC OFF on everybody: nothing of this exists (no spheres, no msg 109). Logs: `[Shield]` lines (bars/up/trapped every 10 s, flips).
+
+## BetterConnection v2 (2026-11-11, all players same BTC version, BC ON)
+1. 2 PCs, normal match 10 min: no "Waiting for a player" card at all (alt-tab, minimise, menu open on either side).
+2. Load a big map with 3 players: no pause card during or right after the load; compare load time with 0.4.0 (early client UI is off now).
+3. Pull the client's network cable 10 s: host + client both show "Waiting for a player" with the client's name ("is not responding"); plug back -> both resume within ~2 s.
+4. Pull the cable 30 s: client shows "Reconnecting to the host...", reconnects by itself; host: card "X disconnected, waiting" -> back with the same units/colour.
+5. During 4, host presses "Continue without them": the game runs for everybody else; the client still rejoins later.
+6. Client card "Leave to menu" while reconnecting -> menu; host keeps waiting -> "Continue without them".
+7. Host quits the match: clients go to the menu (no endless reconnect).
+8. Voluntary pause (key) still works for host and clients; client-pause permission plate unchanged.
+Logs: `[Net] link:` / `link pause ON/OFF` lines (host has the reason and the session total).

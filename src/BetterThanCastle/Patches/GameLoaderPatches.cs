@@ -328,7 +328,8 @@ namespace BetterThanCastle.Patches
             try
             {
                 if (!_logged) { _logged = true; BtcLoadBoost.Note("GateWait: done=" + _done + " server=" + NetworkServer.active + " mp=" + Neo.IsMultiplayer + " hostLoaded=" + GameParam.instance.HostLoaded); }
-                if (!_done && !NetworkServer.active && Neo.IsMultiplayer && !GameParam.instance.HostLoaded)
+                // cfg Loading/EarlyClientUi (default on: client ready ~10 s sooner in mp-load)
+                if (!_done && BtcConfig.EarlyClientUi.Value && !NetworkServer.active && Neo.IsMultiplayer && !GameParam.instance.HostLoaded)
                 {
                     _done = true;
                     return EarlyUi();

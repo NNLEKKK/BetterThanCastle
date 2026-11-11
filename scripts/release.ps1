@@ -1,6 +1,7 @@
 ﻿param(
     [Parameter(Mandatory=$true)][string]$Version,   # e.g. 0.2.0
     [string]$Notes = '',                            # changelog text for the release (also add it to CHANGELOG.md)
+    [string]$NotesFile = '',                        # UTF-8 file with the notes (multi-line or Cyrillic text never goes on the command line)
     [switch]$Prerelease,                            # GitHub pre-release (updater ignores it: /releases/latest skips pre-releases)
     [string]$Title = '',                            # release name appended to the GitHub title
     [switch]$Publish                                # push `public` to GitHub main + tag, create the release with both files
@@ -9,6 +10,7 @@
 # branch, public snapshot commit (scripts/public-snapshot.ps1) and tag on it. -Publish pushes ONLY the public branch.
 # The release body contains "sha256: <hash of BetterThanCastle.dll>", which the in-game updater (BtcUpdater) verifies.
 $ErrorActionPreference = 'Stop'
+if ($NotesFile) { $Notes = [IO.File]::ReadAllText((Resolve-Path $NotesFile), [Text.Encoding]::UTF8) }
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 $repo = 'NNLEKKK/BetterThanCastle'

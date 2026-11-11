@@ -158,7 +158,7 @@ public static class BtcSpectate
 			bool flag10 = job != null && job.stage == 0 && !job.askDone;
 			bool flag11 = BtcSpectate._bannerOn && BtcSpectate.NetOk();
 			bool flag12 = (BtcSpectate._cState >= 2 && BtcSpectate._cState <= 5) || (BtcSpectate._cState == 7 && unscaledTime < BtcSpectate._cMsgUntil);
-			bool flag13 = NetworkServer.active && BtcSpectate._waitCount > 0 && BtcSpectate.Val(BtcSpectate.iRet, 1f) > 0.5f;
+			bool flag13 = NetworkServer.active && BtcSpectate._waitCount > 0 && BtcSpectate.Val(BtcSpectate.iRet, 1f) > 0.5f && !BtcNetManager.LinkPauseActive; // BCv2: the HUD card shows the same with its own button
 			bool flag14 = !flag10 && !flag11 && !flag12 && !flag13;
 			bool flag15 = !flag14;
 			bool flag16 = flag15;
@@ -558,19 +558,10 @@ public static class BtcSpectate
 		}
 	}
 
+	// legacy read UNetManager.pendingReconnectUsers by reflection (the field lives in BtcNetManager since the port, so it was always null)
 	private static IList Pending()
 	{
-		IList result;
-		try
-		{
-			FieldInfo field = typeof(UNetManager).GetField("pendingReconnectUsers", BindingFlags.Instance | BindingFlags.NonPublic);
-			result = ((field != null) ? ((IList)field.GetValue(UNetManager.instance)) : null);
-		}
-		catch (Exception)
-		{
-			result = null;
-		}
-		return result;
+		return BtcNetManager.PendingUsers;
 	}
 
 	private static void OnHello(NetworkMessage nm)
@@ -656,6 +647,14 @@ public static class BtcSpectate
 								bool flag16 = flag15;
 								if (flag16)
 								{
+									try
+									{
+										string dbg = "";
+										foreach (User du in UNetManager.instance.UserList) if (du != null) dbg += "'" + BtcSpectate.K(du.ScreenName) + "' away=" + BtcSpectate.IsAway(du) + " conn=" + (du.connectionToClient != null ? du.connectionToClient.connectionId.ToString() : "-") + "; ";
+										List<User> pl = BtcNetManager.PendingUsers;
+										BtcSpectate.Log("server: host-nick deny for '" + text + "', users: " + dbg + " pending=" + (pl != null ? pl.Count : -1));
+									}
+									catch (Exception) { }
 									BtcSpectate.Deny(conn, BtcGameplay.T("This nickname belongs to the host. Change your nickname.", "Этот ник принадлежит хосту. Смените ник."));
 								}
 								else
@@ -2782,7 +2781,9 @@ public static class BtcSpectate
 
 	private static bool IsAway(User u)
 	{
-		return u != null && (u.connectionToClient == null || !BtcSpectate.Alive(u.connectionToClient));
+		// BCv2: a dropped player waiting for a reconnect is away even if its old connection id was reused by the new connection
+		List<User> pending = BtcNetManager.PendingUsers;
+		return u != null && ((pending != null && pending.Contains(u)) || u.connectionToClient == null || !BtcSpectate.Alive(u.connectionToClient));
 	}
 
 	private static string Ip(NetworkConnection c)
@@ -2797,45 +2798,19 @@ public static class BtcSpectate
 		return text;
 	}
 
+	/// <summary>BCv2: dropped players set aside by StashPending while a new connection is handled (they still block the game).</summary>
+	internal static int StashedCount { get { return BtcSpectate._stash != null ? BtcSpectate._stash.Count : 0; } }
+
+	// legacy reflected on UNetManager fields/methods that only exist in BtcNetManager since the port (always false / not found)
 	private static bool GetBool(string field)
 	{
-		bool result;
-		try
-		{
-			FieldInfo field2 = typeof(UNetManager).GetField(field, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-			result = (field2 != null && (bool)field2.GetValue(UNetManager.instance));
-		}
-		catch (Exception)
-		{
-			result = false;
-		}
-		return result;
+		return field == "connectionDegraded" && BtcNetManager.LinkDegraded;
 	}
 
+	// BCv2: the host link pause follows the waiting list by itself (BtcNetManager.HostPolicy); nothing to force here
 	private static void SetHardPause(bool on)
 	{
-		try
-		{
-			MethodInfo method = typeof(UNetManager).GetMethod("ApplyHardPause", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-			bool flag = method != null;
-			bool flag2 = flag;
-			if (flag2)
-			{
-				method.Invoke(UNetManager.instance, new object[]
-				{
-					on
-				});
-				BtcSpectate.Log("server: hard pause " + (on ? "on" : "off"));
-			}
-			else
-			{
-				BtcSpectate.Log("server: ApplyHardPause not found");
-			}
-		}
-		catch (Exception ex)
-		{
-			BtcSpectate.Log("SetHardPause: " + ex.Message);
-		}
+		BtcSpectate.Log("server: hard pause " + (on ? "on" : "off") + " requested (BCv2 policy decides)");
 	}
 
 	private static void ReattachNow(NetworkConnection conn, User u, string why)
@@ -2862,12 +2837,17 @@ public static class BtcSpectate
 		}
 	}
 
-	private static void CancelWaiting()
+	/// <summary>BCv2 host card "continue without": stop waiting for stale slots, keep the dropped players re-attachable.</summary>
+	internal static void CancelWaitingFromHost() { BtcSpectate.CancelWaiting(false); }
+
+	private static void CancelWaiting() { BtcSpectate.CancelWaiting(true); }
+
+	private static void CancelWaiting(bool clearPending)
 	{
 		try
 		{
 			IList list = BtcSpectate.Pending();
-			bool flag = list != null;
+			bool flag = list != null && clearPending;
 			bool flag2 = flag;
 			if (flag2)
 			{
@@ -3333,6 +3313,18 @@ public static class BtcSpectate
 		try
 		{
 			UNetManager instance = UNetManager.instance;
+			// BCv2: two players may share a nick (same Steam name): a dropped (away) one wins, so a return never hits the host's user
+			// (the host's own local connection never counts as "connected", so pending users are checked first and local ones skipped)
+			List<User> pending = BtcNetManager.PendingUsers;
+			if (pending != null)
+				for (int j = 0; j < pending.Count; j++)
+					if (pending[j] != null && BtcSpectate.K(pending[j].ScreenName) == BtcSpectate.K(name)) return pending[j];
+			for (int j = 0; j < instance.UserList.Count; j++)
+			{
+				User away = instance.UserList[j];
+				if (away != null && BtcSpectate.K(away.ScreenName) == BtcSpectate.K(name) && BtcSpectate.IsAway(away)
+					&& (away.connectionToClient == null || !BtcSpectate.IsLocal(away.connectionToClient))) return away;
+			}
 			for (int i = 0; i < instance.UserList.Count; i++)
 			{
 				User user = instance.UserList[i];

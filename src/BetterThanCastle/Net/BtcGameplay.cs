@@ -785,6 +785,7 @@ public static class BtcGameplay
 		BtcTimer.RegisterHandlers(clientOverride);
 		BtcCraftQueue.RegisterHandlers(clientOverride);
 		BtcFocusMark.RegisterHandlers(clientOverride);
+		BtcShield.RegisterHandlers(clientOverride);
 		bool active = NetworkServer.active;
 		bool flag = active;
 		bool flag2 = flag;

@@ -104,6 +104,7 @@ namespace BetterThanCastle
             BtcCraftQueue.Tick();
             BtcInfHeal.Tick();
             BtcHeldWards.Tick();
+            BtcShield.Tick();
             BtcPovRec.Tick();
             BtcPovRec.PlayTick();
             if (Cur != _lastCur) { BtcLog.Info("Timer", "phase " + _lastCur + " -> " + Cur + " (replay " + BtcReplay.Mode + ")"); _lastCur = Cur; }

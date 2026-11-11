@@ -1,0 +1,14 @@
+# shield-ui: Gameplay shield page (rule on) and the Visuals pages that hold the barrier look/sound settings (World overlays, All); errors show in the digest.
+wait 20
+gameplay shield.on=1;shield.shards=1;shield.mage=1
+gameplaytest 8
+wait 3
+visualtest 1 0
+wait 2
+visualtest 1 1
+wait 2
+visualtest 6 0
+wait 2
+visualtest 6 1
+wait 2
+quit

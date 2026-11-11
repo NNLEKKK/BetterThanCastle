@@ -25,9 +25,10 @@ namespace BetterThanCastle
     /// State is per UNetManager instance (Dictionary by instanceID, dropped by BtcNetOverlay.OnDestroy).
     /// Wire rule: nothing here sends, registers or changes anything unless BtcNetworkGate.Enabled is true at call time
     /// AND the session was started with BetterConnection ON (State.bcSession).
-    /// Message ids (unchanged from the legacy mod): 64 heartbeat, 70/71 ping req/resp, 72/73/74 voluntary pause req/state/perm.
+    /// Message ids: 64 heartbeat (BCv2 payload), 70/71 ping req/resp, 72/73/74 pause req/state(voluntary + host link pause)/perm,
+    /// 110 session end, 111 rejoin. Link monitor and pause policy: Net/BtcNetLink.cs.
     /// </summary>
-    internal static class BtcNetManager
+    internal static partial class BtcNetManager
     {
         internal const short MsgHeartbeat = 64;
         internal const short MsgPingRequest = 70;
@@ -39,11 +40,7 @@ namespace BetterThanCastle
 
         private const int HostOwnerId = -1;
         private const int NoVoluntaryPauseOwner = -2;
-        private const float HeartbeatInterval = 0.5f;
         private const float PingInterval = 10f;
-        private const float ConnectionPollInterval = 0.2f;
-        private const float ConnectionSilenceThreshold = 2f;
-        private const float DegradedGiveUpThreshold = 300f;
         private const float LoadingLevelSafetyTimeout = 6f;
         private const uint BcDisconnectTimeout = 3600000U;
         private const int BcMaxBufferedPackets = 511;
@@ -56,18 +53,32 @@ namespace BetterThanCastle
             internal bool attached;
             internal bool bcSession;                 // handlers registered with BC ON for the current session
             internal bool wasConnected;              // client reached OnClientConnect at least once (reconnect only then)
-            internal bool connectionDegraded;
-            internal float lastConnectionPollTime;
-            internal float degradedSinceTime;
-            internal bool recoveryDrainScheduled;
-            internal float recoveryDrainDeadline;
-            internal bool hardPauseActive;
+            internal bool connectionDegraded;        // legacy field (read by dev tools); BCv2 keeps it false
+            internal bool recoveryDrainScheduled;    // legacy field; BCv2 keeps it false
+            internal bool hardPauseActive;           // link pause in effect locally (host: decided here; client: from the host or own reconnect)
             internal float preHardPauseTimeScale = 1f;
             internal bool heartbeatHandlerRegistered;
             internal float lastHeartbeatSendTime;
-            internal readonly Dictionary<int, float> lastHeartbeatUnscaledTimeByConnection = new Dictionary<int, float>();
-            internal float lastHeartbeatUnscaledTimeClient;
             internal readonly List<User> pendingReconnectUsers = new List<User>();
+            // BCv2 link monitor (Net/BtcNetLink.cs)
+            internal readonly Dictionary<int, Peer> peers = new Dictionary<int, Peer>();   // host: by connection id
+            internal readonly Peer hostPeer = new Peer();                                  // client: the host
+            internal readonly Dictionary<int, float> awaitingRejoin = new Dictionary<int, float>();   // host: new conn id -> connect time
+            internal readonly HashSet<string> continueWithout = new HashSet<string>();     // host: names it chose not to wait for
+            internal float lastTickRt = -1f;
+            internal float frameMax;
+            internal float ownStallAt = -100f;
+            internal float ownStallLen;
+            internal string hardText;                // reason lines of the link pause (host text, shown everywhere)
+            internal float hardSince;
+            internal int pauseCount;
+            internal float pausedTotal;
+            internal float lastPauseBroadcast;
+            internal bool hostHard;                  // client: the host says the game is link-paused
+            internal bool clientLinkWarn;
+            internal bool hostEnded;                 // client: the host left on purpose (msg 110), no reconnect
+            internal bool rejoinPending;             // client: send our name after the next connect
+            internal string myName;
             internal Coroutine clientReconnectCoroutine;
             internal float lastPingSendTime;
             internal readonly Dictionary<int, float> pingMsByConnection = new Dictionary<int, float>();
@@ -193,13 +204,15 @@ namespace BetterThanCastle
         {
             s.heartbeatHandlerRegistered = false;
             s.bcSession = false;
-            s.lastHeartbeatUnscaledTimeByConnection.Clear();
-            if (clearClientHeartbeat) s.lastHeartbeatUnscaledTimeClient = 0f;
+            s.peers.Clear();
+            s.awaitingRejoin.Clear();
+            if (clearClientHeartbeat) ResetPeer(s.hostPeer);
             s.connectionDegraded = false;
             s.recoveryDrainScheduled = false;
-            s.reconnectRecoveryInProgress = false;
-            if (clearPending) s.pendingReconnectUsers.Clear();
-            if (s.hardPauseActive) ApplyHardPause(m, s, false);
+            if (clearPending) { s.reconnectRecoveryInProgress = false; s.pendingReconnectUsers.Clear(); s.continueWithout.Clear(); }
+            s.hostHard = false;
+            s.hardText = null;
+            ReleaseHard(s);
             s.clientsCanVoluntaryPause = true;
             if (s.voluntaryPauseActive) SetVoluntaryPause(m, s, false, NoVoluntaryPauseOwner, null);
         }
@@ -209,25 +222,52 @@ namespace BetterThanCastle
         {
             State s = Peek(m);
             if (s == null) return;
+            if (s.reconnectRecoveryInProgress) BtcLog.Warn("Net", "Disconnect() during a reconnect, caller: " + Caller());
+            AnnounceSessionEnd(m);
             if (s.clientReconnectCoroutine != null)
             {
                 m.StopCoroutine(s.clientReconnectCoroutine);
                 s.clientReconnectCoroutine = null;
             }
             s.wasConnected = false;
+            s.rejoinPending = false;
             ResetSession(m, s, true, true);
         }
 
         internal static void OnLobbyStopHost(UNetManager m)
         {
             State s = Peek(m);
-            if (s != null) ResetSession(m, s, true, false);
+            if (s == null) return;
+            AnnounceSessionEnd(m);
+            ResetSession(m, s, true, false);
+        }
+
+        internal static string CallerTrace() { return Caller(); }
+
+        private static string Caller()
+        {
+            string t = System.Environment.StackTrace.Replace(System.Environment.NewLine, " | ");
+            return t.Length > 1200 ? t.Substring(0, 1200) : t;
+        }
+
+        private static void ResetPeer(Peer p)
+        {
+            p.silence = 0f; p.hear = 0f; p.stall = 0f; p.loading = false; p.seen = false; p.hold = false; p.badFor = 0f; p.healthy = 0f; p.deafFor = 0f; p.why = null;
+        }
+
+        /// <summary>Local release of the link pause (session start/end, load start).</summary>
+        private static void ReleaseHard(State s)
+        {
+            if (!s.hardPauseActive) return;
+            s.hardPauseActive = false;
+            RecomputeEffectivePause(s);
         }
 
         internal static void OnStopClient(UNetManager m)
         {
             State s = Peek(m);
             if (s == null) return;
+            if (s.reconnectRecoveryInProgress) BtcLog.Warn("Net", "StopClient during a reconnect, caller: " + Caller());
             // keep bcSession/pending users while a reconnect loop is running: the next StartClient re-registers.
             ResetSession(m, s, false, true);
         }
@@ -237,20 +277,26 @@ namespace BetterThanCastle
         {
             State s = Get(m);
             BtcNetId.OnServerStart();
-            s.lastHeartbeatUnscaledTimeByConnection.Clear();
+            s.peers.Clear();
+            s.awaitingRejoin.Clear();
+            s.continueWithout.Clear();
             s.connectionDegraded = false;
             s.recoveryDrainScheduled = false;
             s.pendingReconnectUsers.Clear();
+            s.pauseCount = 0;
+            s.pausedTotal = 0f;
             RegisterHeartbeatHandler(m);
             s.heartbeatHandlerRegistered = true;
             RegisterPingHandler(m);
             RegisterVoluntaryPauseHandlers(m, null);
+            RegisterServerHandler(MsgRejoin, delegate(NetworkMessage msg) { OnRejoinReceived(m, msg); });
             s.bcSession = true;
             s.clientsCanVoluntaryPause = true;
             if (s.voluntaryPauseActive) SetVoluntaryPause(m, s, false, NoVoluntaryPauseOwner, null);
-            if (s.hardPauseActive) ApplyHardPause(m, s, false);
+            s.hardText = null;
+            ReleaseHard(s);
             BtcNetCheck.OnServerStarted(m);
-            BtcLog.Info("Net", "BetterConnection server session started (handlers 64,70-74 registered)");
+            BtcLog.Info("Net", "BetterConnection v2 server session started (handlers 64,70-74,111 registered)");
         }
 
         /// <summary>NetworkLobbyManager.OnStartClient postfix for a UNetManager (BC ON).</summary>
@@ -262,7 +308,10 @@ namespace BetterThanCastle
             RegisterPingHandler(m);
             RegisterVoluntaryPauseHandlers(m, client);
             if (client != null)
+            {
                 client.RegisterHandler(MsgUnetDisconnect, delegate(NetworkMessage netMsg) { m.OnClientDisconnect(netMsg.conn); });
+                RegisterClientHandler(client, MsgSessionEnd, delegate(NetworkMessage netMsg) { OnSessionEndReceived(m); });
+            }
             s.bcSession = true;
         }
 
@@ -270,21 +319,25 @@ namespace BetterThanCastle
         internal static void OnClientConnect(UNetManager m, NetworkConnection conn)
         {
             State s = Get(m);
-            s.lastHeartbeatUnscaledTimeClient = Time.unscaledTime;
+            ResetPeer(s.hostPeer);
             RegisterHeartbeatHandler(m);
             s.heartbeatHandlerRegistered = true;
             RegisterPingHandler(m);
             RegisterVoluntaryPauseHandlers(m, null);
+            if (m.LocalNetworkClient != null) RegisterClientHandler(m.LocalNetworkClient, MsgSessionEnd, delegate(NetworkMessage netMsg) { OnSessionEndReceived(m); });
             s.bcSession = true;
             s.wasConnected = true;
+            s.hostEnded = false;
             RaiseChannelBuffers(m, conn, "client");
-            DiagLog("OnClientConnect - explicit pause release on confirmed connect");
             s.connectionDegraded = false;
             s.recoveryDrainScheduled = false;
+            bool rejoin = s.rejoinPending || s.reconnectRecoveryInProgress;
             s.reconnectRecoveryInProgress = false;
-            if (s.hardPauseActive) ApplyHardPause(m, s, false);
+            s.rejoinPending = false;
+            if (rejoin) SendRejoin(m, s);
+            ApplyClientPause(m, s);
             BtcNetCheck.OnClientConnected(m);
-            BtcLog.Info("Net", "BetterConnection client connected (handlers 64,70-77 registered)");
+            BtcLog.Info("Net", "BetterConnection v2 client connected" + (rejoin ? " (reconnect)" : "") + " (handlers 64,70-77,110 registered)");
         }
 
         private static void RaiseChannelBuffers(UNetManager m, NetworkConnection conn, string side)
@@ -313,22 +366,49 @@ namespace BetterThanCastle
             State s = Get(m);
             BtcLog.Warn("Net", "Client hard-disconnected (lastError=" + conn.lastError + "). Entering reconnect loop instead of kicking to menu.");
             DiagLog("HARD DISCONNECT, lastError=" + conn.lastError);
-            ApplyHardPause(m, s, true);
             StartClientReconnectLoop(m, s);
         }
 
         /// <summary>UNetManager.OnServerDisconnect (BC ON). Returns true when the player is kept alive for a reconnect.</summary>
+        private static User _dropUser;
+        private static int _dropConnId = -1;
+
+        /// <summary>OnServerDisconnect, BEFORE the base call (which may clear the player of the connection): remember its User.</summary>
+        internal static void BeforeServerDisconnect(UNetManager m, NetworkConnection conn)
+        {
+            _dropUser = conn != null ? SafeUser(m, conn) : null;
+            _dropConnId = conn != null ? conn.connectionId : -1;
+        }
+
         internal static bool TryKeepDroppedPlayer(UNetManager m, NetworkConnection conn)
         {
             State s = Get(m);
-            if (!s.bcSession) return false;
+            if (!s.bcSession) { BtcLog.Warn("Net", "Server: connection " + conn.connectionId + " dropped outside a BC session"); return false; }
             User user = SafeUser(m, conn);
-            if (user == null || BtcSpectate.IsSpec(conn)) return false;
+            if (user == null)
+            {
+                // the User may not own this connection (connectionToClient unset): match the cached lobby name instead
+                string cn;
+                if (s.cachedPlayerNameByConnectionId.TryGetValue(conn.connectionId, out cn) && !string.IsNullOrEmpty(cn) && m.UserList != null)
+                    user = m.UserList.Find(x => x != null && UserName(x) == cn);
+            }
+            if (user == null && _dropUser != null && _dropConnId == conn.connectionId) user = _dropUser;
+            _dropUser = null;
+            if (user == null || BtcSpectate.IsSpec(conn))
+            {
+                string users = "";
+                try { if (m.UserList != null) foreach (User x in m.UserList) users += (x == null ? "null" : UserName(x) + "@" + (x.connectionToClient != null ? x.connectionToClient.connectionId.ToString() : "-")) + " "; } catch (Exception) { }
+                string cn; s.cachedPlayerNameByConnectionId.TryGetValue(conn.connectionId, out cn);
+                BtcLog.Warn("Net", "Server: connection " + conn.connectionId + " dropped, not kept (" + (user == null ? "no user" : "spectator") + ") users=[" + users + "] cachedName=" + cn);
+                return false;
+            }
             BtcLog.Warn("Net", "Server: connection " + conn.connectionId + " dropped, keeping player " + user.name + " alive and waiting for reconnect.");
             user.NetworkReady = false;
-            BtcHud.Notice(BtcReplayUI.T(user.name + " lost connection", user.name + " потерял связь"), BtcReplayIcons.Cross, BtcHud.Warn);
-            s.pendingReconnectUsers.Add(user);
-            ApplyHardPause(m, s, true);
+            string name = UserName(user);
+            BtcHud.Notice(BtcReplayUI.T(name + " lost connection", name + " потерял связь"), BtcReplayIcons.Cross, BtcHud.Warn);
+            if (!s.pendingReconnectUsers.Contains(user)) s.pendingReconnectUsers.Add(user);
+            s.peers.Remove(conn.connectionId);
+            s.awaitingRejoin.Remove(conn.connectionId);
             return true;
         }
 
@@ -336,29 +416,24 @@ namespace BetterThanCastle
         internal static void OnServerConnect(UNetManager m, NetworkConnection conn, BtcSpectate.ConnState connState)
         {
             State s = Get(m);
-            s.lastHeartbeatUnscaledTimeByConnection[conn.connectionId] = Time.unscaledTime;
+            ResetPeer(PeerOf(s, conn.connectionId));
             RaiseChannelBuffers(m, conn, "server");
+            // a returning player says its name (msg 111); FallbackRejoins hands out the oldest dropped player if it never does
             if (s.pendingReconnectUsers.Count > 0 && connState == null)
             {
-                User user = s.pendingReconnectUsers[0];
-                s.pendingReconnectUsers.RemoveAt(0);
-                if (user != null)
-                {
-                    BtcLog.Info("Net", "Server: re-attaching returning player " + user.name + " to connection " + conn.connectionId + ".");
-                    BtcHud.Notice(BtcReplayUI.T(user.name + " reconnected", user.name + " вернулся"), BtcReplayIcons.Check, BtcHud.Ok);
-                    NetworkServer.ReplacePlayerForConnection(conn, user.gameObject, 0);
-                    NetworkServer.SetClientReady(conn);
-                    user.NetworkReady = true;
-                }
-                if (s.pendingReconnectUsers.Count == 0 && !s.connectionDegraded) ApplyHardPause(m, s, false);
+                s.awaitingRejoin[conn.connectionId] = Time.realtimeSinceStartup;
+                BtcLog.Info("Net", "Server: connection " + conn.connectionId + " may be a returning player, waiting for its name");
             }
         }
 
-        /// <summary>Only a client that was really connected (not a failed first connect) enters the reconnect loop.</summary>
+        /// <summary>
+        /// A client that was really connected (not a failed first connect) enters the reconnect loop instead of the menu,
+        /// also while a map loads; not in the lobby and not when the host ended the session on purpose (msg 110).
+        /// </summary>
         internal static bool CanReconnect(UNetManager m)
         {
             State s = Peek(m);
-            return s != null && (s.wasConnected || s.reconnectRecoveryInProgress) && !NetworkServer.active && NetLive(m, s);
+            return s != null && (s.wasConnected || s.reconnectRecoveryInProgress) && !NetworkServer.active && !InLobby(m) && !s.hostEnded;
         }
 
         internal static bool ReconnectRecoveryInProgress(UNetManager m)
@@ -411,9 +486,7 @@ namespace BetterThanCastle
             }
             BtcLog.Warn("Net", "Fatal client error (" + name + "/" + errorCode + ") while connected - pausing and attempting reconnect instead of kicking to menu.");
             DiagLog(string.Format("FATAL OnClientError code={0} ({1}) - pausing and reconnecting", errorCode, name));
-            State s = Get(m);
-            ApplyHardPause(m, s, true);
-            StartClientReconnectLoop(m, s);
+            StartClientReconnectLoop(m, Get(m));
         }
 
         // ------------------------------------------------------------------ Update
@@ -439,76 +512,25 @@ namespace BetterThanCastle
             }
             if (!s.bcSession) return;
             CachePlayerNames(m, s);
-            BtcNetCheck.Tick(m);
-            if (Time.unscaledTime >= s.lastHeartbeatSendTime + HeartbeatInterval)
+            if (s.myName == null && !NetworkServer.active && User.LocalUser != null)
             {
-                s.lastHeartbeatSendTime = Time.unscaledTime;
-                SendHeartbeat(m);
+                try { if (!string.IsNullOrEmpty(User.LocalUser.ScreenName)) s.myName = User.LocalUser.ScreenName; } catch (Exception) { }
             }
+            BtcNetCheck.Tick(m);
             bool live = NetLive(m, s);
             if (live && !s.wasLive)
             {
                 // the load is over: silence during it was not a fault, start the link monitor from a clean slate
-                float now = Time.unscaledTime;
-                s.lastHeartbeatUnscaledTimeClient = now;
                 BtcNetCheck.HeartbeatFrom(-1);
-                List<int> ids = new List<int>(s.lastHeartbeatUnscaledTimeByConnection.Keys);
-                for (int i = 0; i < ids.Count; i++) s.lastHeartbeatUnscaledTimeByConnection[ids[i]] = now;
-                s.connectionDegraded = false;
-                s.recoveryDrainScheduled = false;
+                foreach (KeyValuePair<int, Peer> kv in s.peers) { kv.Value.silence = 0f; kv.Value.hold = false; }
+                s.hostPeer.silence = 0f;
             }
             s.wasLive = live;
-            if (live && m._currentSceneName != null && m._currentSceneName != m.lobbyScene && !s.isLoadingLevel)
-                MonitorConnectionQuality(m, s);
+            LinkTick(m, s);
             if (Time.unscaledTime >= s.lastPingSendTime + PingInterval)
             {
                 s.lastPingSendTime = Time.unscaledTime;
                 SendPings(m, s);
-            }
-        }
-
-        private static void MonitorConnectionQuality(UNetManager m, State s)
-        {
-            if (s.reconnectRecoveryInProgress) return;
-            if (Time.unscaledTime < s.lastConnectionPollTime + ConnectionPollInterval) return;
-            s.lastConnectionPollTime = Time.unscaledTime;
-            if (s.connectionDegraded) LogConnectionBufferStats(m);
-            bool healthy = IsConnectionLinkHealthy(m, s);
-            if (!healthy && !s.connectionDegraded)
-            {
-                s.connectionDegraded = true;
-                s.degradedSinceTime = Time.unscaledTime;
-                s.recoveryDrainScheduled = false;
-                BtcLog.Warn("Net", "Connection silence detected, pausing.");
-                DiagLog("SILENCE DETECTED - hard pause engaged");
-                ApplyHardPause(m, s, true);
-            }
-            else if (healthy && s.connectionDegraded)
-            {
-                if (!s.recoveryDrainScheduled)
-                {
-                    float outage = Time.unscaledTime - s.degradedSinceTime;
-                    float drain = Mathf.Clamp(outage * 0.1f, 0f, 5f);
-                    s.recoveryDrainDeadline = Time.unscaledTime + drain;
-                    s.recoveryDrainScheduled = true;
-                    BtcLog.Info("Net", string.Format("Link back, draining backlog for {0:0.0}s before resuming (outage was {1:0.0}s).", drain, outage));
-                }
-                if (Time.unscaledTime >= s.recoveryDrainDeadline)
-                {
-                    s.connectionDegraded = false;
-                    s.recoveryDrainScheduled = false;
-                    BtcLog.Info("Net", "Connection recovered, resuming.");
-                    DiagLog("RECOVERED - hard pause lifted");
-                    if (s.pendingReconnectUsers.Count == 0) ApplyHardPause(m, s, false);
-                }
-            }
-            if (s.connectionDegraded && Time.unscaledTime - s.degradedSinceTime > DegradedGiveUpThreshold && !NetworkServer.active)
-            {
-                BtcLog.Warn("Net", "Client link degraded too long (5 min), forcing a clean reconnect as a last resort.");
-                DiagLog("GIVE-UP WATCHDOG FIRED - forcing clean reconnect");
-                s.connectionDegraded = false;
-                s.recoveryDrainScheduled = false;
-                StartClientReconnectLoop(m, s);
             }
         }
 
@@ -521,27 +543,9 @@ namespace BetterThanCastle
             return false;
         }
 
-        private static bool IsConnectionLinkHealthy(UNetManager m, State s)
-        {
-            float now = Time.unscaledTime;
-            if (NetworkServer.active)
-            {
-                foreach (NetworkConnection c in NetworkServer.connections)
-                {
-                    if (c == null || IsLocalConnection(c) || BtcSpectate.IsSpec(c)) continue;
-                    float last;
-                    float t = s.lastHeartbeatUnscaledTimeByConnection.TryGetValue(c.connectionId, out last) ? last : now;
-                    if (now - t > ConnectionSilenceThreshold) return false;
-                }
-                return true;
-            }
-            NetworkConnection conn = (m.LocalNetworkClient != null) ? m.LocalNetworkClient.connection : null;
-            return conn == null || now - s.lastHeartbeatUnscaledTimeClient <= ConnectionSilenceThreshold;
-        }
-
         // ------------------------------------------------------------------ pause
         private const float LiveGrace = 5f;
-        private const float LiveFallback = 150f;
+        private const float LiveFallback = 600f;
 
         /// <summary>
         /// False while a map is loading: from the load start until vanilla says the level is ready for every player
@@ -555,17 +559,6 @@ namespace BetterThanCastle
             float now = Time.unscaledTime;
             if (s.levelLiveAt != float.MaxValue && now >= s.levelLiveAt + LiveGrace) return true;
             return s.isLoadingLevel == false && s.loadingLevelStartTime > 0f && now >= s.loadingLevelStartTime + LiveFallback;
-        }
-
-        private static void ApplyHardPause(UNetManager m, State s, bool pause)
-        {
-            if (pause && (s.isLoadingLevel || !NetLive(m, s)))
-            {
-                DiagLog("ApplyHardPause - BLOCKED engage attempt while the level is loading");
-                return;
-            }
-            s.hardPauseActive = pause;
-            RecomputeEffectivePause(s);
         }
 
         private static void SetVoluntaryPause(UNetManager m, State s, bool pause, int ownerConnectionId, string ownerName)
@@ -654,7 +647,7 @@ namespace BetterThanCastle
                 if (canRelease)
                 {
                     SetVoluntaryPause(m, s, false, NoVoluntaryPauseOwner, null);
-                    BroadcastVoluntaryPauseState(s);
+                    BroadcastPauseState(s);
                 }
             }
             else
@@ -664,24 +657,28 @@ namespace BetterThanCastle
                 if (allowed)
                 {
                     SetVoluntaryPause(m, s, true, requesterConnectionId, requesterName);
-                    BroadcastVoluntaryPauseState(s);
+                    BroadcastPauseState(s);
                 }
             }
         }
 
-        private static void BroadcastVoluntaryPauseState(State s)
+        /// <summary>Host: the whole pause state (voluntary + link pause with its reason) to every client; on change and every second while paused.</summary>
+        private static void BroadcastPauseState(State s)
         {
             if (!NetworkServer.active || !s.bcSession) return;
+            s.lastPauseBroadcast = Time.realtimeSinceStartup;
             VoluntaryPauseStateMessage msg = new VoluntaryPauseStateMessage
             {
                 paused = s.voluntaryPauseActive,
                 ownerConnectionId = s.voluntaryPauseOwnerConnectionId,
-                ownerName = s.voluntaryPauseOwnerName ?? string.Empty
+                ownerName = s.voluntaryPauseOwnerName ?? string.Empty,
+                hard = s.hardPauseActive,
+                hardText = s.hardText ?? string.Empty
             };
             for (int i = 0; i < NetworkServer.connections.Count; i++)
             {
                 NetworkConnection c = NetworkServer.connections[i];
-                if (c != null) c.Send(MsgPauseState, msg);
+                if (c != null && !IsLocalConnection(c)) c.Send(MsgPauseState, msg);
             }
         }
 
@@ -700,8 +697,13 @@ namespace BetterThanCastle
         {
             if (NetworkServer.active) return;
             VoluntaryPauseStateMessage msg = message.ReadMessage<VoluntaryPauseStateMessage>();
-            DiagLog("OnVoluntaryPauseStateReceived - paused=" + msg.paused + ", owner=" + msg.ownerConnectionId + " (" + msg.ownerName + ")");
-            SetVoluntaryPause(m, Get(m), msg.paused, msg.ownerConnectionId, string.IsNullOrEmpty(msg.ownerName) ? null : msg.ownerName);
+            State s = Get(m);
+            if (msg.hard != s.hostHard) BtcLog.Info("Net", "host link pause " + (msg.hard ? "ON: " + msg.hardText.Replace('\n', ';') : "OFF"));
+            s.hostHard = msg.hard;
+            s.hardText = msg.hard ? msg.hardText : null;
+            if (msg.paused != s.voluntaryPauseActive)
+                SetVoluntaryPause(m, s, msg.paused, msg.ownerConnectionId, string.IsNullOrEmpty(msg.ownerName) ? null : msg.ownerName);
+            ApplyClientPause(m, s);
         }
 
         private static void OnVoluntaryPausePermissionReceived(UNetManager m, NetworkMessage message)
@@ -725,9 +727,12 @@ namespace BetterThanCastle
                 if (s.voluntaryPauseActive)
                 {
                     SetVoluntaryPause(m, s, false, NoVoluntaryPauseOwner, null);
-                    if (NetworkServer.active) BroadcastVoluntaryPauseState(s);
+                    if (NetworkServer.active) BroadcastPauseState(s);
                 }
-                if (s.hardPauseActive) ApplyHardPause(m, s, false);
+                s.hostHard = false;
+                s.hardText = null;
+                ReleaseHard(s);
+                if (NetworkServer.active) BroadcastPauseState(s);
                 GameSignals.Once(GameSignals.SoundEngineReady, delegate { s.isLoadingLevel = false; }, null);
             }
             catch (Exception e) { BtcLog.Error("Net", "OnLoadingGameStarted: " + e); }
@@ -751,39 +756,6 @@ namespace BetterThanCastle
             NetworkMessageDelegate h = delegate(NetworkMessage msg) { OnHeartbeatReceived(m, msg); };
             if (NetworkServer.active) RegisterServerHandler(MsgHeartbeat, h);
             else if (m.LocalNetworkClient != null) RegisterClientHandler(m.LocalNetworkClient, MsgHeartbeat, h);
-        }
-
-        private static void OnHeartbeatReceived(UNetManager m, NetworkMessage message)
-        {
-            State s = Get(m);
-            float now = Time.unscaledTime;
-            if (NetworkServer.active)
-            {
-                if (message.conn != null) { s.lastHeartbeatUnscaledTimeByConnection[message.conn.connectionId] = now; BtcNetCheck.HeartbeatFrom(message.conn.connectionId); }
-            }
-            else
-            {
-                s.lastHeartbeatUnscaledTimeClient = now;
-                BtcNetCheck.HeartbeatFrom(-1);
-            }
-        }
-
-        private static void SendHeartbeat(UNetManager m)
-        {
-            HeartbeatMessage msg = new HeartbeatMessage();
-            if (NetworkServer.active)
-            {
-                for (int i = 0; i < NetworkServer.connections.Count; i++)
-                {
-                    NetworkConnection c = NetworkServer.connections[i];
-                    // legacy also sent to the host's own local connection (no handler there -> "Unknown message ID 64"); skip it.
-                    if (c != null && !IsLocalConnection(c)) c.SendUnreliable(MsgHeartbeat, msg);
-                }
-            }
-            else if (m.LocalNetworkClient != null && m.LocalNetworkClient.isConnected)
-            {
-                m.LocalNetworkClient.SendUnreliable(MsgHeartbeat, msg);
-            }
         }
 
         private static void RegisterPingHandler(UNetManager m)
@@ -858,26 +830,58 @@ namespace BetterThanCastle
         private static void StartClientReconnectLoop(UNetManager m, State s)
         {
             s.reconnectRecoveryInProgress = true;
+            s.rejoinPending = true;
+            ApplyClientPause(m, s);
             if (s.clientReconnectCoroutine == null) s.clientReconnectCoroutine = m.StartCoroutine(ClientReconnectLoop(m, s));
         }
 
+        /// <summary>
+        /// BCv2: runs until OnClientConnect clears reconnectRecoveryInProgress (legacy looped on !NetworkClient.active, which stays
+        /// true while the dead client object exists, so the loop ended at once and the client kept a hard pause forever).
+        /// Stops on a user Disconnect() or when the host ended the session.
+        /// </summary>
         private static IEnumerator ClientReconnectLoop(UNetManager m, State s)
         {
             string address = m.networkAddress;
             int port = m.networkPort;
             BtcLog.Info("Net", "Client reconnect loop started, target " + address + ":" + port + ".");
-            DiagLog(string.Format("RECONNECT LOOP START target={0}:{1}", address, port));
-            while (!m.calledDisconnect && !NetworkClient.active)
+            int attempt = 0;
+            float started = Time.realtimeSinceStartup;
+            yield return new WaitForSecondsRealtime(1f);
+            while (s.reconnectRecoveryInProgress && !m.calledDisconnect && !s.hostEnded)
             {
-                yield return new WaitForSecondsRealtime(3f);
-                if (m.calledDisconnect) break;
-                BtcLog.Info("Net", "Client reconnect attempt to " + address + ":" + port + ".");
-                DiagLog(string.Format("RECONNECT ATTEMPT target={0}:{1}", address, port));
+                attempt++;
+                BtcLog.Info("Net", "Client reconnect attempt " + attempt + " to " + address + ":" + port + ".");
                 AttemptClientReconnect(m, address, port);
-                yield return new WaitForSecondsRealtime(2f);
+                float until = Time.realtimeSinceStartup + 6f;
+                while (Time.realtimeSinceStartup < until && s.reconnectRecoveryInProgress && !m.calledDisconnect) yield return null;
+                if (!s.reconnectRecoveryInProgress) break;
+                yield return new WaitForSecondsRealtime(Mathf.Min(1f + attempt * 0.5f, 4f));
             }
-            BtcLog.Info("Net", NetworkClient.active ? "Client reconnect succeeded." : "Client reconnect loop stopped (manual disconnect).");
+            BtcLog.Info("Net", !s.reconnectRecoveryInProgress ? "Client reconnect succeeded after " + (Time.realtimeSinceStartup - started).ToString("0.0") + " s." : "Client reconnect loop stopped (" + (s.hostEnded ? "host ended the session" : "manual disconnect") + ").");
             s.clientReconnectCoroutine = null;
+            if (s.reconnectRecoveryInProgress && s.hostEnded && !m.calledDisconnect)
+            {
+                s.reconnectRecoveryInProgress = false;
+                ApplyClientPause(m, s);
+                try { m.Disconnect(); } catch (Exception e) { BtcLog.Warn("Net", "leave after session end: " + e.Message); }
+            }
+        }
+
+        /// <summary>Reconnect card button: give up and go back to the menu.</summary>
+        internal static void LeaveToMenu()
+        {
+            UNetManager m = Current;
+            State s = Peek(m);
+            if (m == null) return;
+            BtcLog.Info("Net", "player left while reconnecting");
+            if (s != null) { s.reconnectRecoveryInProgress = false; ApplyClientPause(m, s); }
+            try { m.Disconnect(); } catch (Exception e) { BtcLog.Warn("Net", "leave: " + e.Message); }
+        }
+
+        internal static bool Reconnecting
+        {
+            get { State s = Peek(Current); return BtcNetworkGate.Enabled && s != null && s.reconnectRecoveryInProgress; }
         }
 
         private static void AttemptClientReconnect(UNetManager m, string address, int port)
@@ -1173,8 +1177,8 @@ namespace BetterThanCastle
             UNetManager m = Current;
             State s = Peek(m);
             if (m == null || !InSession || s == null) return "Not in a network session";
-            if (s.connectionDegraded && s.recoveryDrainScheduled) return "RECOVERING...";
-            if (s.connectionDegraded || s.hardPauseActive) return "HARDPAUSED (connection lost)";
+            if (s.reconnectRecoveryInProgress && !NetworkServer.active) return "RECONNECTING...";
+            if (s.hardPauseActive) return "LINK PAUSE: " + (s.hardText ?? "").Replace('\n', ';');
             if (s.voluntaryPauseActive) return "PAUSED BY " + (string.IsNullOrEmpty(s.voluntaryPauseOwnerName) ? "?" : s.voluntaryPauseOwnerName);
             return "Connection OK";
         }
@@ -1205,8 +1209,8 @@ namespace BetterThanCastle
             State s = Peek(m);
             if (s == null || !s.bcSession) return;
             BtcHud.BeginLeft();
-            bool hard = (s.connectionDegraded && !s.recoveryDrainScheduled) || (s.hardPauseActive && !s.connectionDegraded);
-            bool recovering = s.connectionDegraded && s.recoveryDrainScheduled;
+            bool recovering = s.reconnectRecoveryInProgress && !NetworkServer.active;
+            bool hard = s.hardPauseActive && !recovering;
             bool voluntary = s.voluntaryPauseActive && !hard && !recovering;
             bool inGame = m._currentSceneName != m.lobbyScene;
             string owner = string.IsNullOrEmpty(s.voluntaryPauseOwnerName) ? "?" : s.voluntaryPauseOwnerName;
@@ -1215,26 +1219,39 @@ namespace BetterThanCastle
                 int st = hard ? 1 : (recovering ? 2 : (voluntary ? 3 : 0));
                 if (st != _noticeState && Event.current.type == EventType.Repaint)
                 {
-                    if (st == 1) BtcHud.Notice(BtcReplayUI.T("Connection lost: the game is paused", "Связь потеряна: игра на паузе"), BtcReplayIcons.Cross, BtcHud.Danger);
-                    else if (st == 2) BtcHud.Notice(BtcReplayUI.T("Reconnecting...", "Переподключение..."), BtcReplayIcons.Refresh, BtcHud.Warn);
-                    else if (st == 3) { }
-                    else if (_noticeState != -1) BtcHud.Notice(BtcReplayUI.T("The game continues", "Игра продолжается"), BtcReplayIcons.Play, BtcHud.Ok);
+                    if (st == 3 || st == 0) { if (st == 0 && _noticeState > 0 && _noticeState != 3) BtcHud.Notice(BtcReplayUI.T("The game continues", "Игра продолжается"), BtcReplayIcons.Play, BtcHud.Ok); }
                     _noticeState = st;
                 }
             }
             else _noticeState = -1;
-            if (inGame && (hard || recovering || voluntary) && BtcConfig.ShowPauseLabel.Value)
+            // the link pause and the reconnect card are always shown (they explain a frozen game); the label setting hides the rest
+            if (inGame && BtcReplay.Mode != BtcReplay.State.Playing && (hard || recovering))
             {
-                if (voluntary)
+                if (recovering)
                 {
-                    // stays on screen until the pause is released
-                    BtcHud.Card("pause", BtcReplayIcons.Pause, BtcHud.Ok, BtcReplayUI.T("Paused by " + owner, "Пауза: " + owner), null, null, false);
+                    BtcHud.Card("netpause", BtcReplayIcons.Refresh, BtcHud.Warn, BtcReplayUI.T("Reconnecting to the host...", "Переподключение к хосту..."),
+                        BtcReplayUI.T("The game waits for you. Your units are safe.", "Игра ждёт тебя, твои юниты на месте."), null, false,
+                        BtcReplayUI.T("Leave to menu", "Выйти в меню"), LeaveToMenu);
                 }
                 else
                 {
-                    string text = hard ? BtcReplayUI.T("Hard pause", "Жёсткая пауза") : BtcReplayUI.T("Recovering...", "Восстановление...");
-                    BtcHud.Plate("pauseplate", hard ? BtcReplayIcons.Cross : BtcReplayIcons.Refresh, hard ? BtcHud.Danger : BtcHud.Warn, text);
+                    List<string> lines = string.IsNullOrEmpty(s.hardText) ? null : new List<string>(s.hardText.Split('\n'));
+                    string title = BtcReplayUI.T("Waiting for a player", "Ждём игрока");
+                    if (NetworkServer.active)
+                        BtcHud.Card("netpause", BtcReplayIcons.Pause, BtcHud.Warn, title, BtcReplayUI.T("Connection problem, the game is paused for everyone.", "Проблема со связью, игра на паузе у всех."), lines, false,
+                            BtcReplayUI.T("Continue without them", "Продолжить без них"), ContinueWithoutBlocking);
+                    else
+                        BtcHud.Card("netpause", BtcReplayIcons.Pause, BtcHud.Warn, title, BtcReplayUI.T("Connection problem, the host paused the game for everyone.", "Проблема со связью, хост поставил игру на паузу у всех."), lines, false);
                 }
+            }
+            else if (!NetworkServer.active && s.clientLinkWarn && inGame && BtcReplay.Mode != BtcReplay.State.Playing)
+            {
+                BtcHud.Plate("netwarn", BtcReplayIcons.Wave, BtcHud.Warn, BtcReplayUI.T("Host is not responding...", "Хост не отвечает..."));
+            }
+            if (inGame && voluntary && BtcConfig.ShowPauseLabel.Value)
+            {
+                // stays on screen until the pause is released
+                BtcHud.Card("pause", BtcReplayIcons.Pause, BtcHud.Ok, BtcReplayUI.T("Paused by " + owner, "Пауза: " + owner), null, null, false);
             }
             if (BtcReplay.Mode != BtcReplay.State.Playing && NetworkServer.active && BtcConfig.ShowPauseLabel.Value)
             {
@@ -1292,15 +1309,20 @@ namespace BetterThanCastle
         // ------------------------------------------------------------------ diagnostics (files under BtcPaths.DebugFile)
         private static StreamWriter _diagLogWriter;
 
+        private const long DiagLogMaxBytes = 20L * 1024 * 1024;   // legacy logs grew to 3 GB and cost frame time
+
         internal static void DiagLog(string message)
         {
             if (!BtcNetworkGate.Enabled || !BtcConfig.DiagLog.Value) return;
             try
             {
+                if (_diagLogWriter != null && _diagLogWriter.BaseStream.Length > DiagLogMaxBytes) return;
                 if (_diagLogWriter == null)
                 {
                     string side = NetworkServer.active ? "host" : (NetworkClient.active ? "client" : "unknown");
-                    _diagLogWriter = new StreamWriter(BtcPaths.DebugFile("unet_netdiag_" + side + ".log"), true);
+                    string path = BtcPaths.DebugFile("unet_netdiag_" + side + ".log");
+                    bool append = !(File.Exists(path) && new FileInfo(path).Length > DiagLogMaxBytes);
+                    _diagLogWriter = new StreamWriter(path, append);
                     _diagLogWriter.AutoFlush = true;
                 }
                 _diagLogWriter.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " " + message);
@@ -1437,8 +1459,6 @@ namespace BetterThanCastle
         }
 
         // ------------------------------------------------------------------ messages (wire format = legacy)
-        internal class HeartbeatMessage : MessageBase { }
-
         internal class PingMessage : MessageBase
         {
             public float sentTime;
@@ -1453,12 +1473,16 @@ namespace BetterThanCastle
             public bool paused;
             public int ownerConnectionId;
             public string ownerName;
+            public bool hard;            // BCv2: host link pause
+            public string hardText;      // BCv2: its reason lines
 
             public override void Serialize(NetworkWriter writer)
             {
                 writer.Write(paused);
                 writer.Write(ownerConnectionId);
                 writer.Write(ownerName ?? string.Empty);
+                writer.Write(hard);
+                writer.Write(hardText ?? string.Empty);
             }
 
             public override void Deserialize(NetworkReader reader)
@@ -1466,6 +1490,8 @@ namespace BetterThanCastle
                 paused = reader.ReadBoolean();
                 ownerConnectionId = reader.ReadInt32();
                 ownerName = reader.ReadString();
+                hard = reader.ReadBoolean();
+                hardText = reader.ReadString();
             }
         }
 
@@ -1491,6 +1517,12 @@ namespace BetterThanCastle
         {
             try { BtcNetManager.DrawOverlay(_mgr); }
             catch (Exception e) { BtcLog.Error("Net", "overlay: " + e.Message); enabled = false; }
+        }
+
+        private void OnApplicationQuit()
+        {
+            // the host closing the game is a deliberate end too: clients go to the menu instead of reconnecting forever
+            try { if (_mgr != null) BtcNetManager.AnnounceSessionEnd(_mgr); } catch (Exception) { }
         }
 
         private void OnDestroy()

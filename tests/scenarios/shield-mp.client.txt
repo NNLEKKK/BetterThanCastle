@@ -1,0 +1,10 @@
+# shield-mp client: join, play, dump the barrier state received from the host.
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 90
+ready 120
+waitgame 240
+wait 20
+shielddump client
+wait 10
+quit

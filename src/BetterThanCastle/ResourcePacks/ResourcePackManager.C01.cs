@@ -845,6 +845,7 @@ public partial class ResourcePackManager : MonoBehaviour
 		BtcOverlays.OnGUI();
 		BtcMatchStatsUI.OnGUI();
 		BtcTimer.OnGUI();
+		BtcShieldFx.OnGUI();
 		BtcReplayUI.OnGUI();
 		BtcGameplayUI.OnGUI();
 		BtcSessionTick.OnGUI();

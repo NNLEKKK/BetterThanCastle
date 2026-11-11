@@ -320,6 +320,10 @@ namespace BetterThanCastle.Dev
                 case "done":
                     File.WriteAllText(Path.Combine(BtcDevPaths.LogDir, "done.txt"), DateTime.Now.ToString("HH:mm:ss"));
                     break;
+                case "hitch": System.Threading.Thread.Sleep((int)(F(p, 1, 3f) * 1000f)); BtcLog.Info("Cmd", "hitch done"); break;
+                case "hbmute": BtcNetManager.DevMuteUntil = Time.realtimeSinceStartup + F(p, 1, 6f); break;
+                case "netdrop": BtcDevNet.Drop(); break;
+                case "netstat": BtcLog.Info("Cmd", "netstat " + BtcNetManager.StatusText()); break;
                 case "quit": BtcDevProf.Dump("quit"); File.WriteAllText(Path.Combine(BtcDevPaths.LogDir, "done.txt"), "quit"); Application.Quit(); break;
                 default: if (!BtcDevLab.Cmd(c, p)) BtcLog.Warn("Cmd", "unknown: " + c); break;
             }

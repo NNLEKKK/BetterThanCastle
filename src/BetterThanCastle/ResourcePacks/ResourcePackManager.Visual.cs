@@ -283,6 +283,18 @@ namespace BetterThanCastle
             Cl("cr.down", P, "crystal", 1, "Bad for me (enemy captures / I lose)", "Плохо для меня (враг захватывает / я теряю)", cr, () => VC.crystalDownColor, c => { VC.crystalDownColor = RgbOne(c); VDirty(); });
             B("timer.ms", P, "gametimer", 0, false, "Show milliseconds in the game timer", "Показывать миллисекунды в игровом таймере", null, () => BtcTimer.ShowMs, v => BtcTimer.ShowMs = v);
 
+            // base shields (the rule itself is a host setting on the Gameplay tab; this is only how barriers look and sound for you)
+            Add(new BtcVisualSetting { Key = "sh.alpha", Page = "world", Section = "shield", En = "Barrier opacity", Ru = "Непрозрачность барьеров", Kind = VKind.Float, Min = 10f, Max = 150f, Step = 5f, Fmt = "0", Suf = "%",
+                GetF = () => BtcMenuState.Int("shield:alpha", 100), SetF = v => { BtcMenuState.SetInt("shield:alpha", Mathf.RoundToInt(v)); BtcShieldFx.ReadCfg(); } });
+            Add(new BtcVisualSetting { Key = "sh.vol", Page = "world", Section = "shield", En = "Barrier sound volume (0 = off)", Ru = "Громкость звуков барьеров (0 = выкл)", Kind = VKind.Float, Min = 0f, Max = 100f, Step = 5f, Fmt = "0", Suf = "%",
+                GetF = () => BtcMenuState.Int("shield:vol", 70), SetF = v => { BtcMenuState.SetInt("shield:vol", Mathf.RoundToInt(v)); BtcShieldFx.Preview(BtcShieldFx.K.Up); } });
+            Func<bool> shSnd = () => BtcMenuState.Int("shield:vol", 70) > 0;
+            B("sh.sndUp", "world", "shield", 1, false, "Sound when a barrier goes up or down", "Звук, когда барьер включается или падает", shSnd, () => BtcMenuState.Bool("shield:sndUp", true), v => { BtcMenuState.SetBool("shield:sndUp", v); BtcShieldFx.ReadCfg(); if (v) BtcShieldFx.Preview(BtcShieldFx.K.Up); });
+            B("sh.sndHit", "world", "shield", 1, false, "Sound when something hits a barrier nearby", "Звук удара о барьер рядом", shSnd, () => BtcMenuState.Bool("shield:sndHit", true), v => { BtcMenuState.SetBool("shield:sndHit", v); BtcShieldFx.ReadCfg(); if (v) BtcShieldFx.Preview(BtcShieldFx.K.Hit); });
+            B("sh.sndTick", "world", "shield", 1, false, "Ticks in the last 5 seconds of a countdown", "Тиканье в последние 5 секунд отсчёта", shSnd, () => BtcMenuState.Bool("shield:sndTick", true), v => { BtcMenuState.SetBool("shield:sndTick", v); BtcShieldFx.ReadCfg(); if (v) BtcShieldFx.Preview(BtcShieldFx.K.Tick); });
+            B("sh.notes", "world", "shield", 0, false, "Notices (shield up / down)", "Уведомления (барьер включён / снят)", null, () => BtcMenuState.Bool("shield:notes", true), v => { BtcMenuState.SetBool("shield:notes", v); BtcShieldFx.ReadCfg(); });
+            B("sh.hud", "world", "shield", 0, false, "Barrier list with timers in the top-left corner", "Список барьеров с таймерами в левом верхнем углу", null, () => BtcMenuState.Bool("shield:hud", true), v => { BtcMenuState.SetBool("shield:hud", v); BtcShieldFx.ReadCfg(); });
+
             // ============================================================ SCREEN
             const string S = "screen";
             Bd("s.pause", S, "menu", 0, false, "Pause the game while this menu is open", "Ставить игру на паузу, пока открыто меню", null, () => VC.menuPause, v => VC.menuPause = v);

@@ -1,0 +1,11 @@
+# shield-mp host: base shields on, 1 client; both dump the barrier state (client gets it via msg 109). <= 7 min.
+host default conquest
+gameplay shield.on=1;shield.peace=1;shield.radius=20
+waitclients 1 200
+wait 3
+startmatch 120
+waitgame 240
+wait 15
+shielddump host
+wait 40
+quit

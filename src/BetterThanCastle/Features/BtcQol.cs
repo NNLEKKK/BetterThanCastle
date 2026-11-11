@@ -45,6 +45,7 @@ public static class BtcQol
 		BtcNoSkip.AddRows();
 		BtcCraftQueue.AddRows();
 		BtcShootDown.AddRows();
+		BtcShield.AddRows();
 	}
 
 	private static bool On(ref int idx, string id)

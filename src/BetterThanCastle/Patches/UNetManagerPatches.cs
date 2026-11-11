@@ -208,8 +208,8 @@ namespace BetterThanCastle.Patches
                 if (!BtcNetManager.CanReconnect(__instance)) return true;   // failed first connect / host: vanilla error path
             }
             catch (Exception e) { BtcLog.Error("Hook", "UNetManager.OnClientDisconnect: " + e); return true; }
-            try { UNetBase.OnClientDisconnect(__instance, conn); }
-            catch (Exception e) { BtcLog.Error("Hook", "UNetManager.OnClientDisconnect base: " + e); }
+            // BCv2: NO base call. NetworkManager.OnClientDisconnect -> StopClient() destroys all client objects and changes to the
+            // offline scene, i.e. the main menu: the legacy reconnect loop then ran in the menu. The loop tears the dead client down itself.
             try { BtcNetManager.OnClientHardDisconnect(__instance, conn); }
             catch (Exception e) { BtcLog.Error("Hook", "UNetManager.OnClientDisconnect reconnect: " + e); }
             return false;
@@ -235,12 +235,17 @@ namespace BetterThanCastle.Patches
         private static bool Prefix(UNetManager __instance, NetworkConnection conn)
         {
             if (!BtcNetworkGate.Enabled) return true;
-            try { UNetBase.OnServerDisconnect(__instance, conn); }
-            catch (Exception e) { BtcLog.Error("Hook", "UNetManager.OnServerDisconnect base: " + e); }
+            BtcLog.Info("Net", "OnServerDisconnect conn " + (conn != null ? conn.connectionId : -1) + " lastError=" + (conn != null ? conn.lastError.ToString() : "?"));
+            try { BtcNetManager.BeforeServerDisconnect(__instance, conn); } catch (Exception e) { BtcLog.Error("Hook", "UNetManager.OnServerDisconnect pre: " + e); }
+            // BCv2: decide first. The base call (NetworkManager -> DestroyPlayersForConnection) destroys the player's User object,
+            // so a kept player could never be re-attached (legacy called base first).
             bool kept = false;
             try { kept = BtcNetManager.TryKeepDroppedPlayer(__instance, conn); }
             catch (Exception e) { BtcLog.Error("Hook", "UNetManager.OnServerDisconnect: " + e); }
-            if (!kept) __instance.SafeDisconnectConnection(conn);
+            if (kept) return false;
+            try { UNetBase.OnServerDisconnect(__instance, conn); }
+            catch (Exception e) { BtcLog.Error("Hook", "UNetManager.OnServerDisconnect base: " + e); }
+            __instance.SafeDisconnectConnection(conn);
             return false;
         }
     }
@@ -382,6 +387,68 @@ namespace BetterThanCastle.Patches
                 return false;
             }
             catch (Exception e) { BtcLog.Error("Hook", "UNetManager.GetLobbyPlayerNameFromConnection: " + e); return true; }
+        }
+    }
+}
+
+namespace BetterThanCastle.Patches
+{
+    /// <summary>BCv2 diagnostics: who sends a reconnecting client to the menu (offline scene / any scene load during a reconnect).</summary>
+    [HarmonyPatch(typeof(UNetManager), "LoadOfflineScene")]
+    internal static class UNetManagerLoadOfflineSceneTracePatch
+    {
+        private static void Prefix()
+        {
+            try { if (BtcNetManager.Reconnecting) BtcLog.Warn("Net", "offline scene during a reconnect, caller: " + BtcNetManager.CallerTrace()); }
+            catch (System.Exception) { }
+        }
+    }
+
+    [HarmonyPatch(typeof(UnityEngine.SceneManagement.SceneManager), "LoadScene", new[] { typeof(string) })]
+    internal static class SceneLoadTracePatch
+    {
+        private static void Prefix(string sceneName)
+        {
+            try { if (BtcNetManager.Reconnecting) BtcLog.Warn("Net", "scene '" + sceneName + "' loads during a reconnect, caller: " + BtcNetManager.CallerTrace()); }
+            catch (System.Exception) { }
+        }
+    }
+}
+
+namespace BetterThanCastle.Patches
+{
+    /// <summary>
+    /// BCv2: UNET's NetworkManager.OnClientDisconnectInternal switches to the offline scene (main menu) BEFORE OnClientDisconnect,
+    /// so a dropped client landed in the menu while the reconnect loop started. Block that scene change while BC may reconnect.
+    /// </summary>
+    [HarmonyPatch]
+    internal static class NetworkManagerClientChangeScenePatch
+    {
+        private static MethodBase TargetMethod() { return AccessTools.Method(typeof(NetworkManager), "ClientChangeScene"); }
+
+        private static bool Prepare() { return TargetMethod() != null; }
+
+        private static bool Prefix(NetworkManager __instance, string newSceneName)
+        {
+            try
+            {
+                UNetManager m = __instance as UNetManager;
+                if (m == null || !BtcNetworkGate.Enabled || string.IsNullOrEmpty(newSceneName) || newSceneName != m.offlineScene) return true;
+                if (m.calledDisconnect || !(BtcNetManager.Reconnecting || BtcNetManager.CanReconnect(m))) return true;
+                BtcLog.Warn("Net", "blocked the offline scene '" + newSceneName + "' (client will reconnect)");
+                return false;
+            }
+            catch (Exception e) { BtcLog.Error("Hook", "NetworkManager.ClientChangeScene: " + e); return true; }
+        }
+    }
+
+    [HarmonyPatch(typeof(UnityEngine.SceneManagement.SceneManager), "LoadSceneAsync", new[] { typeof(string) })]
+    internal static class SceneLoadAsyncTracePatch
+    {
+        private static void Prefix(string sceneName)
+        {
+            try { if (BtcNetManager.Reconnecting) BtcLog.Warn("Net", "async scene '" + sceneName + "' during a reconnect, caller: " + BtcNetManager.CallerTrace()); }
+            catch (Exception) { }
         }
     }
 }

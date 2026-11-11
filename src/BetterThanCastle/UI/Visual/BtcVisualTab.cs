@@ -294,6 +294,7 @@ namespace BetterThanCastle
                 case "dmg": return Tt("Damage counter", "Счётчик урона");
                 case "crystal": return Tt("Crystal timer", "Таймер кристалла");
                 case "gametimer": return Tt("Game timer", "Игровой таймер");
+                case "shield": return Tt("Base shields (barriers)", "Защита базы (барьеры)");
                 case "menu": return Tt("Menu behaviour", "Поведение меню");
                 default: return Tt("Brightness", "Яркость");
             }
@@ -315,6 +316,7 @@ namespace BetterThanCastle
                 case "bomb": return BtcReplayIcons.Bomb;
                 case "dmg": return BtcReplayIcons.Swords;
                 case "crystal": return BtcReplayIcons.Diamond;
+                case "shield": return BtcReplayIcons.Shield;
                 case "menu": return BtcReplayIcons.Lock;
                 default: return BtcReplayIcons.Sun;
             }
@@ -478,6 +480,7 @@ namespace BetterThanCastle
             }
             if (Sec(ref y, w, fs, "world", "path")) Settings(ref y, w, fs, "world", "path");
             if (Sec(ref y, w, fs, "world", "bomb")) Settings(ref y, w, fs, "world", "bomb");
+            if (Sec(ref y, w, fs, "world", "shield")) Settings(ref y, w, fs, "world", "shield");
         }
 
         private void PagePlates(ref float y, float w, int fs)
@@ -505,6 +508,7 @@ namespace BetterThanCastle
             }
             if (Sec(ref y, w, fs, "plates", "dmg")) Settings(ref y, w, fs, "plates", "dmg");
             if (Sec(ref y, w, fs, "plates", "crystal")) Settings(ref y, w, fs, "plates", "crystal");
+            if (Sec(ref y, w, fs, "plates", "gametimer")) Settings(ref y, w, fs, "plates", "gametimer");
             string ck = "vis:plates:chat";
             _keys.Add(ck);
             if (FoldF(ref y, w, fs, ck, BtcReplayIcons.Chat, Tt("Chat", "Чат"), ""))

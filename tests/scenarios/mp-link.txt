@@ -1,0 +1,18 @@
+# BCv2 link lab, host side. Expect in agent.log: NO link pause for the host's own 6 s hitch (t~+20) and the client's 3 s hitch;
+# link pause ON/OFF for the client 6 s hitch and its 8 s heartbeat mute; client netdrop -> reconnect + re-attach, no menu.
+prof start
+host default conquest
+waitclients 1 200
+wait 3
+startmatch 120
+waitgame 240
+wait 20
+hitch 6
+netstat
+wait 75
+netstat
+wait 1
+wait 40
+netstat
+wait 10
+quit

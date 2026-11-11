@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -68,6 +69,48 @@ public static class BtcPaths
 		return Path.Combine(BtcPaths.Debug, fileName);
 	}
 
+	private const long LogTrimAbove = 8L * 1024 * 1024;
+	private const int LogKeepTail = 2 * 1024 * 1024;
+
+	/// <summary>
+	/// Once per start: every debug log (BetterThanCastle/debug/*.txt|*.log, qol_blocked.log) bigger than 8 MB is cut to its
+	/// last 2 MB. The append-only legacy logs grew to several GB on players' disks (unet_netdiag_client.log 3.3 GB).
+	/// </summary>
+	private static void TrimLogs()
+	{
+		try
+		{
+			List<string> files = new List<string>();
+			if (Directory.Exists(BtcPaths.Debug))
+			{
+				files.AddRange(Directory.GetFiles(BtcPaths.Debug, "*.txt"));
+				files.AddRange(Directory.GetFiles(BtcPaths.Debug, "*.log"));
+			}
+			files.Add(Path.Combine(BtcPaths.Root, "qol_blocked.log"));
+			for (int i = 0; i < files.Count; i++)
+			{
+				try
+				{
+					FileInfo fi = new FileInfo(files[i]);
+					if (!fi.Exists || fi.Length <= LogTrimAbove) continue;
+					byte[] tail = new byte[LogKeepTail];
+					using (FileStream fs = new FileStream(fi.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+					{
+						fs.Seek(-LogKeepTail, SeekOrigin.End);
+						int got = 0;
+						while (got < tail.Length) { int n = fs.Read(tail, got, tail.Length - got); if (n <= 0) break; got += n; }
+					}
+					int start = Array.IndexOf(tail, (byte)'\n') + 1;   // begin at a whole line
+					using (FileStream fw = new FileStream(fi.FullName, FileMode.Create, FileAccess.Write))
+						fw.Write(tail, start, tail.Length - start);
+					BtcLog.Info("Paths", "log " + fi.Name + " trimmed from " + (fi.Length >> 20) + " MB to 2 MB");
+				}
+				catch (Exception e) { BtcLog.Warn("Paths", "trim " + files[i] + ": " + e.Message); }
+			}
+		}
+		catch (Exception e) { BtcLog.Warn("Paths", "log trim: " + e.Message); }
+	}
+
 	public static void Init()
 	{
 		bool flag = BtcPaths.inited;
@@ -105,6 +148,7 @@ public static class BtcPaths
 				BtcPaths.MoveFile(Path.Combine(BtcPaths.Packs, "_log.txt"), BtcPaths.DebugFile("mod_log.txt"));
 				BtcPaths.MoveFile(Path.Combine(BtcPaths.GameRoot, "hotkeys.cfg"), BtcPaths.Config("hotkeys.txt"));
 				BtcPaths.MoveFile(Path.Combine(BtcPaths.GameRoot, "betterconnection_netlog.txt"), BtcPaths.DebugFile("betterconnection_netlog.txt"));
+				BtcPaths.TrimLogs();
 				string text2 = Path.Combine(BtcPaths.Packs, "_dump");
 				bool flag6 = Directory.Exists(text2) && !Directory.Exists(BtcPaths.DumpDir);
 				bool flag7 = flag6;

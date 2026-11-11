@@ -1,0 +1,54 @@
+# shield-knock: walking into a barrier = weak smash out; falling onto the dome from above = knocked off, lands outside (not trapped).
+duelunits 4 2 2
+duelskip 1
+duelheal 0
+duelplayerbot -1
+duelnobot 1
+duelnorules 1
+duel
+waitduel 240
+gameplay shield.on=1;shield.peace=0;shield.radius=10;shield.dps=20;shield.knock=4
+wait 3
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 all 100 30 90
+duelplace 1 0 122 30 270
+duelplace 1 1 124 36 270
+wait 2
+shieldbar 0 100 30
+wait 2
+shielddump t0
+duelo 1 0 attack 0 0
+wait 1
+shielddump t1
+wait 1
+shielddump t2
+wait 3
+shielddump t5
+duelo 1 all stop
+wait 2
+duelplace 1 1 103 30 270
+duellift 1 1 16
+wait 0.5
+shielddump j0.5
+wait 1
+shielddump j1.5
+wait 1.5
+shielddump j3
+wait 3
+shielddump j6
+duelplace 1 0 101 31 270
+duellift 1 0 25
+wait 0.7
+shielddump h0.7
+wait 0.7
+shielddump h1.4
+wait 0.7
+shielddump h2.1
+wait 1
+shielddump h3
+wait 2
+shielddump h5
+wait 3
+shielddump h8
+quit
