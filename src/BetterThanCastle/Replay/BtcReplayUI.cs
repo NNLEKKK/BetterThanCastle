@@ -235,6 +235,9 @@ public static class BtcReplayUI
 		bool flag7 = flag6;
 		if (flag7)
 		{
+			// the mod menu is drawn later in the same OnGUI: while it is open the replay bar must not eat its clicks
+			EventType et = Event.current.type;
+			if (BtcHotkeys.MenuOpen && (et == EventType.MouseDown || et == EventType.MouseUp || et == EventType.MouseDrag || et == EventType.ScrollWheel)) return;
 			BtcReplayUI.DrawPlayer();
 		}
 		else
@@ -570,7 +573,8 @@ public static class BtcReplayUI
 			bool hideMm = BtcConfig.ReplayHideMinimap.Value;
 			if (BtcReplayIcons.Button(new Rect(cx, iy, ib, ib), BtcReplayIcons.Map, hideMm, BtcReplayUI.T("Hide minimap", "Скрыть миникарту"))) BtcConfig.ReplayHideMinimap.Value = !hideMm;
 			cx += ib + gap;
-			if (BtcReplayIcons.Button(new Rect(cx, iy, ib, ib), BtcReplayIcons.Layout, false, BtcReplayUI.T("UI editor (F7)", "UI редактор (F7)"))) ResourcePackManager.OpenUiEditor(true); cx += ib + gap; BtcReplayGif.DrawButton(ref cx, iy, ib, gap);
+			if (BtcReplayIcons.Button(new Rect(cx, iy, ib, ib), BtcReplayIcons.Image, false, BtcReplayUI.T("Screenshot", "Скриншот"))) TakeVanillaScreenshot(); cx += ib + gap;
+				if (BtcReplayIcons.Button(new Rect(cx, iy, ib, ib), BtcReplayIcons.Layout, false, BtcReplayUI.T("UI editor (F7)", "UI редактор (F7)"))) ResourcePackManager.OpenUiEditor(true); cx += ib + gap; BtcReplayGif.DrawButton(ref cx, iy, ib, gap);
 			if (BtcReplayIcons.Plain(new Rect((float)Screen.width - (float)num * 0.5f - ib, iy, ib, ib), BtcReplayIcons.Stop, BtcReplayUI.Red, BtcReplayUI.T("Exit replay", "Выйти из реплея"))) BtcReplay.StopReplay();
 			BtcReplayLayout.End();
 			BtcReplayInput.Draw((float)num, rect.y - autoLift - 4f); BtcReplayGif.DrawPanel(rect, autoLift, (float)num);
@@ -579,6 +583,25 @@ public static class BtcReplayUI
 		}
 		BtcReplayLayout.DrawWindow(num);
 		BtcReplayLoadUI.EnsureHost();
+	}
+
+	/// <summary>The vanilla screenshot (same capture as the hot-corner menu) saved into <game root>/Screenshots, independent of the working directory.</summary>
+	private static void TakeVanillaScreenshot()
+	{
+		try
+		{
+			string dir = Path.Combine(BtcPaths.GameRoot, "Screenshots");
+			Directory.CreateDirectory(dir);
+			string path = Path.Combine(dir, "Screenshot " + DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss") + ".png");
+			if (Brix.ThirdParty.Steamworks.SteamworksPlugin.Initialized) Brix.ThirdParty.Steamworks.SteamworksPlugin.TriggerScreenshot();
+			ScreenShotTaker.CaptureScreenshot(true, false, false, 1f, delegate(Texture2D screenshot, Texture2D thumbnail)
+			{
+				try { File.WriteAllBytes(path, screenshot.EncodeToPNG()); BtcLog.Info("Replay", "screenshot: " + path); }
+				catch (Exception ex) { BtcLog.Error("Replay", "screenshot write: " + ex.Message); }
+				UnityEngine.Object.Destroy(screenshot);
+			}, null, null);
+		}
+		catch (Exception ex) { BtcLog.Error("Replay", "screenshot: " + ex.Message); }
 	}
 
 	internal static GUIStyle sBarLabel, sBarVal;

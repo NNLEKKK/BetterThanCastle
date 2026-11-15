@@ -139,3 +139,51 @@ namespace BetterThanCastle
         }
     }
 }
+
+namespace BetterThanCastle
+{
+    /// <summary>Barrel user tracking (BtcShield.NoteBarrelUser): the unit or catapult a barrel was just attached to is its user.</summary>
+    [HarmonyPatch(typeof(Brix.Legacy.Explosifs), "OnTransformParentChanged")]
+    internal static class ShieldBarrelParentPatch
+    {
+        private static void Postfix(Brix.Legacy.Explosifs __instance)
+        {
+            if (!NetworkServer.active || !BtcShield.RuleOn || __instance == null) return;
+            try
+            {
+                Transform p = __instance.transform.parent;
+                if (p == null) return;
+                Labor l = p.GetComponentInParent<Labor>();
+                if (l != null) { BtcShield.NoteBarrelUser(__instance.gameObject, l.faction); return; }
+                Catapult c = p.GetComponentInParent<Catapult>();
+                if (c != null) BtcShield.NoteBarrelUser(__instance.gameObject, BtcShield.FacOf(c.gameObject));
+            }
+            catch (Exception e) { BtcLog.Error("Hook", "ShieldBarrelParent: " + e.Message); }
+        }
+    }
+
+    /// <summary>A player lit a barrel by hand: that player is its user.</summary>
+    [HarmonyPatch(typeof(Brix.Game.Network.UNetContextualCmd), "CmdStartBarrelFuse")]
+    internal static class ShieldBarrelFusePatch
+    {
+        [HarmonyPriority(Priority.First)]
+        private static void Prefix(Brix.Game.Network.UNetContextualCmd __instance, GameObject instance)
+        {
+            if (!NetworkServer.active || !BtcShield.RuleOn || instance == null || __instance == null) return;
+            try { BtcShield.NoteBarrelUser(instance, BtcShield.FacOf(__instance.gameObject)); }
+            catch (Exception e) { BtcLog.Error("Hook", "ShieldBarrelFuse: " + e.Message); }
+        }
+    }
+
+    /// <summary>Every barrel / bomb explosion: remember who used it, so the damage vetoes judge it by its user.</summary>
+    [HarmonyPatch(typeof(Brix.Engine.Architecte), "ExplosionSimple", new[] { typeof(GameObject), typeof(Vector3), typeof(float), typeof(string) })]
+    internal static class ShieldExplosionPatch
+    {
+        private static void Prefix(GameObject source, Vector3 pos)
+        {
+            if (!NetworkServer.active || !BtcShield.RuleOn) return;
+            try { BtcShield.OnExplosion(source, pos); }
+            catch (Exception e) { BtcLog.Error("Hook", "ShieldExplosion: " + e.Message); }
+        }
+    }
+}

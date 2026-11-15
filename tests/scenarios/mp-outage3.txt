@@ -1,0 +1,18 @@
+# Outage ladder, 3 games: host + 2 clients, client1 loses the network 5..120 s (mp-outage3.net.txt). ~12 min.
+host default conquest
+waitclients 2 300
+wait 3
+startmatch 180
+waitgame 300
+mark ingame
+wait 120
+netstat
+wait 120
+netstat
+wait 120
+netstat
+wait 120
+netstat
+wait 110
+netstat
+quit

@@ -1,0 +1,18 @@
+# N16: 4 players + REC ghost under a Radmin-like profile; clients 1+2 lose the network at the same moment (see mp4-cut.net.txt). <= 12 min.
+host default conquest
+waitclients 3 300
+wait 3
+startmatch 180
+waitgame 300
+mark ingame
+wait 30
+netcap
+wait 60
+netcap
+wait 60
+netcap
+wait 60
+netcap
+wait 60
+netcap
+quit

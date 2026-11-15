@@ -1,0 +1,7 @@
+# lag-only base profile + cuts
+at host:ingame+0 net clients 0 --lag on --lag-time 50
+at host:ingame+30 cut client1 5
+at host:ingame+65 cut client1 5
+at host:ingame+100 cut client1 10
+at host:ingame+145 cut client1 10
+at host:ingame+190 cut client1 20

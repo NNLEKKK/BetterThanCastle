@@ -1,0 +1,23 @@
+# N1/N16 hot-join: 4 players + REC under Radmin-like links. client2 crashes (process killed) and starts again with the same nick
+# (rejoin into the running game), later a new player joins as a spectator (see mp-rejoin.net.txt). <= 15 min.
+host default conquest
+waitclients 3 300
+wait 3
+startmatch 420
+waitgame 300
+mark ingame
+wait 30
+netcap
+wait 60
+netcap
+wait 60
+netcap
+wait 60
+netcap
+wait 60
+netcap
+wait 60
+netcap
+wait 60
+netcap
+quit

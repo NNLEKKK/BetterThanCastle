@@ -473,6 +473,8 @@ namespace BetterThanCastle
             if (BtcUi.Toggle(ref y, w, fs, Tt("Snap to edges and other blocks", "Прилипание к краям и блокам"), Snap, null)) Snap = !Snap;
             if (BtcUi.Toggle(ref y, w, fs, Tt("Never leave blocks overlapping", "Не оставлять блоки наложенными"), NoOverlap, Tt("After a drop the block is pushed aside", "После отпускания блок отодвигается")) ) NoOverlap = !NoOverlap;
             if (BtcUi.Toggle(ref y, w, fs, Tt("Show grid", "Показывать сетку"), ShowGrid, null)) ShowGrid = !ShowGrid;
+            BtcUi.Section(ref y, w, fs, Tt("Loading screen", "Экран загрузки"));
+            if (BtcUi.Toggle(ref y, w, fs, Tt("Cancel cross while a map loads", "Крестик отмены во время загрузки карты"), BtcConfig.LoadCancel.Value, Tt("Bottom right; aborts the load and returns to the main menu", "Справа снизу; прерывает загрузку и возвращает в главное меню"))) BtcConfig.LoadCancel.Value = !BtcConfig.LoadCancel.Value;
             _propH = y + fs;
             GUI.EndScrollView();
         }
@@ -495,6 +497,10 @@ namespace BetterThanCastle
                 float h = _pendHud > 0f ? _pendHud : BtcUiEdit.HudScaleRaw;
                 float nh = BtcVisualRows.Slider(ref y, w, fs, 0, "uie:hud", Tt("HUD size", "Размер HUD"), h, 0.5f, 2f, 0.05f, "0.00", "x");
                 if (Mathf.Abs(nh - h) > 0.0001f) { string before = BtcUiEdit.Serialize(); BtcUiEdit.HudScaleRaw = nh; BtcUiEdit.Changed(); BtcUndo.Push(Scope, Tt("HUD size", "Размер HUD"), delegate { BtcUiEdit.Restore(before); }, "uie:hud"); }
+                BtcUi.Note(ref y, w, fs, Tt("Cards with a cross (version warnings, hints) close by themselves after this time; a line at the bottom shows what is left, hovering a card stops it. 0 = never.", "Карточки с крестиком (предупреждения о версиях, подсказки) закрываются сами через это время; линия снизу показывает, сколько осталось, наведение мыши на карточку останавливает отсчёт. 0 = никогда."));
+                int ac = BtcHud.AutoCloseSec;
+                int nac = Mathf.RoundToInt(BtcVisualRows.Slider(ref y, w, fs, 0, "uie:autoclose", Tt("Close cards after", "Закрывать карточки через"), ac, 0f, 30f, 1f, "0", Tt(" s", " с")));
+                if (nac != ac) { int was = ac; BtcHud.AutoCloseSec = nac; BtcUndo.Push(Scope, Tt("Close cards after", "Закрывать карточки через"), delegate { BtcHud.AutoCloseSec = was; }, "uie:autoclose"); }
                 if (Event.current.rawType == EventType.MouseUp && _pendMenu > 0f)
                 {
                     float v = _pendMenu; _pendMenu = -1f;

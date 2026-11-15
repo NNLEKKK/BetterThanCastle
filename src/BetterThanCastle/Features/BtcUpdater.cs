@@ -21,7 +21,7 @@ namespace BetterThanCastle
 
 		private Phase _phase = Phase.Wait;
 		private float _startAt, _recheckAt;
-		private bool _dismissed;     // "Later" or "Skip": no more checks this session
+		private bool _dismissed;     // "Skip this version": no more checks this session ("Later" and OK bring the card back in 10 min)
 		private WWW _www;
 		private string _latest, _url, _sha, _msg;
 		private GUIStyle _lbl;
@@ -97,7 +97,7 @@ namespace BetterThanCastle
 		private void OnChecked()
 		{
 			WWW w = _www; _www = null;
-			if (!string.IsNullOrEmpty(w.error)) { BtcLog.Warn("Updater", "check failed: " + w.error); _phase = Phase.Hidden; return; }
+			if (!string.IsNullOrEmpty(w.error)) { BtcLog.Warn("Updater", "check failed: " + w.error); _phase = Phase.Hidden; _recheckAt = Time.realtimeSinceStartup + 120f; return; }   // offline: try again later
 			string json = w.text;
 			Match tag = Regex.Match(json, "\"tag_name\"\\s*:\\s*\"([^\"]+)\"");
 			Match url = Regex.Match(json, "\"browser_download_url\"\\s*:\\s*\"(https://[^\"]*/" + Regex.Escape(AssetName) + ")\"");
@@ -140,6 +140,14 @@ namespace BetterThanCastle
 			try { File.WriteAllText(PendingFile, _latest); } catch (Exception) { }
 			_doneAt = Time.realtimeSinceStartup;
 			_phase = Phase.Done;
+		}
+
+		private void StartDownload()
+		{
+			var h2 = new System.Collections.Generic.Dictionary<string, string>();
+			h2["User-Agent"] = "BetterThanCastle/" + BtcPlugin.Version;
+			_www = new WWW(_url, null, h2);
+			_phase = Phase.Downloading;
 		}
 
 		private void Fail(string m)
@@ -266,13 +274,10 @@ namespace BetterThanCastle
 			{
 				if (CardButton(new Rect(bx, y, fs * 9f, bh), BtcReplayIcons.Import, T("Update", "Обновить"), true))
 				{
-					var h2 = new System.Collections.Generic.Dictionary<string, string>();
-					h2["User-Agent"] = "BetterThanCastle/" + BtcPlugin.Version;
-					_www = new WWW(_url, null, h2);
-					_phase = Phase.Downloading;
+					StartDownload();
 				}
 				bx += fs * 9.4f;
-				if (CardButton(new Rect(bx, y, fs * 7f, bh), BtcReplayIcons.Undo, T("Later", "Позже"), false)) { _dismissed = true; _phase = Phase.Hidden; }
+				if (CardButton(new Rect(bx, y, fs * 7f, bh), BtcReplayIcons.Undo, T("Later", "Позже"), false)) { _phase = Phase.Hidden; _recheckAt = Time.realtimeSinceStartup + 600f; }   // back in 10 min
 				bx += fs * 7.4f;
 				if (CardButton(new Rect(bx, y, fs * 10f, bh), BtcReplayIcons.Cross, T("Skip this version", "Пропустить версию"), false))
 				{
@@ -283,7 +288,16 @@ namespace BetterThanCastle
 			}
 			else if (err)
 			{
-				if (CardButton(new Rect(bx, y, fs * 6f, bh), BtcReplayIcons.Check, "OK", false)) _phase = Phase.Hidden;
+				// retry: download again when the release is known, else check again
+				if (CardButton(new Rect(bx, y, fs * 11f, bh), BtcReplayIcons.Refresh, T("Try again", "Повторить"), true))
+				{
+					BtcLog.Info("Updater", "retry (" + (string.IsNullOrEmpty(_url) ? "check" : "download") + ")");
+					if (!string.IsNullOrEmpty(_url)) StartDownload();
+					else { _startAt = 0f; _phase = Phase.Wait; }
+				}
+				bx += fs * 11.4f;
+				// OK hides the card, it comes back in 10 minutes (not only after a game restart)
+				if (CardButton(new Rect(bx, y, fs * 6f, bh), BtcReplayIcons.Check, "OK", false)) { _phase = Phase.Hidden; _recheckAt = Time.realtimeSinceStartup + 600f; }
 			}
 		}
 
@@ -296,15 +310,16 @@ namespace BetterThanCastle
 			try
 			{
 				string exe = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+				// always the exe itself (also for Steam copies: faster than steam://, no Steam dialog); same arguments, working dir = game folder.
+				// SteamAppId in the environment lets Steamworks start without steam_appid.txt when the game is not launched by Steam.
 				string target = "\"" + exe + "\"";
-				if (exe.IndexOf("steamapps", StringComparison.OrdinalIgnoreCase) >= 0) target = "steam://rungameid/227860";
-				else
-				{
-					string[] a = Environment.GetCommandLineArgs();
-					for (int i = 1; i < a.Length; i++) target += " \"" + a[i] + "\"";
-				}
-				System.Diagnostics.ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo("cmd.exe", "/c ping -n 5 127.0.0.1 >nul & start \"\" " + target);
-				psi.CreateNoWindow = true; psi.UseShellExecute = false;
+				string[] a = Environment.GetCommandLineArgs();
+				for (int i = 1; i < a.Length; i++) target += " \"" + a[i] + "\"";
+				string dir = Path.GetDirectoryName(exe);
+				System.Diagnostics.ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo("cmd.exe", "/c ping -n 5 127.0.0.1 >nul & start \"\" /d \"" + dir + "\" " + target);
+				psi.CreateNoWindow = true; psi.UseShellExecute = false; psi.WorkingDirectory = dir;
+				psi.EnvironmentVariables["SteamAppId"] = "227860";
+				psi.EnvironmentVariables["SteamGameId"] = "227860";
 				System.Diagnostics.Process.Start(psi);
 				BtcLog.Info("Updater", "restarting: " + target);
 				Application.Quit();

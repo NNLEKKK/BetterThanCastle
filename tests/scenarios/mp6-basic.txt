@@ -1,0 +1,17 @@
+# N1: host + 5 clients (6 players), max players raised in the lobby AFTER hosting (like a real host), replay recording on (REC ghost). <= 10 min.
+host default conquest
+gameplay gen.maxp=6
+netcap
+waitclients 5 300
+netcap
+wait 3
+startmatch 180
+waitgame 300
+mark ingame
+netcap
+wait 90
+netstat
+netcap
+wait 60
+netstat
+quit

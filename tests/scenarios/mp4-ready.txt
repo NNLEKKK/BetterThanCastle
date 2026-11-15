@@ -1,0 +1,11 @@
+# Ready list with many players: host + 4 clients. Clients press Ready as soon as the timer waits, the host 25 s later.
+# Pass: host log "countdown (all ready) ... players=5", every client "timerready: running shown=5". ~5 min, 5 games.
+host default conquest
+waitclients 4 300
+wait 3
+startmatch 180
+waitgame 300
+wait 25
+timerready 120
+wait 10
+quit

@@ -1,0 +1,10 @@
+# late joiner (rejoin after a crash, or a spectator): connect to the running game and wait until it is playable.
+join 127.0.0.1
+waitgame 360
+mark ingame
+netstat
+wait 45
+netstat
+wait 45
+netstat
+quit

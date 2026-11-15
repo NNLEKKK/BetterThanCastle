@@ -60,7 +60,15 @@ namespace BetterThanCastle
 
         private static float _histAt;
 
-        private sealed class CardState { internal float Born, Seen; internal bool Open; internal Vector2 Scroll; }
+        private sealed class CardState { internal float Born, Seen, Run; internal bool Open, Gone; internal Vector2 Scroll; }
+
+        /// <summary>Cards with a cross close by themselves after this many seconds of being shown (0 = never; hovering pauses it). UI editor > Menu > Sizes.</summary>
+        internal static int AutoCloseSec
+        {
+            get { if (_autoClose < 0) _autoClose = Mathf.Clamp(BtcMenuState.Int("hud:autoClose", 5), 0, 30); return _autoClose; }
+            set { _autoClose = Mathf.Clamp(value, 0, 30); BtcMenuState.SetInt("hud:autoClose", _autoClose); }
+        }
+        private static int _autoClose = -1;
         /// <summary>Expands a card (a clickable hint opens at once, so its button is one click away).</summary>
         /// <summary>Adds a line to the notification history without showing anything (cards drawn by other code).</summary>
         internal static void AddHistory(string text, int icon, Color col) { Hist(text, icon, col); }
@@ -121,8 +129,10 @@ namespace BetterThanCastle
             Event e = Event.current;
             CardState c;
             if (!_cards.TryGetValue(id, out c)) { c = new CardState(); _cards[id] = c; c.Born = Time.unscaledTime; }
-            if (Time.unscaledTime - c.Seen > 0.5f) { c.Born = Time.unscaledTime; Hist(string.IsNullOrEmpty(text) ? title : title + ": " + text, icon, accent); }
+            if (Time.unscaledTime - c.Seen > 0.5f) { c.Born = Time.unscaledTime; c.Run = 0f; c.Gone = false; Hist(string.IsNullOrEmpty(text) ? title : title + ": " + text, icon, accent); }
             c.Seen = Time.unscaledTime;
+            int auto = dismissable ? AutoCloseSec : 0;
+            if (auto > 0 && c.Gone) return true;   // closed by its timer: the caller treats it like the cross
             float a = Fade(c, sl);
             GUI.depth = -1100;
             float w = Mathf.Min(Screen.width * 0.55f, fs * 34f);
@@ -212,9 +222,91 @@ namespace BetterThanCastle
                     if (BtcSfx.Btn(ab, "", BtcReplayUI.sBtn)) action();
                 }
             }
+            if (auto > 0)
+            {
+                // the timer stops while the mouse is over the card; the line under it shrinks to the close
+                if (e.type == EventType.Repaint && !r.Contains(e.mousePosition)) c.Run += Time.unscaledDeltaTime;
+                float left = Mathf.Clamp01(1f - c.Run / auto);
+                BtcReplayUI.Fill(new Rect(r.x, r.yMax - 2f, r.width * left, 2f), A(accent, a * 0.85f));
+                if (c.Run >= auto) { c.Gone = true; pressed = true; }
+            }
             GUI.enabled = prev;
             _top = r.yMax - sl.Offset.y + fs * 0.3f;
             return pressed;
+        }
+
+        /// <summary>Top-centre card with a question and two buttons (e.g. Allow / Deny). Returns 0 = nothing, 1 = first, 2 = second button.</summary>
+        internal static int Choice(string id, int icon, Color accent, string title, string text, string first, string second)
+        {
+            Slot sl = SlotOf("cards");
+            int fs = Mathf.RoundToInt(Fs * sl.Scale);
+            Frame(fs);
+            Event e = Event.current;
+            CardState c;
+            if (!_cards.TryGetValue(id, out c)) { c = new CardState(); _cards[id] = c; c.Born = Time.unscaledTime; }
+            if (Time.unscaledTime - c.Seen > 0.5f) { c.Born = Time.unscaledTime; Hist(title, icon, accent); }
+            c.Seen = Time.unscaledTime;
+            float a = Fade(c, sl);
+            GUI.depth = -1100;
+            float w = Mathf.Min(Screen.width * 0.55f, fs * 30f), head = fs * 2.3f, pad = fs * 0.8f, bh = fs * 2.1f;
+            float textH = string.IsNullOrEmpty(text) ? 0f : fs * 1.5f;
+            Rect r = new Rect((Screen.width - w) * 0.5f + sl.Offset.x, _top + sl.Offset.y, w, head + textH + bh + pad);
+            BtcReplayUI.Fill(r, A(Panel, a));
+            BtcReplayUI.Fill(new Rect(r.x, r.y, 3f, r.height), A(accent, a));
+            float g = fs * 1.4f;
+            BtcReplayIcons.Glyph(icon, new Rect(r.x + pad, r.y + (head - g) * 0.5f, g, g), A(accent, a));
+            GUIStyle bold = BtcReplayUI.sBarLabel ?? BtcReplayUI.sLabel;
+            Label(new Rect(r.x + pad + g + fs * 0.6f, r.y, r.width - g - pad * 2f, head), title, bold, Color.white, a);
+            if (textH > 0f) Label(new Rect(r.x + pad, r.y + head - fs * 0.2f, r.width - pad * 2f, textH), text, BtcReplayUI.sLabel, new Color(1f, 1f, 1f, 0.7f), a);
+            float bw = (w - pad * 3f) * 0.5f, by = r.y + head + textH;
+            int res = 0;
+            if (FlatBtn(new Rect(r.x + pad, by, bw, bh), first, accent, true, a)) res = 1;
+            if (FlatBtn(new Rect(r.x + pad * 2f + bw, by, bw, bh), second, accent, false, a)) res = 2;
+            _top = r.yMax - sl.Offset.y + fs * 0.3f;
+            return res;
+        }
+
+        /// <summary>Top-centre status card with an optional progress bar (p &lt; 0 = no bar). Not dismissable: shown while the caller submits it.</summary>
+        internal static void Progress(string id, int icon, Color accent, string title, float p)
+        {
+            Slot sl = SlotOf("cards");
+            int fs = Mathf.RoundToInt(Fs * sl.Scale);
+            Frame(fs);
+            CardState c;
+            if (!_cards.TryGetValue(id, out c)) { c = new CardState(); _cards[id] = c; c.Born = Time.unscaledTime; }
+            if (Time.unscaledTime - c.Seen > 0.5f) c.Born = Time.unscaledTime;
+            c.Seen = Time.unscaledTime;
+            float a = Fade(c, sl);
+            GUI.depth = -1100;
+            float w = Mathf.Min(Screen.width * 0.55f, fs * 30f), head = fs * 2.3f, pad = fs * 0.8f;
+            float barH = p >= 0f ? fs * 1.0f : 0f;
+            Rect r = new Rect((Screen.width - w) * 0.5f + sl.Offset.x, _top + sl.Offset.y, w, head + barH);
+            BtcReplayUI.Fill(r, A(Panel, a));
+            BtcReplayUI.Fill(new Rect(r.x, r.y, 3f, r.height), A(accent, a));
+            float g = fs * 1.4f;
+            BtcReplayIcons.Glyph(icon, new Rect(r.x + pad, r.y + (head - g) * 0.5f, g, g), A(accent, a));
+            Label(new Rect(r.x + pad + g + fs * 0.6f, r.y, r.width - g - pad * 2f, head), title, BtcReplayUI.sBarLabel ?? BtcReplayUI.sLabel, Color.white, a);
+            if (p >= 0f)
+            {
+                Rect tr = new Rect(r.x + pad, r.y + head, r.width - pad * 2f, fs * 0.35f);
+                BtcReplayUI.Fill(tr, new Color(1f, 1f, 1f, 0.1f * a));
+                BtcReplayUI.Fill(new Rect(tr.x, tr.y, tr.width * Mathf.Clamp01(p), tr.height), A(accent, a));
+            }
+            _top = r.yMax - sl.Offset.y + fs * 0.3f;
+        }
+
+        private static bool FlatBtn(Rect r, string text, Color accent, bool primary, float a)
+        {
+            Event e = Event.current;
+            bool hov = r.Contains(e.mousePosition);
+            Color c = primary ? accent : Color.white;
+            BtcReplayUI.Fill(r, new Color(c.r, c.g, c.b, (hov ? (primary ? 0.34f : 0.16f) : (primary ? 0.22f : 0.08f)) * a));
+            BtcReplayUI.Fill(new Rect(r.x, r.yMax - 2f, r.width, 2f), new Color(c.r, c.g, c.b, (primary ? 0.9f : 0.3f) * a));
+            Color oc = GUI.contentColor;
+            GUI.contentColor = new Color(1f, 1f, 1f, 0.95f * a);
+            GUI.Label(r, text, BtcReplayUI.sVal);
+            GUI.contentColor = oc;
+            return BtcSfx.Btn(r, "", BtcReplayUI.sBtn);
         }
 
         /// <summary>One-line message in the top stack for a few seconds (replaces the old bottom toast).</summary>

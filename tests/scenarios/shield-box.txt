@@ -1,0 +1,27 @@
+# shield-box: map-editor box barrier (DEV shieldbox, half 4 x 10 x 10) on the duel arena: the enemy is stopped at the narrow side (d ~5, a cube of radius 10 would stop it at ~11), a unit inside is trapped.
+duelunits 4 2 2
+duelskip 1
+duelheal 0
+duelplayerbot -1
+duelnobot 1
+duelnorules 1
+duel
+waitduel 240
+gameplay shield.on=1;shield.ai=1;shield.peace=0;shield.radius=10;shield.dps=20
+wait 3
+duelo 0 all stop
+duelo 1 all stop
+duelplace 0 all 100 30 90
+duelplace 1 0 116 30 270
+duelplace 1 1 103 30 270
+wait 2
+shieldbox 0 100 30 4 10 10
+wait 2
+shielddump t0
+duelo 1 0 attack 0 0
+duelo 1 1 attack 0 1
+wait 4
+shielddump t4
+wait 6
+shielddump t10
+quit

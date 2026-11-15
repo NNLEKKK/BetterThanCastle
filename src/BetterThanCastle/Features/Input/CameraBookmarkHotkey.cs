@@ -41,6 +41,8 @@ namespace Brix.Input
 				this.HandleGoDetonate();
 				this.HandleShootAt();
 				this.HandleFocusMark();
+				this.HandlePing();
+				this.HandleFocusHold();
 				this.HandleDropLuggage();
 				this.HandleOverlayToggle();
 			}
@@ -1546,12 +1548,30 @@ namespace Brix.Input
 			}
 		}
 
+		private void HandleFocusHold()
+		{
+			KeyCode[] keys = BtcFocusHold.Keys();
+			if (keys != null && keys.Length != 0 && CameraBookmarkHotkey.IsComboPressed(keys))
+			{
+				BtcFocusHold.OnKey();
+			}
+		}
+
 		private void HandleFocusMark()
 		{
 			KeyCode[] keys = BtcHotkeys.GetKeys("focus_mark", null);
 			if (keys != null && keys.Length != 0 && CameraBookmarkHotkey.IsComboPressed(keys))
 			{
 				BtcFocusMark.Place();
+			}
+		}
+
+		private void HandlePing()
+		{
+			KeyCode[] keys = BtcHotkeys.GetKeys("team_ping", null);
+			if (keys != null && keys.Length != 0 && CameraBookmarkHotkey.IsComboPressed(keys))
+			{
+				BtcPing.Place();
 			}
 		}
 

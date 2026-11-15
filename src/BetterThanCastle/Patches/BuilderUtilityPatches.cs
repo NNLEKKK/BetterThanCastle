@@ -32,7 +32,7 @@ namespace BetterThanCastle.Patches
     /// Loading: the in-game Lua menus are opened/closed repeatedly while the world loads and every Open destroys and re-creates
     /// all panels (2668 panels were built 11805 times, up to 6x each). Vanilla already has the per-menu flag InstantiateOnlyIfMissing
     /// (reuse a panel that still has its instance; ParentTree/ResetTree/Refresh run afterwards as always); force it while loading.
-    /// Config Loading/ReuseMenuPanels.
+    /// Config LoadingExperimental/ReuseMenuPanels (default off since 0.5.0).
     /// </summary>
     [HarmonyPatch(typeof(BuilderUtility), "InstantiateTree")]
     internal static class BuilderUtilityInstantiateTreePatch

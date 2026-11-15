@@ -192,6 +192,8 @@ public partial class ResourcePackManager : MonoBehaviour
 		BtcHotkeys.Tick();
 		BtcDiscord.Poll();
 		BtcOverlays.Tick();
+		BtcTerraform.Tick();
+		BtcTerraformTool.Tick();
 		BtcVisualCompare.Tick();
 		BtcUnitPlates.Tick();
 		BtcInterface.Tick();
@@ -843,9 +845,9 @@ public partial class ResourcePackManager : MonoBehaviour
 	private void OnGUI()
 	{
 		BtcOverlays.OnGUI();
+		BtcTerraformTool.OnGUI();
 		BtcMatchStatsUI.OnGUI();
 		BtcTimer.OnGUI();
-		BtcShieldFx.OnGUI();
 		BtcReplayUI.OnGUI();
 		BtcGameplayUI.OnGUI();
 		BtcSessionTick.OnGUI();

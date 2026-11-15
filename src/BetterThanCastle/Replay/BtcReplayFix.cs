@@ -32,7 +32,12 @@ public static class BtcReplayFix
 		return result;
 	}
 
-	private static string ReadGps(string path)
+	private static string ReadGps(string path) { return ReadHeader(path, "gps="); }
+
+	/// <summary>Mod version the replay was recorded with (header modver=, since 0.5.0; null = older).</summary>
+	public static string RecordedVersion;
+
+	private static string ReadHeader(string path, string key)
 	{
 		try
 		{
@@ -58,10 +63,10 @@ public static class BtcReplayFix
 				});
 				for (int i = 0; i < array3.Length; i++)
 				{
-					bool flag3 = array3[i].StartsWith("gps=");
+					bool flag3 = array3[i].StartsWith(key);
 					if (flag3)
 					{
-						return array3[i].Substring(4).Trim();
+						return array3[i].Substring(key.Length).Trim();
 					}
 				}
 			}
@@ -94,13 +99,21 @@ public static class BtcReplayFix
 		{
 			BtcReplayFix.ResetRuntime();
 			string text = BtcReplayFix.ReadGps(replayPath);
+			BtcReplayFix.RecordedVersion = BtcReplayFix.ReadHeader(replayPath, "modver=");
 			bool flag = !BtcReplayFix._applied;
 			if (flag)
 			{
 				BtcReplayFix._backup = BtcGameplay.Active;
 				BtcReplayFix._applied = true;
 			}
-			BtcReplayFix.SetV(BtcGameplay.Decode(text));
+			float[] rules = BtcGameplay.Decode(text);
+			// replays from before cube barriers: their barriers were spheres (newer encodes always carry shield.cube)
+			int cube = BtcGameplay.Idx("shield.cube");
+			if (text != null && cube >= 0 && text.IndexOf("shield.on=", StringComparison.Ordinal) >= 0 && text.IndexOf("shield.cube=", StringComparison.Ordinal) < 0)
+			{
+				rules[cube] = 0f;
+			}
+			BtcReplayFix.SetV(rules);
 			BtcReplayFix.Log("gameplay settings from the replay: " + ((text == null) ? "none (defaults)" : ((text.Length == 0) ? "vanilla" : text)));
 		}
 		catch (Exception arg)

@@ -1,0 +1,54 @@
+# item-lab: does mov.items (pass through loose items) let a worker leave a ring of loose logs on a MANUAL order and on an AUTONOMOUS project task?
+# Control: same with mov.items=0. agent.log "ItemLab" lines: dist from ring centre (ring radius 1, dist > 2.5 = outside), ringR = mean log distance.
+newgame
+waitgame 240
+wait 5
+gameplay mov.items=1
+itemlab setup Blocks.Wood_DoubleLog_AA 2
+wait 4
+itemlab report on-manual-0s
+itemlab manual
+wait 2
+itemlab report on-manual-2s
+wait 3
+itemlab report on-manual-5s
+wait 5
+itemlab report on-manual-10s
+taskspawn
+wait 3
+taskset
+wait 2
+itemlab setup Blocks.Wood_DoubleLog_AA 2
+wait 4
+itemlab auto
+wait 3
+itemlab report on-auto-3s
+wait 5
+itemlab report on-auto-8s
+wait 12
+itemlab report on-auto-20s
+gameplay mov.items=0
+itemlab setup Blocks.Wood_DoubleLog_AA 2
+wait 4
+itemlab report off-manual-0s
+itemlab manual
+wait 2
+itemlab report off-manual-2s
+wait 3
+itemlab report off-manual-5s
+wait 5
+itemlab report off-manual-10s
+taskspawn
+wait 3
+taskset
+wait 2
+itemlab setup Blocks.Wood_DoubleLog_AA 2
+wait 4
+itemlab auto
+wait 3
+itemlab report off-auto-3s
+wait 5
+itemlab report off-auto-8s
+wait 12
+itemlab report off-auto-20s
+quit

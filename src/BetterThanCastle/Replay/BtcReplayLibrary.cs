@@ -121,6 +121,15 @@ namespace BetterThanCastle
         // ------------------------------------------------------------------ meta (favourites, folders, names, view prefs, open groups)
         private static string MetaFile { get { return Path.Combine(Path.Combine(BtcPaths.Root, "Replays"), "replays-meta.txt"); } }
 
+        /// <summary>File names of the favourite replays (a copy, safe to use from a background thread).</summary>
+        internal static HashSet<string> FavoriteNames()
+        {
+            LoadMeta();
+            HashSet<string> s = new HashSet<string>();
+            foreach (KeyValuePair<string, Meta> kv in _meta) if (kv.Value.Fav) s.Add(kv.Key);
+            return s;
+        }
+
         private static void LoadMeta()
         {
             if (_meta != null) return;

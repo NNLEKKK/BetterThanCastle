@@ -47,6 +47,7 @@ namespace BetterThanCastle
             BtcAutoMarks.OnRecordStart();
             BtcPovRec.OnRecordStart();
             BtcApm.OnRecordStart();
+            BtcPing.OnRecordStart();
             Rec.Clear();
             MarkLast.Clear();
             MarkCount.Clear();
@@ -102,6 +103,8 @@ namespace BetterThanCastle
                 {
                     string auto = BtcAutoMarks.Payload(PadLen - sb.Length - 1);
                     if (auto.Length > 0) { if (sb.Length > 0) sb.Append(';'); sb.Append(auto); }
+                    string ping = BtcPing.Payload(PadLen - sb.Length - 1);
+                    if (ping.Length > 0) { if (sb.Length > 0) sb.Append(';'); sb.Append(ping); }
                 }
                 for (int i = 0; i < Rec.Count; i++)
                 {
@@ -188,6 +191,7 @@ namespace BetterThanCastle
         {
             BtcAutoMarks.ClearPlay();
             BtcApm.ClearPlay();
+            BtcPing.ClearPlay();
             Play.Clear();
             _markColsN = -1;
             HiddenCols.Clear();
@@ -204,6 +208,7 @@ namespace BetterThanCastle
                     if (p.Length < 2 || p[0].Length != 1) continue;
                     if (BtcApm.TryParse(p, c)) continue;
                     if (BtcAutoMarks.TryParse(p, c)) continue;
+                    if (BtcPing.TryParse(p, c)) continue;
                     TlEv e = new TlEv { K = p[0][0], T = float.Parse(p[1], c) };
                     if (e.K == 'S' && p.Length >= 5) { e.A = float.Parse(p[2], c); e.B = float.Parse(p[3], c); e.D = float.Parse(p[4], c); }
                     else if (e.K == 'Z' && p.Length >= 3) e.A = float.Parse(p[2], c);

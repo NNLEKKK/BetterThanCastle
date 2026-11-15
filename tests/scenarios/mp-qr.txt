@@ -1,0 +1,10 @@
+# quick return in place: host + 1 client, one 30 s outage (mp-qr.net.txt)
+host default conquest
+waitclients 1 300
+wait 3
+startmatch 180
+waitgame 300
+mark ingame
+wait 120
+netstat
+quit

@@ -23,7 +23,7 @@ namespace BetterThanCastle
             if (d.Id == "shield.on") return true;
             if (!On(shown, "shield.on")) return false;
             if (d.Id == "shield.shardN") return On(shown, "shield.shards");
-            if (d.Id == "shield.mageR" || d.Id == "shield.mageD") return On(shown, "shield.mage");
+            if (d.Id == "shield.mageR" || d.Id == "shield.mageD" || d.Id == "shield.mageT") return On(shown, "shield.mage");
             if (d.Id == "shield.team") return On(shown, "shield.shards") || On(shown, "shield.mage");
             return true;
         }
@@ -35,7 +35,8 @@ namespace BetterThanCastle
             bool home = On(a, "shield.home"), capt = On(a, "shield.capt");
             string where = home && capt ? Tt("home and captured crystals", "домашний и захваченные кристаллы") : (home ? Tt("home crystals only", "только домашние кристаллы") : (capt ? Tt("captured crystals only", "только захваченные кристаллы") : Tt("no crystal (both switches are off)", "ни одного кристалла (оба переключателя выкл)")));
             string r = V(a, "shield.radius", 20f).ToString("0", CultureInfo.InvariantCulture);
-            string l1 = Tt("Barriers around " + where + ", radius " + r + ".", "Барьеры вокруг: " + where + ", радиус " + r + ".");
+            string l1 = On(a, "shield.cube") ? Tt("Cube barriers around " + where + ", half side " + r + ".", "Кубические барьеры вокруг: " + where + ", половина стороны " + r + ".")
+                                             : Tt("Sphere barriers around " + where + ", radius " + r + ".", "Сферические барьеры вокруг: " + where + ", радиус " + r + ".");
             bool peace = On(a, "shield.peace"), sh = On(a, "shield.shards"), mg = On(a, "shield.mage"), team = On(a, "shield.team");
             string l2;
             if (!sh && !mg) l2 = peace ? Tt("Up during peace time, down when it ends.", "Активны в мирное время, падают, когда мир кончается.") : Tt("Always up (no drop rule): bases cannot be attacked at all.", "Активны всегда (нет правил снятия): базы вообще нельзя атаковать.");
@@ -52,7 +53,12 @@ namespace BetterThanCastle
             }
             string l3 = Tt("Enemies caught inside: powerless, " + V(a, "shield.dps", 20f).ToString("0", CultureInfo.InvariantCulture) + " HP/s until they leave.",
                            "Враги, оказавшиеся внутри: бессильны, " + V(a, "shield.dps", 20f).ToString("0", CultureInfo.InvariantCulture) + " ХП/с, пока не выйдут.");
-            if (mg) l3 += Tt(" Barrier back " + V(a, "shield.mageD", 5f).ToString("0", CultureInfo.InvariantCulture) + " s after the artificer left.", " Барьер возвращается через " + V(a, "shield.mageD", 5f).ToString("0", CultureInfo.InvariantCulture) + " с после ухода артефактора.");
+            if (mg)
+            {
+                string st = V(a, "shield.mageT", 3f).ToString("0", CultureInfo.InvariantCulture), bk = V(a, "shield.mageD", 3f).ToString("0", CultureInfo.InvariantCulture);
+                l3 += Tt(" The artificer has to stay " + st + " s near the barrier; it is back " + bk + " s after the artificer left.",
+                         " Артефактор должен простоять у барьера " + st + " с; барьер возвращается через " + bk + " с после его ухода.");
+            }
             return new[] { l1, l2, l3 };
         }
 
@@ -102,7 +108,7 @@ namespace BetterThanCastle
             Color c = hv ? Color.white : BtcMenu.Accent;
             BtcReplayIcons.Glyph(BtcReplayIcons.Eye, new Rect(r.x + fs * 0.4f, r.center.y - g * 0.5f, g, g), c);
             BtcVisualRows.Txt(new Rect(r.x + fs * 2f, r.y, r.width - fs * 4f, h),
-                Tt("Barrier opacity, sounds and the HUD list (only for you): Visuals > World overlays", "Прозрачность, звуки и список барьеров на экране (только для вас): Визуал > Оверлеи мира"),
+                Tt("Barrier look, opacity and sounds (only for you): Visuals > World overlays", "Вид, прозрачность и звуки барьеров (только для вас): Визуал > Оверлеи мира"),
                 BtcVisualRows.Dim, c);
             BtcReplayIcons.Glyph(BtcReplayIcons.ChevR, new Rect(r.xMax - fs * 1.4f, r.center.y - g * 0.5f, g, g), c);
             BtcReplayIcons.Hint(r, new Rect(off.x + r.x, off.y + r.y, r.width, r.height), Tt("Open these settings in the Visuals tab", "Открыть эти настройки во вкладке Визуал"));

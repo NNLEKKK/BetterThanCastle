@@ -1,0 +1,8 @@
+# 3 games: Radmin-like base profile, client1 loses the network 5..120 s
+at host:ingame+0 net clients 0 --lag on --lag-time 50 --drop on --drop-chance 1.0 --ood on --ood-chance 1.0
+at host:ingame+40 cut client1 5
+at host:ingame+85 cut client1 10
+at host:ingame+135 cut client1 20
+at host:ingame+195 cut client1 30
+at host:ingame+265 cut client1 60
+at host:ingame+365 cut client1 120

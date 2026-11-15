@@ -10,12 +10,18 @@ namespace BetterThanCastle
         private static string _tip;
         internal static Rect TipAnchor { get { return _tipAnchor; } }
 
-        /// <summary>Hover tooltip for a custom-drawn control.</summary>
-        internal static void Hint(Rect r, string tip) { if (r.Contains(Event.current.mousePosition) && Event.current.type == EventType.Repaint) { _tip = tip; _tipAnchor = r; } }
+        /// <summary>Hover tooltip for a custom-drawn control. The tip is shown next to the mouse cursor (screen space), so it lands right
+        /// even inside scroll views and groups.</summary>
+        internal static void Hint(Rect r, string tip) { if (r.Contains(Event.current.mousePosition) && Event.current.type == EventType.Repaint) { _tip = tip; _tipAnchor = r; _tipMouse = GUIUtility.GUIToScreenPoint(Event.current.mousePosition); } }
         private static Rect _tipAnchor;
+        private static Vector2 _tipMouse;
+        private static string _pend;
+        private static GUIStyle _tipSt;
+        private static int _tipFs;
+        private static readonly GUIContent TipContent = new GUIContent();
 
-        /// <summary>Hint for a control inside a scroll view: hit = local rect (mouse is local there), anchor = the same rect in window space (where the tooltip is placed).</summary>
-        internal static void Hint(Rect hit, Rect anchor, string tip) { if (hit.Contains(Event.current.mousePosition) && Event.current.type == EventType.Repaint) { _tip = tip; _tipAnchor = anchor; } }
+        /// <summary>Hint for a control inside a scroll view: hit = local rect (mouse is local there), anchor = the same rect in window space.</summary>
+        internal static void Hint(Rect hit, Rect anchor, string tip) { if (hit.Contains(Event.current.mousePosition) && Event.current.type == EventType.Repaint) { _tip = tip; _tipAnchor = anchor; _tipMouse = GUIUtility.GUIToScreenPoint(Event.current.mousePosition); } }
 
         private static void R(float x, float y, float w, float h, Color c)
         {
@@ -322,7 +328,7 @@ namespace BetterThanCastle
             bool hover = r.Contains(e.mousePosition);
             BtcReplayUI.Fill(r, on ? BtcMenu.AccentA(0.18f) : new Color(1f, 1f, 1f, hover ? 0.14f : 0.07f));
             Draw(kind, r, on ? BtcMenu.AccentA(0.95f) : new Color(1f, 1f, 1f, hover ? 0.9f : 0.55f));
-            if (hover && e.type == EventType.Repaint) { _tip = tip; _tipAnchor = r; }
+            if (hover && e.type == EventType.Repaint) { _tip = tip; _tipAnchor = r; _tipMouse = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y); }
             bool clicked = BtcSfx.Btn(r, "", BtcReplayUI.sBtn);
             if (clicked) BtcSfx.Switch(!on);
             return clicked;
@@ -335,23 +341,71 @@ namespace BetterThanCastle
             bool hover = r.Contains(e.mousePosition);
             BtcReplayUI.Fill(r, new Color(1f, 1f, 1f, hover ? 0.14f : 0.07f));
             Draw(kind, r, hover ? new Color(c.r, c.g, c.b, 1f) : new Color(c.r, c.g, c.b, c.a * 0.85f));
-            if (hover && e.type == EventType.Repaint) { _tip = tip; _tipAnchor = r; }
+            if (hover && e.type == EventType.Repaint) { _tip = tip; _tipAnchor = r; _tipMouse = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y); }
             return BtcSfx.Btn(r, "", BtcReplayUI.sBtn);
         }
 
-        /// <summary>Call once after the bar is drawn.</summary>
-        internal static void DrawTip(int fs) { DrawTip(fs, Screen.width, false); }
+        /// <summary>Call once after the bar is drawn (top level, outside the mod menu): draws the tip right away.</summary>
+        internal static void DrawTip(int fs)
+        {
+            if (Event.current.type != EventType.Repaint) return;
+            if (_tip != null) Paint(_tip, fs);
+            _tip = null;
+        }
 
-        /// <summary>maxX = right edge of the drawing area (a scroll view is narrower than the screen); below = show under the icon (icons at the top edge).</summary>
+        /// <summary>Menu tabs: hands the tip over to the menu, which paints it last on top of everything (<see cref="FlushTip"/>), so a
+        /// scroll view or a group never clips it. maxX / below are kept for old callers; the tip follows the cursor now.</summary>
         internal static void DrawTip(int fs, float maxX, bool below)
         {
-            if (_tip == null || Event.current.type != EventType.Repaint) { if (Event.current.type == EventType.Repaint) _tip = null; return; }
-            float w = _tip.Length * fs * 0.62f + fs * 1.2f;
-            float h = fs * 1.5f;
-            Rect t = new Rect(Mathf.Clamp(_tipAnchor.center.x - w * 0.5f, 2f, Mathf.Max(2f, maxX - w - 2f)), below ? _tipAnchor.yMax + 4f : _tipAnchor.y - h - 4f, w, h);
-            BtcReplayUI.Fill(t, new Color(0f, 0f, 0f, 0.88f));
-            GUI.Label(new Rect(t.x + fs * 0.6f, t.y, t.width, t.height), _tip, BtcReplayUI.sBarLabel);
+            if (Event.current.type != EventType.Repaint) return;
+            if (_tip != null) _pend = _tip;
             _tip = null;
+        }
+
+        /// <summary>Paints the pending tip of the menu (call once at top level after the whole menu).</summary>
+        internal static void FlushTip(int fs)
+        {
+            if (Event.current.type != EventType.Repaint) return;
+            string t = _pend ?? _tip;
+            _pend = null; _tip = null;
+            if (t != null) Paint(t, fs);
+        }
+
+        // next to the cursor (right-below, flipped near the screen edges), wrapped to a readable width
+        private static void Paint(string tip, int fs)
+        {
+            if (string.IsNullOrEmpty(tip)) return;
+            GUIStyle b = BtcReplayUI.sBarLabel ?? BtcReplayUI.sLabel;
+            if (b == null) return;
+            if (_tipSt == null || _tipFs != fs)
+            {
+                _tipFs = fs;
+                _tipSt = new GUIStyle(b);
+                _tipSt.fontSize = Mathf.RoundToInt(fs * 0.9f);
+                _tipSt.wordWrap = true;
+                _tipSt.clipping = TextClipping.Overflow;
+                _tipSt.alignment = TextAnchor.UpperLeft;
+                _tipSt.padding = new RectOffset(0, 0, 0, 0);
+                _tipSt.normal.textColor = Color.white;
+            }
+            TipContent.text = tip;
+            float padX = fs * 0.6f, padY = fs * 0.3f;
+            float maxW = Mathf.Min(fs * 22f, Screen.width * 0.45f);
+            _tipSt.wordWrap = false;
+            float tw = Mathf.Min(_tipSt.CalcSize(TipContent).x + 2f, maxW);
+            _tipSt.wordWrap = true;
+            float th = _tipSt.CalcHeight(TipContent, tw);
+            float w = tw + padX * 2f, h = th + padY * 2f;
+            Vector2 m = GUIUtility.ScreenToGUIPoint(_tipMouse);
+            float x = m.x + fs * 0.9f, y = m.y + fs * 1.1f;
+            if (x + w > Screen.width - 4f) x = m.x - w - fs * 0.4f;
+            if (y + h > Screen.height - 4f) y = m.y - h - fs * 0.4f;
+            x = Mathf.Clamp(x, 4f, Mathf.Max(4f, Screen.width - w - 4f));
+            y = Mathf.Clamp(y, 4f, Mathf.Max(4f, Screen.height - h - 4f));
+            Rect t = new Rect(x, y, w, h);
+            BtcReplayUI.Fill(t, new Color(0f, 0f, 0f, 0.92f));
+            BtcReplayUI.Fill(new Rect(t.x, t.y, 2f, t.height), BtcMenu.Accent);
+            GUI.Label(new Rect(t.x + padX, t.y + padY, tw, th), TipContent, _tipSt);
         }
     }
 }

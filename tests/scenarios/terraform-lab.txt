@@ -1,0 +1,13 @@
+# terraform-lab: a terraform task (pit 3x2x3 dug + mound 2x2x2 filled) next to the workers; all workers hired; check progress.
+newgame
+waitgame 240
+wait 5
+tfspawn 7
+wait 3
+tfdump t0
+tfhire
+wait 30
+tfdump t30
+wait 60
+tfdump t90
+quit

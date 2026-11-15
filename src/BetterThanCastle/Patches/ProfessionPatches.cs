@@ -30,7 +30,7 @@ namespace BetterThanCastle.Patches
             {
                 Locomotion4 proto = Factory.Peek(__instance.AssetKey).GetComponent<Locomotion4>();
                 Locomotion4 cur = __instance.GetComponent<Locomotion4>();
-                BtcGameplay.ApplySpeed(cur, proto, __instance.MovementSpeedLevelMultiplier, ProfessionHook.Job(__instance));
+                BtcGameplay.ApplySpeed(cur, proto, __instance.MovementSpeedLevelMultiplier, ProfessionHook.Job(__instance), __instance.JobSpeedBonus);
             }
             catch (Exception e) { BtcLog.Error("Hook", "Profession.CharacterLevel: " + e); }
         }
@@ -61,7 +61,7 @@ namespace BetterThanCastle.Patches
                         BtcGameplay.HpFinal(job, ((float)bonus + proto.MaxHP) * (float)__instance.CharacterLevel));
                 }
                 BtcGameplay.ApplySpeed(__instance.GetComponent<Locomotion4>(), Factory.Peek(__instance.AssetKey).GetComponent<Locomotion4>(),
-                    __instance.MovementSpeedLevelMultiplier, job);
+                    __instance.MovementSpeedLevelMultiplier, job, __instance.JobSpeedBonus);
                 return false;
             }
             catch (Exception e) { BtcLog.Error("Hook", "Profession.SetHpBonus: " + e); }

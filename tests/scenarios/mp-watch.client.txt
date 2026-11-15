@@ -1,0 +1,8 @@
+# visible client of mp-watch: join, ready, then hand over to the user (no further commands)
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 120
+ready 420
+waitgame 300
+mark ingame
+wait 3600

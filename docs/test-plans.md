@@ -118,3 +118,23 @@ Untested at the time of writing: items 1-5 in real MP, header patch with a real 
 7. Host quits the match: clients go to the menu (no endless reconnect).
 8. Voluntary pause (key) still works for host and clients; client-pause permission plate unchanged.
 Logs: `[Net] link:` / `link pause ON/OFF` lines (host has the reason and the session total).
+
+## N1/N16 5+ players, crash, rejoin, spectator (2026-11-14, BC ON on every PC, Radmin is fine)
+Hidden labs passed (5 games on one PC + clumsy Radmin profile): mp5-pause, mp-rejoin, mp4-cut. Real PCs still needed:
+1. 5-6 players + replay recording: everybody gets into the lobby and the match (the 5th/6th were refused before).
+2. One client kills the game (Task Manager) mid-match: host card "X disconnected, waiting" within ~30 s, NOBODY else drops
+   in the next 3 minutes; X starts the game again and joins the same host -> back with own units (no 0% hang).
+3. Two clients lose the network together for 10 s, then 40 s: both come back by themselves ("quick return"), no menu kick.
+4. A new player joins a running match as a spectator: loads in < 1 min, sees the game; host game frozen only while it loads.
+5. Pause key in the lobby does nothing; pause pressed by the host while a client still loads the map: that client loads anyway
+   and is paused only once it is in.
+Logs: `[Net] Server: old connection N is silent`, `[Spec] quick return`, `[Spec] player 'X' is back`, `transport pools: 4096`.
+
+## Team pings (2026-11-15, BC ON on every PC; hidden labs mp-ping + ping-play OK)
+1. Bind "Ping allies" (Advanced Hotkeys > Orders). Press over a block: ring pulses on the ground, "!" above in your colour, mini map pulse, chime; gone after 5 s.
+2. Press over the mini map: the ping lands on the surface at that map point.
+3. Turn the camera away: an arrow with "!" sits at the screen edge pointing at the ping.
+4. 2v2 with teams: ally sees your ping (and hears it), enemies see nothing; spectator sees all pings.
+5. Visuals > World overlays > Team pings: duration, cooldown, max per player (4th ping removes the oldest at max 3), size, volume (slider plays the chime), hide allies' pings, edge arrow. Settings survive a restart.
+6. Replay of that match: pings appear at their time with the chime; after a seek they appear silently.
+7. BC OFF: the bind does nothing, no message 117 on the wire.

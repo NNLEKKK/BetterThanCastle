@@ -1,0 +1,15 @@
+# full rejoin stress: host + 4 clients, clients 1+2 lose the network together for 30 s (mp4-fr.net.txt). Both rejoin with a
+# full reload; the host stays frozen until every returning player pressed Ready. ~11 min, 5 games.
+host default conquest
+waitclients 4 300
+wait 3
+startmatch 180
+waitgame 300
+mark ingame
+wait 8
+timerstart 90
+wait 150
+netstat
+wait 90
+netstat
+quit

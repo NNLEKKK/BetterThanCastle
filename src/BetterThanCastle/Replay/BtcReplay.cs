@@ -484,6 +484,7 @@ public static class BtcReplay
 					stringBuilder.Append("ticks=").Append(DateTime.Now.Ticks.ToString(BtcReplay.Inv)).Append('\n');
 					stringBuilder.Append("scene=").Append(BtcReplay.Esc(NetworkManager.networkSceneName)).Append('\n');
 					stringBuilder.Append("keyMin=").Append(BtcReplay.KeyMinutes.ToString(BtcReplay.Inv)).Append('\n');
+					stringBuilder.Append("modver=").Append(BtcReplay.Esc(BtcPlugin.Version)).Append('\n');
 					stringBuilder.Append(BtcReplayFix.GpsLine());
 					StringBuilder stringBuilder2 = new StringBuilder();
 					List<User> userList = UNetManager.instance.UserList;
@@ -799,6 +800,13 @@ public static class BtcReplay
 	public static bool IsRec(NetworkConnection c)
 	{
 		return c is BtcReplay.RecConn;
+	}
+
+	/// <summary>Connection id reserved for the recorder connections (main + legacy keyframe).</summary>
+	internal static bool IsRecId(int id)
+	{
+		try { return NetworkServer.hostTopology != null && (id == BtcReplay.ConnId(0) || id == BtcReplay.ConnId(1)); }
+		catch (Exception) { return false; }
 	}
 
 	public static bool GetRecordEnabled()
@@ -2148,6 +2156,7 @@ public static class BtcReplay
 	public static void StartReplay(BtcReplay.Data d)
 	{
 		BtcReplaySeek.Reset();
+		if (d != null) BtcReplayCleanup.Opened_(d.FilePath);
 		try
 		{
 			bool flag = d == null || d.Error != null;
@@ -2814,6 +2823,7 @@ public static class BtcReplay
 			try
 			{
 				BtcSpectate.RegisterHandlers(networkClient);
+				BtcShield.RegisterHandlers(networkClient);   // recorded barrier states (msg 109)
 				NetworkMessageDelegate networkMessageDelegate = BtcReplay.GetSpec("_orig") as NetworkMessageDelegate;
 				NetworkMessageDelegate networkMessageDelegate2;
 				bool flag78 = networkMessageDelegate != null && networkClient.handlers.TryGetValue(39, out networkMessageDelegate2) && networkMessageDelegate2 != null && networkMessageDelegate2.Method.DeclaringType == typeof(BtcSpectate);

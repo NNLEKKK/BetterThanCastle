@@ -91,12 +91,21 @@ namespace BetterThanCastle
         {
             if (it == null || it._entries == null || it._entries.Count == 0 || it._entries.Count > 2) return null;
             KeyCode[] r = new KeyCode[it._entries.Count];
+            int mice = 0;
             for (int i = 0; i < r.Length; i++)
             {
                 BindingsProvider.BindItem.KeyboardEntry k = it._entries[i] as BindingsProvider.BindItem.KeyboardEntry;
-                if (k == null) return null;
-                r[i] = k._keyCode;
+                if (k == null)
+                {
+                    KeyCode m = MouseKey(it._entries[i]);
+                    if (m == KeyCode.None) return null;
+                    r[i] = m;
+                    mice++;
+                }
+                else r[i] = k._keyCode;
             }
+            if (mice > 1 || (r.Length == 2 && IsMouse(r[0]) && !IsModifier(r[1]))) return null;
+            if (r.Length == 2 && IsMouse(r[0])) { KeyCode t0 = r[0]; r[0] = r[1]; r[1] = t0; }
             if (r.Length == 2 && IsModifier(r[1]) && !IsModifier(r[0])) { KeyCode t = r[0]; r[0] = r[1]; r[1] = t; }
             return r;
         }
@@ -116,11 +125,91 @@ namespace BetterThanCastle
             return k == KeyCode.LeftShift || k == KeyCode.RightShift || k == KeyCode.LeftControl || k == KeyCode.RightControl || k == KeyCode.LeftAlt || k == KeyCode.RightAlt;
         }
 
-        /// <summary>Vanilla takes at most [modifier, key] (or one key).</summary>
+        internal static bool IsMouse(KeyCode k) { return k >= KeyCode.Mouse0 && k <= KeyCode.Mouse6; }
+
+        private static KeyCode MouseKey(BindingsProvider.BindItem.Entry e)
+        {
+            BindingsProvider.BindItem.MouseButtonEntry m = e as BindingsProvider.BindItem.MouseButtonEntry;
+            if (m == null) return KeyCode.None;
+            int id = BindingsProvider.BindItem.MouseButtonEntry.GetMouseButtonId(m.ToEntryString(false));
+            return id >= 0 && id <= 6 ? KeyCode.Mouse0 + id : KeyCode.None;
+        }
+
+        /// <summary>Vanilla takes at most [modifier, key] (or one key); a mouse button counts as the key.</summary>
         internal static bool Fits(KeyCode[] combo)
         {
             if (combo == null || combo.Length == 0 || combo.Length > 2) return false;
             return combo.Length == 1 || IsModifier(combo[0]);
+        }
+
+        /// <summary>Mouse buttons reach Rewired only for the actions of the Camera mouse map (cam_*).</summary>
+        internal static bool AcceptsMouse(string action) { return action != null && action.StartsWith("cam_"); }
+
+        private static ModifierKeyFlags ModFlag(KeyCode k)
+        {
+            switch (k)
+            {
+                case KeyCode.LeftShift: return ModifierKeyFlags.LeftShift;
+                case KeyCode.RightShift: return ModifierKeyFlags.RightShift;
+                case KeyCode.LeftControl: return ModifierKeyFlags.LeftControl;
+                case KeyCode.RightControl: return ModifierKeyFlags.RightControl;
+                case KeyCode.LeftAlt: return ModifierKeyFlags.LeftAlt;
+                case KeyCode.RightAlt: return ModifierKeyFlags.RightAlt;
+                default: return ModifierKeyFlags.None;
+            }
+        }
+
+        private static readonly string[] MouseNames = { "Left Mouse Button", "Right Mouse Button", "Mouse Button 3", "Mouse Button 4", "Mouse Button 5", "Mouse Button 6", "Mouse Button 7" };
+
+        /// <summary>Makes the Rewired Camera mouse map equal to the mouse items of the merged binds (vanilla maps only the keyboard). Changes only the difference,
+        /// so with unchanged binds nothing is touched.</summary>
+        internal static void ApplyMouse()
+        {
+            try
+            {
+                MouseMap map = Brix.Input.PickingUtility.Player.controllers.maps.GetMap<MouseMap>(0, "Camera", "Camera");
+                Mouse mouse = ReInput.controllers.Mouse;
+                if (map == null || mouse == null) return;
+                int[] idOf = new int[MouseNames.Length];
+                for (int i = 0; i < idOf.Length; i++) idOf[i] = -1;
+                foreach (ControllerElementIdentifier ei in mouse.ElementIdentifiers)
+                {
+                    int n = Array.IndexOf(MouseNames, ei.name);
+                    if (n >= 0) idOf[n] = ei.id;
+                }
+                Dictionary<string, ElementAssignment> want = new Dictionary<string, ElementAssignment>();
+                foreach (KeyValuePair<string, List<BindingsProvider.BindItem>> kv in BindingsProvider.mergedBindItemMap)
+                {
+                    InputAction act = ReInput.mapping.GetAction(kv.Key);
+                    if (act == null || !AcceptsMouse(kv.Key)) continue;
+                    for (int i = 0; i < kv.Value.Count; i++)
+                    {
+                        KeyCode[] c = Combo(kv.Value[i]);
+                        if (c == null || !IsMouse(c[c.Length - 1])) continue;
+                        int eid = idOf[c[c.Length - 1] - KeyCode.Mouse0];
+                        if (eid < 0) continue;
+                        ModifierKeyFlags flags = c.Length == 2 ? ModFlag(c[0]) : ModifierKeyFlags.None;
+                        string key = act.id + "|" + eid + "|" + (int)flags;
+                        if (!want.ContainsKey(key))
+                            want[key] = new ElementAssignment(ControllerType.Mouse, ControllerElementType.Button, eid, AxisRange.Positive, KeyCode.None, flags, act.id, Pole.Positive, false);
+                    }
+                }
+                Dictionary<string, bool> have = new Dictionary<string, bool>();
+                List<int> drop = new List<int>();
+                foreach (ActionElementMap em in map.GetButtonMaps())
+                {
+                    // maps this adapter cannot express (other actions, unknown buttons) stay as the game made them
+                    InputAction ea = ReInput.mapping.GetAction(em.actionId);
+                    if (ea == null || !AcceptsMouse(ea.name) || Array.IndexOf(idOf, em.elementIdentifierId) < 0) continue;
+                    string key = em.actionId + "|" + em.elementIdentifierId + "|" + (int)em.modifierKeyFlags;
+                    if (want.ContainsKey(key) && !have.ContainsKey(key)) have[key] = true; else drop.Add(em.id);
+                }
+                if (drop.Count == 0 && have.Count == want.Count) return;
+                for (int i = 0; i < drop.Count; i++) map.DeleteElementMap(drop[i]);
+                foreach (KeyValuePair<string, ElementAssignment> kv in want) if (!have.ContainsKey(kv.Key)) map.CreateElementMap(kv.Value);
+                BtcLog.Info("Hotkeys", "vanilla mouse binds applied: -" + drop.Count + " +" + (want.Count - have.Count));
+            }
+            catch (Exception e) { BtcLog.Error("Hotkeys", "vanilla mouse apply", e); }
         }
 
         internal static bool Editable(BindingsProvider.BindItem it) { return Combo(it) != null; }

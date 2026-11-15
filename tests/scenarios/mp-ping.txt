@@ -1,0 +1,17 @@
+# team pings: host + 1 client. Enemies first (no relay), then allyall (relay both ways).
+host default conquest
+waitclients 1 300
+wait 3
+startmatch 180
+waitgame 300
+wait 15
+ping
+pingdump
+wait 25
+allyall
+wait 5
+ping 3
+pingdump
+wait 30
+pingdump
+quit

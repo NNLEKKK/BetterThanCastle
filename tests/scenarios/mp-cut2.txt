@@ -1,0 +1,12 @@
+# BadMessage hunt: host + 1 client, client outages 5/5/10/10/20 s (mp-cut2.net.txt). ~6 min.
+host default conquest
+waitclients 1 300
+wait 3
+startmatch 180
+waitgame 300
+mark ingame
+wait 120
+netstat
+wait 130
+netstat
+quit

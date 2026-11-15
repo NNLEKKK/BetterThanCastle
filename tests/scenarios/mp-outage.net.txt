@@ -1,0 +1,13 @@
+# Radmin-like base profile for every client (ONE clumsy instance; lag = RTT/2 on loopback: 50 -> ~100 ms RTT), then client1
+# alone loses the network for longer and longer (the base profile pauses during a cut, two clumsy instances disturb each other).
+at host:ingame+0 net clients 0 --lag on --lag-time 50 --drop on --drop-chance 1.0 --ood on --ood-chance 1.0 --throttle on --throttle-chance 1.0 --throttle-frame 120
+at host:ingame+40 cut client1 5
+at host:ingame+85 cut client1 10
+at host:ingame+135 cut client1 15
+at host:ingame+190 cut client1 20
+at host:ingame+250 cut client1 25
+at host:ingame+315 cut client1 30
+at host:ingame+390 cut client1 40
+at host:ingame+475 cut client1 50
+at host:ingame+570 cut client1 60
+at host:ingame+680 cut client1 90

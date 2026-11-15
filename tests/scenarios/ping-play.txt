@@ -1,0 +1,13 @@
+# team pings in replay playback: play the latest mp-ping replay (pings at 2.5, 16.3, 32.8, 48.2 s), sample the live count, then seek back.
+replay 00-53-02_Plateau
+waitreplay 180
+wait 4
+pingdump
+wait 13
+pingdump
+seek 34
+wait 2
+pingdump
+wait 10
+pingdump
+quit

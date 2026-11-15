@@ -106,6 +106,58 @@ public static class BtcSymmetry
 		}
 	}
 
+	private static string _liveKey;
+
+	private static int _liveM, _liveKeep, _liveSx, _liveSz;
+
+	// Axis of the symmetry set in Gameplay settings for the map open in the editor (same sums as Prepare). False = off / no heightmap.
+	internal static bool LiveAxes(out int m, out int keep, out int sx, out int sz)
+	{
+		m = keep = sx = sz = 0;
+		if (BtcSymmetry.Mode == 0) return false;
+		Asset_Map map = GameParam.Map;
+		if (map == null || string.IsNullOrEmpty(map.path)) return false;
+		string hp = Path.Combine(map.path, "Heightmap.png");
+		if (!File.Exists(hp)) return false;
+		int mode = BtcSymmetry.Mode;
+		int k = (mode < 3) ? (BtcSymmetry._keep & 1) : BtcSymmetry._keep;
+		string key = hp + "|" + File.GetLastWriteTimeUtc(hp).Ticks + "|" + mode + "|" + k + "|" + BtcSymmetry._dx + "|" + BtcSymmetry._dz;
+		if (key != BtcSymmetry._liveKey)
+		{
+			Texture2D tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+			tex.LoadImage(File.ReadAllBytes(hp));
+			int minX, minZ, maxX, maxZ;
+			BtcSymmetry.Bounds(tex.GetPixels32(), tex.width, tex.height, out minX, out minZ, out maxX, out maxZ);
+			UnityEngine.Object.Destroy(tex);
+			if (maxX < minX) return false;
+			BtcSymmetry._liveM = mode;
+			BtcSymmetry._liveKeep = k;
+			BtcSymmetry._liveSx = minX + maxX + BtcSymmetry._dx;
+			BtcSymmetry._liveSz = minZ + maxZ + BtcSymmetry._dz;
+			BtcSymmetry._liveKey = key;
+		}
+		m = BtcSymmetry._liveM; keep = BtcSymmetry._liveKeep; sx = BtcSymmetry._liveSx; sz = BtcSymmetry._liveSz;
+		return true;
+	}
+
+	// Mirror images of (x,z): fx/fz say which coordinate was flipped. On-axis positions (image within 1 voxel) are skipped.
+	internal static int Images(int m, int sx, int sz, float x, float z, float[] ox, float[] oz, bool[] fx, bool[] fz)
+	{
+		int[] a;
+		int[] b;
+		BtcSymmetry.Elems(m, out a, out b);
+		int n = 0;
+		for (int i = 0; i < a.Length; i++)
+		{
+			float nx = a[i] == 1 ? sx - x : x;
+			float nz = b[i] == 1 ? sz - z : z;
+			if (BtcSymmetry.Near(x, z, nx, nz)) continue;
+			ox[n] = nx; oz[n] = nz; fx[n] = a[i] == 1; fz[n] = b[i] == 1;
+			n++;
+		}
+		return n;
+	}
+
 	public static Vector3 FoldPos(Vector3 p)
 	{
 		int am = BtcSymmetry._am;

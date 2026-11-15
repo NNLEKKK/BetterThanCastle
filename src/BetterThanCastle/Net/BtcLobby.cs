@@ -791,6 +791,31 @@ public static class BtcLobby
 		}
 	}
 
+	/// <summary>Host start with BC ON: transport topology = HostSlots connections (players + spectators + the replay recorder +
+	/// reconnecting players whose old connection is not closed yet), lobby slots = MaxSlots. The lobby tick lowers maxConnections/
+	/// maxPlayers to the chosen player count afterwards; that only limits joins logically.</summary>
+	internal static void SizeHost(UNetManager m)
+	{
+		if (m == null || !BtcNetworkGate.Enabled) return;
+		m.maxConnections = BtcLobby.HostSlots;
+		BtcLobby.SizeSlots(m);
+		BtcLog.Info("Lobby", "host sized: transport " + BtcLobby.HostSlots + " connections, " + BtcLobby.MaxSlots + " lobby slots");
+	}
+
+	/// <summary>BC ON, host and client: lobby slot array for MaxSlots players. NetworkLobbyManager allocates lobbySlots only while
+	/// the array is empty (so it stays at the first session's size) and ignores slot numbers beyond it.</summary>
+	internal static void SizeSlots(UNetManager m)
+	{
+		if (m == null || !BtcNetworkGate.Enabled) return;
+		if (m.maxPlayers < BtcLobby.MaxSlots) m.maxPlayers = BtcLobby.MaxSlots;
+		if (m.lobbySlots == null || m.lobbySlots.Length < BtcLobby.MaxSlots)
+		{
+			NetworkLobbyPlayer[] a = new NetworkLobbyPlayer[BtcLobby.MaxSlots];
+			if (m.lobbySlots != null) Array.Copy(m.lobbySlots, a, m.lobbySlots.Length);
+			m.lobbySlots = a;
+		}
+	}
+
 	public const int MaxSlots = 8;
 
 	public const int HostSlots = 16;

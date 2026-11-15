@@ -40,6 +40,7 @@ namespace BetterThanCastle
             new Elem { Id = "pauseplate", En = "Pause plate", Ru = "Плашка паузы", HintEn = "Connection / pause state", HintRu = "Состояние связи и паузы", Icon = BtcReplayIcons.Pause, Anchor = 3, Row = 0, W = 16f, H = 1.9f, DefScale = 0.7f, DefNx = -0.0133f },
             new Elem { Id = "clientpause", En = "Client pause plate", Ru = "Плашка паузы клиентов", HintEn = "Whether clients may pause", HintRu = "Могут ли клиенты ставить паузу", Icon = BtcReplayIcons.Lock, Anchor = 3, Row = 1, W = 17f, H = 1.9f, DefScale = 0.4f, DefNx = -0.0133f, DefNy = -0.0016f },
             new Elem { Id = "ping", En = "Ping chip", Ru = "Чип пинга", HintEn = "Worst ping, hover for the list", HintRu = "Худший пинг, по наведению список", Icon = BtcReplayIcons.Wave, Anchor = 3, Row = 2, W = 7f, H = 1.9f, DefScale = 0.4523f, DefNx = -0.0128f, DefNy = 0.0217f },
+            new Elem { Id = "ready", En = "Players Ready panel", Ru = "Панель готовности игроков", HintEn = "Advanced timer: waiting for players to press Ready", HintRu = "Продвинутый таймер: ждём, пока игроки нажмут Готов", Icon = BtcReplayIcons.Group, Anchor = 1, W = 36f, H = 7f },
         };
 
         internal static Elem ElemOf(string id) { for (int i = 0; i < Elems.Length; i++) if (Elems[i].Id == id) return Elems[i]; return null; }
@@ -317,7 +318,7 @@ namespace BetterThanCastle
             switch (el.Anchor)
             {
                 case 0: x = u * 0.6f; y = u * 0.5f; break;
-                case 1: w = Mathf.Min(el.Id == "cards" ? W * 0.55f : W * 0.6f, w); x = (W - w) * 0.5f; y = el.Id == "cards" ? off : off + BtcHud.Fs * 2.9f; break;
+                case 1: w = Mathf.Min(el.Id == "cards" || el.Id == "ready" ? W * 0.55f : W * 0.6f, w); x = (W - w) * 0.5f; y = el.Id == "cards" || el.Id == "ready" ? off : off + BtcHud.Fs * 2.9f; break;
                 case 2: x = W - 45f - w; y = u * 0.5f; break;
                 default:
                     {

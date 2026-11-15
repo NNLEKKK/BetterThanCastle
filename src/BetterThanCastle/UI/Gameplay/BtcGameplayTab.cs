@@ -298,8 +298,9 @@ namespace BetterThanCastle
 
             Rect view = new Rect(area.x, y, area.width, area.yMax - y);
             float vw = view.width - (_h > view.height ? 14f : 0f);
+            BtcJump.Scroll(ref _scroll, view.height);
             _scroll = GUI.BeginScrollView(view, _scroll, new Rect(0f, 0f, vw, _h));
-            _off = new Vector2(view.x - _scroll.x, view.y - _scroll.y);
+            _off =new Vector2(view.x - _scroll.x, view.y - _scroll.y);
             float cy = fs * 0.2f;
             _keys.Clear();
             try
@@ -469,9 +470,10 @@ namespace BetterThanCastle
                 for (int i = 0; i < BtcGameplay.Defs.Count; i++)
                 {
                     BtcGameplay.Def d = BtcGameplay.Defs[i];
-                    if (GroupOf(i) != groups[g] || !Visible(d, shown) || !Match(d, q)) continue;
+                    bool pin = BtcJump.Pinned("gp", d.Id);   // jumped to from the search: shown even if hidden or filtered out
+                    if (GroupOf(i) != groups[g] || (!Visible(d, shown) && !pin) || !Match(d, q)) continue;
                     bool ch = RowChanged(i, shown, bas);
-                    if (onlyCh && !ch) continue;
+                    if (onlyCh && !ch && !pin) continue;
                     rows.Add(i);
                     if (ch) { int c = Crit(i, shown[i]); if (c == 2) crit++; else if (c == 1) minor++; }
                 }
@@ -619,6 +621,18 @@ namespace BetterThanCastle
             string tip = (d.HintEn != null ? Tt(d.HintEn, d.HintRu) + "\n" : "") + Tt("Vanilla: ", "Ваниль: ") + ValText(i, BtcGameplay.Vanilla)
                 + (crit == 2 ? "\n" + Tt("Critical for gameplay", "Критично для геймплея") : (crit == 1 ? "\n" + Tt("Minor change", "Незначительное изменение") : ""));
             BtcReplayIcons.Hint(hit, new Rect(_off.x + hit.x, _off.y + hit.y, hit.width, hit.height), tip);
+            BtcJump.Row("gp", d.Id, new Rect(fs * 0.5f, rowY, w - fs, Mathf.Max(rowH, y - rowY)));
+        }
+
+        /// <summary>Search / link jump to one rule: opens its page and section, scrolls to the row and pulses it. The tab search is cleared, never filled.</summary>
+        internal static void JumpRule(int i)
+        {
+            if (i < 0 || i >= BtcGameplay.Defs.Count) return;
+            string g = GroupOf(i);
+            Query = "";
+            Page = g == "timer" ? PTimer : (g == "shield" ? PShield : PRules);
+            BtcUi.SetOpen("gp:fold:" + g, true);
+            BtcJump.Target("gp", BtcGameplay.Defs[i].Id);
         }
 
         // ------------------------------------------------------------------ typed value: click the number of a slider row, type, Enter
@@ -708,7 +722,7 @@ namespace BetterThanCastle
                 BtcVisualRows.Txt(new Rect(vr - vwid, row.y, vwid, h), ValText(i, a), _val, CritColor(c));
                 BtcReplayIcons.Glyph(BtcReplayIcons.ChevR, new Rect(vr - vwid - gg - fs * 0.3f, row.center.y - gg * 0.5f, gg, gg), new Color(1f, 1f, 1f, 0.5f));
                 BtcVisualRows.Txt(new Rect(vr - vwid * 2f - gg - fs * 0.6f, row.y, vwid, h), ValText(i, b), _val, new Color(1f, 1f, 1f, 0.5f));
-                if (clickable && BtcSfx.Btn(row, "", BtcReplayUI.sBtn)) { Query = Tt(d.En, d.Ru); Page = PRules; _scroll = Vector2.zero; }
+                if (clickable && BtcSfx.Btn(row, "", BtcReplayUI.sBtn)) { JumpRule(i); _scroll = Vector2.zero; }
                 y += h + 2f;
             }
             return idx.Count;

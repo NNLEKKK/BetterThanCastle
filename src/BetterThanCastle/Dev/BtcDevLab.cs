@@ -92,6 +92,24 @@ namespace BetterThanCastle.Dev
                         Lab("shieldbar side=" + F(p, 1, 0f) + " fac=" + (f != null ? f.ID : -1) + " at=" + w);
                         return true;
                     }
+                case "shieldbox":
+                    {
+                        // shieldbox <side> <x> <z> <hx> <hy> <hz> [ox oz]: like shieldbar, plus a map box part (half sizes in blocks, centre offset ox/oz)
+                        // bound to that point; a second call with the same point adds another part (the barrier is their union)
+                        Ensure();
+                        List<BtcDuelUnitRef> us = Pick((int)F(p, 1, 0f), "0");
+                        if (us.Count == 0) { Lab("shieldbox: no unit"); return true; }
+                        Vector3 w = W(F(p, 2, 50f), F(p, 3, 10f)); w.y = us[0].Tf.position.y;
+                        int hx = (int)F(p, 4, 10f), hy = (int)F(p, 5, 10f), hz = (int)F(p, 6, 10f), ox = (int)F(p, 7, 0f), oz = (int)F(p, 8, 0f);
+                        Brix.Engine.XYZ vc = Brix.Engine.XYZ.FromVector3(w);
+                        BtcShieldBox.Box first = BtcShieldBox.For(w);
+                        Vector3 key = first != null ? first.Crystal : w;
+                        BtcShieldBox.Boxes.Add(new BtcShieldBox.Box { Crystal = key, X0 = vc.x + ox - hx, X1 = vc.x + ox + hx, Y0 = vc.y - hy, Y1 = vc.y + hy, Z0 = vc.z + oz - hz, Z1 = vc.z + oz + hz });
+                        Brix.Game.Faction f = us[0].Labor.faction;
+                        if (first == null) BtcShield.DevAddBar(f != null ? f.ID : -1, w);
+                        Lab("shieldbox side=" + F(p, 1, 0f) + " at=" + w + " half=" + hx + "," + hy + "," + hz);
+                        return true;
+                    }
                 case "duellift":
                     {
                         // duellift <side> <idx> <dy>: put units dy above where they stand (they fall)

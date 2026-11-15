@@ -386,6 +386,7 @@ namespace BetterThanCastle
         internal static void DrawTip()
         {
             DrawToast(Fs);
+            BtcReplayIcons.FlushTip(Fs);   // hover tips of the tabs, painted last so no scroll view clips them
             if (_tip == null) return;
             if (Event.current.type != EventType.Repaint) return;
             int fs = Fs;

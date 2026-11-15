@@ -227,7 +227,7 @@ public static class BtcLoadBoost
 
 	public static bool Loading;
 
-	public static float MenuBudgetMs = 250f;
+	public static float MenuBudgetMs = 100000f; // 0.3.0 value: no slicing (250 ms made 0.3.4+ loads much slower)
 
 	public static int RefreshTreeCalls;
 

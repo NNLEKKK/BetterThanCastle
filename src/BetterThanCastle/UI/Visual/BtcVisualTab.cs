@@ -90,6 +90,17 @@ namespace BetterThanCastle
 
         internal void SetPage(int p) { _page = p; _scroll = Vector2.zero; BtcVisualColor.Close(); }
 
+        /// <summary>Search / link jump: opens the page and the section of the setting, scrolls to it and pulses it (the tab search is cleared, never filled).</summary>
+        internal void JumpSetting(BtcVisualSetting s)
+        {
+            string[] pages = { "rings", "world", "plates", "stats", "screen" };
+            int pi = Array.IndexOf(pages, s.Page);
+            _q = "";
+            SetPage(pi >= 0 ? pi : PRings);
+            BtcUi.SetOpen("vis:" + s.Page + ":" + s.Section, true);
+            BtcJump.Target("vis", s.Key);
+        }
+
         // ------------------------------------------------------------------ draw
         internal override void Draw(Rect area, int fs)
         {
@@ -223,6 +234,7 @@ namespace BetterThanCastle
 
             Rect view = new Rect(content.x, y, content.width, content.yMax - y);
             float vw = view.width - (_h > view.height ? 14f : 0f);
+            BtcJump.Scroll(ref _scroll, view.height);
             _scroll = GUI.BeginScrollView(view, _scroll, new Rect(0f, 0f, vw, _h));
             float cy = fs * 0.2f;
             _keys.Clear();
@@ -295,6 +307,7 @@ namespace BetterThanCastle
                 case "crystal": return Tt("Crystal timer", "Таймер кристалла");
                 case "gametimer": return Tt("Game timer", "Игровой таймер");
                 case "shield": return Tt("Base shields (barriers)", "Защита базы (барьеры)");
+                case "ping": return Tt("Team pings", "Пинги союзникам");
                 case "menu": return Tt("Menu behaviour", "Поведение меню");
                 default: return Tt("Brightness", "Яркость");
             }
@@ -317,6 +330,7 @@ namespace BetterThanCastle
                 case "dmg": return BtcReplayIcons.Swords;
                 case "crystal": return BtcReplayIcons.Diamond;
                 case "shield": return BtcReplayIcons.Shield;
+                case "ping": return BtcReplayIcons.Target;
                 case "menu": return BtcReplayIcons.Lock;
                 default: return BtcReplayIcons.Sun;
             }
@@ -481,6 +495,7 @@ namespace BetterThanCastle
             if (Sec(ref y, w, fs, "world", "path")) Settings(ref y, w, fs, "world", "path");
             if (Sec(ref y, w, fs, "world", "bomb")) Settings(ref y, w, fs, "world", "bomb");
             if (Sec(ref y, w, fs, "world", "shield")) Settings(ref y, w, fs, "world", "shield");
+            if (Sec(ref y, w, fs, "world", "ping")) Settings(ref y, w, fs, "world", "ping");
         }
 
         private void PagePlates(ref float y, float w, int fs)

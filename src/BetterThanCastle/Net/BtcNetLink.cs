@@ -25,7 +25,15 @@ namespace BetterThanCastle
         private const float LinkSendInterval = 0.25f;
         private const float LinkPauseAfter = 4f;
         private const float LinkStallCredit = 0.25f;
-        private const float LinkDeadAfter = 20f;
+        // a silent link may still come back by itself (seamless); UNET drops a really broken one with BadMessage -> full rejoin.
+        // The host closes a peer silent PeerDropAfter (its queued sends would exhaust the transport); the client gives up after
+        // LinkDeadAfter and does the full rejoin itself (the host takes the new connection while the old one is silent).
+        // 30 s (was 75): after >= ~10 s without network UNET kills the transport link on the host side (BadMessage, WrongConnection);
+        // no disconnect packet reaches the client, which then only sees silence. Labs: no link silent > 10 s ever came back.
+        private const float LinkDeadAfter = 30f;
+        private const float LinkDeadWhileHostLoads = 120f;
+        private const float PeerDropAfter = 60f;
+        private const float PeerDropWhileLoading = 120f;
         private const float LinkOwnStallIgnore = 3f;
         private const float PauseRebroadcast = 1f;
         private const float RejoinFallback = 4f;
@@ -44,6 +52,41 @@ namespace BetterThanCastle
             internal float healthy;      // seconds fine since the outage ended
             internal float deafFor;      // seconds the peer's reports keep saying it does not hear us
             internal string why;         // "silent" / "deaf"
+            internal float loadGraceUntil; // realtime until which the peer still counts as loading (its load just ended)
+        }
+
+        // after a peer's load ends its first frames are still long (Lua UI, first physics), and its heartbeats lag behind
+        private const float LoadEndGrace = 10f;
+
+        /// <summary>
+        /// Host: the peer is (or just was) loading. Its own "loading" flag is not enough: a client blocks its main thread at the
+        /// scene switch, often before that flag goes out, and stays silent for many seconds. Its vanilla User.LevelReady only
+        /// turns true at the very end of its load (CmdSetLevelReady), so it covers that gap.
+        /// </summary>
+        private static bool PeerLoading(NetworkConnection c, Peer p, float rt)
+        {
+            bool now = p.loading;
+            if (!now)
+            {
+                try
+                {
+                    for (int i = 0; i < c.playerControllers.Count; i++)
+                    {
+                        PlayerController pc = c.playerControllers[i];
+                        User u = (pc != null && pc.gameObject != null) ? pc.gameObject.GetComponent<User>() : null;
+                        if (u != null && !u.LevelReady) { now = true; break; }
+                    }
+                }
+                catch (Exception) { }
+            }
+            if (now) p.loadGraceUntil = rt + LoadEndGrace;
+            return now || rt < p.loadGraceUntil;
+        }
+
+        /// <summary>The replay recorder's fake connection (REC ghost) never sends heartbeats: it is not a player to watch.</summary>
+        private static bool NotAPeer(NetworkConnection c)
+        {
+            return c == null || IsLocalConnection(c) || c is BtcReplay.RecConn;
         }
 
         internal class HeartbeatMessage : MessageBase
@@ -66,6 +109,8 @@ namespace BetterThanCastle
 
         private static readonly HeartbeatMessage _hb = new HeartbeatMessage();
         private static readonly List<int> _tmpIds = new List<int>();
+        private static readonly List<NetworkConnection> _tmpConns = new List<NetworkConnection>();
+
 
         private static Peer PeerOf(State s, int connId)
         {
@@ -79,6 +124,7 @@ namespace BetterThanCastle
         /// <summary>Own loading state as the peers should see it: from the load start until the level is live.</summary>
         private static bool SelfLoading(UNetManager m, State s)
         {
+            if (!NetworkServer.active && BtcSpectate.ClientJoining) return true;   // hot-join: NetLive can say live long before the world is in
             return !InLobby(m) && !NetLive(m, s);
         }
 
@@ -111,6 +157,7 @@ namespace BetterThanCastle
             s.lastHeartbeatSendTime = rt;
             SendHeartbeat(m, s);
             s.frameMax = 0f;
+            HoldPause(m, s);
             if (NetworkServer.active) HostPolicy(m, s, rt, step);
             else ClientWatch(m, s, rt);
         }
@@ -131,7 +178,7 @@ namespace BetterThanCastle
                 for (int i = 0; i < NetworkServer.connections.Count; i++)
                 {
                     NetworkConnection c = NetworkServer.connections[i];
-                    if (c == null || IsLocalConnection(c)) continue;
+                    if (NotAPeer(c)) continue;
                     Peer p;
                     _hb.hearDs = Clamp16((s.peers.TryGetValue(c.connectionId, out p) ? p.silence : 0f) * 10f);
                     c.SendUnreliable(MsgHeartbeat, _hb);
@@ -193,10 +240,23 @@ namespace BetterThanCastle
             }
             for (int i = 0; i < _tmpIds.Count; i++) s.peers.Remove(_tmpIds[i]);
 
+            // a peer that died without a disconnect packet (crash, cable) stays "connected" for the 1 h transport timeout and
+            // everything sent to it piles up until UNET runs out of its shared send events: then the host cannot send to anybody
+            // and all other players drop together (~2 min after the crash). Close such a link; the player is kept for a rejoin.
+            _tmpConns.Clear();
             for (int i = 0; i < NetworkServer.connections.Count; i++)
             {
                 NetworkConnection c = NetworkServer.connections[i];
-                if (c == null || IsLocalConnection(c) || BtcSpectate.IsSpec(c)) continue;
+                Peer dp;
+                if (NotAPeer(c) || selfLoading || !s.peers.TryGetValue(c.connectionId, out dp) || !dp.seen) continue;
+                if (dp.silence > (PeerLoading(c, dp, rt) ? PeerDropWhileLoading : PeerDropAfter)) _tmpConns.Add(c);
+            }
+            for (int i = 0; i < _tmpConns.Count; i++) { DropStale(_tmpConns[i]); s.peers.Remove(_tmpConns[i].connectionId); }
+
+            for (int i = 0; i < NetworkServer.connections.Count; i++)
+            {
+                NetworkConnection c = NetworkServer.connections[i];
+                if (NotAPeer(c) || BtcSpectate.IsSpec(c)) continue;
                 if (IsPendingRejoin(s, c.connectionId)) continue;
                 Peer p = PeerOf(s, c.connectionId);
                 bool silent = p.silence > LinkPauseAfter;
@@ -204,7 +264,7 @@ namespace BetterThanCastle
                 // deaf only if the reports say so for a whole second
                 if (p.seen && p.hear > LinkPauseAfter && !ownStall) p.deafFor += step; else p.deafFor = 0f;
                 bool deaf = p.deafFor >= 1f;
-                bool bad = !selfLoading && !p.loading && (silent || deaf);
+                bool bad = !selfLoading && !PeerLoading(c, p, rt) && (silent || deaf);
                 string name = ResolvePlayerName(m, s, c);
                 if (bad)
                 {
@@ -243,7 +303,7 @@ namespace BetterThanCastle
             for (int i = 0; i < s.pendingReconnectUsers.Count; i++)
             {
                 User u = s.pendingReconnectUsers[i];
-                string name = UserName(u);
+                string name = PendingName(s, u);
                 if (s.continueWithout.Contains(name)) continue;
                 blocking++;
                 if (sb == null) sb = new StringBuilder();
@@ -265,6 +325,14 @@ namespace BetterThanCastle
         }
 
         private static string T2(string en, string ru) { return BtcReplayUI.T(en, ru); }
+
+        /// <summary>Name of a dropped player as it was when the link died (its live name may follow a reused connection id).</summary>
+        private static string PendingName(State s, User u)
+        {
+            string name;
+            if (u != null && s.droppedNames.TryGetValue(u.GetInstanceID(), out name)) return name;
+            return UserName(u);
+        }
 
         private static string UserName(User u)
         {
@@ -315,7 +383,7 @@ namespace BetterThanCastle
                 Peer p;
                 if (c != null && s.peers.TryGetValue(c.connectionId, out p) && p.hold) s.continueWithout.Add(ResolvePlayerName(m, s, c));
             }
-            for (int i = 0; i < s.pendingReconnectUsers.Count; i++) s.continueWithout.Add(UserName(s.pendingReconnectUsers[i]));
+            for (int i = 0; i < s.pendingReconnectUsers.Count; i++) s.continueWithout.Add(PendingName(s, s.pendingReconnectUsers[i]));
             BtcLog.Info("Net", "host continues without: " + string.Join(", ", new List<string>(s.continueWithout).ToArray()));
             try { BtcSpectate.CancelWaitingFromHost(); } catch (Exception e) { BtcLog.Warn("Net", "spectate cancel: " + e.Message); }
             SetHard(m, s, false, null);
@@ -338,6 +406,27 @@ namespace BetterThanCastle
             }
         }
 
+        /// <summary>Host: seconds without a heartbeat from this connection (-1 = unknown peer / no BC session).</summary>
+        internal static float PeerSilence(int connId)
+        {
+            State s = Peek(Current);
+            Peer p;
+            return s != null && s.peers.TryGetValue(connId, out p) && p.seen ? p.silence : -1f;
+        }
+
+        /// <summary>Host: the player came back on a new connection while its old one is still open but silent (cable pull: the 1 h
+        /// transport timeout never fires). Treat the old one as dropped now: keep the player for the reconnect, close the old link.</summary>
+        internal static bool DropStale(NetworkConnection old)
+        {
+            UNetManager m = Current;
+            if (m == null || old == null || !NetworkServer.active) return false;
+            BtcLog.Warn("Net", "Server: old connection " + old.connectionId + " is silent " + PeerSilence(old.connectionId).ToString("0.0") + " s (dead link or its player is back on a new one): dropping it");
+            BeforeServerDisconnect(m, old);
+            bool kept = TryKeepDroppedPlayer(m, old);
+            try { byte err; NetworkTransport.Disconnect(old.hostId, old.connectionId, out err); } catch (Exception) { }
+            return kept;
+        }
+
         /// <summary>BtcSpectate (legacy reflection target "pendingReconnectUsers").</summary>
         internal static List<User> PendingUsers
         {
@@ -348,27 +437,55 @@ namespace BetterThanCastle
         private static void ClientWatch(UNetManager m, State s, float rt)
         {
             Peer h = s.hostPeer;
-            bool warn = h.seen && h.silence > LinkPauseAfter && !InLobby(m);
+            // no "host is not responding" while either side loads: the host blocks its main thread while it loads and waits for us
+            bool hostLoading = h.loading;
+            try { hostLoading |= GameParam.instance != null && !GameParam.instance.NetworkHostReady; } catch (Exception) { }
+            if (hostLoading || SelfLoading(m, s)) h.loadGraceUntil = rt + LoadEndGrace;
+            bool warn = h.seen && h.silence > LinkPauseAfter && !InLobby(m) && rt >= h.loadGraceUntil;
             if (warn != s.clientLinkWarn)
             {
                 s.clientLinkWarn = warn;
                 if (warn) BtcLog.Warn("Net", "link: host silent " + h.silence.ToString("0.0") + " s (no local pause, the host decides)");
                 else BtcLog.Info("Net", "link: host heard again");
             }
-            if (h.seen && h.silence > LinkDeadAfter && !s.reconnectRecoveryInProgress && !InLobby(m) && NetLive(m, s) && !m.calledDisconnect)
+            // a host that said "loading" in its last heartbeat blocks its main thread for many seconds (Lua menu + gamemode, worse on a
+            // busy PC): a new connection now would be refused ("not in lobby and game already") and break the whole match start
+            // (its heartbeat flag may never arrive: the block starts right at the scene switch, so also use the vanilla HostLoaded state)
+            bool hostLoads = h.loading;
+            try { hostLoads |= GameParam.instance != null && !GameParam.instance.NetworkHostLoaded; } catch (Exception) { }
+            float dead = hostLoads ? LinkDeadWhileHostLoads : LinkDeadAfter;
+            if (h.seen && h.silence > dead && !s.reconnectRecoveryInProgress && !InLobby(m) && NetLive(m, s) && !m.calledDisconnect)
             {
-                BtcLog.Warn("Net", "link: host silent " + h.silence.ToString("0") + " s, reconnecting");
+                BtcLog.Warn("Net", "link: host silent " + h.silence.ToString("0") + " s, link given up");
                 h.silence = 0f;
                 h.seen = false;
-                StartClientReconnectLoop(m, s);
+                FullRejoin(m, "host silent");
             }
             ApplyClientPause(m, s);
+        }
+
+        /// <summary>No voluntary pause in the lobby at all; while our own level loads the pause is kept in the state but not applied.</summary>
+        private static void HoldPause(UNetManager m, State s)
+        {
+            bool lobby = InLobby(m);
+            if (lobby && s.voluntaryPauseActive && NetworkServer.active)
+            {
+                SetVoluntaryPause(m, s, false, NoVoluntaryPauseOwner, null);
+                BroadcastPauseState(s);
+                BtcLog.Info("Net", "voluntary pause dropped: lobby");
+            }
+            bool held = lobby || SelfLoading(m, s);
+            if (held == s.pauseHeld) return;
+            s.pauseHeld = held;
+            if (s.voluntaryPauseActive) BtcLog.Info("Net", "voluntary pause " + (held ? "held (loading)" : "applied (level live)"));
+            RecomputeEffectivePause(s);
         }
 
         /// <summary>Client: the host's pause state, plus a local freeze only while our own transport is reconnecting.</summary>
         private static void ApplyClientPause(UNetManager m, State s)
         {
-            bool live = NetLive(m, s) && !InLobby(m);
+            // never freeze our own load: the loaders use scaled waits, a host pause (it waits for us!) kept a rejoining player at 0%
+            bool live = NetLive(m, s) && !InLobby(m) && !SelfLoading(m, s);
             bool hard = live && (s.hostHard || s.reconnectRecoveryInProgress);
             if (hard == s.hardPauseActive) return;
             s.hardPauseActive = hard;

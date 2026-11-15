@@ -7,6 +7,9 @@ namespace BetterThanCastle
         internal static ConfigEntry<int> WindowMode;
         internal static ConfigEntry<bool> SkipIntro;
         internal static ConfigEntry<bool> LoadTimer;
+        internal static ConfigEntry<bool> LoadCancel;
+        internal static ConfigEntry<bool> LiveSymmetry;
+        internal static ConfigEntry<bool> CleanHanging;
         internal static ConfigEntry<int> UiSound;
         internal static ConfigEntry<bool> ReuseMenuPanels;
         internal static ConfigEntry<bool> EarlyClientUi;
@@ -41,9 +44,12 @@ namespace BetterThanCastle
             WindowMode = cfg.Bind("Display", "WindowMode", 3, "0 = keep the game setting, 1 = fullscreen, 2 = windowed, 3 = borderless.");
             SkipIntro = cfg.Bind("Display", "SkipIntro", true, "Skip the logo screens on startup (applies on next launch).");
             UiSound = cfg.Bind("Display", "UiSound", 2, "Sound feedback of the mod menu (hover, clicks, typing, delete): 0 = off, 1 = low, 2 = medium, 3 = high.");
+            LiveSymmetry = cfg.Bind("Editor", "LiveSymmetry", true, "Map editor: when a symmetry mode is set in Gameplay settings (mirror/point/quadrants), objects, trees and Island terrain you place are mirrored instantly to the other side. Uses the map Heightmap.png for the axis.");
+            CleanHanging = cfg.Bind("Editor", "CleanHanging", true, "Map editor: after you dig or lower terrain, ore, plants, boulders and trees that no longer sit on the surface are removed automatically.");
             LoadTimer = cfg.Bind("Display", "LoadTimer", true, "Show how many seconds the world load has been running (and the total after it).");
-            ReuseMenuPanels = cfg.Bind("Loading", "ReuseMenuPanels", true, "While the world loads, reuse already built menu panels instead of destroying and re-creating them (faster load). Turn off if the in-game UI looks wrong.");
-            EarlyClientUi = cfg.Bind("Loading", "EarlyClientUi", true, "MP client: build the in-game UI while the host finishes loading (measured 2026-11-11: client ready 10 s sooner). Off = vanilla order.");
+            LoadCancel = cfg.Bind("Display", "LoadCancel", true, "Show a cross at the bottom right while a world loads; it aborts the load and returns to the main menu.");
+            ReuseMenuPanels = cfg.Bind("LoadingExperimental", "ReuseMenuPanels", false, "EXPERIMENTAL (off since 0.5.0, loads were slower with it). While the world loads, reuse already built menu panels instead of destroying and re-creating them (faster load). Turn off if the in-game UI looks wrong.");
+            EarlyClientUi = cfg.Bind("LoadingExperimental", "EarlyClientUi", false, "EXPERIMENTAL (off since 0.5.0: host and clients load together like 0.3.0). MP client: build the in-game UI while the host finishes loading. Off = vanilla order.");
             UpdateCheck = cfg.Bind("Update", "CheckOnStart", true, "Check GitHub Releases at game start and offer to update the mod.");
             UpdateSkipped = cfg.Bind("Update", "SkippedVersion", "", "Version the player chose to skip.");
             BetterConnection = cfg.Bind("Network", "BetterConnection", true,

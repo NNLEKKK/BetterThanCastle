@@ -1,0 +1,7 @@
+# Radmin-like links (60-160 ms RTT: loopback is lagged once per direction, so lag = RTT/2), 1% loss, rare reorder, short throttle spikes.
+at host:ingame+0 net client1 0 --lag on --lag-time 35 --drop on --drop-chance 1.0 --ood on --ood-chance 1.0 --throttle on --throttle-chance 2.0 --throttle-frame 120
+at host:ingame+0 net client2 0 --lag on --lag-time 55 --drop on --drop-chance 1.5 --ood on --ood-chance 1.0 --throttle on --throttle-chance 2.0 --throttle-frame 150
+at host:ingame+0 net client3 0 --lag on --lag-time 75 --drop on --drop-chance 1.0 --ood on --ood-chance 1.0 --throttle on --throttle-chance 2.0 --throttle-frame 120
+# two players lose the network together: 8 s (pause only), then 35 s (beyond the 20 s client reconnect threshold)
+at host:ingame+40 cut client1,client2 8
+at host:ingame+100 cut client1,client2 35

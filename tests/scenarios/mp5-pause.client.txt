@@ -1,0 +1,13 @@
+# client of mp5-pause: join, ready, load while the host pauses, report link state.
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 120
+ready 420
+waitgame 300
+mark ingame
+netstat
+wait 60
+netstat
+wait 60
+netstat
+quit

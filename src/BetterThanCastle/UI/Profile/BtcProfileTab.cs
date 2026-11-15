@@ -36,6 +36,9 @@ namespace BetterThanCastle
             set { BtcMenuState.SetInt("profile:page", value); }
         }
 
+        /// <summary>Link / search jump to a page (0 nick, 1 colours, 2 animation, 3 avatar, 4 plate, 5 profiles); clears the tab search.</summary>
+        internal void SetPage(int p) { Page = p; _gq = ""; _scroll = Vector2.zero; }
+
         private static string Tt(string en, string ru) { return BtcReplayUI.T(en, ru); }
 
         private static string PageName(int p)

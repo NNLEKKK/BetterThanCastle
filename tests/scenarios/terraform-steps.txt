@@ -1,0 +1,17 @@
+# terraform-steps: 4-step staircase (width 2) dug down along +x, auto quarry ladders on the steps, nothing kept.
+newgame
+waitgame 240
+wait 5
+tfsteps
+wait 3
+tfdump t0
+tfhire
+wait 2
+tfdump t2
+wait 6
+tfdump t8
+wait 22
+tfdump t30
+wait 60
+tfdump t90
+quit

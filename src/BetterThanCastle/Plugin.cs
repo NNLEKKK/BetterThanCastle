@@ -9,9 +9,9 @@ namespace BetterThanCastle
     {
         public const string Guid = "com.btc.betterthancastle";
         public const string Name = "Better Than Castle";
-        public const string Version = "0.4.1";
+        public const string Version = "0.5.0";
         // BepInEx parses the plugin version with System.Version: no letter suffix allowed here (the mod is skipped otherwise)
-        public const string BepVersion = "0.4.1";
+        public const string BepVersion = "0.5.0";
 
         internal static ManualLogSource Log;
         internal static Harmony Harmony;
@@ -28,6 +28,8 @@ namespace BetterThanCastle
 #endif
             Harmony = new Harmony(Guid);
             BtcPatcher.Apply(Harmony, typeof(BtcPlugin).Assembly);
+            BtcLiveSymUI.Init();
+            BtcPing.Init();
 #if DEV
             Dev.BtcDevProbe.Init();
             Dev.BtcDevLoadProbe.Init();
@@ -41,6 +43,7 @@ namespace BetterThanCastle
 #endif
             ResourcePackManager.Boot();
             BtcUpdater.Init(Info.Location);
+            BtcReplayCleanup.RunAsync(false);
             Log.LogInfo("[BTC] loaded v" + Version + ", BetterConnection=" + BtcNetworkGate.Enabled);
         }
     }

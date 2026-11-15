@@ -119,6 +119,26 @@ namespace BetterThanCastle
             _tf = new GUIStyle(GUI.skin.textField); _tf.font = b.font; _tf.fontSize = Mathf.RoundToInt(fs * 0.9f); _tf.alignment = TextAnchor.MiddleLeft;
             _tf.normal.background = null; _tf.focused.background = null; _tf.hover.background = null; _tf.active.background = null;
             _tf.normal.textColor = Color.white; _tf.focused.textColor = Color.white; _tf.hover.textColor = Color.white; _tf.padding = new RectOffset(4, 4, 0, 0);
+            _lblW = new GUIStyle(_lbl); _lblW.wordWrap = true;
+            _dimW = new GUIStyle(_dim); _dimW.wordWrap = true;
+        }
+
+        private GUIStyle _lblW, _dimW;
+        private static readonly GUIContent WrapContent = new GUIContent();
+
+        /// <summary>Height a wrapped label needs at width w (at least minH).</summary>
+        internal float WrapH(string s, bool dim, float w, float minH)
+        {
+            WrapContent.text = s;
+            return Mathf.Max(minH, (dim ? _dimW : _lblW).CalcHeight(WrapContent, w) + 4f);
+        }
+
+        /// <summary>Label that wraps onto more lines instead of running out of its box; returns the height it used (at least r.height).</summary>
+        internal float TxtWrap(Rect r, string s, bool dim, Color c)
+        {
+            float h = WrapH(s, dim, r.width, r.height);
+            Txt(new Rect(r.x, r.y, r.width, h), s, dim ? _dimW : _lblW, c);
+            return h;
         }
 
         internal GUIStyle Lbl { get { return _lbl; } }
@@ -506,7 +526,7 @@ namespace BetterThanCastle
             DrawRows(ref cy, vw, fs);
             GUI.EndScrollView();
             _h = cy + fs * 3f;
-            if (_scrollTo >= 0f) { _scroll.y = Mathf.Max(0f, _scrollTo - fs * 4f); _scrollTo = -1f; }
+            if (_scrollTo >= 0f) { _scroll.y = Mathf.Max(0f, _scrollTo - view.height * 0.35f); _scrollTo = -1f; _flashUntil = Time.unscaledTime + 2.5f; }
             else if (_scrollTo == -2f) _scrollTo = -3f; // wait one pass: rows draw first and report their y
             else if (_scrollTo == -3f) _scrollTo = -1f;
         }
@@ -572,8 +592,7 @@ namespace BetterThanCastle
                     if (!string.IsNullOrEmpty(d.sub) && d.sub != lastSub)
                     {
                         lastSub = d.sub;
-                        Txt(new Rect(fs * 1.6f, y, w - fs * 3f, fs * 1.6f), BtcLang.Tr(d.sub), _dim, new Color(1f, 1f, 1f, 0.5f));
-                        y += fs * 1.7f;
+                        y += TxtWrap(new Rect(fs * 1.6f, y, w - fs * 3f, fs * 1.6f), BtcLang.Tr(d.sub), true, new Color(1f, 1f, 1f, 0.5f)) + fs * 0.1f;
                     }
                     DrawModRow(ref y, w, fs, d);
                     shown++;
@@ -670,14 +689,11 @@ namespace BetterThanCastle
 
         private Color RowTint(string key, float h, ref Rect row)
         {
-            bool flash = key == _flashId && Time.unscaledTime < _flashUntil;
             bool found = _fIds.Contains(key) && Time.unscaledTime - _fAt < 8f;
             Event e = Event.current;
             float a = row.Contains(e.mousePosition) ? 0.06f : 0.03f;
             Color c = new Color(1f, 1f, 1f, a);
             if (found) c = new Color(BtcMenu.Accent.r, BtcMenu.Accent.g, BtcMenu.Accent.b, 0.12f);
-            if (flash) { float p = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 9f); c = new Color(BtcMenu.Accent.r, BtcMenu.Accent.g, BtcMenu.Accent.b, 0.15f + 0.25f * p); }
-            if (key == _jumpId && _scrollTo == -3f) { }
             return c;
         }
 
@@ -797,17 +813,20 @@ namespace BetterThanCastle
                 for (int i = 0; i < total; i++) rects[i] = new Rect(rects[i].x, y + fs * 0.3f + rects[i].y, rects[i].width, rects[i].height);
             }
 
+            float titleH = WrapH(d.Title, false, titleW - fs * 0.3f, rh);   // long names wrap onto a second line, the row grows
+            height = Mathf.Max(height, titleH);
             Rect row = new Rect(pad, y, rowW, height);
             string rkey = "m:" + d.id;
             string idKey = d.id;
             Color tint = RowTint(idKey, height, ref row);
             BtcReplayUI.Fill(row, tint);
+            if (idKey == _flashId) BtcJump.Pulse(row, _flashUntil);
             if (_jumpId == idKey && _scrollTo == -3f) _scrollTo = y;
             if (d.kind == BtcHotkeys.Kind.Key && BtcHotkeys.IsConflict(d.id)) BtcReplayUI.Fill(new Rect(row.x, row.y, 3f, row.height), new Color(1f, 0.4f, 0.4f, 1f));
             else if (HasOverlap(d)) BtcReplayUI.Fill(new Rect(row.x, row.y, 3f, row.height), Orange);
             else if (!def) BtcReplayUI.Fill(new Rect(row.x, row.y, 3f, row.height), new Color(1f, 0.85f, 0.4f, 1f));
             Star(new Rect(row.x + fs * 0.3f, row.y + (rh - fs * 1.4f) * 0.5f, fs * 1.4f, fs * 1.4f), rkey);
-            Txt(new Rect(pad + starW, y, titleW, rh), d.Title, _lbl, def ? Color.white : new Color(1f, 0.9f, 0.55f, 1f));
+            Txt(new Rect(pad + starW, y, titleW - fs * 0.3f, titleH), d.Title, _lblW, def ? Color.white : new Color(1f, 0.9f, 0.55f, 1f));
 
             if (d.kind == BtcHotkeys.Kind.Key)
             {
@@ -960,14 +979,16 @@ namespace BetterThanCastle
             tips[total - 1] = Tt("Add another key for this action (vanilla: a key or modifier + key)", "Добавить ещё клавишу для действия (в ваниле: клавиша или модификатор + клавиша)");
             widths[total - 1] = addCap ? ChipW(labels[total - 1]) : fs * 2.2f;
             Rect[] rects = new Rect[total];
-            float height = Mathf.Max(rh, Flow(cx, cw, fs * 1.7f, 4f, widths, rects, 0f) + fs * 0.6f);
+            float titleH = WrapH(a.title, false, titleW - fs * 0.3f, rh);
+            float height = Mathf.Max(Mathf.Max(rh, titleH), Flow(cx, cw, fs * 1.7f, 4f, widths, rects, 0f) + fs * 0.6f);
             Rect row = new Rect(pad, y, rowW, height);
             string key = "v:" + a.name;
             BtcReplayUI.Fill(row, RowTint(key, height, ref row));
+            if (key == _flashId) BtcJump.Pulse(row, _flashUntil);
             if (_jumpId == key && _scrollTo == -3f) _scrollTo = y;
             if (Array.IndexOf(kinds, ChipKind.Overlap) >= 0) BtcReplayUI.Fill(new Rect(row.x, row.y, 3f, row.height), Orange);
             Star(new Rect(row.x + fs * 0.3f, row.y + (rh - fs * 1.4f) * 0.5f, fs * 1.4f, fs * 1.4f), key);
-            Txt(new Rect(pad + starW, y, titleW, rh), a.title, _lbl, Color.white);
+            Txt(new Rect(pad + starW, y, titleW - fs * 0.3f, titleH), a.title, _lblW, Color.white);
             for (int i = 0; i < total; i++)
             {
                 bool isItem = i < idx.Count;
@@ -1000,7 +1021,7 @@ namespace BetterThanCastle
         {
             for (int i = 0; i < combo.Length; i++)
             {
-                if (combo[i] >= KeyCode.Mouse0 && combo[i] <= KeyCode.Mouse6) { BtcSfx.Warn(); Toast(Tt("Vanilla binds take keyboard keys only", "Ванильные бинды принимают только клавиши клавиатуры")); return; }
+                if (BtcVanillaBinds.IsMouse(combo[i]) && !BtcVanillaBinds.AcceptsMouse(action)) { BtcSfx.Warn(); Toast(Tt("Mouse buttons work only for the mouse and camera actions (cam_*)", "Кнопки мыши работают только для действий мыши и камеры (cam_*)")); return; }
             }
             if (!BtcVanillaBinds.Fits(combo)) { BtcSfx.Warn(); Toast(Tt("Vanilla supports one key or a modifier + key", "Ваниль поддерживает одну клавишу или модификатор + клавишу")); return; }
             string clash = VanillaUsing(combo);

@@ -1,0 +1,17 @@
+# terraform-edit: pit + mound task (nothing kept), workers hired; after 15 s the task is edited (fill erased, dig extended east).
+newgame
+waitgame 240
+wait 5
+tfspawn 0
+wait 3
+tfhire
+wait 15
+tfdump t15
+tfedit
+wait 3
+tfdump e3
+wait 40
+tfdump e43
+wait 40
+tfdump e83
+quit

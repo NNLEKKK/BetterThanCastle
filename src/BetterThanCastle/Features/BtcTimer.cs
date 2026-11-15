@@ -27,6 +27,7 @@ namespace BetterThanCastle
         internal const short MsgState = 104;
         internal const short MsgReady = 105;
         internal const string SideFile = "btc-timer.txt";
+        private const int NameMax = 32;
 
         internal enum Phase { None = 0, Waiting = 1, Running = 2, Counting = 3 }
 
@@ -46,13 +47,14 @@ namespace BetterThanCastle
         private static readonly Dictionary<int, Part> Parts = new Dictionary<int, Part>();
         private static readonly List<KeyValuePair<string, bool>> Shown = new List<KeyValuePair<string, bool>>();
         private static bool _hostReady;
+        internal static int ShownCount { get { return Shown.Count; } }
         private static int _sceneKey = -1;
         private static float _nextSend, _nextPrune;
         private static Phase _lastCur;
         private static int _asks, _asksLogged;
         private static float _lastAskT;
         private static float _nextAskLog;
-        private static bool _dirty, _helloSent, _gotState;
+        private static bool _dirty, _helloSent, _gotState, _wantReady;
         private static bool _pausedByUs;
         private static int _pauseTries;
         private static int iMs = -1, iOn = -1, iPeace = -1, iLimit = -1;
@@ -149,6 +151,7 @@ namespace BetterThanCastle
             _gotState = false;
             _helloSent = false;
             _hostReady = false;
+            _wantReady = false;
             Parts.Clear();
             Shown.Clear();
         }
@@ -158,6 +161,7 @@ namespace BetterThanCastle
             Parts.Clear();
             Shown.Clear();
             _hostReady = false;
+            _wantReady = false;
             _gotState = false;
             _helloSent = false;
             _pausedByUs = false;
@@ -212,15 +216,27 @@ namespace BetterThanCastle
 
         private static void ClientTick(float now)
         {
-            if (!_helloSent && !Host && _gotState == false)
+            if (Host || now < _nextSend) return;
+            // Announce ourselves until the host's list carries us. Stopping at the first state message (any broadcast, triggered by
+            // another player's hello) left late players unregistered: not shown and not needed for the start.
+            int mine = MyShownIndex();
+            if (mine < 0 && (!_gotState || Cur == Phase.Waiting))
             {
-                // announce ourselves to the host (registers us as a participant, host replies with the state)
-                if (now >= _nextSend)
-                {
-                    _nextSend = now + 2f;
-                    SendToHost("H");
-                }
+                _nextSend = now + 2f;
+                SendToHost(_wantReady ? "R" : "H");
             }
+            else if (mine >= 0 && _wantReady && Cur == Phase.Waiting && !Shown[mine].Value)
+            {
+                _nextSend = now + 2f;
+                SendToHost("R");   // our Ready was lost or arrived before the host knew us
+            }
+        }
+
+        private static int MyShownIndex()
+        {
+            string me = LocalName();
+            for (int i = 0; i < Shown.Count; i++) if (Shown[i].Key == me) return i;
+            return -1;
         }
 
         private static void Prune()
@@ -237,6 +253,34 @@ namespace BetterThanCastle
                 if (!alive) { if (gone == null) gone = new List<int>(); gone.Add(kv.Key); }
             }
             if (gone != null) { for (int i = 0; i < gone.Count; i++) Parts.Remove(gone[i]); _dirty = true; }
+            // every connected player is a participant even before its hello arrives (still loading, hello lost): shown and needed
+            for (int i = 0; i < NetworkServer.connections.Count; i++)
+            {
+                NetworkConnection c = NetworkServer.connections[i];
+                if (c == null || !c.isConnected || Parts.ContainsKey(c.connectionId) || BtcNetManager.IsLocalConnection(c)) continue;
+                if (BtcReplay.IsRec(c) || BtcSpectate.IsSpec(c)) continue;
+                string name = PlayerName(c);
+                if (name == null) continue;
+                Parts[c.connectionId] = new Part { Name = Clean(name) };
+                _dirty = true;
+            }
+        }
+
+        /// <summary>Screen name of the connection's User, null when it has no player (yet).</summary>
+        private static string PlayerName(NetworkConnection c)
+        {
+            try
+            {
+                if (c.playerControllers == null) return null;
+                for (int i = 0; i < c.playerControllers.Count; i++)
+                {
+                    PlayerController pc = c.playerControllers[i];
+                    User u = (pc != null && pc.gameObject != null) ? pc.gameObject.GetComponent<User>() : null;
+                    if (u != null) return u.faction != null ? u.Network_screenName : null;   // no faction = spectator
+                }
+            }
+            catch (Exception) { }
+            return null;
         }
 
         private static bool AllReady()
@@ -252,7 +296,7 @@ namespace BetterThanCastle
             Cur = Phase.Counting;
             Count = 3f;
             _dirty = true;
-            BtcLog.Info("Timer", "countdown (" + why + ") t=" + Elapsed.ToString("F1", Inv) + " peace=" + PeaceSec + " limit=" + LimitSec);
+            BtcLog.Info("Timer", "countdown (" + why + ") t=" + Elapsed.ToString("F1", Inv) + " peace=" + PeaceSec + " limit=" + LimitSec + " players=" + (Parts.Count + 1));
         }
 
         private static void ReleaseOurPause()
@@ -277,15 +321,14 @@ namespace BetterThanCastle
                 _dirty = true;
                 if (AllReady()) StartNow("all ready");
             }
-            else SendToHost("R");
+            else { _wantReady = true; SendToHost("R"); }
         }
 
         internal static bool LocalIsReady()
         {
             if (Host) return _hostReady;
-            string me = LocalName();
-            for (int i = 0; i < Shown.Count; i++) if (Shown[i].Key == me) return Shown[i].Value;
-            return false;
+            int i = MyShownIndex();
+            return i >= 0 && Shown[i].Value;
         }
 
         private static string LocalName()
@@ -318,7 +361,10 @@ namespace BetterThanCastle
 
         private static string Clean(string s)
         {
+            // plain and short: 8 styled nicks (up to 999 chars each with BC ON) overflowed the state message, the list came out cut
+            s = BtcStr.Plain(s);
             if (string.IsNullOrEmpty(s)) return "?";
+            if (s.Length > NameMax) s = s.Substring(0, NameMax);
             return s.Replace(';', '_').Replace(',', '_').Replace('~', '_').Replace('|', '_');
         }
 
@@ -558,19 +604,12 @@ namespace BetterThanCastle
             BtcReplayUI.Ensure(fs);
             float s = fs * 9f;
             Rect r = new Rect((Screen.width - s) * 0.5f, Screen.height * 0.22f, s, s * 1.05f);
-            float frac = Mathf.Clamp01(Count - Mathf.Floor(Count));
-            BtcReplayUI.Fill(r, BtcHud.Panel);
-            BtcReplayUI.Fill(new Rect(r.x, r.y, 3f, r.height), BtcMenu.Accent);
-            // the bar under the digit drains with the current second
-            BtcReplayUI.Fill(new Rect(r.x + fs * 0.8f, r.yMax - fs * 1.6f, (r.width - fs * 1.6f) * (Count > 1f ? frac : Mathf.Clamp01(Count)), 3f), new Color(BtcMenu.Accent.r, BtcMenu.Accent.g, BtcMenu.Accent.b, 0.8f));
             int old = _lbl.fontSize;
             Color oc = GUI.contentColor;
             _lbl.fontSize = Mathf.RoundToInt(fs * 5.2f);
             GUI.contentColor = Color.white;
-            GUI.Label(new Rect(r.x, r.y + fs * 0.4f, r.width, r.height - fs * 2.6f), n.ToString(), _lbl);
+            GUI.Label(r, n.ToString(), _lbl);
             _lbl.fontSize = old;
-            GUI.contentColor = new Color(1f, 1f, 1f, 0.6f);
-            GUI.Label(new Rect(r.x, r.yMax - fs * 2.5f, r.width, fs * 1.2f), BtcGameplay.T("Game starts", "Старт игры"), BtcReplayUI.sVal);
             GUI.contentColor = oc;
         }
 
@@ -594,7 +633,9 @@ namespace BetterThanCastle
 
         private static void DrawWaiting(float sc)
         {
-            int fs = BtcHud.Fs + 1;
+            // UI editor slot "ready": size and position (never hidden: the Ready button lives here)
+            BtcHud.Slot sl = BtcHud.SlotOf("ready");
+            int fs = Mathf.Max(8, Mathf.RoundToInt((BtcHud.Fs + 1) * sl.Scale));
             BtcReplayUI.Ensure(fs);
             GUI.depth = -1050;
             Event e = Event.current;
@@ -609,7 +650,7 @@ namespace BetterThanCastle
             Rect[] chips = new Rect[Shown.Count];
             for (int i = 0; i < Shown.Count; i++)
             {
-                float cw = lab.CalcSize(new GUIContent(Shown[i].Key)).x + fs * 2.6f;
+                float cw = Mathf.Min(lab.CalcSize(new GUIContent(Shown[i].Key)).x + fs * 2.6f, w - pad * 2f);
                 if (cx + cw > w - pad && cx > pad) { cx = pad; cy += chipH + gap; }
                 chips[i] = new Rect(cx, cy, cw, chipH);
                 cx += cw + gap;
@@ -617,7 +658,9 @@ namespace BetterThanCastle
             float chipsH = Shown.Count == 0 ? 0f : cy + chipH + gap;
             float btnH = fs * 2.2f;
             float h = head + chipsH + btnH + pad * 1.2f;
-            Rect r = new Rect((Screen.width - w) * 0.5f, fs * 0.5f, w, h);
+            Rect r = new Rect((Screen.width - w) * 0.5f + sl.Offset.x, fs * 0.5f + sl.Offset.y, w, h);
+            Color gc = GUI.color;
+            GUI.color = new Color(gc.r, gc.g, gc.b, gc.a * Mathf.Clamp(sl.Alpha, 0.1f, 1f));
             BtcReplayUI.Fill(r, BtcHud.Panel);
             BtcReplayUI.Fill(new Rect(r.x, r.y, 3f, r.height), BtcMenu.Accent);
             float g = fs * 1.4f;
@@ -650,6 +693,7 @@ namespace BetterThanCastle
                 Rect b2 = new Rect(b1.xMax + gap, by, bw, btnH);
                 if (FlatButton(b2, BtcGameplay.T("Start now (host)", "Начать (хост)"), true, false)) StartNow("host force");
             }
+            GUI.color = gc;
         }
     }
 }

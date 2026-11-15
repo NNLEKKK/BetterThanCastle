@@ -1,0 +1,17 @@
+# terraform-nostore: like terraform-ladder (dig-only pit + 3 ladders), everything harvested, "no stockpiles" on.
+newgame
+waitgame 240
+wait 5
+tfladder 8
+wait 3
+tfdump t0
+tfhire
+wait 2
+tfdump t2
+wait 6
+tfdump t8
+wait 22
+tfdump t30
+wait 60
+tfdump t90
+quit

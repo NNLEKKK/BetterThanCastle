@@ -12,6 +12,8 @@ namespace BetterThanCastle.Patches
         {
             try { BtcInfHeal.OnSave(__instance.path); BtcHeldWards.OnSave(__instance.path); }
             catch (Exception e) { BtcLog.Error("Hook", "InfHeal.Save: " + e); }
+            try { BtcShieldBox.OnSave(__instance.path); }
+            catch (Exception e) { BtcLog.Error("Hook", "InfHeal.Save: " + e); }
         }
     }
 
@@ -21,6 +23,8 @@ namespace BetterThanCastle.Patches
         private static void Prefix(Asset_Map __instance)
         {
             try { BtcInfHeal.OnLoad(__instance.path); BtcHeldWards.OnLoad(__instance.path); }
+            catch (Exception e) { BtcLog.Error("Hook", "InfHeal.Load: " + e); }
+            try { BtcShieldBox.OnLoad(__instance.path); }
             catch (Exception e) { BtcLog.Error("Hook", "InfHeal.Load: " + e); }
         }
     }

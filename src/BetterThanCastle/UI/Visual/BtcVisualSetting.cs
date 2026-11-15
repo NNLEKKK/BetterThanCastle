@@ -19,7 +19,7 @@ namespace BetterThanCastle
         public Func<bool> GetB; public Action<bool> SetB;
         public Func<float> GetF; public Action<float> SetF; public float Min, Max, Step; public string Fmt = "0", Suf = "";
         public Func<Color> GetC; public Action<Color> SetC;
-        public Func<int> GetI; public Action<int> SetI; public string[] Choices;
+        public Func<int> GetI; public Action<int> SetI; public string[] Choices, ChoicesRu;
         public string Label { get { return BtcReplayUI.T(En, Ru); } }
 
         internal string Export()

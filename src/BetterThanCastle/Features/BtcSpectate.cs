@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -68,8 +68,10 @@ public static class BtcSpectate
 			{
 				NetworkServer.UnregisterHandler(78);
 				NetworkServer.UnregisterHandler(81);
+				NetworkServer.UnregisterHandler(MsgResume);
 				NetworkServer.RegisterHandler(78, new NetworkMessageDelegate(BtcSpectate.OnHello));
 				NetworkServer.RegisterHandler(81, new NetworkMessageDelegate(BtcSpectate.OnAck));
+				NetworkServer.RegisterHandler(MsgResume, new NetworkMessageDelegate(BtcSpectate.OnResumeReady));
 			}
 			UNetManager unetManager = NetworkManager.singleton as UNetManager;
 			NetworkClient networkClient = clientOverride ?? ((unetManager != null) ? unetManager.LocalNetworkClient : null);
@@ -92,6 +94,7 @@ public static class BtcSpectate
 				networkClient.RegisterHandler(80, new NetworkMessageDelegate(BtcSpectate.OnChunk));
 				networkClient.RegisterHandler(82, new NetworkMessageDelegate(BtcSpectate.OnBanner));
 				networkClient.RegisterHandler(83, new NetworkMessageDelegate(BtcSpectate.OnRel));
+				if (BtcNetworkGate.Enabled) BtcResync.RegisterClient(networkClient);
 				bool flag6 = !NetworkServer.active && BtcBc.BcEnabled && BtcLobby.Active;
 				bool flag7 = flag6;
 				if (flag7)
@@ -156,7 +159,7 @@ public static class BtcSpectate
 			}
 			BtcSpectate.Job job = BtcSpectate._job;
 			bool flag10 = job != null && job.stage == 0 && !job.askDone;
-			bool flag11 = BtcSpectate._bannerOn && BtcSpectate.NetOk();
+			bool flag11 = BtcSpectate._bannerOn && (BtcSpectate._bannerKind >= 3 || BtcSpectate.NetOk());
 			bool flag12 = (BtcSpectate._cState >= 2 && BtcSpectate._cState <= 5) || (BtcSpectate._cState == 7 && unscaledTime < BtcSpectate._cMsgUntil);
 			bool flag13 = NetworkServer.active && BtcSpectate._waitCount > 0 && BtcSpectate.Val(BtcSpectate.iRet, 1f) > 0.5f && !BtcNetManager.LinkPauseActive; // BCv2: the HUD card shows the same with its own button
 			bool flag14 = !flag10 && !flag11 && !flag12 && !flag13;
@@ -164,136 +167,52 @@ public static class BtcSpectate
 			bool flag16 = flag15;
 			if (flag16)
 			{
+				// HUD style (BtcHud cards in the top stack) instead of the old black boxes and default buttons
 				BtcSpectate.EnsureGui();
-				Color color = GUI.color;
-				bool flag17 = flag11 && Event.current.type == EventType.Repaint;
-				bool flag18 = flag17;
-				bool flag19 = flag18;
-				if (flag19)
+				BtcReplayUI.Ensure(BtcHud.Fs);
+				if (flag11 && BtcSpectate._bannerKind >= 3)
 				{
-					GUI.color = Color.black;
-					GUI.DrawTexture(new Rect(12.5f, 12.5f, 25f, 25f), BtcSpectate._dot);
-					GUI.color = new Color(0.62f, 0.62f, 0.66f, 1f);
-					GUI.DrawTexture(new Rect(14f, 14f, 22f, 22f), BtcSpectate._dot);
-					GUI.color = Color.white;
-					GUI.Label(new Rect(42f, 14f, 460f, 22f), ((BtcSpectate._bannerKind == 2) ? BtcGameplay.T("PLAYER RETURNING: ", "ИГРОК ВОЗВРАЩАЕТСЯ: ") : BtcGameplay.T("SPECTATOR JOINING: ", "ПОДКЛЮЧАЕТСЯ ЗРИТЕЛЬ: ")) + BtcSpectate._bannerName + BtcSpectate._bannerExtra, BtcSpectate._st);
+					BtcSpectate.DrawResume(unscaledTime);
 				}
-				bool flag20 = flag10;
-				bool flag21 = flag20;
-				bool flag22 = flag21;
-				if (flag22)
+				else if (flag11)
 				{
-					Rect position = new Rect((float)Screen.width * 0.5f - 230f, 70f, 460f, 84f);
-					GUI.color = new Color(0f, 0f, 0f, 0.8f);
-					GUI.DrawTexture(position, BtcSpectate._px);
-					GUI.color = Color.white;
-					GUI.Label(new Rect(position.x + 12f, position.y + 6f, position.width - 24f, 30f), BtcGameplay.T("Spectator wants to join: ", "Зритель хочет зайти: ") + job.name, BtcSpectate._st);
-					bool flag23 = GUI.Button(new Rect(position.x + 12f, position.y + 42f, 200f, 30f), BtcGameplay.T("Allow", "Разрешить"));
-					bool flag24 = flag23;
-					bool flag25 = flag24;
-					if (flag25)
-					{
-						job.askYes = true;
-						job.askDone = true;
-					}
-					bool flag26 = GUI.Button(new Rect(position.x + 248f, position.y + 42f, 200f, 30f), BtcGameplay.T("Deny", "Отклонить"));
-					bool flag27 = flag26;
-					bool flag28 = flag27;
-					if (flag28)
-					{
-						job.askYes = false;
-						job.askDone = true;
-					}
+					bool back = BtcSpectate._bannerKind == 2;
+					BtcHud.Progress("specbanner", back ? BtcReplayIcons.Refresh : BtcReplayIcons.Eye, BtcMenu.Accent,
+						(back ? BtcGameplay.T("Player returning: ", "Игрок возвращается: ") : BtcGameplay.T("Spectator joining: ", "Подключается зритель: ")) + BtcSpectate._bannerName + BtcSpectate._bannerExtra, -1f);
 				}
-				bool flag29 = flag13;
-				bool flag30 = flag29;
-				bool flag31 = flag30;
-				if (flag31)
+				if (flag10)
 				{
-					string waitText = BtcSpectate._waitText;
-					Rect position2 = new Rect(12f, 80f, 330f, 76f);
-					GUI.color = new Color(0f, 0f, 0f, 0.75f);
-					GUI.DrawTexture(position2, BtcSpectate._px);
-					GUI.color = Color.white;
-					GUI.Label(new Rect(position2.x + 8f, position2.y + 4f, position2.width - 16f, 28f), BtcGameplay.T("Waiting for: ", "Ждём: ") + waitText, BtcSpectate._st);
-					bool flag32 = GUI.Button(new Rect(position2.x + 8f, position2.y + 36f, position2.width - 16f, 30f), BtcGameplay.T("Resume without them", "Продолжить без них"));
-					bool flag33 = flag32;
-					bool flag34 = flag33;
-					if (flag34)
-					{
-						BtcSpectate.CancelWaiting();
-					}
+					int ch = BtcHud.Choice("specask", BtcReplayIcons.Eye, BtcHud.Warn, BtcGameplay.T("Spectator wants to join: ", "Зритель хочет зайти: ") + job.name,
+						BtcGameplay.T("The world is sent to them while the game runs; it may hitch for a moment.", "Мир отправляется ему прямо во время игры; возможен короткий подлаг."),
+						BtcGameplay.T("Allow", "Разрешить"), BtcGameplay.T("Deny", "Отклонить"));
+					if (ch == 1) { job.askYes = true; job.askDone = true; }
+					else if (ch == 2) { job.askYes = false; job.askDone = true; }
 				}
-				bool flag35 = flag12 && Event.current.type == EventType.Repaint;
-				bool flag36 = flag35;
-				bool flag37 = flag36;
-				if (flag37)
+				if (flag13)
 				{
-					bool flag38 = BtcSpectate._cState == 1;
-					bool flag39 = flag38;
-					bool flag40 = flag39;
+					BtcHud.Card("specwait", BtcReplayIcons.Group, BtcHud.Warn, BtcGameplay.T("Waiting for: ", "Ждём: ") + BtcSpectate._waitText,
+						BtcGameplay.T("The game waits until they are back.", "Игра ждёт, пока они вернутся."), null, false,
+						BtcGameplay.T("Resume without them", "Продолжить без них"), BtcSpectate.CancelWaiting);
+					BtcHud.ForceOpen("specwait");   // the button is the point of this card: keep it open
+				}
+				if (flag12)
+				{
 					string text;
-					if (flag40)
+					float p = -1f;
+					int st = BtcSpectate._cState;
+					if (st == 1) text = BtcGameplay.T("Connecting...", "Подключение...");
+					else if (st == 2) text = BtcGameplay.T("Waiting for the host...", "Ждём хоста...");
+					else if (st == 3)
 					{
-						text = BtcGameplay.T("Connecting...", "Подключение...");
+						p = (float)BtcSpectate._cGot / (float)Mathf.Max(1, BtcSpectate._cChunks);
+						text = (BtcSpectate._cReturn ? BtcGameplay.T("Reconnecting: downloading the world ", "Возвращение: загрузка мира ") : BtcGameplay.T("Spectator: downloading the world ", "Зритель: загрузка мира "))
+							+ Mathf.RoundToInt(100f * p) + "% (" + ((float)(BtcSpectate._cGot * 1200) / 1048576f).ToString("0.0") + " MB)";
 					}
-					else
-					{
-						bool flag41 = BtcSpectate._cState == 2;
-						bool flag42 = flag41;
-						bool flag43 = flag42;
-						if (flag43)
-						{
-							text = BtcGameplay.T("Waiting for the host...", "Ждём хоста...");
-						}
-						else
-						{
-							bool flag44 = BtcSpectate._cState == 3;
-							bool flag45 = flag44;
-							bool flag46 = flag45;
-							if (flag46)
-							{
-								text = string.Concat(new object[]
-								{
-									BtcSpectate._cReturn ? BtcGameplay.T("Reconnecting: downloading the world ", "Возвращение: загрузка мира ") : BtcGameplay.T("Spectator: downloading the world ", "Зритель: загрузка мира "),
-									Mathf.RoundToInt(100f * (float)BtcSpectate._cGot / (float)Mathf.Max(1, BtcSpectate._cChunks)),
-									"% (",
-									((float)(BtcSpectate._cGot * 1200) / 1048576f).ToString("0.0"),
-									" MB)"
-								});
-							}
-							else
-							{
-								bool flag47 = BtcSpectate._cState == 4;
-								bool flag48 = flag47;
-								bool flag49 = flag48;
-								if (flag49)
-								{
-									text = (BtcSpectate._cReturn ? BtcGameplay.T("Reconnecting: unpacking the world...", "Возвращение: распаковка мира...") : BtcGameplay.T("Spectator: unpacking the world...", "Зритель: распаковка мира..."));
-								}
-								else
-								{
-									bool flag50 = BtcSpectate._cState == 5;
-									bool flag51 = flag50;
-									bool flag52 = flag51;
-									if (flag52)
-									{
-										text = (BtcSpectate._cReturn ? BtcGameplay.T("Reconnecting: loading the game...", "Возвращение: загрузка игры...") : BtcGameplay.T("Spectator: loading the game...", "Зритель: загрузка игры..."));
-									}
-									else
-									{
-										text = BtcSpectate._cMsg;
-									}
-								}
-							}
-						}
-					}
-					GUI.color = new Color(0f, 0f, 0f, 0.7f);
-					GUI.DrawTexture(new Rect((float)Screen.width * 0.5f - 260f, 14f, 520f, 30f), BtcSpectate._px);
-					GUI.color = Color.white;
-					GUI.Label(new Rect((float)Screen.width * 0.5f - 248f, 14f, 500f, 30f), text, BtcSpectate._st);
+					else if (st == 4) text = BtcSpectate._cReturn ? BtcGameplay.T("Reconnecting: unpacking the world...", "Возвращение: распаковка мира...") : BtcGameplay.T("Spectator: unpacking the world...", "Зритель: распаковка мира...");
+					else if (st == 5) text = BtcSpectate._cReturn ? BtcGameplay.T("Reconnecting: loading the game...", "Возвращение: загрузка игры...") : BtcGameplay.T("Spectator: loading the game...", "Зритель: загрузка игры...");
+					else text = BtcSpectate._cMsg;
+					BtcHud.Progress("specstate", BtcSpectate._cReturn ? BtcReplayIcons.Refresh : BtcReplayIcons.Eye, BtcMenu.Accent, text ?? "", p);
 				}
-				GUI.color = color;
 			}
 		}
 		catch (Exception ex)
@@ -321,6 +240,8 @@ public static class BtcSpectate
 				BtcSpectate._pid = Process.GetCurrentProcess().Id;
 				BtcSpectate._logPath = BtcPaths.DebugFile("btc_spectate.txt");
 			}
+			// also into the BepInEx log: join/rejoin decisions must be visible in a player's bug report (and per instance in DEV runs)
+			BtcLog.Info("Spec", s);
 			string contents = string.Concat(new object[]
 			{
 				DateTime.Now.ToString("HH:mm:ss.fff"),
@@ -508,7 +429,85 @@ public static class BtcSpectate
 		return conn != null && (BtcSpectate._spec.Contains(conn.connectionId) || BtcSpectate._ignore.Contains(conn.connectionId) || (BtcSpectate._ret.Contains(conn.connectionId) && conn.playerControllers.Count == 0));
 	}
 
+	/// <summary>A new transport connection got this id (UNET reuses the lowest free id): forget what an earlier connection with the
+	/// same id was. Otherwise the id of a closed old connection stays in _ignore/_spec and the next player on it counts as a spectator:
+	/// not watched by the link monitor and not kept when it drops.</summary>
+	internal static void ForgetConn(int id)
+	{
+		if (BtcReplay.IsRecId(id)) return;
+		bool had = BtcSpectate._ignore.Remove(id) | BtcSpectate._spec.Remove(id) | BtcSpectate._ret.Remove(id);
+		BtcSpectate._names.Remove(id);
+		if (had) BtcSpectate.Log("server: conn id " + id + " reused by a new connection, old spectator/ignore marks dropped");
+	}
+
+	private static FieldInfo _fObs, _fObsIds, _fVis;
+
+	/// <summary>A new connection took the id of a dead one that is still an observer of the world objects (the host keeps a dropped
+	/// player's objects alive). NetworkIdentity.AddObserver dedups by connection ID, so SetClientReady of the new connection found
+	/// every object "already observed" and sent no spawns: the returning player loaded an empty world (no factions, faction=null,
+	/// the loader never reached the object step). Drop the stale connection objects from every observer list.</summary>
+	internal static void PurgeStaleObservers(NetworkConnection fresh)
+	{
+		if (fresh == null || !NetworkServer.active) return;
+		try
+		{
+			if (_fObs == null)
+			{
+				BindingFlags bf = BindingFlags.Instance | BindingFlags.NonPublic;
+				_fObs = typeof(NetworkIdentity).GetField("m_Observers", bf);
+				_fObsIds = typeof(NetworkIdentity).GetField("m_ObserverConnections", bf);
+				_fVis = typeof(NetworkConnection).GetField("m_VisList", bf);
+			}
+			if (_fObs == null || _fObsIds == null) { BtcSpectate.Log("PurgeStaleObservers: UNET fields not found"); return; }
+			int id = fresh.connectionId, n = 0;
+			NetworkConnection stale = null;
+			foreach (NetworkIdentity ni in NetworkServer.objects.Values)
+			{
+				if (ni == null) continue;
+				List<NetworkConnection> obs = _fObs.GetValue(ni) as List<NetworkConnection>;
+				if (obs == null) continue;
+				bool removed = false, freshThere = false;
+				for (int i = obs.Count - 1; i >= 0; i--)
+				{
+					NetworkConnection c = obs[i];
+					if (c == null || c.connectionId != id) continue;
+					if (object.ReferenceEquals(c, fresh)) { freshThere = true; continue; }
+					stale = c;
+					obs.RemoveAt(i);
+					removed = true;
+				}
+				if (removed)
+				{
+					n++;
+					if (!freshThere)
+					{
+						HashSet<int> ids = _fObsIds.GetValue(ni) as HashSet<int>;
+						if (ids != null) ids.Remove(id);
+					}
+				}
+			}
+			if (stale != null && _fVis != null)
+			{
+				HashSet<NetworkIdentity> vis = _fVis.GetValue(stale) as HashSet<NetworkIdentity>;
+				if (vis != null) vis.Clear();
+			}
+			if (n > 0) BtcSpectate.Log("server: conn id " + id + ": stale connection removed from " + n + " observer lists");
+		}
+		catch (Exception ex)
+		{
+			BtcSpectate.Log("PurgeStaleObservers: " + ex.Message);
+		}
+	}
+
 	/// <summary>True for connections that sent the BTC hello (BetterConnection ON clients), or mod spectators. Used to never send mod messages to vanilla clients.</summary>
+	/// <summary>Client: a hot-join (rejoin or spectator) is still downloading or loading the running game.</summary>
+	internal static bool ClientJoining
+	{
+		// state 6 = in the game scene for good (stays 6 for the whole match); the world load itself is covered by _hold, which ends
+		// at GameObjectsLoaded. Counting 6 kept the host frozen for a returning player until its 120 s limit.
+		get { return (BtcSpectate._cState >= 1 && BtcSpectate._cState <= 5) || BtcSpectate._hold; }
+	}
+
 	internal static bool SaidHello(NetworkConnection conn)
 	{
 		return conn != null && (BtcSpectate._hello.Contains(conn.connectionId) || BtcSpectate._spec.Contains(conn.connectionId));
@@ -659,6 +658,15 @@ public static class BtcSpectate
 								}
 								else
 								{
+									// cable pull: the host never got a disconnect, the old connection is open but silent -> drop it now
+									// an in-place reconnect (the client is still in the game scene) means the old link is dead from the client side
+									// (UNET drops it with BadMessage right after a few seconds without network) even if the host heard it a moment ago:
+									// replace it now, or the player is sent through the full snapshot reload instead of the quick return
+									if (user != null && !BtcSpectate.IsAway(user) && networkConnection != null && networkConnection != conn && (BtcSpectate.Stale(networkConnection) || helloMsg.ing != 0))
+									{
+										BtcSpectate.Log("server: '" + text + "' is back while its old connection " + networkConnection.connectionId + " is silent: dropping the old one");
+										BtcNetManager.DropStale(networkConnection);
+									}
 									bool flag17 = helloMsg.ing != 0 && user != null && BtcSpectate.IsAway(user);
 									bool flag18 = flag17;
 									if (flag18)
@@ -949,7 +957,8 @@ public static class BtcSpectate
 				bool flag4 = flag3;
 				if (flag4)
 				{
-					return networkConnection.isConnected;
+					// a closed connection's id is often reused at once by the same player's new link: only the same object is alive
+					return object.ReferenceEquals(networkConnection, c) && networkConnection.isConnected;
 				}
 			}
 			result = false;
@@ -1056,6 +1065,7 @@ public static class BtcSpectate
 			if (flag4)
 			{
 				BtcSpectate._queue.Clear();
+				BtcSpectate._parked.Clear();
 				BtcSpectate._spec.Clear();
 				BtcSpectate._names.Clear();
 				BtcSpectate._job = null;
@@ -1164,6 +1174,16 @@ public static class BtcSpectate
 				BtcSpectate.PruneIds(BtcSpectate._ret);
 				BtcSpectate.PruneIds(BtcSpectate._hello);
 			}
+			if (BtcSpectate._frozen && Time.timeScale > 0f && (BtcSpectate._job != null || BtcSpectate._parked.Count > 0))
+			{
+				Time.timeScale = 0f;   // a link pause that ends while we load someone must not restart the game under us
+			}
+			if (BtcSpectate._job == null && BtcSpectate._queue.Count == 0 && BtcSpectate._parked.Count > 0)
+			{
+				// nobody else is loading: take a parked returning player back, its stage 6 runs the shared Ready gate
+				BtcSpectate._job = BtcSpectate._parked[BtcSpectate._parked.Count - 1];
+				BtcSpectate._parked.RemoveAt(BtcSpectate._parked.Count - 1);
+			}
 			bool flag26 = BtcSpectate._job == null && BtcSpectate._queue.Count > 0;
 			bool flag27 = flag26;
 			if (flag27)
@@ -1202,7 +1222,7 @@ public static class BtcSpectate
 				}
 				else
 				{
-					bool flag34 = job.stage > 0 && now - job.t0 > 150f;
+					bool flag34 = job.stage > 0 && job.stage != 6 && now - job.t0 > 150f;   // stage 6 has its own Ready limit
 					bool flag35 = flag34;
 					if (flag35)
 					{
@@ -1395,6 +1415,7 @@ public static class BtcSpectate
 										BtcSpectate.ScheduleRelations(job.conn);
 									}
 									job.stage = 6;
+									job.t0 = now;
 								}
 								else
 								{
@@ -1408,12 +1429,69 @@ public static class BtcSpectate
 								break;
 							}
 							case 6:
+								// a returning player: like loading a save, the game stays frozen until that player presses Ready
+								// (its scene is up long before the world is replayed and its UI works), then a 3 s countdown for everyone
+								if (job.ret && BtcSpectate.Val(BtcSpectate.iPause, 1f) > 0.5f)
+								{
+									// the join freeze may never have started (a link pause already held the game when the job began) or the
+									// link pause may have let go meanwhile: hold the game here until the Ready gate opens
+									if (Time.timeScale > 0f)
+									{
+										if (!BtcSpectate._frozen)
+										{
+											BtcSpectate._frozen = true;
+											BtcSpectate._savedScale = Time.timeScale;
+											BtcSpectate.Log("server: game frozen until '" + job.name + "' is ready");
+										}
+										Time.timeScale = 0f;
+									}
+									else if (!BtcSpectate._frozen)
+									{
+										BtcSpectate._frozen = true;
+										BtcSpectate._savedScale = 1f;
+									}
+									if (job.goAt <= 0f)
+									{
+										if (!job.goReady && now - job.t0 > ResumeWaitMax) { job.goReady = true; job.goWhy = "no Ready after " + ResumeWaitMax.ToString("0") + " s"; }
+										if (!job.goReady && BtcSpectate._queue.Count > 0)
+										{
+											// another returning player waits in the queue: let it load now instead of after this one's Ready
+											BtcSpectate._parked.Add(job);
+											BtcSpectate._job = null;
+											BtcSpectate.Log("server: '" + job.name + "' waits for its Ready while the next player loads");
+											break;
+										}
+										string waiting = BtcSpectate.ParkedNotReady(now, job.goReady ? null : job.name);
+										if (waiting != null)
+										{
+											if (now >= job.bannerAt)
+											{
+												job.bannerAt = now + 2f;   // repeated: a late client still gets the card, and its 180 s banner expiry never hits
+												BtcSpectate.SetBanner(3, waiting);
+											}
+											break;
+										}
+										if (BtcSpectate._parked.Count > 0)
+										{
+											job.goWhy += ", with " + BtcSpectate._parked.Count + " more returning player(s)";
+											BtcSpectate._parked.Clear();
+										}
+										job.goAt = now + ResumeCountdown;
+										BtcSpectate.SetBanner(4, job.name);
+										BtcSpectate.Log("server: resuming in " + ResumeCountdown.ToString("0") + " s for '" + job.name + "' (" + job.goWhy + ", waited " + (now - job.t0).ToString("0.0") + " s)");
+									}
+									if (now < job.goAt)
+									{
+										break;
+									}
+								}
+								BtcSpectate.Log("server: '" + job.name + "' is in, unfreezing after " + (now - job.t0).ToString("0.0") + " s");
 								BtcSpectate.Unfreeze();
 								BtcSpectate._job = null;
 								break;
 							case 7:
 							{
-								bool flag59 = job.oldConn == null || BtcSpectate.Stale(job.oldConn);
+								bool flag59 = job.oldConn == null || object.ReferenceEquals(job.oldConn, job.conn) || BtcSpectate.Stale(job.oldConn);
 								bool flag60 = flag59;
 								if (flag60)
 								{
@@ -1457,12 +1535,16 @@ public static class BtcSpectate
 		{
 			BtcSpectate._heldScene = nm.ReadMessage<BtcSpectate.SceneStrMsg>().value;
 			string text = (!string.IsNullOrEmpty(Neo.multiplayerName)) ? Neo.multiplayerName : "Spectator";
+#if DEV
+			text = BetterThanCastle.Dev.BtcDevNet.NickOverride(text);
+#endif
 			BtcSpectate.HelloMsg helloMsg = new BtcSpectate.HelloMsg();
 			helloMsg.ver = 2;
 			helloMsg.name = text;
 			helloMsg.ing = ((SceneManager.GetActiveScene().buildIndex == 2) ? 1 : 0);
 			helloMsg.key = BtcSpectate.MyKey();
 			BtcSpectate._helloMsg = helloMsg;
+			if (helloMsg.ing != 0 && BtcSpectate._client != null) BtcResync.BindTo(BtcSpectate._client.connection);
 			BtcSpectate._cState = 1;
 			BtcSpectate._cT0 = Time.unscaledTime;
 			BtcSpectate._helloNext = BtcSpectate._cT0 + 1.5f;
@@ -1484,6 +1566,15 @@ public static class BtcSpectate
 			BtcSpectate.Log("OnScene: " + arg);
 			BtcSpectate.Passthrough("scene error");
 		}
+	}
+
+	private static void QuickResume()
+	{
+		BtcSpectate.Log("client: quick return in place (scene '" + BtcSpectate._heldScene + "' already loaded, no reload)");
+		BtcSpectate._cState = 0;
+		BtcSpectate._heldScene = null;
+		// the scene was bound to this connection when the hello went out (BtcResync.BindTo)
+		BtcSpectate.StopPreHold(true);
 	}
 
 	private static void Passthrough(string why)
@@ -1597,7 +1688,14 @@ public static class BtcSpectate
 			{
 				bool flag4 = flag;
 				bool flag5 = flag4;
-				if (flag5)
+				if (flag5 && BtcSpectate._helloMsg != null && BtcSpectate._helloMsg.ing != 0 && BtcSpectate._heldScene == SceneManager.GetActiveScene().name)
+				{
+					// quick return after an in-place reconnect: we are still in that very scene with the whole world loaded. Passing
+					// the Scene message on reloaded the map (loading screen, could hang at 0% "physicalizing landform"): drop it,
+					// only make the new connection ready (the host already re-attached our player and sends the objects again)
+					BtcSpectate.QuickResume();
+				}
+				else if (flag5)
 				{
 					BtcSpectate.Passthrough("host says normal join");
 				}
@@ -1770,6 +1868,7 @@ public static class BtcSpectate
 	{
 		BtcFactionFix.Reset();
 		BtcSpectate._cState = 0;
+		BtcSpectate._resumeSent = false;
 		BtcSpectate.StopPreHold(false);
 		BtcSpectate.StopHold(false, "reset");
 		BtcSpectate._hudAt = 0f;
@@ -2484,6 +2583,16 @@ public static class BtcSpectate
 				{
 					BtcSpectate.FixLocalFaction();
 				}
+				// joining a RUNNING game: the host loaded long ago, but its GameParam state (HostLoaded / HostLoadedAllFactions SyncVars)
+				// may sit in the held world messages while GameLoader waits for exactly these flags before the object step that
+				// releases the hold: a deadlock until the 150 s timeout (returning player: faction=null, empty world)
+				GameParam gp = GameParam.instance;
+				if (gp != null && !NetworkServer.active && (!gp.HostLoadedAllFactions || !gp.NetworkHostLoaded))
+				{
+					if (!gp.HostLoadedAllFactions) gp.NetworkHostLoadedAllFactions = true;
+					if (!gp.NetworkHostLoaded) gp.NetworkHostLoaded = true;
+					BtcSpectate.Log("client: host-loaded flags set locally (joining a running game)");
+				}
 				bool flag6 = GameSignals.Received<Action>(GameSignals.GameObjectsLoaded) && !BtcSpectate.RewindKeep;
 				bool flag7 = now >= BtcSpectate._diagNext;
 				bool flag8 = flag7;
@@ -2709,6 +2818,10 @@ public static class BtcSpectate
 						BtcSpectate.Log("client: LocalUser.faction was empty, set to '" + faction.name + "'");
 					}
 				}
+				if (BtcSpectate._cReturn && localUser.faction != null && !localUser.faction.IsSpectator)
+				{
+					BtcSpectate.EnsureOwner(localUser);
+				}
 				bool cSpectator = BtcSpectate._cSpectator;
 				bool flag15 = cSpectator;
 				if (flag15)
@@ -2720,6 +2833,38 @@ public static class BtcSpectate
 		catch (Exception ex)
 		{
 			BtcSpectate.Log("FixLocalFaction: " + ex.Message);
+		}
+	}
+
+	private static FieldInfo _fSyncObjs;
+
+	/// <summary>
+	/// Returning player: the host adds the new User to its faction's owner list, but that list change can reach the client before
+	/// the User object is spawned there and then resolves to null. Every "is this mine" check (Affiliation: owner list contains
+	/// LocalUser) then fails: own units look allied (blue overheads), selection and orders break. Put the local User in by hand.
+	/// </summary>
+	private static void EnsureOwner(User localUser)
+	{
+		try
+		{
+			Faction f = localUser.faction;
+			GameObject go = localUser.gameObject;
+			if (f.OwnerSyncList.Contains(go)) return;
+			if (_fSyncObjs == null) _fSyncObjs = typeof(SyncList<GameObject>).GetField("m_Objects", BindingFlags.Instance | BindingFlags.NonPublic);
+			List<GameObject> list = (_fSyncObjs != null) ? _fSyncObjs.GetValue(f.OwnerSyncList) as List<GameObject> : null;
+			if (list == null)
+			{
+				BtcSpectate.Log("client: owner fix: SyncList.m_Objects not found");
+				return;
+			}
+			int nul = list.FindIndex((GameObject g) => g == null);
+			if (nul >= 0) list[nul] = go;   // keep the indexes of later host list changes in step
+			else list.Add(go);
+			BtcSpectate.Log("client: local user added to the owners of '" + f.name + "' (" + (nul >= 0 ? "replaced an unresolved entry" : "appended") + ", owners " + list.Count + ")");
+		}
+		catch (Exception ex)
+		{
+			BtcSpectate.Log("EnsureOwner: " + ex.Message);
 		}
 	}
 
@@ -2762,6 +2907,146 @@ public static class BtcSpectate
 			result = "err:" + ex.Message;
 		}
 		return result;
+	}
+
+	// banner kinds: 1 spectator joining, 2 player returning, 3 waiting for the returning player's Ready, 4 countdown to resume
+	private const float ResumeWaitMax = 240f;
+
+	private const float ResumeCountdown = 3f;
+
+	private static void SetBanner(int kind, string name)
+	{
+		BtcSpectate._bannerOn = true;
+		BtcSpectate._bannerName = name;
+		BtcSpectate._bannerSince = Time.unscaledTime;
+		BtcSpectate._bannerKind = kind;
+		BtcSpectate.SendBanner(kind, name);
+	}
+
+	/// <summary>Client (the returning player): its load is over and it pressed Ready.</summary>
+	internal static void SendResumeReady()
+	{
+		try
+		{
+			if (BtcSpectate._client == null || !BtcSpectate._client.isConnected) return;
+			BtcSpectate._client.Send(MsgResume, new BtcSpectate.AckMsg { sid = BtcSpectate._cSid, next = 0 });
+			BtcSpectate._resumeSent = true;
+			BtcSpectate.Log("client: Ready sent, waiting for the host to resume");
+		}
+		catch (Exception ex)
+		{
+			BtcSpectate.Log("SendResumeReady: " + ex.Message);
+		}
+	}
+
+	private static void OnResumeReady(NetworkMessage nm)
+	{
+		try
+		{
+			nm.ReadMessage<BtcSpectate.AckMsg>();
+			if (nm.conn == null) return;
+			BtcSpectate.Job job = BtcSpectate._job;
+			if (job == null || job.conn == null || job.conn.connectionId != nm.conn.connectionId)
+			{
+				job = BtcSpectate._parked.Find((BtcSpectate.Job j) => j.conn != null && j.conn.connectionId == nm.conn.connectionId);
+			}
+			if (job != null && job.ret && job.stage == 6 && !job.goReady)
+			{
+				job.goReady = true;
+				job.goWhy = "player pressed Ready";
+				BtcSpectate.Log("server: '" + job.name + "' pressed Ready");
+			}
+		}
+		catch (Exception ex)
+		{
+			BtcSpectate.Log("OnResumeReady: " + ex.Message);
+		}
+	}
+
+	/// <summary>Host card button: do not wait for the returning players' Ready.</summary>
+	private static void ResumeNow()
+	{
+		BtcSpectate.Job job = BtcSpectate._job;
+		if (job != null && job.ret && job.stage == 6 && !job.goReady)
+		{
+			job.goReady = true;
+			job.goWhy = "host chose to go on";
+		}
+		foreach (BtcSpectate.Job j in BtcSpectate._parked)
+		{
+			if (!j.goReady) { j.goReady = true; j.goWhy = "host chose to go on"; }
+		}
+	}
+
+	/// <summary>
+	/// Host: names of the returning players still owing their Ready (the current one first), or null when all are set.
+	/// A parked player that left or hit the time limit no longer blocks the game.
+	/// </summary>
+	private static string ParkedNotReady(float now, string first)
+	{
+		string names = first;
+		foreach (BtcSpectate.Job j in BtcSpectate._parked)
+		{
+			if (j.goReady) continue;
+			if (!BtcSpectate.Alive(j.conn) || now - j.t0 > ResumeWaitMax)
+			{
+				j.goReady = true;
+				j.goWhy = "gone or no Ready";
+				BtcSpectate.Log("server: parked '" + j.name + "' no longer blocks the resume (left or no Ready)");
+				continue;
+			}
+			names = (names == null) ? j.name : names + ", " + j.name;
+		}
+		return names;
+	}
+
+	/// <summary>HUD cards of the resume step after a full rejoin (banner kinds 3 and 4), on the host and every client.</summary>
+	private static void DrawResume(float now)
+	{
+		string who = BtcSpectate._bannerName ?? "";
+		if (BtcSpectate._bannerKind == 4)
+		{
+			int left = Mathf.Max(1, Mathf.CeilToInt(BtcSpectate._bannerSince + ResumeCountdown - now));
+			BtcHud.Progress("specresume", BtcReplayIcons.Refresh, BtcMenu.Accent, BtcGameplay.T("Game resumes in ", "Игра продолжится через ") + left, -1f);
+			return;
+		}
+		if (NetworkServer.active)
+		{
+			BtcHud.Card("specresume", BtcReplayIcons.Group, BtcHud.Warn, BtcGameplay.T("Waiting for Ready: ", "Ждём «Готов»: ") + who,
+				BtcGameplay.T("The player is back and loads the game; it resumes when they press Ready.", "Игрок вернулся и загружает игру; она продолжится, когда он нажмёт «Готов»."),
+				null, false, BtcGameplay.T("Resume now", "Продолжить сейчас"), BtcSpectate.ResumeNow);
+			BtcHud.ForceOpen("specresume");
+			return;
+		}
+		bool me = BtcSpectate._cReturn && BtcSpectate._cState == 6;
+		if (!me)
+		{
+			BtcHud.Card("specresume", BtcReplayIcons.Group, BtcHud.Warn, BtcGameplay.T("Waiting for Ready: ", "Ждём «Готов»: ") + who,
+				BtcGameplay.T("The player is back; the game resumes when they press Ready.", "Игрок вернулся; игра продолжится, когда он нажмёт «Готов»."), null, false);
+			return;
+		}
+		if (!BtcSpectate.ReturnLoaded())
+		{
+			BtcHud.Progress("specresume", BtcReplayIcons.Refresh, BtcMenu.Accent, BtcGameplay.T("Reconnecting: loading the world...", "Возвращение: загрузка мира..."), -1f);
+			return;
+		}
+		if (BtcSpectate._resumeSent)
+		{
+			BtcHud.Progress("specresume", BtcReplayIcons.Refresh, BtcMenu.Accent, BtcGameplay.T("Ready - the game resumes in a moment", "Готов - игра сейчас продолжится"), -1f);
+			return;
+		}
+		BtcHud.Card("specresume", BtcReplayIcons.Refresh, BtcMenu.Accent, BtcGameplay.T("You are back in the game", "Вы снова в игре"),
+			BtcGameplay.T("The game is paused for everyone. Press Ready when you are set.", "Игра на паузе у всех. Нажмите «Готов», когда будете готовы."),
+			null, false, BtcGameplay.T("Ready", "Готов"), BtcSpectate.SendResumeReady);
+		BtcHud.ForceOpen("specresume");
+	}
+
+	/// <summary>Client: the returning player's load is over (world replayed, level ready), so its Ready button can be used.</summary>
+	internal static bool Returning { get { return BtcSpectate._cReturn; } }
+
+	internal static bool ReturnLoaded()
+	{
+		return BtcSpectate._cReturn && BtcSpectate._cState == 6 && !BtcSpectate._hold && GameSignals.Received<Action>(GameSignals.LevelReady);
 	}
 
 	private static void SendBanner(int kind, string name)
@@ -2817,8 +3102,12 @@ public static class BtcSpectate
 	{
 		try
 		{
+			NetworkConnection old = u.connectionToClient;
+			if (old != null && !object.ReferenceEquals(old, conn)) BtcNetManager.Superseded(old);
 			NetworkServer.ReplacePlayerForConnection(conn, u.gameObject, 0);
+			BtcNetManager.CacheName(conn, u.ScreenName);
 			NetworkServer.SetClientReady(conn);
+			BtcResync.SendAlive(conn);
 			u.NetworkReady = true;
 			BtcSpectate.Log(string.Concat(new object[]
 			{
@@ -3215,27 +3504,17 @@ public static class BtcSpectate
 			}
 			else
 			{
-				try
+				// the legacy heartbeat table moved from UNetManager to BtcNetManager in the port (the reflection here always missed,
+				// so a silently dropped player with a still-open connection never counted as gone)
+				// a closed connection's id is reused by the next one (often the returning player itself): the old object is then
+				// no longer in the server table, and the fresh peer of the new link must not make the old one look alive
+				NetworkConnection cur = null;
+				for (int i = 0; i < NetworkServer.connections.Count; i++)
 				{
-					bool flag5 = BtcSpectate._hbField == null;
-					bool flag6 = flag5;
-					if (flag6)
-					{
-						BtcSpectate._hbField = typeof(UNetManager).GetField("lastHeartbeatUnscaledTimeByConnection", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-					}
-					Dictionary<int, float> dictionary = (BtcSpectate._hbField != null) ? (BtcSpectate._hbField.GetValue(UNetManager.instance) as Dictionary<int, float>) : null;
-					float num = 0f;
-					bool flag7 = dictionary != null && dictionary.TryGetValue(c.connectionId, out num);
-					bool flag8 = flag7;
-					if (flag8)
-					{
-						return Time.unscaledTime - num > 3f;
-					}
+					NetworkConnection x = NetworkServer.connections[i];
+					if (x != null && x.connectionId == c.connectionId) { cur = x; break; }
 				}
-				catch (Exception)
-				{
-				}
-				result = false;
+				result = !object.ReferenceEquals(cur, c) || BtcNetManager.PeerSilence(c.connectionId) > 3f;
 			}
 		}
 		return result;
@@ -3659,6 +3938,12 @@ public static class BtcSpectate
 						list.RemoveAt(i);
 					}
 				}
+			}
+			// the waiting list is set aside while a new connection is handled (StashPending): a player who is back now must not be
+			// put back on it by RestorePending, or the host keeps "waiting" for them until the old link times out
+			for (int i = BtcSpectate._stash.Count - 1; i >= 0; i--)
+			{
+				if (BtcSpectate.PendName(BtcSpectate._stash[i]) == BtcSpectate.K(name)) BtcSpectate._stash.RemoveAt(i);
 			}
 			bool flag6 = (list == null || list.Count == 0) && !BtcSpectate.GetBool("connectionDegraded");
 			bool flag7 = flag6;
@@ -4572,6 +4857,13 @@ public static class BtcSpectate
 
 	public const short MsgRel = 83;
 
+	public const short MsgResume = 116;   // client -> host: the returning player pressed Ready (BC ON only)
+
+	// returning players that finished loading and wait for their Ready while another returning player loads
+	private static readonly List<BtcSpectate.Job> _parked = new List<BtcSpectate.Job>();
+
+	private static bool _resumeSent;
+
 	private static int iHud = -1;
 
 	private static int iMap = -1;
@@ -4768,6 +5060,15 @@ public static class BtcSpectate
 		public BtcSpectate.Slot slot;
 
 		public NetworkConnection oldConn;
+
+		// resume after a full rejoin: the returning player pressed Ready (or the host chose to go on), then a short countdown
+		public bool goReady;
+
+		public string goWhy;
+
+		public float goAt;
+
+		public float bannerAt;
 	}
 
 	public class ConnState

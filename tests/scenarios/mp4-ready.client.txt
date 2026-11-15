@@ -1,0 +1,9 @@
+# client of mp4-ready (same script on all 4)
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 120
+ready 420
+waitgame 300
+timerready 150
+wait 8
+quit

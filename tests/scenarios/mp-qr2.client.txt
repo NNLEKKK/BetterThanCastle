@@ -1,0 +1,17 @@
+# client of mp-qr2: orders before the outage, after the quick return, report arrivals
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 120
+ready 420
+waitgame 300
+mark ingame
+wait 5
+walk init 4
+walk go a
+wait 50
+wait 85
+walk go b
+wait 50
+netstat
+wait 30
+quit

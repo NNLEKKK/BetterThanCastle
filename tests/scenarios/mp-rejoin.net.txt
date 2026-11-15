@@ -1,0 +1,8 @@
+at host:ingame+0 net client1 0 --lag on --lag-time 35 --drop on --drop-chance 1.0 --ood on --ood-chance 1.0 --throttle on --throttle-chance 2.0 --throttle-frame 120
+at host:ingame+0 net client2 0 --lag on --lag-time 55 --drop on --drop-chance 1.5 --ood on --ood-chance 1.0 --throttle on --throttle-chance 2.0 --throttle-frame 150
+at host:ingame+0 net client3 0 --lag on --lag-time 75 --drop on --drop-chance 1.0 --ood on --ood-chance 1.0 --throttle on --throttle-chance 2.0 --throttle-frame 120
+# crash: the process dies without a disconnect packet, the host only sees silence
+at host:ingame+40 kill client2
+at host:ingame+55 launch client2r mp-late.client.txt BtcClient2
+# a new spectator joins the running game
+at host:ingame+200 launch spec1 mp-late.client.txt BtcSpec1

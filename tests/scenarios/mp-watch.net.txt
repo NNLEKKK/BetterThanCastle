@@ -1,0 +1,3 @@
+# user watches client1 (visible): Radmin-like link, one 30 s outage 90 s after the match starts
+at host:ingame+0 net clients 0 --lag on --lag-time 50 --drop on --drop-chance 1.0
+at host:ingame+90 cut client1 30

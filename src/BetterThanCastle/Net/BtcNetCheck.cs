@@ -140,6 +140,7 @@ namespace BetterThanCastle
             float now = Time.unscaledTime;
             UNetManager m = null;
             try { m = UNetManager.instance; } catch (Exception) { }
+            if (BtcReplay.Mode == BtcReplay.State.Playing) { DrawReplayNote(); return; }   // replays: no live version checks, only the recording version note
             if (m != null && UNetManager.IsConnected && BtcNetworkGate.Enabled)
             {
                 if (NetworkServer.active) DrawHost(m, now);
@@ -155,6 +156,18 @@ namespace BetterThanCastle
                     Show("netfail", BtcReplayIcons.Wave, BtcHud.Warn, Tt("Connection problem", "Проблема с подключением"),
                         Tt("BetterConnection is OFF. If the host uses BetterConnection, turn it ON in the BetterConnection tab and join again.", "BetterConnection выключен. Если хост использует BetterConnection, включите его во вкладке BetterConnection и зайдите снова."), null);
             }
+        }
+
+        /// <summary>Replay playback: a note when the replay was recorded with another mod version (instead of the live version cards).</summary>
+        private static void DrawReplayNote()
+        {
+            string v = BtcReplayFix.RecordedVersion;
+            if (v == Mine || Dismissed.Contains("replayver")) return;
+            string was = string.IsNullOrEmpty(v) ? Tt("an older version", "более старой версии") : v;
+            string title = Tt("Replay from another mod version", "Реплей с другой версии мода");
+            string text = Tt("This replay was recorded on " + was + " (you have " + Mine + "). Something may look or play differently.",
+                             "Этот реплей записан на " + was + " (у вас " + Mine + "). Что-то может выглядеть или проигрываться не так.");
+            if (BtcHud.Card("replayver", BtcReplayIcons.Bug, BtcHud.Warn, title, text, null, true)) Dismissed.Add("replayver");
         }
 
         private static void DrawClient(float now)
@@ -182,7 +195,7 @@ namespace BetterThanCastle
             for (int i = 0; i < NetworkServer.connections.Count; i++)
             {
                 NetworkConnection c = NetworkServer.connections[i];
-                if (c == null || BtcNetManager.IsLocalConnection(c)) continue;
+                if (c == null || BtcNetManager.IsLocalConnection(c) || c is BtcReplay.RecConn) continue;   // the replay recorder is not a player
                 int id = c.connectionId;
                 if (!SrvSeen.ContainsKey(id)) SrvSeen[id] = now;
                 string name = BtcNetManager.LobbyPlayerNameFromConnection(m, c);

@@ -580,6 +580,9 @@ public static partial class BtcNick
 
 	private static void SetName(string n)
 	{
+#if DEV
+		n = BetterThanCastle.Dev.BtcDevNet.NickOverride(n);
+#endif
 		Neo.multiplayerName = n;
 		UNetManager instance = UNetManager.instance;
 		bool flag = instance != null;
@@ -1315,6 +1318,9 @@ public static partial class BtcNick
 
 	private static void PushLobby(string name)
 	{
+#if DEV
+		name = BetterThanCastle.Dev.BtcDevNet.NickOverride(name);
+#endif
 		UNetManager instance = UNetManager.instance;
 		bool flag = instance == null;
 		bool flag2 = !flag;

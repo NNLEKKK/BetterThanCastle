@@ -135,8 +135,16 @@ namespace BetterThanCastle
                 string a = arg[0];
                 if (a != null)
                 {
+                    int pg;
+                    bool num = int.TryParse(a, out pg);
                     if (id == 3) BtcHotkeysTab.Instance.Jump(a);
-                    else if (id == 1) { int pg; if (int.TryParse(a, out pg)) BtcVisualTab.Instance.SetPage(pg); }
+                    else if (id == 1)
+                    {
+                        if (num) BtcVisualTab.Instance.SetPage(pg);
+                        else { BtcVisualSetting s = BtcVisualData.Find(a); if (s != null) BtcVisualTab.Instance.JumpSetting(s); }
+                    }
+                    else if (id == 4) { int ri = BtcGameplay.Idx(a); if (ri >= 0) BtcGameplayTab.JumpRule(ri); }
+                    else if (id == 6 && num) BtcProfileTab.Instance.SetPage(pg);
                 }
                 return true;
             }

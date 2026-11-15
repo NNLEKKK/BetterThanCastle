@@ -1,0 +1,15 @@
+# client of mp-ping
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 120
+ready 420
+waitgame 300
+wait 6
+ping
+pingdump
+wait 32
+ping
+pingdump
+wait 10
+pingdump
+quit

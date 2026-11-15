@@ -1,0 +1,21 @@
+# terraform-tunnel: workers dig a 3x3 pit 4 deep (they end up on its floor), then a tunnel 1 wide N high (tftunnel N) 6 long into the wall.
+newgame
+waitgame 240
+wait 5
+tfpit
+wait 3
+tfhire
+wait 60
+tfdump pit
+tftunnel
+wait 3
+tfhire
+wait 2
+tfdump t2
+wait 8
+tfdump t10
+wait 20
+tfdump t30
+wait 30
+tfdump t60
+quit

@@ -35,7 +35,12 @@ namespace BetterThanCastle
             internal int Key;                 // nest instance id (host) / position hash (client)
             internal FireflyNest Nest;        // host only
             internal Vector3 C;
-            internal float R;
+            internal float R;                 // radius / half side; map box: its largest half size
+            internal Vector3 H;               // map box (Custom): half size of the union bounds, C = their centre
+            internal readonly List<Vector3> PMin = new List<Vector3>(), PMax = new List<Vector3>();   // map box parts (world), the barrier is their union
+            internal int PartsSig;            // changes when the parts change (look rebuild)
+            internal bool Custom;             // box made in the map editor (BtcShieldBox) instead of the automatic shape
+            internal Vector3 Crystal;         // DEV lab bars: the crystal point (C becomes the box centre)
             internal int Owner;               // faction ID
             internal bool Home;
             internal bool UpAny;
@@ -43,7 +48,8 @@ namespace BetterThanCastle
             internal readonly List<bool> Up = new List<bool>();     // barrier up against Fac[i]
             internal readonly List<float> Secs = new List<float>(); // seconds to the next known change for Fac[i] (-1 = none)
             internal readonly List<byte> Why = new List<byte>();    // 0 none, 1 peace, 2 shards, 3 artificer, 4 permanent
-            internal readonly Dictionary<int, float> MageSeen = new Dictionary<int, float>();
+            internal readonly Dictionary<int, float> MageSeen = new Dictionary<int, float>();   // last time an artificer of fid kept it down
+            internal readonly Dictionary<int, float> MageSince = new Dictionary<int, float>();  // start of the current uninterrupted artificer stay
             internal readonly List<int> PFac = new List<int>();
             internal readonly List<bool> PUp = new List<bool>();
             internal int Hits;                // bumps / blocked shots (drives the flash + sound on every peer)
@@ -92,7 +98,7 @@ namespace BetterThanCastle
         private static bool _dirty;
         private static int _hitsSent;
 
-        private static int iOn = -1, iHome, iCapt, iRad, iDps, iPeace, iShards, iShardN, iTeam, iMage, iMageR, iMageD, iAi, iKnock = -1;
+        private static int iOn = -1, iHome, iCapt, iRad, iDps, iPeace, iShards, iShardN, iTeam, iMage, iMageR, iMageD, iMageT, iAi, iKnock = -1, iCube = -1;
 
         // ------------------------------------------------------------------ rules
         internal static void AddRows()
@@ -106,7 +112,10 @@ namespace BetterThanCastle
             BtcGameplay.Add("shield.capt", G, "Shield captured crystals", "Барьер вокруг захваченных кристаллов", 1f, 0f, 1f, 1f, true,
                 "A barrier around every crystal a player has captured. It goes up as soon as the crystal is taken.", "Барьер вокруг каждого кристалла, захваченного игроком. Включается сразу после захвата.");
             BtcGameplay.Add("shield.radius", G, "Barrier radius (blocks)", "Радиус барьера (блоки)", 20f, 4f, 80f, 1f, false,
-                "Sphere radius around the crystal. 20 = the range in which a crystal powers wards.", "Радиус сферы вокруг кристалла. 20 = дальность, в которой кристалл запитывает варды.");
+                "Sphere radius, or half the side of the cube, around the crystal. 20 = the range in which a crystal powers wards.", "Радиус сферы или половина стороны куба вокруг кристалла. 20 = дальность, в которой кристалл запитывает варды.");
+            BtcGameplay.Add("shield.cube", G, "Cube barriers (off = sphere)", "Кубические барьеры (выкл = сфера)", 1f, 0f, 1f, 1f, true,
+                "On: every barrier is a cube aligned with the voxel grid (easy to see where it ends on blocks). Off: a sphere (dome above ground).",
+                "Вкл: каждый барьер - куб по сетке вокселей (на блоках легко видно, где он кончается). Выкл: сфера (купол над землёй).");
             BtcGameplay.Add("shield.dps", G, "Damage to enemies caught inside (HP/s)", "Урон врагам внутри барьера (ХП/с)", 20f, 0f, 200f, 1f, false,
                 "Enemy units that were inside when the barrier went up take this much damage per second until they walk out.", "Вражеские юниты, оказавшиеся внутри при включении барьера, получают столько урона в секунду, пока не выйдут.");
             BtcGameplay.Add("shield.knock", G, "Knockback on touch (0 = just stop)", "Отбрасывание при касании (0 = просто стоп)", 4f, 0f, 30f, 1f, false,
@@ -123,15 +132,18 @@ namespace BetterThanCastle
                 "Monarch mode: an enemy barrier falls for a player while one of their artificers sees it (its edge is within the artificer's reach).", "Монарх-мод: вражеский барьер падает для игрока, пока его артефактор видит барьер (край барьера в пределах дальности артефактора).");
             BtcGameplay.Add("shield.mageR", G, "Artificer reach (0 = its vision)", "Дальность артефактора (0 = его обзор)", 0f, 0f, 120f, 1f, false,
                 "Distance from the artificer to the barrier's edge. 0 = the artificer's own vision range.", "Расстояние от артефактора до края барьера. 0 = собственный обзор артефактора.");
-            BtcGameplay.Add("shield.mageD", G, "Back up after the artificer left (s)", "Включается после ухода артефактора (с)", 5f, 0f, 120f, 1f, false,
+            BtcGameplay.Add("shield.mageT", G, "Artificer must stay near (s)", "Артефактор должен простоять (с)", 3f, 0f, 60f, 1f, false,
+                "Seconds an artificer has to stay within reach of the barrier before it falls. Leaving or dying earlier starts the count again. 0 = it falls at once.",
+                "Сколько секунд артефактор должен простоять в зоне барьера, чтобы тот упал. Ушёл или погиб раньше - отсчёт начинается заново. 0 = падает сразу.");
+            BtcGameplay.Add("shield.mageD", G, "Back up after the artificer left (s)", "Включается после ухода артефактора (с)", 3f, 0f, 120f, 1f, false,
                 "Seconds the barrier stays down after the last artificer left or died.", "Сколько секунд барьер остаётся снятым после ухода или смерти последнего артефактора.");
             BtcGameplay.Add("shield.ai", G, "Also stop corruptrons", "Останавливать и корраптронов", 0f, 0f, 1f, 1f, true,
                 "Corruptrons and other AI enemies are stopped by barriers too.", "Корраптроны и другие ИИ-враги тоже останавливаются барьерами.");
             iOn = BtcGameplay.Idx("shield.on"); iHome = BtcGameplay.Idx("shield.home"); iCapt = BtcGameplay.Idx("shield.capt");
             iRad = BtcGameplay.Idx("shield.radius"); iDps = BtcGameplay.Idx("shield.dps"); iPeace = BtcGameplay.Idx("shield.peace");
             iShards = BtcGameplay.Idx("shield.shards"); iShardN = BtcGameplay.Idx("shield.shardN"); iTeam = BtcGameplay.Idx("shield.team");
-            iMage = BtcGameplay.Idx("shield.mage"); iMageR = BtcGameplay.Idx("shield.mageR"); iMageD = BtcGameplay.Idx("shield.mageD"); iAi = BtcGameplay.Idx("shield.ai");
-            iKnock = BtcGameplay.Idx("shield.knock");
+            iMage = BtcGameplay.Idx("shield.mage"); iMageR = BtcGameplay.Idx("shield.mageR"); iMageD = BtcGameplay.Idx("shield.mageD"); iMageT = BtcGameplay.Idx("shield.mageT"); iAi = BtcGameplay.Idx("shield.ai");
+            iKnock = BtcGameplay.Idx("shield.knock"); iCube = BtcGameplay.Idx("shield.cube");
         }
 
         private static float Val(int i, float def)
@@ -145,6 +157,8 @@ namespace BetterThanCastle
         /// <summary>The rule is on in the current rules (host: own values, client: the host's).</summary>
         internal static bool RuleOn { get { return iOn >= 0 && BtcNetworkGate.Enabled && B(iOn); } }
         internal static float Radius { get { return Mathf.Max(1f, Val(iRad, 20f)); } }
+        /// <summary>Barrier shape of the current rules: true = axis-aligned cube (half side R), false = sphere (radius R). Same on every peer (rules are synced).</summary>
+        internal static bool Cube { get { return iCube < 0 || Val(iCube, 1f) > 0.5f; } }
 
         private static bool Host { get { return NetworkServer.active; } }
 
@@ -160,7 +174,7 @@ namespace BetterThanCastle
         {
             if (BtcGameplay.InLobby) return false;
             if (!GameSignals.Received<Action>(GameSignals.LevelReady)) return false;
-            return BtcReplay.Mode != BtcReplay.State.Playing;
+            return true;   // replays too: the recorded rules are restored (BtcReplayFix) and the host logic re-runs on the replayed match
         }
 
         // ------------------------------------------------------------------ tick (ResourcePackManager.Update via BtcTimer.Tick)
@@ -226,6 +240,7 @@ namespace BetterThanCastle
             Units.Clear();
             FacCache.Clear();
             Projs.Clear();
+            BarrelUser.Clear(); Booms.Clear(); ExplFac.Clear();
             _nextStep = 0f; _nextNest = 0f;
             BtcLog.Info("Shield", "cleared (" + why + ")");
         }
@@ -236,7 +251,7 @@ namespace BetterThanCastle
             if (now >= _nextFacFlush) { _nextFacFlush = now + 3f; FacCache.Clear(); UnitCache.Clear(); }
             if (now >= _nextNest) { _nextNest = now + 1f; RefreshNests(); }
             float r = Radius;
-            for (int i = 0; i < Bars.Count; i++) Bars[i].R = r;
+            for (int i = 0; i < Bars.Count; i++) if (!Bars[i].Custom) Bars[i].R = r;
             CollectUnits();
             ComputeStates(now);
             StepUnits(dt, now);
@@ -249,6 +264,36 @@ namespace BetterThanCastle
                 foreach (KeyValuePair<int, Unit> kv in Units) if (kv.Value.Trapped != int.MinValue) trapped++;
                 BtcLog.Info("Shield", "bars=" + Bars.Count + " up=" + up + " units=" + Units.Count + " trapped=" + trapped + " proj=" + Projs.Count);
             }
+        }
+
+        /// <summary>A box made for the crystal at this point in the map editor replaces the automatic shape (C becomes the box centre).</summary>
+        private static void ApplyMapBox(Bar b, Vector3 crystal)
+        {
+            BtcShieldBox.Box mb = BtcShieldBox.For(crystal);
+            if (mb == null) { b.Custom = false; return; }
+            Tmp.Clear();
+            BtcShieldBox.AllFor(mb.Crystal, Tmp);
+            b.PMin.Clear(); b.PMax.Clear();
+            for (int i = 0; i < Tmp.Count; i++) { b.PMin.Add(Tmp[i].Min); b.PMax.Add(Tmp[i].Max); }
+            SetBounds(b);
+            if (!b.Custom) { _dirty = true; BtcLog.Info("Shield", "map box owner=" + b.Owner + " parts=" + b.PMin.Count + " half=" + b.H); }
+            b.Custom = true;
+        }
+
+        private static readonly List<BtcShieldBox.Box> Tmp = new List<BtcShieldBox.Box>();
+
+        /// <summary>C, H, R and the parts signature from the parts of a map box.</summary>
+        private static void SetBounds(Bar b)
+        {
+            Vector3 mn = b.PMin[0], mx = b.PMax[0];
+            int sig = 17;
+            for (int i = 0; i < b.PMin.Count; i++)
+            {
+                mn = Vector3.Min(mn, b.PMin[i]); mx = Vector3.Max(mx, b.PMax[i]);
+                sig = sig * 31 + b.PMin[i].GetHashCode(); sig = sig * 31 + b.PMax[i].GetHashCode();
+            }
+            b.C = (mn + mx) * 0.5f; b.H = (mx - mn) * 0.5f; b.R = Mathf.Max(b.H.x, Mathf.Max(b.H.y, b.H.z));
+            if (sig != b.PartsSig) { b.PartsSig = sig; _dirty = true; }
         }
 
         private static bool IsPlayer(Faction f) { return BtcMatchStats.Tracks(f) && !f.isAI; }
@@ -296,15 +341,18 @@ namespace BetterThanCastle
                     b.C = n.transform.position;
                     b.R = r;
                     b.Home = isHome;
+                    ApplyMapBox(b, b.C);
                 }
             }
 #if DEV
             for (int i = 0; i < DevBars.Count; i++)
             {
                 Bar d = DevBars[i];
-                if (!BarByKey.ContainsKey(d.Key)) { BarByKey[d.Key] = d; Bars.Add(d); _dirty = true; }
+                if (!BarByKey.ContainsKey(d.Key)) { BarByKey[d.Key] = d; Bars.Add(d); _dirty = true; d.Crystal = d.C; }
                 d.Seen = true;
                 d.R = r;
+                d.C = d.Crystal;
+                ApplyMapBox(d, d.Crystal);
             }
 #endif
             for (int i = Bars.Count - 1; i >= 0; i--)
@@ -410,7 +458,7 @@ namespace BetterThanCastle
         {
             bool peaceMode = B(iPeace), shards = B(iShards), mage = B(iMage), team = B(iTeam);
             int need = Mathf.Max(1, Mathf.RoundToInt(Val(iShardN, 2f)));
-            float delay = Val(iMageD, 5f);
+            float delay = Val(iMageD, 3f), stay = Val(iMageT, 3f);
             float peaceLeft = -1f;
             bool peace = peaceMode && InPeace(out peaceLeft);
             if (!peace) peaceLeft = -1f;
@@ -444,16 +492,20 @@ namespace BetterThanCastle
                                 int mf = MageFac[m];
                                 if (mf != f.ID && !(team && Allied(f, BtcMatchStats.FactionOf(mf)))) continue;
                                 Vector4 mp = Mages[m];
-                                float reach = mp.w + bar.R;   // the artificer sees the barrier's edge
-                                if ((new Vector3(mp.x, mp.y, mp.z) - bar.C).sqrMagnitude <= reach * reach) { seenNow = true; break; }
+                                if (Dist(bar, new Vector3(mp.x, mp.y, mp.z)) <= mp.w) { seenNow = true; break; }   // the artificer sees the barrier's edge
                             }
-                            if (seenNow) bar.MageSeen[f.ID] = now;
-                            float seen;
-                            if (bar.MageSeen.TryGetValue(f.ID, out seen) && now - seen <= delay)
+                            // the artificer has to stay `stay` seconds in a row; leaving earlier resets the count
+                            float since, seen;
+                            if (seenNow) { if (!bar.MageSince.TryGetValue(f.ID, out since)) { since = now; bar.MageSince[f.ID] = now; } }
+                            else { bar.MageSince.Remove(f.ID); since = -1f; }
+                            bool held = bar.MageSeen.TryGetValue(f.ID, out seen) && now - seen <= delay;
+                            if (seenNow && (held || now - since >= stay)) { bar.MageSeen[f.ID] = now; seen = now; held = true; }
+                            if (held)
                             {
                                 if (!down) { why = 3; if (!seenNow) secs = delay - (now - seen); }
                                 down = true;
                             }
+                            else if (seenNow && !down) { why = 5; secs = stay - (now - since); }   // still up: falls in secs
                         }
                         up = !down;
                     }
@@ -489,7 +541,113 @@ namespace BetterThanCastle
             }
         }
 
-        internal static bool In(Bar b, Vector3 p) { return (p - b.C).sqrMagnitude <= b.R * b.R; }
+        /// <summary>The barrier is a box: a map box, or the automatic shape while the cube rule is on.</summary>
+        internal static bool IsBox(Bar b) { return b.Custom || Cube; }
+
+        /// <summary>Half size per axis of the bounds of a box barrier (map box: of the union of its parts).</summary>
+        internal static Vector3 Half(Bar b) { return b.Custom ? b.H : new Vector3(b.R, b.R, b.R); }
+
+        /// <summary>Box parts of a box barrier: map box = its parts (world min/max), automatic cube = one part C +- R.</summary>
+        internal static int Parts(Bar b) { return b.Custom ? b.PMin.Count : 1; }
+
+        internal static void Part(Bar b, int i, out Vector3 mn, out Vector3 mx)
+        {
+            if (b.Custom) { mn = b.PMin[i]; mx = b.PMax[i]; return; }
+            Vector3 r = new Vector3(b.R, b.R, b.R);
+            mn = b.C - r; mx = b.C + r;
+        }
+
+        internal static bool In(Bar b, Vector3 p)
+        {
+            if (!IsBox(b)) return (p - b.C).sqrMagnitude <= b.R * b.R;
+            for (int i = 0, n = Parts(b); i < n; i++)
+            {
+                Vector3 mn, mx;
+                Part(b, i, out mn, out mx);
+                if (p.x >= mn.x && p.x <= mx.x && p.y >= mn.y && p.y <= mx.y && p.z >= mn.z && p.z <= mx.z) return true;
+            }
+            return false;
+        }
+
+        /// <summary>Box barrier: nearest point just outside (pad blocks) the union of the parts, and the face normal there.
+        /// Candidates are the projections of p onto every face of every part (clamped to that face); one that lands inside another part is skipped,
+        /// so a unit is never pushed into the joint between two parts. horiz = side faces only.</summary>
+        private static Vector3 Exit(Bar b, Vector3 p, float pad, bool horiz, out Vector3 nrm)
+        {
+            pad = Mathf.Max(pad, 0.02f);
+            float best = float.MaxValue;
+            Vector3 bq = p + Vector3.up * pad;
+            nrm = Vector3.up;
+            for (int i = 0, n = Parts(b); i < n; i++)
+            {
+                Vector3 mn, mx;
+                Part(b, i, out mn, out mx);
+                Vector3 c = new Vector3(Mathf.Clamp(p.x, mn.x, mx.x), Mathf.Clamp(p.y, mn.y, mx.y), Mathf.Clamp(p.z, mn.z, mx.z));
+                for (int f = 0; f < 6; f++)
+                {
+                    int ax = f >> 1;
+                    if (horiz && ax == 1) continue;
+                    bool max = (f & 1) != 0;
+                    Vector3 q = c;
+                    q[ax] = max ? mx[ax] + pad : mn[ax] - pad;
+                    float d = (q - p).sqrMagnitude;
+                    if (d >= best || In(b, q)) continue;
+                    best = d; bq = q;
+                    nrm = Vector3.zero; nrm[ax] = max ? 1f : -1f;
+                }
+            }
+            return bq;
+        }
+
+        /// <summary>Outward surface normal of the barrier next to p (box: the nearest outer face).</summary>
+        internal static Vector3 Normal(Bar b, Vector3 p)
+        {
+            Vector3 d = p - b.C;
+            if (!IsBox(b)) return d.sqrMagnitude > 0.0001f ? d.normalized : Vector3.up;
+            Vector3 n;
+            Exit(b, p, 0.05f, false, out n);
+            return n;
+        }
+
+        /// <summary>Point just outside the barrier (pad blocks) next to p, along the surface normal.</summary>
+        internal static Vector3 Surface(Bar b, Vector3 p, float pad)
+        {
+            if (!IsBox(b)) return b.C + Normal(b, p) * (b.R + pad);
+            Vector3 n;
+            return Exit(b, p, pad, false, out n);
+        }
+
+        /// <summary>Distance from p to the barrier (0 inside).</summary>
+        internal static float Dist(Bar b, Vector3 p)
+        {
+            if (!IsBox(b)) return Mathf.Max(0f, (p - b.C).magnitude - b.R);
+            float best = float.MaxValue;
+            for (int i = 0, n = Parts(b); i < n; i++)
+            {
+                Vector3 mn, mx;
+                Part(b, i, out mn, out mx);
+                float x = Mathf.Max(0f, Mathf.Max(mn.x - p.x, p.x - mx.x)), y = Mathf.Max(0f, Mathf.Max(mn.y - p.y, p.y - mx.y)), z = Mathf.Max(0f, Mathf.Max(mn.z - p.z, p.z - mx.z));
+                best = Mathf.Min(best, x * x + y * y + z * z);
+            }
+            return Mathf.Sqrt(best);
+        }
+
+        /// <summary>Box barrier: the nearest point just outside through a side wall (pad blocks), for units on the ground.</summary>
+        private static Vector3 SideExit(Bar b, Vector3 p, float pad, out Vector3 nrm) { return Exit(b, p, pad, true, out nrm); }
+
+        /// <summary>Horizontal way out of the barrier for a unit at offset n from the centre (box: towards the nearest outer side wall).</summary>
+        private static Vector3 HorizOut(Bar b, Vector3 n, int id)
+        {
+            if (IsBox(b))
+            {
+                Vector3 wall;
+                SideExit(b, b.C + n, 0.05f, out wall);
+                return wall;
+            }
+            Vector3 h = new Vector3(n.x, 0f, n.z);
+            if (h.sqrMagnitude < 0.25f) h = new Vector3(Mathf.Sin(id * 0.7f), 0f, Mathf.Cos(id * 0.7f));   // straight above the crystal: any side
+            return h.normalized;
+        }
 
         private static bool InFriendly(Faction f, Vector3 p)
         {
@@ -503,6 +661,21 @@ namespace BetterThanCastle
         }
 
         /// <summary>Barrier b is up against faction f (player: per faction state; AI: when the rule is on and the barrier is up against anybody).</summary>
+        /// <summary>Host: p is inside a barrier that is up and belongs to f or to an ally of f (own cover: its wards fight out of it at full range).</summary>
+        internal static bool InOwnCover(Faction f, Vector3 p)
+        {
+            if (!Any || !Host || f == null) return false;
+            for (int i = 0; i < Bars.Count; i++)
+            {
+                Bar b = Bars[i];
+                if (!b.UpAny || !In(b, p)) continue;
+                if (b.Owner == f.ID) return true;
+                Faction o = BtcMatchStats.FactionOf(b.Owner);
+                if (o != null && Affiliation.IsAllied(f, o)) return true;
+            }
+            return false;
+        }
+
         private static bool Blocks(Bar b, Faction f)
         {
             if (f == null) return false;
@@ -573,17 +746,14 @@ namespace BetterThanCastle
                 if (now < u.NextKnock) return;   // a smash is still carrying it out
                 float knock = Val(iKnock, 4f);
                 Vector3 n = p - bar.C;
-                Vector3 h = new Vector3(n.x, 0f, n.z);
-                if (h.sqrMagnitude < 0.25f) h = new Vector3(Mathf.Sin(id * 0.7f), 0f, Mathf.Cos(id * 0.7f));   // straight above the crystal: any side
-                h.Normalize();
+                Vector3 h = HorizOut(bar, n, id);
                 Rigidbody body = u.Loco != null && u.Loco.IsFlailing() ? u.Loco.FlailingColliderRigidbody : null;
                 if (body != null && !body.isKinematic && u.Bounces < 8)
                 {
                     // flying ragdoll (smashed, thrown or falling after a smash) inside the dome: kick it off the surface, out and up;
                     // it lands on the dome again and bounces until it comes down where there is no barrier
                     u.Bounces++;
-                    Vector3 nn = n.sqrMagnitude > 0.01f ? n.normalized : Vector3.up;
-                    body.position = bar.C + nn * (bar.R + 0.4f);
+                    body.position = Surface(bar, p, 0.4f);
                     float k = Mathf.Max(2f, knock);
                     body.velocity = h * (4f + 0.9f * k) + Vector3.up * (3f + 0.6f * k);
                     u.NextKnock = now + 0.25f;
@@ -599,7 +769,8 @@ namespace BetterThanCastle
                 {
                     u.Knocks++;
                     u.NextKnock = now + 1.2f;
-                    float depth = Mathf.Clamp(bar.R - n.magnitude, 0f, 10f);
+                    Vector3 sn;
+                    float depth = Mathf.Clamp(IsBox(bar) ? (SideExit(bar, p, 0f, out sn) - p).magnitude : bar.R - n.magnitude, 0f, 10f);
                     Vector3 dir = (h + Vector3.up * 0.35f).normalized;
                     float force = knock * (1f + 0.15f * depth);
                     // Explosive type: always a smash (no shield block), 0 damage; attacker null = not vetoed by our own hooks
@@ -608,7 +779,8 @@ namespace BetterThanCastle
                 else
                 {
                     // the smash did not get it out (or knockback is off, or it lies knocked down inside): put it outside
-                    Vector3 to = u.HasOut && !In(bar, u.LastOut) ? u.LastOut : bar.C + h * (Mathf.Sqrt(Mathf.Max(0f, bar.R * bar.R - n.y * n.y)) + 1f) + Vector3.up * n.y;
+                    Vector3 to = u.HasOut && !In(bar, u.LastOut) ? u.LastOut
+                        : (IsBox(bar) ? SideExit(bar, p, 1f, out n) : bar.C + h * (Mathf.Sqrt(Mathf.Max(0f, bar.R * bar.R - n.y * n.y)) + 1f) + Vector3.up * n.y);
                     if (u.Loco != null) u.Loco.SetPosition(to, true);
                     u.Knocks = 0;
                     u.NextKnock = now + 0.3f;
@@ -658,11 +830,72 @@ namespace BetterThanCastle
             return r;
         }
 
+        // ------------------------------------------------------------------ barrels (host): whose barrel blew up
+        // An explosion object carries the barrel's own faction (who crafted it), which says nothing about who used it. So the host remembers the
+        // last user of every barrel (the unit that carried it, the player who lit it, the catapult that shot it) and gives the explosion that
+        // faction: an enemy barrel then harms nothing inside the barrier however it got in, while the owner's own barrels work as usual.
+        private static readonly Dictionary<int, int> BarrelUser = new Dictionary<int, int>();
+        private sealed class Boom { internal Vector3 P; internal int Fac; internal float T; }
+        private static readonly List<Boom> Booms = new List<Boom>();
+        private static readonly Dictionary<int, int> ExplFac = new Dictionary<int, int>();   // explosion object -> user faction (-1 unknown, -2 not an explosion)
+
+        internal static void NoteBarrelUser(GameObject barrel, Faction f)
+        {
+            if (barrel == null || f == null || !Host || !RuleOn || !IsPlayer(f)) return;
+            if (BarrelUser.Count > 512) BarrelUser.Clear();
+            BarrelUser[barrel.GetInstanceID()] = f.ID;
+        }
+
+        /// <summary>Host, Architecte.ExplosionSimple(source, pos): remember the user faction of the explosion about to be spawned at pos.</summary>
+        internal static void OnExplosion(GameObject source, Vector3 pos)
+        {
+            if (!Host || !RuleOn || source == null) return;
+            int fid;
+            if (!BarrelUser.TryGetValue(source.GetInstanceID(), out fid))
+            {
+                Faction f = null;
+                try { f = Faction.GetFaction(source); } catch { }
+                fid = f != null && IsPlayer(f) ? f.ID : -1;
+            }
+            float now = Time.time;
+            for (int i = Booms.Count - 1; i >= 0; i--) if (now - Booms[i].T > 5f) Booms.RemoveAt(i);
+            if (Booms.Count > 32) Booms.RemoveAt(0);
+            Booms.Add(new Boom { P = pos, Fac = fid, T = now });
+            ExplFac.Clear();   // explosion objects are pooled: an id seen before may now be this new explosion
+            if (fid >= 0) BtcLog.Info("Shield", "barrel boom by faction " + fid + " at " + pos.ToString("F0"));
+        }
+
+        /// <summary>-2: not an explosion; -1: explosion of unknown use; else the faction that used the barrel.</summary>
+        private static int ExplosionUser(GameObject go)
+        {
+            int id = go.GetInstanceID(), fid;
+            if (ExplFac.TryGetValue(id, out fid)) return fid;
+            fid = -2;
+            if (go.GetComponent<ExplosionGameplay>() != null)
+            {
+                fid = -1;
+                Vector3 p = go.transform.position;
+                float now = Time.time, best = 4f;   // spawned at the barrel position: match within 2 blocks
+                for (int i = 0; i < Booms.Count; i++)
+                {
+                    float d = (Booms[i].P - p).sqrMagnitude;
+                    if (d < best && now - Booms[i].T < 5f) { best = d; fid = Booms[i].Fac; }
+                }
+            }
+            if (ExplFac.Count > 256) ExplFac.Clear();
+            ExplFac[id] = fid;
+            return fid;
+        }
+
         private static bool VetoCore(GameObject attacker, Vector3 target)
         {
-            Faction f = FacOf(attacker);
             Vector3 ap = attacker.transform.position;
-            bool known = Known(attacker, f);
+            Faction f = null;
+            bool known = false;
+            // a barrel explosion counts as the faction that used the barrel (not the one that crafted it)
+            int user = ExplosionUser(attacker);
+            if (user >= 0) { f = BtcMatchStats.FactionOf(user); known = f != null; }
+            if (!known) { f = FacOf(attacker); known = Known(attacker, f); }
             for (int i = 0; i < Bars.Count; i++)
             {
                 Bar b = Bars[i];
@@ -704,11 +937,12 @@ namespace BetterThanCastle
 
         internal static void AddCatapultShot(Component shot, Component catapult)
         {
-            if (!Host || !_wasOn || shot == null) return;
+            if (!Host || !RuleOn || shot == null) return;
             Rigidbody rb = shot.GetComponent<Rigidbody>();
             if (rb == null) return;
             Faction f = null;
             try { if (catapult != null) f = FacOf(catapult.gameObject); } catch { }
+            NoteBarrelUser(shot.gameObject, f);
             if (Projs.Count > 64) Projs.RemoveAt(0);
             Projs.Add(new Proj { Rb = rb, Go = shot.gameObject, F = f, From = shot.transform.position });
         }
@@ -716,28 +950,36 @@ namespace BetterThanCastle
         private static void ProjTick()
         {
             if (Projs.Count == 0) return;
+            // look a little ahead: a fast shot can enter the dome and hit the ground inside within one physics step
+            float la = Mathf.Max(Time.deltaTime, Time.fixedDeltaTime) * 2f;
             for (int i = Projs.Count - 1; i >= 0; i--)
             {
                 Proj pr = Projs[i];
                 if (pr.Go == null || pr.Rb == null || !pr.Go.activeInHierarchy) { Projs.RemoveAt(i); continue; }
                 if (!Any) continue;
                 Vector3 p = pr.Go.transform.position;
+                Vector3 v = pr.Rb.velocity;
+                Vector3 q = p + v * la;
                 for (int k = 0; k < Bars.Count; k++)
                 {
                     Bar b = Bars[k];
-                    if (!In(b, p)) continue;
-                    bool block = IsPlayer(pr.F) ? Blocks(b, pr.F) : (b.UpAny && !In(b, pr.From));
+                    bool inNow = In(b, p);
+                    if (!inNow && !In(b, q)) continue;
+                    bool block = IsPlayer(pr.F) ? Blocks(b, pr.F) && !In(b, pr.From) : (b.UpAny && !In(b, pr.From));
                     if (!block) continue;
                     Bump(b);
-                    if (pr.Bounces++ < 2)
+                    if (pr.Bounces++ < 4)
                     {
                         // bounce off the sphere: reflect the velocity, keep a little energy, put it back on the surface
-                        Vector3 n = (p - b.C).normalized;
-                        Vector3 v = pr.Rb.velocity;
+                        Vector3 at = inNow ? p : q;
+                        Vector3 n = Normal(b, at);
                         float d = Vector3.Dot(v, n);
                         if (d < 0f) v = (v - 2f * d * n) * 0.45f;
+                        Vector3 to = Surface(b, at, 0.6f);
                         pr.Rb.velocity = v;
-                        pr.Go.transform.position = b.C + n * (b.R + 0.6f);
+                        pr.Rb.position = to;
+                        pr.Go.transform.position = to;
+                        BtcLog.Info("Shield", "shot bounced off barrier owner=" + b.Owner + " (" + pr.Bounces + ")");
                     }
                     else
                     {
@@ -800,6 +1042,18 @@ namespace BetterThanCastle
                     if (k > 0) sb.Append(',');
                     sb.Append(b.Fac[k]).Append(':').Append(b.Up[k] ? 1 : 0).Append(':').Append(b.Why[k]).Append(':').Append(Mathf.Max(-1f, b.Secs[k]).ToString("F0", Inv));
                 }
+                // map box: its parts "x0,y0,z0,x1,y1,z1/..." (older peers read only the first 6 fields)
+                if (b.Custom)
+                {
+                    sb.Append(';');
+                    for (int k = 0; k < b.PMin.Count; k++)
+                    {
+                        if (k > 0) sb.Append('/');
+                        Vector3 mn = b.PMin[k], mx = b.PMax[k];
+                        sb.Append(mn.x.ToString("F1", Inv)).Append(',').Append(mn.y.ToString("F1", Inv)).Append(',').Append(mn.z.ToString("F1", Inv)).Append(',')
+                          .Append(mx.x.ToString("F1", Inv)).Append(',').Append(mx.y.ToString("F1", Inv)).Append(',').Append(mx.z.ToString("F1", Inv));
+                    }
+                }
             }
             return sb.ToString();
         }
@@ -826,7 +1080,7 @@ namespace BetterThanCastle
             try
             {
                 StringMessage msg = nm.ReadMessage<StringMessage>();
-                if (NetworkServer.active || !BtcNetworkGate.Enabled || BtcReplay.Mode == BtcReplay.State.Playing) return;
+                if (NetworkServer.active || !BtcNetworkGate.Enabled) return;   // replays: the recorded host states arrive here too (playback is a client)
                 string[] parts = msg.value.Split('|');
                 if (parts.Length == 0 || parts[0] != "1") return;
                 for (int i = 0; i < Bars.Count; i++) Bars[i].Seen = false;
@@ -845,6 +1099,20 @@ namespace BetterThanCastle
                     b.Owner = int.Parse(a[2], Inv);
                     b.Home = a[3] == "1";
                     b.Hits = int.Parse(a[4], Inv);
+                    b.Custom = false;
+                    if (a.Length > 6 && a[6].Length > 0)
+                    {
+                        b.PMin.Clear(); b.PMax.Clear();
+                        string[] ps = a[6].Split('/');
+                        for (int k = 0; k < ps.Length; k++)
+                        {
+                            string[] v = ps[k].Split(',');
+                            if (v.Length < 6) continue;
+                            b.PMin.Add(new Vector3(float.Parse(v[0], Inv), float.Parse(v[1], Inv), float.Parse(v[2], Inv)));
+                            b.PMax.Add(new Vector3(float.Parse(v[3], Inv), float.Parse(v[4], Inv), float.Parse(v[5], Inv)));
+                        }
+                        if (b.PMin.Count > 0) { SetBounds(b); b.Custom = true; }
+                    }
                     b.Fac.Clear(); b.Up.Clear(); b.Why.Clear(); b.Secs.Clear();
                     b.UpAny = false;
                     if (a[5].Length > 0)

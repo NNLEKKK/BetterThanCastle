@@ -1,0 +1,6 @@
+# Radmin-like links for all 4 clients, then clients 1+2 lose the network at the same moment for 30 s (dropped link -> full rejoin)
+at host:ingame+0 net client1 0 --lag on --lag-time 35 --drop on --drop-chance 1.0
+at host:ingame+0 net client2 0 --lag on --lag-time 55 --drop on --drop-chance 1.5
+at host:ingame+0 net client3 0 --lag on --lag-time 75 --drop on --drop-chance 1.0
+at host:ingame+0 net client4 0 --lag on --lag-time 45 --drop on --drop-chance 1.0
+at host:ingame+60 cut client1,client2 30

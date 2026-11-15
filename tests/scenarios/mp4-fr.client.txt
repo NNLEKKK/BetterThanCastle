@@ -1,0 +1,21 @@
+# client of mp4-fr (same script on all 4; resumeready only fires on a returning player, others time out after 60 s)
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 120
+ready 420
+waitgame 300
+mark ingame
+timerstart 90
+wait 2
+walk init 4
+walk go a
+wait 120
+waitgame 300
+resumeready 90
+wait 5
+walk init 4
+walk go b
+wait 50
+netstat
+wait 20
+quit

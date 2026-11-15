@@ -119,3 +119,31 @@
 2026-11-11 | Returning player says its name (msg 111), host re-attaches by name, FIFO fallback after 4 s; host leaving on purpose sends msg 110 (clients go to the menu, no endless reconnect) | FIFO re-attach could swap players
 2026-11-11 | BtcSpectate reflection on UNetManager.pendingReconnectUsers/connectionDegraded/ApplyHardPause redirected to BtcNetManager | those members moved to BtcNetManager in the port; the reflection always failed
 2026-11-11 | Early client UI kept ON (cfg Loading/EarlyClientUi to switch off) | user asked to roll it back, but mp-load measured client ready 23.8 s with it vs 33.8 s without (host 22 s); the slow loads were most likely the client-local hard pause freezing timeScale (scaled WaitForSeconds in the host-wait loops), gone in BCv2
+
+## 2026-11-11 (0.4.2 batch, user answers)
+- Fast load: back to 0.3.0 behaviour (MenuBudgetMs 100000 = no menu slicing, LuaMenuComponent Step as in 0.3.0, terrain sub-step wrappers removed). EarlyClientUi and ReuseMenuPanels moved to config section LoadingExperimental, default OFF (new keys so old `true` values do not stick). GC pause kept.
+- Shield HUD list (chip) default OFF (menu-state shield:hud). UI editor elements added: "shield" (left column row 3) and "ready" (Players Ready panel; En is ignored there because the Ready button lives in it).
+- Barrels vs shields: explosion harmless to the owner side. Explosion user = last carrier (Explosifs.OnTransformParentChanged), lighter (CmdStartBarrelFuse) or catapult (CatapultProjectile.Start); Architecte.ExplosionSimple prefix records pos+user, VetoCore maps the explosion object to it by position. Catapult shots: look-ahead bounce, up to 4 bounces.
+- Artificer: shield.mageT (stay, default 3 s, reset to 0 when he leaves early), shield.mageD default 5 -> 3. Why byte 5 = "artificer, falls in".
+- Cards with a cross auto-close after hud:autoClose s (default 5, 0 = never), hover pauses; auto-close returns true like the cross.
+
+## 2026-11-12 Terraforming task (stage 1, docs/terraforming.md)
+- Carrier = vanilla Flatten (LandscapeProject, Groupes.Landscape): priority, crew, delete, task bar, save stay vanilla. The goal provider walks our VoxelSet (OnDataChange postfix -> SetVolume) and VoxelNeedsGoal decides dig/fill by the shape; LandscapeGoal.EvaluateTheshold sets the type from the shape. Rejected: TunnelProject (2x3x2 units with crumble logic), new Project type (needs prefab + Lua per type).
+- Host creates the task (msg 112 from the client, chunked 1000 chars): UNetGroupe.CreateGroup of the sender's User, LandscapeData.Set(AABB), Spawn, Commit (vanilla commits on deselect; ours is never selected). Shape = box ops, broadcast with msg 113, late joiners get it in OnClientReady.
+- Fill = vanilla LandscapeGoal fill (earth/Sand, 10 stone minus what the voxel holds, so crust is cheaper), bottom-first; host adds the crust voxel under the lowest fill cells (vanilla fills crust first).
+- Harvest toggles = Tunnel meaning (Stone 1, Brimstone 2, Iron 4): off -> ForceOverkill in DigAction, filtered UniqueItems (no storage needed), IsMatchFor without bag/storage checks, HasWorkFor without bag room when all off.
+- Tool: Ctrl+G (Advanced Hotkeys "terraform_tool"), right panel; brushes block/line/box, modes dig/fill/erase, width 1-16, height 1-32; line and box are locked to the first layer (plane) so tunnels go through hills. Vanilla picking off while the tool is open. Limits 40000 cells, 4000 ops.
+- Sidecar btc-terraform.txt in the save folder, matched by LandscapeData bounds on load.
+- Ladders (stage 3): vanilla BuildStairsGoal spawned by the Flatten provider (CreateGoal prefix); ops T/Q/B keep one cell + forward, same wire/sidecar format (version stays 1). Ladder kind from the tool, rotation R; tunnel ladder on a wall face auto-faces. Vanilla support rules only, no new rules. The dig-only storage check is vanilla and kept.
+- No stockpiles toggle (user request 2026-11-12): per task, default off; dropped bag instead of storage, so filling can use the dug stone. Panel restyled with the menu toolkit (user: "same style as the BTC main menu").
+- Editing reuses msg 112 ("E<netId>#" prefix) instead of a new id; only the owner faction may edit (host check).
+
+## 2026-11-15 Terraforming rework (user test feedback; answers in chat)
+- "Ladders on steps" replaced by "Dig room for ladders" (default ON): placing a quarry ladder marks the block above it for digging (user choice "replace the old"). The same switch digs a tunnel-ladder chain into a hill.
+- Drag: along the clicked face by default, Alt at press = straight into the blocks (user choice "both, Alt toggles"). Ladder drag = staircase up the climbing diagonal.
+- Resources: default all off; off = nothing drops at all (everything but brimstone/iron counts as stone). On: stone goes straight into the fill; a full bag with nothing to fill = no work, the worker leaves and stores by itself (user answer). "No stockpiles" toggle removed: a terraform task never sends workers to storage.
+- Dig AI ranks goals by distance (vanilla: by height first), so workers dig on from where they stand.
+- Crust: dig / quarry ladder / landing aim at the full block under it (crust above a dug cell is dug too, host); tunnel ladder may go into a crust, never a full block.
+- Old 5 questions = my defaults: task list inside the tool panel (edit, vanilla priority/delete commands), binds per mode (unassigned), selecting the task opens it for editing, piles question moot (no drops).
+- Terraform tasks never auto-delete and keep their crew while cells are left to dig (vanilla deleted a task whose goals hit 0 for a moment while a crust layer was removed).
+- 2026-11-14 N1/N16/N17/N18: no voluntary pause in the lobby; a pause is never applied on a client whose own level (or hot-join) still loads (kept as state, applied when live). Host drops a peer silent 30 s (120 s while it says loading) and keeps its player for the rejoin; the client reconnects itself at 20 s. Max 8 players/16 transport links with BC ON, vanilla 4 with BC OFF. Tests run with 5 games max (6 ran out of RAM).

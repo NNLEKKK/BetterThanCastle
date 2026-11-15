@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using Brix.Engine;
 using UnityEngine;
 
 namespace BetterThanCastle
@@ -41,8 +42,33 @@ namespace BetterThanCastle
 			BtcLog.Info("LoadTimer", "world load took " + _total.ToString("F1") + " s");
 		}
 
+		private static void DrawCancel()
+		{
+			GUI.depth = -1001;
+			Rect r = new Rect(Screen.width - 56f, Screen.height - 56f, 40f, 40f);
+			Color old = GUI.color;
+			GUI.color = r.Contains(Event.current.mousePosition) ? new Color(0.85f, 0.2f, 0.2f, 0.9f) : new Color(0f, 0f, 0f, 0.6f);
+			GUI.DrawTexture(r, Texture2D.whiteTexture);
+			GUI.color = Color.white;
+			GUIStyle s = new GUIStyle(GUI.skin.label);
+			s.fontSize = 26;
+			s.fontStyle = FontStyle.Bold;
+			s.alignment = TextAnchor.MiddleCenter;
+			s.normal.textColor = Color.white;
+			GUI.Label(r, "X", s);
+			GUI.color = old;
+			if (Event.current.type == EventType.MouseDown && r.Contains(Event.current.mousePosition))
+			{
+				Event.current.Use();
+				_running = false;
+				BtcLog.Info("LoadTimer", "load cancelled by the user");
+				try { Architecte.QuitToMainMenu(); } catch (Exception e) { BtcLog.Error("LoadTimer", "cancel: " + e); }
+			}
+		}
+
 		private void OnGUI()
 		{
+			if (_running && BtcConfig.LoadCancel.Value) DrawCancel();
 			if (!BtcConfig.LoadTimer.Value) return;
 			string text;
 			if (_running)

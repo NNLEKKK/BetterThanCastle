@@ -278,8 +278,17 @@ namespace BetterThanCastle
         /// <summary>One registry setting (switch / slider / colour) with undo. Returns false when it is hidden in the current mode.</summary>
         internal static bool Setting(ref float y, float w, int fs, BtcVisualSetting s)
         {
-            if (!IgnoreVis && s.Vis != null && !s.Vis()) return false;
-            if (s.Expert && !Expert) return false;
+            bool pinned = BtcJump.Pinned("vis", s.Key);   // a jump from the search shows the row even when Simple mode or a parent switch hides it
+            if (!pinned && !IgnoreVis && s.Vis != null && !s.Vis()) return false;
+            if (!pinned && s.Expert && !Expert) return false;
+            float y0 = y;
+            bool r = SettingRow(ref y, w, fs, s);
+            BtcJump.Row("vis", s.Key, new Rect(fs * 0.5f, y0, w - fs, y - y0));
+            return r;
+        }
+
+        private static bool SettingRow(ref float y, float w, int fs, BtcVisualSetting s)
+        {
             string label = s.Label;
             Star(StarRect(y, w, fs), s.Key, label);
             w -= GutterW(fs);
@@ -314,7 +323,7 @@ namespace BetterThanCastle
                 case VKind.Choice:
                     {
                         int v = s.GetI();
-                        int c = Choice(ref y, w, fs, s.Indent, label, v, s.Choices, null, null);
+                        int c = Choice(ref y, w, fs, s.Indent, label, v, s.ChoicesRu != null && BtcLang.Russian ? s.ChoicesRu : s.Choices, null, null);
                         if (c >= 0 && c != v)
                         {
                             s.SetI(c);

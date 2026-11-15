@@ -70,11 +70,11 @@ namespace BetterThanCastle
             Add(1, BtcReplayIcons.Group, "Rule requests", "Запросы правил", G, GR, delegate { OpenGameplay(3, null); }, "propose host предложить хост");
             Add(1, BtcReplayIcons.Chart, "Changes against vanilla", "Отличия от ванили", G, GR, delegate { OpenGameplay(1, null); }, "differences changed отличия изменения");
             Add(1, BtcReplayIcons.Pause, "Game timer", "Игровой таймер", G, GR, delegate { OpenGameplay(7, null); }, "peace time advanced timer мирное время длина игры");
-            Add(1, BtcReplayIcons.Palette, "Nick colours and gradients", "Цвета и градиенты ника", P, PR, Link("tab:6"), "nick name gradient colour letters ник имя градиент цвет буквы");
-            Add(1, BtcReplayIcons.Play, "Nick animation", "Анимация ника", P, PR, Link("tab:6"), "animation animate анимация");
-            Add(1, BtcReplayIcons.Image, "Avatar", "Аватар", P, PR, Link("tab:6"), "picture image картинка");
-            Add(1, BtcReplayIcons.Plate, "Lobby plate editor", "Редактор плашки в лобби", P, PR, Link("tab:6"), "plate lobby preview плашка лобби превью");
-            Add(1, BtcReplayIcons.Star, "Profiles (saved looks)", "Профили (сохранённый вид)", P, PR, Link("tab:6"), "save load share сохранить загрузить");
+            Add(1, BtcReplayIcons.Palette, "Nick colours and gradients", "Цвета и градиенты ника", P, PR, Link("tab:6:1"), "nick name gradient colour letters ник имя градиент цвет буквы");
+            Add(1, BtcReplayIcons.Play, "Nick animation", "Анимация ника", P, PR, Link("tab:6:2"), "animation animate анимация");
+            Add(1, BtcReplayIcons.Image, "Avatar", "Аватар", P, PR, Link("tab:6:3"), "picture image картинка");
+            Add(1, BtcReplayIcons.Plate, "Lobby plate editor", "Редактор плашки в лобби", P, PR, Link("tab:6:4"), "plate lobby preview плашка лобби превью");
+            Add(1, BtcReplayIcons.Star, "Profiles (saved looks)", "Профили (сохранённый вид)", P, PR, Link("tab:6:5"), "save load share сохранить загрузить");
             Add(1, BtcReplayIcons.Ring, "Colored HP rings", "Цветные кольца HP", V, VR, Link("tab:1:0"), "health ring здоровье кольцо");
             Add(1, BtcReplayIcons.Map, "World overlays", "Оверлеи мира", V, VR, Link("tab:1:1"), "routes explosion block highlight маршруты взрыв подсветка блоков");
             Add(1, BtcReplayIcons.Plate, "Unit plates and HUD panels", "Плашки юнитов и панели HUD", V, VR, Link("tab:1:2"), "damage counter crystal timer chat счётчик урона таймер кристалла чат");
@@ -123,7 +123,7 @@ namespace BetterThanCastle
                     BtcVisualSetting s = BtcVisualData.All[i];
                     int pi = Array.IndexOf(pages, s.Page);
                     if (pi < 0) continue;
-                    Add(3, BtcReplayIcons.Eye, s.En, s.Ru, V + " > " + pn[pi], VR + " > " + pnr[pi], Link("tab:1:" + pi), s.Key);
+                    Add(3, BtcReplayIcons.Eye, s.En, s.Ru, V + " > " + pn[pi], VR + " > " + pnr[pi], new JumpVisual { S = s }.Open, s.Key);
                 }
             }
             catch (Exception e) { BtcLog.Error("GlobalSearch", "visual: " + e.Message); }
@@ -133,24 +133,30 @@ namespace BetterThanCastle
                 for (int i = 0; i < BtcGameplay.Defs.Count; i++)
                 {
                     BtcGameplay.Def d = BtcGameplay.Defs[i];
-                    OpenGameplayQuery q = new OpenGameplayQuery { Text = d.En };
-                    Add(4, BtcReplayIcons.Gear, d.En, d.Ru, G + " > Rules", GR + " > Правила", q.Open, d.Id + " " + d.Group + " " + d.HintEn + " " + d.HintRu);
+                    Add(4, BtcReplayIcons.Gear, d.En, d.Ru, G + " > Rules", GR + " > Правила", new JumpRule { I = i }.Open, d.Id + " " + d.Group + " " + d.HintEn + " " + d.HintRu);
                 }
             }
             catch (Exception e) { BtcLog.Error("GlobalSearch", "gameplay: " + e.Message); }
         }
 
-        private sealed class OpenGameplayQuery
+        // a click opens the exact row and pulses it (BtcJump); the search field of the tab is never filled
+        private sealed class JumpRule
         {
-            public string Text;
-            public void Open() { OpenGameplay(0, Text); }
+            public int I;
+            public void Open() { if (ResourcePackManager.GoTab(4)) BtcGameplayTab.JumpRule(I); }
+        }
+
+        private sealed class JumpVisual
+        {
+            public BtcVisualSetting S;
+            public void Open() { if (ResourcePackManager.GoTab(1) && BtcVisualTab.Instance != null) BtcVisualTab.Instance.JumpSetting(S); }
         }
 
         private static void OpenGameplay(int page, string query)
         {
             if (!ResourcePackManager.GoTab(4)) return;
             BtcGameplayTab.Page = page;
-            BtcGameplayTab.Query = query ?? "";
+            BtcGameplayTab.Query = "";
         }
 
         // ------------------------------------------------------------------ field in the header
@@ -201,6 +207,7 @@ namespace BetterThanCastle
             }
             BtcUi.Field(r);
             GUI.SetNextControlName("btc_gsearch");
+            if (focused) BtcSfx.Typing(Event.current);   // the field eats the key event before the tab could play it
             string nq = GUI.TextField(tf, _q, 40, _tf);
             if (nq != _q) { _q = nq; _scroll = Vector2.zero; }
             if (_q.Length == 0 && !focused) BtcVisualRows.Txt(new Rect(tx + 4f, r.y, r.width, r.height), Tt("Search everywhere (Ctrl+F)", "Поиск везде (Ctrl+F)"), BtcVisualRows.Dim, new Color(1f, 1f, 1f, 0.35f));

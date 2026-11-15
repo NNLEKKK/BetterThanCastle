@@ -1,0 +1,9 @@
+# User test: hidden host + 1 visible client (-VisibleClient); client1 loses the network 30 s at ingame+90. Runs ~1 h.
+host default conquest
+waitclients 1 300
+wait 3
+startmatch 180
+waitgame 300
+mark ingame
+wait 3600
+quit

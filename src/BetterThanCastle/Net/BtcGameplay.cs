@@ -419,7 +419,7 @@ public static class BtcGameplay
 		StringBuilder stringBuilder = new StringBuilder();
 		for (int i = 0; i < a.Length; i++)
 		{
-			bool flag = Mathf.Abs(a[i] - BtcGameplay.Defs[i].Val) > 0.0001f;
+			bool flag = Mathf.Abs(a[i] - BtcGameplay.Defs[i].Val) > 0.0001f || BtcGameplay.Defs[i].Id == "shield.cube";   // always written: BtcReplayFix tells old (sphere) replays by its absence
 			bool flag2 = flag;
 			bool flag3 = flag2;
 			bool flag4 = flag3;
@@ -785,7 +785,10 @@ public static class BtcGameplay
 		BtcTimer.RegisterHandlers(clientOverride);
 		BtcCraftQueue.RegisterHandlers(clientOverride);
 		BtcFocusMark.RegisterHandlers(clientOverride);
+		BtcPing.RegisterHandlers(clientOverride);
+		BtcFocusHold.RegisterHandlers(clientOverride);
 		BtcShield.RegisterHandlers(clientOverride);
+		BtcTerraform.RegisterHandlers(clientOverride);
 		bool active = NetworkServer.active;
 		bool flag = active;
 		bool flag2 = flag;
@@ -846,6 +849,7 @@ public static class BtcGameplay
 			BtcSpawnPick.SendState(conn);
 			BtcRackFilterNet.SendState(conn);
 			BtcCleanFilterNet.SendState(conn);
+			BtcTerraform.SendState(conn);
 		}
 	}
 
@@ -1163,7 +1167,7 @@ public static class BtcGameplay
 		return BtcGameplay.E[BtcGameplay.iDmgBld];
 	}
 
-	public static void ApplySpeed(Locomotion4 cur, Locomotion4 proto, float levelMul, int job)
+	public static void ApplySpeed(Locomotion4 cur, Locomotion4 proto, float levelMul, int job, float jobBonus = 0f)
 	{
 		bool flag = cur == null || proto == null;
 		bool flag2 = !flag;
@@ -1174,7 +1178,7 @@ public static class BtcGameplay
 		if (flag6)
 		{
 			float runSpeedMperS = proto.RunSpeedMperS;
-			float num = runSpeedMperS * levelMul;
+			float num = runSpeedMperS * levelMul + jobBonus;
 			float[] e = BtcGameplay.E;
 			int num2 = BtcGameplay.iSpdAll;
 			bool flag7 = job >= 0 && BtcGameplay.AbsOn(e, BtcGameplay.iSpdJ0 + job);
@@ -1207,7 +1211,7 @@ public static class BtcGameplay
 					num3 = num * BtcGameplay.SpdMul(job);
 				}
 			}
-			float num4 = (runSpeedMperS > 0.0001f) ? (num3 / runSpeedMperS) : 1f;
+			float num4 = (runSpeedMperS > 0.0001f) ? (num3 / (runSpeedMperS + jobBonus)) : 1f;
 			cur.WalkSpeedMperS = proto.WalkSpeedMperS * num4;
 			cur.RunSpeedMperS = num3;
 		}

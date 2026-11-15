@@ -21,6 +21,8 @@ namespace BetterThanCastle
             if (BtcUi.Fold(ref y, w, fs, "replay:play", Tt("Playback", "Просмотр"), 0)) {
             BtcUi.ToggleUndo(ref y, w, fs, "replay", Tt("Auto-skip pauses and host freezes when playing a replay", "Автоматически перематывать паузы и фризы хоста в реплее"), BtcReplayKeys.SkipPauses, null, v => BtcReplayKeys.SkipPauses = v);
             }
+            y += fs * 0.5f;
+            if (BtcUi.Fold(ref y, w, fs, "replay:clean", Tt("Auto cleanup", "Автоочистка"), 0)) BtcReplayCleanup.Draw(ref y, w, fs);
             y += fs * 0.3f;
             if (BtcReplay.Mode == BtcReplay.State.Recording)
                 BtcUi.Status(ref y, w, fs, "REC  " + BtcReplayUI.Clock(BtcReplay.RecSeconds) + "  -  " + BtcReplayUI.Size(BtcReplay.RecBytes) + "  -  " + BtcReplay.RecKeyframes + " " + Tt("keyframes", "ключ. кадров") + "  -  " + BtcReplay.RecFile, BtcReplayUI.Red);

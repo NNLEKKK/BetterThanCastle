@@ -1,0 +1,22 @@
+# hot-join lab client: join, play until the host quits.
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 120
+ready 420
+waitgame 300
+mark ingame
+wait 60
+netstat
+wait 60
+netstat
+wait 60
+netstat
+wait 60
+netstat
+wait 60
+netstat
+wait 60
+netstat
+wait 60
+netstat
+quit

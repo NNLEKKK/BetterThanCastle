@@ -1,0 +1,10 @@
+# quick return in place + control check (client walks before/after a 30 s outage). ~6 min.
+host default conquest
+waitclients 1 300
+wait 3
+startmatch 180
+waitgame 300
+mark ingame
+wait 230
+netstat
+quit

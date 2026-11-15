@@ -54,12 +54,38 @@ namespace BetterThanCastle.Patches
             try { BtcNetManager.OnInitialize(__instance); }
             catch (Exception e) { BtcLog.Error("Hook", "UNetManager.Initialize: " + e); }
         }
+
+        // clients too: NetworkLobbyManager drops ready/slot messages for slot >= lobbySlots.Length ("invalid lobby slot 4")
+        private static void Postfix(UNetManager __instance)
+        {
+            try { BtcLobby.SizeSlots(__instance); }
+            catch (Exception e) { BtcLog.Error("Hook", "UNetManager.Initialize post: " + e); }
+        }
+    }
+
+    /// <summary>StartHost (multiplayer only): BC ON sizes the transport and the lobby slot array for up to 8 players before UNET builds
+    /// them (both are fixed at server start; the lobby cap set later only limits players logically). Not StartHostMultiplayer:
+    /// its Initialize() resets maxConnections to 4 after a prefix. BC OFF / local-only host: vanilla.</summary>
+    [HarmonyPatch(typeof(UNetManager), "StartHost")]
+    internal static class UNetManagerStartHostPatch
+    {
+        private static void Prefix(UNetManager __instance)
+        {
+            try { if (Neo.multiplayer && __instance.maxConnections > 1) BtcLobby.SizeHost(__instance); }
+            catch (Exception e) { BtcLog.Error("Hook", "UNetManager.StartHost: " + e); }
+        }
     }
 
     /// <summary>ManuallyInitTransport: BC transport config after vanilla Acks64/2048/channels. Legacy hunks 4-5.</summary>
     [HarmonyPatch(typeof(UNetManager), "ManuallyInitTransport")]
     internal static class UNetManagerManuallyInitTransportPatch
     {
+        private static void Prefix(UNetManager __instance)
+        {
+            try { BtcNetManager.BeforeTransportInit(__instance); }
+            catch (Exception e) { BtcLog.Error("Hook", "UNetManager.ManuallyInitTransport prefix: " + e); }
+        }
+
         private static void Postfix(UNetManager __instance)
         {
             try { BtcNetManager.OnTransportInit(__instance); }

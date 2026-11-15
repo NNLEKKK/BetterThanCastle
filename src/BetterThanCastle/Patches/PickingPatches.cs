@@ -1,5 +1,7 @@
 using System;
+using Brix.Game.AI;
 using Brix.Input;
+using Brix.UI.GameSelector;
 using HarmonyLib;
 
 namespace BetterThanCastle.Patches
@@ -29,6 +31,31 @@ namespace BetterThanCastle.Patches
             catch (Exception ex)
             {
                 BtcLog.Error("Hook", "Picking.OnUpdate: " + ex.Message);
+            }
+        }
+    }
+
+    // Advanced Hotkeys > Orders > "no_double_click_select" (default off): a double-click on a unit is treated
+    // as a single click (only that unit stays selected). The batch-select modifier still selects coworkers.
+    [HarmonyPatch(typeof(UnitActionPicker), "OnFirstActionCharacter")]
+    internal static class UnitActionPickerDoubleClickPatch
+    {
+        private static bool Prefix(Labor clickedCharacter, ClickInfo clickInfo)
+        {
+            try
+            {
+                if (clickedCharacter == null || clickInfo == null || clickInfo.actionName != "cam_action1") return true;
+                if (!BtcHotkeys.Enabled || !BtcHotkeys.GetBool("no_double_click_select", false)) return true;
+                if (PickingUtility.isInViewMode() || clickInfo.clickType != ClickType.doubleClick) return true;
+                if (PickingUtility.Player.GetButton("cam_mouse_sec")) return true;
+                // The first click of the pair already selected / toggled the unit; toggling again would undo it.
+                if (!PickingUtility.isInToggleSelectMode()) UIGameSelector.Select(clickedCharacter.gameObject);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                BtcLog.Error("Hook", "UnitActionPicker.OnFirstActionCharacter: " + ex.Message);
+                return true;
             }
         }
     }

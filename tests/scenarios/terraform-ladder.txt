@@ -1,0 +1,17 @@
+# terraform-ladder: pit 3x3x3 with a tunnel ladder on its floor, a quarry ladder and a quarry landing next to it; all workers hired.
+newgame
+waitgame 240
+wait 5
+tfladder 0
+wait 3
+tfdump t0
+tfhire
+wait 2
+tfdump t2
+wait 6
+tfdump t8
+wait 22
+tfdump t30
+wait 60
+tfdump t90
+quit

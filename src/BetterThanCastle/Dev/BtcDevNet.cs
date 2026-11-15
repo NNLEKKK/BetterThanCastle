@@ -30,6 +30,8 @@ namespace BetterThanCastle.Dev
         private static readonly Dictionary<string, Base> Bases = new Dictionary<string, Base>();
         private static int _unknown, _disc, _hard, _conns;
         private static bool _lastConn, _lastHard;
+        private static int _scene = -1;
+        internal static bool _quitting;
         private static int _hostStage;       // 0 none, 1 start, 2 wait lobby player, 3 published
         private static string _hMap, _hMode, _hPreset;
         private static float _hStageT;
@@ -90,8 +92,12 @@ namespace BetterThanCastle.Dev
                 try { UNetManager.SetHostingPort(port); } catch (Exception) { }
                 m.LocalPlayerName = "BtcHost";
                 m.maxConnections = UNetManager.HostingMaxConnections;
+                // lab hosts listen on loopback only: a hidden test lobby on 0.0.0.0 was found and joined by another player of the
+                // user's Radmin network (26.x), which filled the lobby and broke the test
+                m.serverBindToIP = true;
+                m.serverBindAddress = "127.0.0.1";
                 NetworkClient c = m.StartHostMultiplayer(UNetManager.HostingIP, port);
-                BtcLog.Info("MP", "host started client=" + (c != null) + " server=" + NetworkServer.active + " port=" + port + " bc=" + BtcNetworkGate.Enabled);
+                BtcLog.Info("MP", "host started client=" + (c != null) + " server=" + NetworkServer.active + " port=" + port + " bc=" + BtcNetworkGate.Enabled + " " + CapText());
                 _hostStage = 2; _hStageT = Time.realtimeSinceStartup;
             }
             else if (_hostStage == 2)
@@ -108,6 +114,15 @@ namespace BetterThanCastle.Dev
                 BtcLog.Info("MP", "host lobby listening, marker written; faction=" + m.LocalLobbyPlayer.factionNumber);
                 _hostStage = 3;
             }
+        }
+
+        /// <summary>Player caps as UNET sees them: transport topology size vs manager limits vs the mod's MaxPlayers.</summary>
+        internal static string CapText()
+        {
+            UNetManager m = UNetManager.instance;
+            int topo = -1; try { if (NetworkServer.hostTopology != null) topo = NetworkServer.hostTopology.MaxDefaultConnections; } catch (Exception) { }
+            int slots = -1; try { if (m != null && m.lobbySlots != null) slots = m.lobbySlots.Length; } catch (Exception) { }
+            return "cap topo=" + topo + " maxConn=" + (m != null ? m.maxConnections : -1) + " maxPlayers=" + (m != null ? m.maxPlayers : -1) + " lobbySlots=" + slots + " modMax=" + BtcLobby.MaxPlayers;
         }
 
         internal static int RemoteConns()
@@ -139,9 +154,34 @@ namespace BetterThanCastle.Dev
             UNetManager m = UNetManager.instance;
             int p = Port();
             int pp; if (!string.IsNullOrEmpty(port) && int.TryParse(port, out pp)) p = pp;
-            m.LocalPlayerName = "BtcClient";
+            // env BTC_NICK (scenario.ps1: BtcClient<i>): unique names so rejoin-by-name works with several clients on one PC
+            string nick = Environment.GetEnvironmentVariable("BTC_NICK");
+            m.LocalPlayerName = string.IsNullOrEmpty(nick) ? "BtcClient" : nick;
+            if (!string.IsNullOrEmpty(nick)) Neo.multiplayerName = nick;   // hello/rejoin identity (else the shared profile nick of every instance)
             NetworkClient c = m.ConnectToServer(string.IsNullOrEmpty(ip) ? "127.0.0.1" : ip, p);
-            BtcLog.Info("MP", "join " + ip + ":" + p + " client=" + (c != null) + " bc=" + BtcNetworkGate.Enabled);
+            BtcLog.Info("MP", "join " + ip + ":" + p + " nick=" + m.LocalPlayerName + " client=" + (c != null) + " bc=" + BtcNetworkGate.Enabled);
+        }
+
+        /// <summary>":port name" of a remote connection (lab check that clumsy cuts the right client).</summary>
+        private static string PortOf(NetworkConnection c)
+        {
+            try
+            {
+                if (c.hostId < 0) return "";
+                int port; UnityEngine.Networking.Types.NetworkID nid; UnityEngine.Networking.Types.NodeID node; byte err; string addr;
+                NetworkTransport.GetConnectionInfo(c.hostId, c.connectionId, out addr, out port, out nid, out node, out err);
+                string name = "";
+                foreach (User u in UNetManager.instance.UserList) if (u != null && u.connectionToClient == c) name = u.ScreenName;
+                return ":" + port + "(" + name + ")";
+            }
+            catch (Exception) { return ""; }
+        }
+
+        /// <summary>Hidden MP labs: every instance shares one profile nick; env BTC_NICK wins so names stay unique.</summary>
+        internal static string NickOverride(string n)
+        {
+            string nick = Environment.GetEnvironmentVariable("BTC_NICK");
+            return string.IsNullOrEmpty(nick) ? n : nick;
         }
 
         internal static bool LobbyReady()
@@ -209,6 +249,14 @@ namespace BetterThanCastle.Dev
         private static void Sample(float now)
         {
             UNetManager m = UNetManager.instance;
+            int scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
+            if (scene != _scene)
+            {
+                // a player (not the host) that leaves the game scene for the menu mid-match = kicked to the menu
+                if (_scene == 2 && !NetworkServer.active && !_quitting) BtcLog.Warn("MP", "MENU KICK scene " + _scene + "->" + scene);
+                else BtcLog.Info("MP", "scene " + _scene + "->" + scene);
+                _scene = scene;
+            }
             if (m == null) return;
             BtcNetManager.State s = BtcNetManager.Peek(m);
             Samp sm; sm.T = now; sm.Mod = -1f; sm.Tr = -1f; sm.Hb = -1f;
@@ -216,7 +264,7 @@ namespace BetterThanCastle.Dev
             if (NetworkServer.active)
             {
                 int prevC = _conns; _conns = RemoteConns(); conn = _conns > 0;
-                if (_conns != prevC) { StringBuilder cs = new StringBuilder(); for (int i = 0; i < NetworkServer.connections.Count; i++) { NetworkConnection c = NetworkServer.connections[i]; if (c != null) cs.Append(c.GetType().Name).Append("#").Append(c.connectionId).Append("/h").Append(c.hostId).Append("/").Append(c.address).Append(" "); } BtcLog.Info("MP", "remote conns " + prevC + "->" + _conns + " : " + cs); }
+                if (_conns != prevC) { StringBuilder cs = new StringBuilder(); for (int i = 0; i < NetworkServer.connections.Count; i++) { NetworkConnection c = NetworkServer.connections[i]; if (c != null) cs.Append(c.GetType().Name).Append("#").Append(c.connectionId).Append("/h").Append(c.hostId).Append("/").Append(c.address).Append(PortOf(c)).Append(" "); } BtcLog.Info("MP", "remote conns " + prevC + "->" + _conns + " : " + cs + "| " + CapText()); }
                 float sum = 0f; int n = 0, cnt = 0; float trMax = -1f;
                 for (int i = 0; i < NetworkServer.connections.Count; i++)
                 {

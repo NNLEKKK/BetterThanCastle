@@ -1,0 +1,25 @@
+# Outage ladder: host + 4 clients (Radmin-like), client1 loses the network 5..90 s (mp-outage.net.txt). Goal: the player just
+# continues after every outage (no menu, no reconnect/reload). ~15 min.
+host default conquest
+gameplay gen.maxp=6
+waitclients 4 300
+wait 3
+startmatch 180
+waitgame 300
+mark ingame
+wait 60
+netstat
+wait 120
+netstat
+wait 120
+netstat
+wait 120
+netstat
+wait 120
+netstat
+wait 120
+netstat
+wait 120
+netstat
+wait 60
+quit

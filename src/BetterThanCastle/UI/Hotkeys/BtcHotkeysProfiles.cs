@@ -108,8 +108,8 @@ namespace BetterThanCastle
                 BtcSfx.Ok(); tab.Toast(Tt("Profile saved", "Профиль сохранён"));
             }
             y += ib + fs * 0.4f;
-            tab.Txt(new Rect(c.x + pad, y, c.width - pad * 2f, fs * 1.6f), Tt("A profile stores every mod bind and the vanilla keyboard binds. Share one as text: copy it and paste it on another PC.", "Профиль хранит все бинды мода и ванильные клавиатурные бинды. Им можно делиться текстом: скопируй и вставь на другом ПК."), tab.Dim, new Color(1f, 1f, 1f, 0.5f));
-            y += fs * 2f;
+            y += tab.TxtWrap(new Rect(c.x + pad, y, c.width - pad * 2f, fs * 1.6f), Tt("A profile stores every mod bind and the vanilla keyboard binds. Share one as text: copy it and paste it on another PC.", "Профиль хранит все бинды мода и ванильные клавиатурные бинды. Им можно делиться текстом: скопируй и вставь на другом ПК."), true, new Color(1f, 1f, 1f, 0.5f));
+            y += fs * 0.4f;
             BtcReplayUI.Fill(new Rect(c.x + pad, y - fs * 0.2f, c.width - pad * 2f, 1f), BtcMenu.Line);
 
             float rh = fs * 2.4f;

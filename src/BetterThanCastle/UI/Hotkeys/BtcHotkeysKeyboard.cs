@@ -234,7 +234,7 @@ namespace BetterThanCastle
             BtcReplayUI.Fill(new Rect(c.x + pad, ly - fs * 0.3f, c.width - pad * 2f, 1f), BtcMenu.Line);
             if (_sel == KeyCode.None)
             {
-                tab.Txt(new Rect(c.x + pad, ly, c.width - pad * 2f, fs * 1.8f), Tt("Click a key to see its binds. Press a key on your keyboard: first press shows what is bound, a second press jumps to the bind.", "Кликни клавишу, чтобы увидеть её бинды. Нажми клавишу на клавиатуре: первое нажатие покажет, что назначено, второе - перейдёт к бинду."), tab.Dim, new Color(1f, 1f, 1f, 0.6f));
+                tab.TxtWrap(new Rect(c.x + pad, ly, c.width - pad * 2f, fs * 1.8f), Tt("Click a key to see its binds. Press a key on your keyboard: first press shows what is bound, a second press jumps to the bind.", "Кликни клавишу, чтобы увидеть её бинды. Нажми клавишу на клавиатуре: первое нажатие покажет, что назначено, второе - перейдёт к бинду."), true, new Color(1f, 1f, 1f, 0.6f));
                 return;
             }
             tab.Txt(new Rect(c.x + pad, ly, c.width, fs * 1.8f), BtcHotkeys.KeyName(_sel), tab.Title, Color.white);

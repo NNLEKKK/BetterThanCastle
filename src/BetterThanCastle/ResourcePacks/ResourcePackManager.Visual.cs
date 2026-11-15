@@ -284,16 +284,44 @@ namespace BetterThanCastle
             B("timer.ms", P, "gametimer", 0, false, "Show milliseconds in the game timer", "Показывать миллисекунды в игровом таймере", null, () => BtcTimer.ShowMs, v => BtcTimer.ShowMs = v);
 
             // base shields (the rule itself is a host setting on the Gameplay tab; this is only how barriers look and sound for you)
-            Add(new BtcVisualSetting { Key = "sh.alpha", Page = "world", Section = "shield", En = "Barrier opacity", Ru = "Непрозрачность барьеров", Kind = VKind.Float, Min = 10f, Max = 150f, Step = 5f, Fmt = "0", Suf = "%",
-                GetF = () => BtcMenuState.Int("shield:alpha", 100), SetF = v => { BtcMenuState.SetInt("shield:alpha", Mathf.RoundToInt(v)); BtcShieldFx.ReadCfg(); } });
+            Action shCfg = () => BtcShieldFx.ReadCfg();
+            shCfg();   // getters below read the cached values
+            Add(new BtcVisualSetting { Key = "sh.alphaOwn", Page = "world", Section = "shield", En = "Opacity of own and allied barriers (0 = hidden)", Ru = "Непрозрачность своих и союзных барьеров (0 = скрыть)", Kind = VKind.Float, Min = 0f, Max = 150f, Step = 5f, Fmt = "0", Suf = "%",
+                GetF = () => BtcShieldFx.AlphaOwn, SetF = v => { BtcMenuState.SetInt("shield:alphaOwn", Mathf.RoundToInt(v)); shCfg(); } });
+            Add(new BtcVisualSetting { Key = "sh.alphaEnemy", Page = "world", Section = "shield", En = "Opacity of enemy barriers (0 = hidden)", Ru = "Непрозрачность вражеских барьеров (0 = скрыть)", Kind = VKind.Float, Min = 0f, Max = 150f, Step = 5f, Fmt = "0", Suf = "%",
+                GetF = () => BtcShieldFx.AlphaEnemy, SetF = v => { BtcMenuState.SetInt("shield:alphaEnemy", Mathf.RoundToInt(v)); shCfg(); } });
+            B("sh.peaceHide", "world", "shield", 0, false, "Hide barriers during peace time", "Скрывать барьеры в мирное время", null, () => BtcShieldFx.PeaceHide, v => { BtcMenuState.SetBool("shield:peaceHide", v); shCfg(); });
+            B("sh.noCaps", "world", "shield", 0, false, "Hide the top and bottom (cube: ceiling and floor, sphere: cut caps)", "Убрать верх и низ (куб: потолок и пол, сфера: срезать шапки)", null, () => BtcShieldFx.NoCaps, v => { BtcMenuState.SetBool("shield:noCaps", v); shCfg(); });
+            Add(new BtcVisualSetting { Key = "sh.cut", Page = "world", Section = "shield", Indent = 1, En = "How much to cut off at the top and bottom", Ru = "Сколько срезать сверху и снизу", Kind = VKind.Float, Min = 0f, Max = 90f, Step = 5f, Fmt = "0", Suf = "%",
+                Vis = () => BtcShieldFx.NoCaps, GetF = () => BtcShieldFx.Cut, SetF = v => { BtcMenuState.SetInt("shield:cut", Mathf.RoundToInt(v)); shCfg(); } });
+            Add(new BtcVisualSetting { Key = "sh.style", Page = "world", Section = "shield", En = "Look", Ru = "Вид", Kind = VKind.Choice,
+                Choices = new[] { "Honeycomb", "Solid", "Outline" }, ChoicesRu = new[] { "Соты", "Сплошной", "Контур" },
+                GetI = () => BtcShieldFx.Style, SetI = v => { BtcMenuState.SetInt("shield:style", v); shCfg(); } });
+            Add(new BtcVisualSetting { Key = "sh.detail", Page = "world", Section = "shield", En = "Detail (polygons)", Ru = "Детализация (полигоны)", Kind = VKind.Choice,
+                Choices = new[] { "High", "Medium", "Low", "Potato" }, ChoicesRu = new[] { "Высокая", "Средняя", "Низкая", "Картошка" },
+                GetI = () => BtcShieldFx.Detail, SetI = v => { BtcMenuState.SetInt("shield:detail", v); shCfg(); } });
+            B("sh.rim", "world", "shield", 0, false, "Glowing edges (brighter where you look along the surface)", "Светящиеся края (ярче там, где смотришь вдоль поверхности)", null, () => BtcShieldFx.Rim, v => { BtcMenuState.SetBool("shield:rim", v); shCfg(); });
+            B("sh.pulse", "world", "shield", 0, false, "Pulses and effects (scan wave, hit flash, rotation)", "Пульсации и эффекты (волна, вспышка от удара, вращение)", null, () => BtcShieldFx.Pulse, v => { BtcMenuState.SetBool("shield:pulse", v); shCfg(); });
             Add(new BtcVisualSetting { Key = "sh.vol", Page = "world", Section = "shield", En = "Barrier sound volume (0 = off)", Ru = "Громкость звуков барьеров (0 = выкл)", Kind = VKind.Float, Min = 0f, Max = 100f, Step = 5f, Fmt = "0", Suf = "%",
                 GetF = () => BtcMenuState.Int("shield:vol", 70), SetF = v => { BtcMenuState.SetInt("shield:vol", Mathf.RoundToInt(v)); BtcShieldFx.Preview(BtcShieldFx.K.Up); } });
             Func<bool> shSnd = () => BtcMenuState.Int("shield:vol", 70) > 0;
             B("sh.sndUp", "world", "shield", 1, false, "Sound when a barrier goes up or down", "Звук, когда барьер включается или падает", shSnd, () => BtcMenuState.Bool("shield:sndUp", true), v => { BtcMenuState.SetBool("shield:sndUp", v); BtcShieldFx.ReadCfg(); if (v) BtcShieldFx.Preview(BtcShieldFx.K.Up); });
             B("sh.sndHit", "world", "shield", 1, false, "Sound when something hits a barrier nearby", "Звук удара о барьер рядом", shSnd, () => BtcMenuState.Bool("shield:sndHit", true), v => { BtcMenuState.SetBool("shield:sndHit", v); BtcShieldFx.ReadCfg(); if (v) BtcShieldFx.Preview(BtcShieldFx.K.Hit); });
             B("sh.sndTick", "world", "shield", 1, false, "Ticks in the last 5 seconds of a countdown", "Тиканье в последние 5 секунд отсчёта", shSnd, () => BtcMenuState.Bool("shield:sndTick", true), v => { BtcMenuState.SetBool("shield:sndTick", v); BtcShieldFx.ReadCfg(); if (v) BtcShieldFx.Preview(BtcShieldFx.K.Tick); });
-            B("sh.notes", "world", "shield", 0, false, "Notices (shield up / down)", "Уведомления (барьер включён / снят)", null, () => BtcMenuState.Bool("shield:notes", true), v => { BtcMenuState.SetBool("shield:notes", v); BtcShieldFx.ReadCfg(); });
-            B("sh.hud", "world", "shield", 0, false, "Barrier list with timers in the top-left corner", "Список барьеров с таймерами в левом верхнем углу", null, () => BtcMenuState.Bool("shield:hud", true), v => { BtcMenuState.SetBool("shield:hud", v); BtcShieldFx.ReadCfg(); });
+
+            // team pings (personal look, sound and limits; the hotkey is in Advanced Hotkeys > Orders)
+            B("ping.show", "world", "ping", 0, false, "Show pings of allies (your own are always shown)", "Показывать пинги союзников (свои видны всегда)", null, () => BtcPing.ShowOthers, v => BtcMenuState.SetBool("ping:show", v));
+            B("ping.arrow", "world", "ping", 0, false, "Arrow at the screen edge when a ping is off screen", "Стрелка у края экрана, если пинг за его пределами", null, () => BtcPing.EdgeArrow, v => BtcMenuState.SetBool("ping:arrow", v));
+            Add(new BtcVisualSetting { Key = "ping.life", Page = "world", Section = "ping", En = "How long a ping stays", Ru = "Сколько живёт пинг", Kind = VKind.Float, Min = 1f, Max = 30f, Step = 0.5f, Fmt = "0.0", Suf = " s",
+                GetF = () => BtcPing.Life, SetF = v => BtcMenuState.SetInt("ping:life", Mathf.RoundToInt(v * 10f)) });
+            Add(new BtcVisualSetting { Key = "ping.cd", Page = "world", Section = "ping", En = "Pause after a burst of pings (you can place several in a row freely)", Ru = "Пауза после серии пингов (несколько подряд ставятся без паузы)", Kind = VKind.Float, Min = 0f, Max = 5f, Step = 0.1f, Fmt = "0.0", Suf = " s",
+                GetF = () => BtcPing.Cooldown, SetF = v => BtcMenuState.SetInt("ping:cd", Mathf.RoundToInt(v * 100f)) });
+            Add(new BtcVisualSetting { Key = "ping.max", Page = "world", Section = "ping", En = "Pings at once per player (a new one removes the oldest, 0 = no limit)", Ru = "Пингов одновременно от игрока (новый убирает самый старый, 0 = без лимита)", Kind = VKind.Float, Min = 0f, Max = 10f, Step = 1f, Fmt = "0", Suf = "",
+                GetF = () => BtcPing.MaxPer, SetF = v => BtcMenuState.SetInt("ping:max", Mathf.RoundToInt(v)) });
+            Add(new BtcVisualSetting { Key = "ping.size", Page = "world", Section = "ping", En = "Icon and ring size", Ru = "Размер значка и колец", Kind = VKind.Float, Min = 50f, Max = 250f, Step = 5f, Fmt = "0", Suf = "%",
+                GetF = () => BtcPing.Size * 100f, SetF = v => BtcMenuState.SetInt("ping:size", Mathf.RoundToInt(v)) });
+            Add(new BtcVisualSetting { Key = "ping.vol", Page = "world", Section = "ping", En = "Ping sound volume (0 = off)", Ru = "Громкость звука пинга (0 = выкл)", Kind = VKind.Float, Min = 0f, Max = 100f, Step = 5f, Fmt = "0", Suf = "%",
+                GetF = () => BtcPing.Volume, SetF = v => { BtcMenuState.SetInt("ping:vol", Mathf.RoundToInt(v)); BtcPing.PreviewSound(); } });
 
             // ============================================================ SCREEN
             const string S = "screen";

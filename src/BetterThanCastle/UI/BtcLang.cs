@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -485,8 +485,20 @@ public static class BtcLang
 			"Метка мага: пометить врага под курсором для Sentinel Ward (выделенный маг)"
 		},
 		{
+			"Ping allies: mark the point under the cursor (or on the mini map) for your team (needs BetterConnection)",
+			"Пинг союзникам: метка в точке под курсором (или на миникарте) для своей команды (нужен BetterConnection)"
+		},
+		{
 			"Shoot at the block or object under the cursor (selected archers, not Artificers)",
 			"Стрелять по блоку или объекту под курсором (выделенные лучники, кроме артефакторов)"
+		},
+		{
+			"Focus without auto-run: ranged units hold position and shoot the focused enemy (needs BetterConnection)",
+			"Фокус без автобега: дальнобойные юниты стоят на месте и стреляют по цели фокуса (нужен BetterConnection)"
+		},
+		{
+			"Focus without auto-run: key (a keyboard key, or Right mouse button; with a modifier it stays separate from the vanilla focus bind)",
+			"Фокус без автобега: кнопка (клавиша или правая кнопка мыши; с модификатором не конфликтует с ванильным фокусом)"
 		},
 		{
 			"Go detonate the barrel under the cursor (selected units)",
@@ -563,6 +575,90 @@ public static class BtcLang
 		{
 			"Give orders from any camera distance (vanilla ignores clicks when the camera is zoomed out too far)",
 			"Приказы с любого расстояния камеры (в ванили клик не проходит, если камера слишком далеко)"
+		},
+		{ "Terraforming", "Терраформинг" },
+		{ "Open / close the terraforming tool (dig, fill, any shape; needs BetterConnection)", "Открыть / закрыть инструмент терраформинга (копать, насыпать, любая форма; нужен BetterConnection)" },
+		{ "Terraforming needs BetterConnection (BC tab)", "Для терраформинга нужен BetterConnection (вкладка BC)" },
+		{ "The shape is too big", "Форма слишком большая" },
+		{ "Dig", "Копать" },
+		{ "Fill", "Насыпать" },
+		{ "Erase", "Стереть" },
+		{ "Block", "Блок" },
+		{ "Line", "Линия" },
+		{ "Box", "Коробка" },
+		{ "Width", "Ширина" },
+		{ "Height", "Высота" },
+		{ "Tool", "Инструмент" },
+		{ "No terraform task of yours here", "Здесь нет вашего задания терраформинга" },
+		{ "Editing the task: change it, then Save changes", "Редактирование задания: измените его и нажмите «Сохранить изменения»" },
+		{ "Editing a task", "Редактируется задание" },
+		{ "Click a cell of one of your terraform tasks (RMB cancels)", "Кликните по клетке своего задания терраформинга (ПКМ - отмена)" },
+		{ "Save changes", "Сохранить изменения" },
+		{ "Stop editing", "Отменить редактирование" },
+		{ "The task stays as it was", "Задание останется как было" },
+		{ "Edit a task", "Изменить задание" },
+		{ "Pick one of your terraform tasks on the map", "Выберите своё задание терраформинга на карте" },
+		{ "Task changed", "Задание изменено" },
+		{ "Ladders on steps", "Лестницы на ступеньках" },
+		{ "Every 1-high step you dig gets a quarry ladder (on Create)", "На каждую выкопанную ступеньку в 1 блок ставится лестница карьера (при создании)" },
+		{ "Dug resources", "Выкопанное" },
+		{ "Keep stone", "Собирать камень" },
+		{ "Keep brimstone", "Собирать серу" },
+		{ "Keep iron", "Собирать железо" },
+		{ "No stockpiles", "Без складов" },
+		{ "Workers never walk to storage: a full bag is dropped by the task, the fill uses it", "Рабочие не ходят на склады: полный мешок высыпается у задания, насыпка берёт оттуда" },
+		{ "Task", "Задание" },
+		{ "Ctrl+Z brings it back", "Ctrl+Z вернёт" },
+		{ "Close (Esc)", "Закрыть (Esc)" },
+		{ "Stone", "Камень" },
+		{ "Brimstone", "Сера" },
+		{ "Iron", "Железо" },
+		{ "Create task", "Создать задание" },
+		{ "Shape cleared (Ctrl+Z brings it back)", "Форма очищена (Ctrl+Z вернёт её)" },
+		{ "Terraforming task created", "Задание терраформинга создано" },
+		{ "LMB paint, RMB cancel, Ctrl+Z undo, Shift+wheel height, Ctrl+wheel width, Esc close", "ЛКМ рисовать, ПКМ отмена, Ctrl+Z назад, Shift+колесо высота, Ctrl+колесо ширина, Esc закрыть" },
+		{ "Ladder", "Лестница" },
+		{ "Tunnel", "Туннель" },
+		{ "Quarry", "Карьер" },
+		{ "Landing", "Площадка" },
+		{ "Rotate (R)", "Повернуть (R)" },
+		{ "Dig {0}, fill {1}, ladders {2}", "Копать {0}, насыпать {1}, лестниц {2}" },
+		{ "A tunnel ladder needs a full block under it and a wall behind it", "Туннельной лестнице нужен полный блок снизу и стена сзади" },
+		{ "A quarry ladder replaces a terrain block that stands on something", "Лестница карьера заменяет блок земли, под которым есть опора" },
+		{ "Tunnel ladder: click a wall (it faces away from it). Quarry ladder: click a block, R rotates", "Туннельная лестница: клик по стене (встанет к ней спиной). Лестница карьера: клик по блоку, R поворачивает" },
+		{ "A quarry ladder replaces a full terrain block that stands on something", "Лестница карьера заменяет полный блок земли (не корку), под которым есть опора" },
+		{ "No mark here", "Здесь нет метки" },
+		{ "Rotate (RMB or R)", "Повернуть (ПКМ или R)" },
+		{ "Dig room for ladders", "Копать место под лестницы" },
+		{ "Marks the block above a ladder (and a tunnel ladder's own block) for digging", "Блок над лестницей (и блок самой туннельной лестницы) помечается под раскопку" },
+		{ "Keep dug resources", "Собирать выкопанное" },
+		{ "Nothing drops: no stockpile needed", "Ничего не выпадает: склады не нужны" },
+		{ "Kept stone goes straight into the fill; a full bag with nothing to fill leaves the task", "Камень сразу идёт в насыпь; с полным мешком и без насыпи рабочий уходит с задания" },
+		{ "Clear all marks", "Очистить все метки" },
+		{
+			"LMB hold and drag: marks follow the face; Alt+drag: into the blocks. Ctrl+LMB deletes a mark, RMB rotates a ladder, Ctrl+Z undo, Shift / Ctrl+wheel height / width, Esc close",
+			"ЛКМ зажать и вести: метки идут по грани; Alt+вести: вглубь блоков. Ctrl+ЛКМ удаляет метку, ПКМ поворачивает лестницу, Ctrl+Z назад, Shift / Ctrl+колесо высота / ширина, Esc закрыть"
+		},
+		{ "Create or clear your marks first, then pick the task with Edit a task", "Сначала создайте или очистите свои метки, потом выберите задание через «Изменить задание»" },
+		{ "Your tasks ({0})", "Ваши задания ({0})" },
+		{ "#{0}: {1} left, {2}", "№{0}: осталось {1}, {2}" },
+		{ "Edit", "Изм." },
+		{ "Click again to delete the task", "Нажмите ещё раз, чтобы удалить задание" },
+		{ "high priority", "высокий приоритет" },
+		{ "low priority", "низкий приоритет" },
+		{ "normal priority", "обычный приоритет" },
+		{ "paused", "на паузе" },
+		{
+			"LMB hold and drag: a straight line along the face, Alt: into the blocks; ladders: drag up or down the slope. Ctrl+LMB deletes a mark, RMB rotates a ladder, Ctrl+Z undo, Shift / Ctrl+wheel height / width, Esc close. Edit a task: select it in the task list",
+			"ЛКМ зажать и вести: прямая линия по грани, с Alt вглубь блоков; лестницы: вести вверх или вниз по склону. Ctrl+ЛКМ удаляет метку, ПКМ поворачивает лестницу, Ctrl+Z назад, Shift / Ctrl+колесо высота / ширина, Esc закрыть. Изменить задание: выберите его в списке заданий"
+		},
+		{ "Terraforming tool: dig mode","Инструмент терраформинга: режим копки" },
+		{ "Terraforming tool: fill mode", "Инструмент терраформинга: режим насыпи" },
+		{ "Terraforming tool: erase mode", "Инструмент терраформинга: режим стирания" },
+		{ "Terraforming tool: ladder mode", "Инструмент терраформинга: режим лестниц" },
+		{
+			"Double-click on a unit selects only that unit (vanilla selects all units of its kind)",
+			"Двойной клик по юниту выделяет только его (в ванили выделяются все юниты этого типа)"
 		},
 		{
 			"Toggle (press to switch on / off)",

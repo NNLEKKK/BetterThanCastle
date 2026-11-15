@@ -115,6 +115,11 @@ namespace BetterThanCastle.Dev
             if (_wait == "ready") return BtcDevNet.ClientReady();
             if (_wait == "startmatch") return BtcDevNet.StartMatch();
             if (_wait == "file") return File.Exists(_file);
+            // timerstart: host starts the countdown once the timer waits (peace time set to 0: its shields keep units in the base);
+            // host and clients then wait until the match runs
+            if (_wait == "resume") { if (!BtcSpectate.Returning) { BtcLog.Info("Cmd", "resumeready: not a returning player"); return true; } if (!BtcSpectate.ReturnLoaded()) return false; BtcSpectate.SendResumeReady(); BtcLog.Info("Cmd", "resumeready: sent"); return true; }
+            if (_wait == "tready") { if (BtcTimer.Cur == BtcTimer.Phase.Waiting && !BtcTimer.LocalIsReady()) BtcTimer.PressReady(); if (BtcTimer.Cur != BtcTimer.Phase.Running) return false; BtcLog.Info("Cmd", "timerready: running shown=" + BtcTimer.ShownCount); return true; }
+            if (_wait == "timer") { if (BtcTimer.Cur == BtcTimer.Phase.Waiting) { int ip = BtcGameplay.Idx("timer.peace"); if (BtcGameplay.E != null && ip >= 0 && ip < BtcGameplay.E.Length) BtcGameplay.E[ip] = 0f; BtcTimer.StartNow("dev"); } if (BtcTimer.Cur != BtcTimer.Phase.Running) return false; BtcLog.Info("Cmd", "timerstart: running"); return true; }
             return false;
         }
 
@@ -312,6 +317,24 @@ namespace BetterThanCastle.Dev
                 case "pov": BtcPov.Cycle(1); break;
                 case "dots": BtcConfig.ReplayUnitDots.Value = (int)F(p, 1, 2f); break;
                 case "taskspawn": BtcDevTasks.Spawn(); break;
+                case "itemlab":
+                    switch (p.Length > 1 ? p[1] : "")
+                    {
+                        case "setup": BtcDevItemLab.Setup(p.Length > 2 ? p[2] : "Blocks.Wood_DoubleLog_AA", (int)F(p, 3, 2f)); break;
+                        case "manual": BtcDevItemLab.Manual(); break;
+                        case "auto": BtcDevItemLab.Auto(); break;
+                        default: BtcDevItemLab.Report(p.Length > 2 ? p[2] : "x"); break;
+                    }
+                    break;
+                case "tfspawn": BtcDevTerraform.Spawn((int)F(p, 1, 7f)); break;
+                case "tfhire": BtcDevTerraform.Hire(); break;
+                case "tfdump": BtcDevTerraform.Dump(p.Length > 1 ? p[1] : "x"); break;
+                case "tfladder": BtcDevTerraform.Ladders((int)F(p, 1, 7f)); break;
+                case "tfsteps": BtcDevTerraform.Steps(); break;
+                case "tfedit": BtcDevTerraform.Edit(); break;
+                case "tfpit": BtcDevTerraform.Pit(); break;
+                case "tftunnel": BtcDevTerraform.Tunnel((int)F(p, 1, 2f)); break;
+                case "tfclimb": BtcDevTerraform.Climb(); break;
                 case "taskset": BtcDevTasks.SetBounds(); break;
                 case "taskdump": BtcDevTasks.Dump(p.Length > 1 ? p[1] : "x"); break;
                 case "bpspawn": BtcDevBp.Spawn((int)F(p, 1, 3f)); break;
@@ -323,8 +346,29 @@ namespace BetterThanCastle.Dev
                 case "hitch": System.Threading.Thread.Sleep((int)(F(p, 1, 3f) * 1000f)); BtcLog.Info("Cmd", "hitch done"); break;
                 case "hbmute": BtcNetManager.DevMuteUntil = Time.realtimeSinceStartup + F(p, 1, 6f); break;
                 case "netdrop": BtcDevNet.Drop(); break;
+                // team ping at the camera target (+ x offset), then the live count
+                case "ping": BtcPing.PlaceAt(Brix.Input.CameraScript.Target + new Vector3(F(p, 1, 0f), 0f, 0f)); break;
+                case "allyall":
+                    {
+                        List<Brix.Game.Faction> fs = Brix.Game.Faction.GetAllFactions();
+                        int n = 0;
+                        for (int i = 0; i < fs.Count; i++)
+                            for (int j = 0; j < fs.Count; j++)
+                                if (i != j && fs[i] != null && fs[j] != null && !fs[i].IsSpectator && !fs[j].IsSpectator && fs[i].HasOwner() && fs[j].HasOwner()) { fs[i].SetFactionRelation(fs[j], Brix.Game.Affiliation.Relation.Allied); n++; }
+                        BtcLog.Info("Cmd", "allyall pairs=" + n);
+                        break;
+                    }
+                case "pingdump": BtcLog.Info("Cmd", "pingdump active=" + BtcPing.ActiveCount + " show=" + BtcPing.ShowOthers + " bc=" + BtcNetworkGate.Enabled); break;
+                case "mark": File.WriteAllText(Path.Combine(BtcDevPaths.LogDir, "mark-" + (p.Length > 1 ? p[1] : "x") + ".txt"), DateTime.Now.ToString("o")); break; // scenario.ps1 net plan triggers on these
+                case "netcap": BtcLog.Info("Cmd", "netcap " + BtcDevNet.CapText() + " | " + BtcNetManager.StatusText()); break;
                 case "netstat": BtcLog.Info("Cmd", "netstat " + BtcNetManager.StatusText()); break;
-                case "quit": BtcDevProf.Dump("quit"); File.WriteAllText(Path.Combine(BtcDevPaths.LogDir, "done.txt"), "quit"); Application.Quit(); break;
+                // host: end the timer's Waiting phase (base shields keep units inside while it waits, so walk labs need it)
+                case "timerstart": _wait = "timer"; _waitUntil = now + F(p, 1, 60f); break;
+                // press Ready once the timer waits, then wait until the match runs (logs how many players the Ready list showed)
+                case "timerready": _wait = "tready"; _waitUntil = now + F(p, 1, 120f); break;
+                case "resumeready": _wait = "resume"; _waitUntil = now + F(p, 1, 120f); break;
+                case "vpause": { Brix.Network.UNetManager vm = UnityEngine.Networking.NetworkManager.singleton as Brix.Network.UNetManager; if (vm != null) BtcNetManager.RequestVoluntaryPauseToggle(vm); BtcLog.Info("Cmd", "vpause -> active=" + BtcNetManager.VoluntaryPauseActive + " scale=" + Time.timeScale); break; }
+                case "quit": BtcDevNet._quitting = true; BtcDevProf.Dump("quit"); File.WriteAllText(Path.Combine(BtcDevPaths.LogDir, "done.txt"), "quit"); Application.Quit(); break;
                 default: if (!BtcDevLab.Cmd(c, p)) BtcLog.Warn("Cmd", "unknown: " + c); break;
             }
         }

@@ -1,0 +1,20 @@
+# N1/N16 + load pause: host + 4 clients (5 games), REC on. Voluntary pause in the lobby must be refused; a pause set by the
+# host while clients still load must not stall their load (client keeps it "held" until its level is live). <= 10 min.
+host default conquest
+gameplay gen.maxp=6
+netcap
+waitclients 4 300
+vpause
+netstat
+wait 3
+startmatch 180
+waitgame 300
+vpause
+mark ingame
+netstat
+wait 60
+netstat
+vpause
+wait 60
+netstat
+quit

@@ -328,7 +328,7 @@ namespace BetterThanCastle.Patches
             try
             {
                 if (!_logged) { _logged = true; BtcLoadBoost.Note("GateWait: done=" + _done + " server=" + NetworkServer.active + " mp=" + Neo.IsMultiplayer + " hostLoaded=" + GameParam.instance.HostLoaded); }
-                // cfg Loading/EarlyClientUi (default on: client ready ~10 s sooner in mp-load)
+                // cfg LoadingExperimental/EarlyClientUi (default off since 0.5.0)
                 if (!_done && BtcConfig.EarlyClientUi.Value && !NetworkServer.active && Neo.IsMultiplayer && !GameParam.instance.HostLoaded)
                 {
                     _done = true;
@@ -427,48 +427,5 @@ namespace BetterThanCastle.Patches
             }
             catch (Exception) { }
         }
-    }
-}
-
-namespace BetterThanCastle.Patches
-{
-    /// <summary>Load profile: end marks of the terrain sub-steps.</summary>
-    internal static class LoadStepMarks
-    {
-        internal static void Wrap(ref System.Collections.IEnumerator result, string mark)
-        {
-            try { result = G3Il.Wrap(result, false, mark); }
-            catch (Exception e) { BtcLog.Error("Hook", "load mark " + mark + ": " + e); }
-        }
-    }
-
-    [HarmonyPatch(typeof(GameLoader), "LoadBasicTerrain")]
-    internal static class GameLoaderLoadBasicTerrainMarkPatch
-    {
-        [HarmonyPostfix] private static void Postfix(ref System.Collections.IEnumerator __result) { LoadStepMarks.Wrap(ref __result, "LoadBasicTerrain done"); }
-    }
-
-    [HarmonyPatch(typeof(GameLoader), "InitTerrainGravity")]
-    internal static class GameLoaderInitTerrainGravityMarkPatch
-    {
-        [HarmonyPostfix] private static void Postfix(ref System.Collections.IEnumerator __result) { LoadStepMarks.Wrap(ref __result, "InitTerrainGravity done"); }
-    }
-
-    [HarmonyPatch(typeof(GameLoader), "LoadNature")]
-    internal static class GameLoaderLoadNatureMarkPatch
-    {
-        [HarmonyPostfix] private static void Postfix(ref System.Collections.IEnumerator __result) { LoadStepMarks.Wrap(ref __result, "LoadNature done"); }
-    }
-
-    [HarmonyPatch(typeof(GameLoader), "BuildTerrainMeshes")]
-    internal static class GameLoaderBuildTerrainMeshesMarkPatch
-    {
-        [HarmonyPostfix] private static void Postfix(ref System.Collections.IEnumerator __result) { LoadStepMarks.Wrap(ref __result, "BuildTerrainMeshes done"); }
-    }
-
-    [HarmonyPatch(typeof(GameLoader), "LoadGameObjects")]
-    internal static class GameLoaderLoadGameObjectsMarkPatch
-    {
-        [HarmonyPostfix] private static void Postfix(ref System.Collections.IEnumerator __result) { LoadStepMarks.Wrap(ref __result, "LoadGameObjects done"); }
     }
 }
