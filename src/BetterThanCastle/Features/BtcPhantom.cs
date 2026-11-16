@@ -490,10 +490,53 @@ namespace BetterThanCastle
             }
         }
 
+        // ------------------------------------------------------------------ spawn point: the nearest free walkable cell next to the home crystal
+        private static List<Vector3> _ring;
+        private static readonly List<Vector3> Cand = new List<Vector3>();
+
+        /// <summary>Like a vanilla firefly (surface under the crystal, a walkable path node, no obstacle/unit volume there), but the nearest
+        /// cells first instead of a random spot 2-6 blocks away; one of the 3 nearest free cells, so phantoms do not stack on one cell.</summary>
+        private static Vector3 SpawnPoint(FireflyNest home)
+        {
+            Vector3 top = home.transform.position + Vector3.up * 4f;
+            try
+            {
+                if (_ring == null)
+                {
+                    _ring = new List<Vector3>();
+                    for (int x = -7; x <= 7; x++)
+                        for (int z = -7; z <= 7; z++)
+                        {
+                            float d = Mathf.Sqrt(x * x + z * z);
+                            if (d >= 1f && d <= 7f) _ring.Add(new Vector3(x, 0f, z));
+                        }
+                    _ring.Sort((a, b) => a.sqrMagnitude.CompareTo(b.sqrMagnitude));
+                }
+                Vector3 c = Brix.Engine.Architecte.SurfaceRaycast(top, 10, true);
+                Cand.Clear();
+                for (int i = 0; i < _ring.Count && Cand.Count < 3; i++)
+                {
+                    Brix.Engine.XYZ v = Brix.Engine.XYZ.FromVector3(c + _ring[i]);
+                    Brix.Pathfinding.Test.WalkablePathNode w = Brix.Game.AI.Pathfinding.PathNodeRegistry.WalkableAt(v, 5);
+                    if (w == null) continue;
+                    Brix.Engine.XYZ r = w.RepresentativePosition;
+                    if (Mathf.Abs(r.y - c.y) > 4f) continue;
+                    if (Brix.Game.Components.Volumes.VolumeRegistry.HasVolumesWithPropertyAt(r, Brix.Game.Components.Volumes.VPropertyMask.obstacle | Brix.Game.Components.Volumes.VPropertyMask.character)) continue;
+                    Vector3 rv = r.ToVector3();
+                    if (!Cand.Contains(rv)) Cand.Add(rv);
+                }
+                if (Cand.Count > 0) return Cand[UnityEngine.Random.Range(0, Cand.Count)];
+                Vector3 vf = Brix.Engine.Architecte.PigerUneCase(c, UnityEngine.Random.value * 4f + 2f, 100).ToVector3();
+                if (vf != Vector3.zero) return vf;
+            }
+            catch (Exception e) { BtcLog.Warn("Phantom", "spawn point: " + e.Message); }
+            return top;
+        }
+
         private static GameObject Spawn(FireflyNest home)
         {
             Faction f = home.faction;
-            Vector3 p = home.transform.position + Vector3.up * 4f + new Vector3(UnityEngine.Random.Range(-1.5f, 1.5f), 0f, UnityEngine.Random.Range(-1.5f, 1.5f));
+            Vector3 p = SpawnPoint(home);
             GameObject go;
             Spawning = true;
             try { go = BtcDuel.SpawnUnit(BtcDuelUnit.Worker, f, p, Quaternion.Euler(0f, UnityEngine.Random.Range(0f, 360f), 0f)); }
