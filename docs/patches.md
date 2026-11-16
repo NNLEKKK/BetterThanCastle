@@ -56,17 +56,16 @@
 | ExplosionGameplayPatches.cs | typeof(ExplosionGameplay), "ComputeUnitThrust" |
 | FireflyNestPatches.cs | typeof(FireflyNest), "FeedQueuedFireflies" |
 | FireflyNestPatches.cs | typeof(FireflyNest), "SpawnNamedFireflies" |
+| FireflyNestSpectatorPatches.cs | typeof(FireflyNest), "lua_GetInfo" |
+| FireflyNestSpectatorPatches.cs | typeof(FireflyNest), "lua_SpawnUnit" |
+| FocusHoldPatches.cs | typeof(PickerOrderGiver), "DirectOrder", new Type[] { typeof(List<GameObject>), typeof(GameObject) } |
+| FocusHoldPatches.cs | typeof(BindingsProvider), "Reload" |
 | GameLoaderPatches.cs | typeof(GameLoader), "LoadNewGameFromGameParams" |
 | GameLoaderPatches.cs | typeof(GameLoader), "Load" |
 | GameLoaderPatches.cs | typeof(GameLoader), "AwakeStep" |
 | GameLoaderPatches.cs | typeof(GameLoader), "BuildStep" |
 | GameLoaderPatches.cs | typeof(GameLoader), "StartStep" |
 | GameLoaderPatches.cs | typeof(Brix.NewUI.LoadingScreen.LoadingScreen), "SetLoadingTitle" |
-| GameLoaderPatches.cs | typeof(GameLoader), "LoadBasicTerrain" |
-| GameLoaderPatches.cs | typeof(GameLoader), "InitTerrainGravity" |
-| GameLoaderPatches.cs | typeof(GameLoader), "LoadNature" |
-| GameLoaderPatches.cs | typeof(GameLoader), "BuildTerrainMeshes" |
-| GameLoaderPatches.cs | typeof(GameLoader), "LoadGameObjects" |
 | GameParamPatches.cs | typeof(GameParam), "Map", MethodType.Setter |
 | GameParamPatches.cs | typeof(GameParam), "GetMaxFactions" |
 | GameParamPatches.cs | typeof(GameParam), "RefreshFactions" |
@@ -86,6 +85,8 @@
 | InfHealPatches.cs | typeof(Asset_Map), "Disk_ReadGameObjects" |
 | InfHealPatches.cs | typeof(Brix.Game.Components.ArtificerStaff), "ToHealing" |
 | InstructionsRackPatches.cs | typeof(Instructions), "Batire" |
+| IslandPatches.cs | typeof(BrushUtils), "IsInsideRange" |
+| IslandPatches.cs | typeof(BrushComponent), "CreateOrRemoveIsland" |
 | JumpLinePatches.cs | typeof(DirectOrderProject), "GoAndJumpTo" |
 | JumpLinePatches.cs | typeof(Formation), "Init", new Type[] { typeof(Vector3), typeof(List<GameObject>) } |
 | JumpOffPatches.cs | typeof(NavigationNodes), "FindBestObstacle" |
@@ -93,6 +94,10 @@
 | KnowledgeFinderPatches.cs | typeof(KnowledgeDisjointRegionsFinder), MethodType.Constructor, new Type[0] |
 | KnowledgeFinderPatches.cs | typeof(KnowledgeConnectedAccessFinder), MethodType.Constructor, new Type[0] |
 | LaborPatches.cs | typeof(Labor), "GetReadyForNextTask" |
+| LiveSymPatches.cs | typeof(UNetBlueprint), "CmdSpawnPlacedBlueprint" |
+| LiveSymPatches.cs | typeof(LuaFactory), "InstantiateFromCLR" |
+| LiveSymPatches.cs | typeof(LuaDriver), "Remove" |
+| LiveSymPatches.cs | typeof(BrushUtils), "GrowTree" |
 | LivrePatches.cs | typeof(Livre), "Lire", new[] { typeof(string), typeof(string) } |
 | LobbyPlayerPatches.cs | typeof(LobbyPlayer), "OnNameChange" |
 | LobbyPlayerPatches.cs | typeof(LobbyPlayer), "CmdSetPlayerName" |
@@ -107,6 +112,7 @@
 | Locomotion4Patches.cs | typeof(Locomotion4), "InitAnimator" |
 | LuaFactoryPatches.cs | typeof(LuaFactory), "InstantiateFromCLR" |
 | LuaFactoryPatches.cs | typeof(Toolbag), "lua_EquipTool" |
+| LuaMarkerUIPatches.cs | typeof(LuaMarkerUI), "GetMarkerCount" |
 | LuaMenuComponentPatches.cs | typeof(LuaMenuComponent), "Load" |
 | MatchStatsPatches.cs | typeof(BricktronDamageReceiver), "_Kill" |
 | MatchStatsPatches.cs | [HarmonyPatch(typeof(BricktronDamageReceiver), "ApplyDamage", |
@@ -123,9 +129,32 @@
 | NoSkipPatches.cs | typeof(AttackInfo), "Strike" |
 | OverheadDisplayDriverPatches.cs | typeof(OverheadDisplayDriver), "BrixUpdate" |
 | PathUnrollPatches.cs | typeof(PathUnroll), "RemoveInvalidNodes" |
+| PhantomPatches.cs | typeof(Faction), "AnyUnitChangedFaction" |
+| PhantomPatches.cs | typeof(Faction), "RemoveUnit" |
+| PhantomPatches.cs | typeof(Locomotion4), "RpcDie" |
+| PhantomPatches.cs | typeof(CaptureClock), "SetUnitsInCaptureZone" |
+| PhantomPatches.cs | typeof(KinematicProjectile), "AcceptCollision" |
+| PhantomPatches.cs | typeof(PhysicalizedProjectile), "Thrust" |
+| PhantomPatches.cs | typeof(PhysicalizedProjectile), "OnCollisionEnter" |
+| PhantomPatches.cs | typeof(CatapultProjectile), "OnCollisionEnter" |
+| PhantomPatches.cs | typeof(UNetProjectCmd), "CmdAddCallToArmsGoal" |
+| PhantomPatches.cs | typeof(Profession), "SetHpBonus" |
+| PhantomPatches.cs | typeof(Profession), "SetStaminaBonus" |
+| PhantomPatches.cs | typeof(Navigation), "NavigateToOrAway" |
+| PhantomPatches.cs | typeof(Locomotion4), "ApplyAnimatorMotion" |
+| PhantomPatches.cs | typeof(Locomotion4), "CheckSnapToFloor" |
+| PhantomPatches.cs | typeof(PopOuterOfObstacle), "CheckAndPop" |
+| PhantomPatches.cs | typeof(SearchPathRequest), "HasBlockerAt" |
+| PhantomPatches.cs | typeof(DestinationRepathSearch), "CanCross" |
+| PhantomPatches.cs | typeof(FloorPicker), "IsOccupied" |
+| PhantomPatches.cs | typeof(VoxelPresence), "BuildPresenceTest" |
+| PhantomPatches.cs | typeof(Profession), "CanWalkInForest" |
+| PhantomPatches.cs | typeof(Brix.Game.Locomotion.Grounded), "Update" |
 | PickerOrderGiverPatches.cs | typeof(PickerOrderGiver), "DirectOrder", new Type[] { typeof(List<GameObject>), typeof(Vector3) } |
 | PickerOrderGiverPatches.cs | typeof(PickerOrderGiver), "DirectOrder", new Type[] { typeof(List<GameObject>), typeof(GameObject) } |
 | PickingPatches.cs | typeof(Picking), "OnUpdate" |
+| PickingPatches.cs | typeof(UnitActionPicker), "OnFirstActionCharacter" |
+| ProfessionPatches.cs | typeof(Occupation), "OnJobChange" |
 | ProfessionPatches.cs | typeof(Profession), nameof(Profession.CharacterLevel), MethodType.Setter |
 | ProfessionPatches.cs | typeof(Profession), "CanPassThrough" |
 | ProfessionPatches.cs | typeof(Profession), "SetHpBonus" |
@@ -145,10 +174,39 @@
 | ShieldPatches.cs | typeof(CaptureClock), "SetUnitsInCaptureZone" |
 | ShieldPatches.cs | typeof(CatapultProjectile), "Start" |
 | ShieldPatches.cs | typeof(KinematicProjectile), "Update" |
+| ShieldPatches.cs | typeof(Brix.Legacy.Explosifs), "OnTransformParentChanged" |
+| ShieldPatches.cs | typeof(Brix.Game.Network.UNetContextualCmd), "CmdStartBarrelFuse" |
+| ShieldPatches.cs | typeof(Brix.Engine.Architecte), "ExplosionSimple", new[] { typeof(GameObject), typeof(Vector3), typeof(float), typeof(string) } |
 | SimpleHostScriptPatches.cs | typeof(SimpleHostScript), "Run" |
 | SimpleHostScriptPatches.cs | typeof(SimpleHostScript), "PopulateFactionsLocally" |
 | SplashScreenPatches.cs | typeof(Brix.UI.SplashScreen), "Start" |
 | TaskPatches.cs | typeof(Task), "OnPathFailed" |
+| TerraformPatches.cs | typeof(LandscapeGoalProvider), "OnDataChange" |
+| TerraformPatches.cs | typeof(LandscapeGoalProvider), "VoxelNeedsGoal" |
+| TerraformPatches.cs | typeof(LandscapeGoalProvider), "CreateGoal" |
+| TerraformPatches.cs | typeof(LandscapeGoalProvider), "ReevaluateAllThresholds" |
+| TerraformPatches.cs | typeof(LandscapeProject), "HasFillGoals" |
+| TerraformPatches.cs | typeof(LandscapeProject), "HasDigGoals" |
+| TerraformPatches.cs | typeof(LandscapeGoal), "EvaluateTheshold" |
+| TerraformPatches.cs | typeof(LandscapeGoal), "UniqueItems" |
+| TerraformPatches.cs | typeof(LandscapeGoal), "DigAction" |
+| TerraformPatches.cs | typeof(LandscapeGoal), "IsMatchFor" |
+| TerraformPatches.cs | typeof(DigGoal), "SetupBuilder" |
+| TerraformPatches.cs | typeof(DigGoal), "IsMatchFor" |
+| TerraformPatches.cs | typeof(DigGoal), "PriorityFor" |
+| TerraformPatches.cs | typeof(DigGoal), "ApplyDamage" |
+| TerraformPatches.cs | typeof(LandscapeGoal), "PriorityFor" |
+| TerraformPatches.cs | typeof(BuildStairsGoal), "SpawnStairs" |
+| TerraformPatches.cs | typeof(BuildStairsGoal), "PriorityFor" |
+| TerraformPatches.cs | typeof(BuildStairsGoal), "IsMatchFor" |
+| TerraformPatches.cs | typeof(LandscapeProject), "HasWorkFor" |
+| TerraformPatches.cs | typeof(BuildStairsGoal), "IsValid" |
+| TerraformPatches.cs | typeof(LandscapeProject), "CheckForAutoDelete" |
+| TerraformPatches.cs | typeof(LandscapeProject), "VerifyWorkFor" |
+| TerraformPatches.cs | typeof(Picking), "OnUpdate" |
+| TerraformPatches.cs | typeof(Asset_Map), "Disk_Save" |
+| TerraformPatches.cs | typeof(Asset_Map), "Disk_ReadGameObjects" |
+| TerraformPatches.cs | typeof(Labor), "HandleWorkException" |
 | TimerPatches.cs | typeof(Asset_Map), "Disk_Overwrite" |
 | TimerPatches.cs | typeof(Asset_Map), "Disk_WriteAsNew" |
 | TimerPatches.cs | typeof(Brix.Lua.LuaTimer), "FormatedElapsedSeconds" |
@@ -163,6 +221,7 @@
 | UIGameObserverPatches.cs | typeof(UIGameObserver), "lua_SetModeDefeatTextureAsync" |
 | UIGameObserverPatches.cs | typeof(UIGameObserver), "Start" |
 | UNetManagerPatches.cs | typeof(UNetManager), "Initialize" |
+| UNetManagerPatches.cs | typeof(UNetManager), "StartHost" |
 | UNetManagerPatches.cs | typeof(UNetManager), "ManuallyInitTransport" |
 | UNetManagerPatches.cs | typeof(UNetManager), "Start" |
 | UNetManagerPatches.cs | typeof(UNetManager), "Update" |
@@ -184,9 +243,14 @@
 | UNetManagerPatches.cs | typeof(UNetManager), "OnServerError" |
 | UNetManagerPatches.cs | typeof(UNetManager), "OnClientError" |
 | UNetManagerPatches.cs | typeof(UNetManager), "GetLobbyPlayerNameFromConnection" |
+| UNetManagerPatches.cs | typeof(UNetManager), "LoadOfflineScene" |
+| UNetManagerPatches.cs | typeof(UnityEngine.SceneManagement.SceneManager), "LoadScene", new[] { typeof(string) } |
+| UNetManagerPatches.cs | typeof(UnityEngine.SceneManagement.SceneManager), "LoadSceneAsync", new[] { typeof(string) } |
 | UNetTransformPatches.cs | typeof(UNetTransform), "OnDeserialize" |
+| UserPatches.cs | typeof(User), "Start" |
 | VolumePatches.cs | typeof(Volume), "Initialize" |
 | VoxelRequestBatcherPatches.cs | typeof(VoxelRequestBatcher), "ProcessDebloc" |
 | WardAttackPatches.cs | typeof(WardAttack), "AttackRange", MethodType.Getter |
 | WardAttackPatches.cs | typeof(WardAttack), "UnitsRefresh" |
+| WardAttackPatches.cs | typeof(WardAttack), "CanFireAt" |
 | WardAttackPatches.cs | typeof(WardAttack), "FixedUpdate" |

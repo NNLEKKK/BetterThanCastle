@@ -1,0 +1,37 @@
+# phantom-flymp client: join, dump phantom positions every 2 s (one must hover 8 blocks above the others).
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 90
+ready 120
+waitgame 240
+wait 10
+phantom dump c1
+wait 2
+phantom dump c2
+wait 2
+phantom dump c3
+wait 2
+phantom dump c4
+wait 2
+phantom dump c5
+wait 2
+phantom dump c6
+wait 2
+phantom dump c7
+wait 2
+phantom dump c8
+wait 2
+phantom dump c9
+wait 2
+phantom dump c10
+wait 2
+phantom dump c11
+wait 2
+phantom dump c12
+wait 2
+phantom dump c13
+wait 2
+phantom dump c14
+wait 2
+wait 5
+quit

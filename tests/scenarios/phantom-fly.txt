@@ -1,0 +1,24 @@
+# phantom-fly: flying phantoms (phantom.fly, BtcPhantomFly): a move order into the air ends there and the phantom hovers
+# (no fall, still alive), a long move goes in a straight line through anything, moving back down works.
+newgame
+waitgame 240
+gameplay phantom.on=1;phantom.count=1;phantom.cd=8;phantom.delay=0;phantom.fly=1
+wait 10
+phantom dump spawned
+phantom fly 0 8 0
+wait 1
+phantom where up1s
+wait 5
+phantom where up6s
+wait 4
+phantom where hover10s
+phantom fly 30 0 30
+wait 3
+phantom where far3s
+wait 12
+phantom where far15s
+phantom fly -30 -6 -30
+wait 15
+phantom where back15s
+phantom dump end
+quit

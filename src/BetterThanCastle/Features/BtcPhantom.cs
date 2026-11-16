@@ -46,6 +46,7 @@ namespace BetterThanCastle
         {
             internal GameObject Go;
             internal float RespawnAt;
+            internal bool Owes;   // died: the respawn price (phantom.pen) is paid from the home crystal before it comes back
         }
 
         private static readonly Dictionary<int, Mark> Marks = new Dictionary<int, Mark>();
@@ -72,7 +73,12 @@ namespace BetterThanCastle
         private static uint[] _lastIds = new uint[0];
         private static int _spawned, _died;
 
-        private static int iOn = -1, iCount, iCd, iPen, iPeace, iDelay, iVis = -1;
+        private static int iOn = -1, iCount, iCd, iPen, iPeace, iDelay, iVis = -1, iFly = -1, iGhost = -1;
+
+        /// <summary>Host, rule on, phantom.fly on (set every tick): phantoms fly instead of walking (BtcPhantomFly).</summary>
+        internal static bool Fly;
+        /// <summary>Host, rule on, phantom.ghost on and not flying (set every tick): phantoms walk through objects (BtcPhantomGhost).</summary>
+        internal static bool Ghost;
 
         // ------------------------------------------------------------------ rules
         internal static void AddRows()
@@ -85,16 +91,24 @@ namespace BetterThanCastle
                 "How many phantoms every player has.", "Сколько фантомов у каждого игрока.");
             BtcGameplay.Add("phantom.cd", G, "Respawn cooldown (s)", "Перезарядка возрождения (с)", 15f, 1f, 300f, 1f, false,
                 "Seconds a dead phantom waits before it appears again at the home crystal.", "Сколько секунд погибший фантом ждёт, прежде чем снова появиться у домашнего кристалла.");
-            BtcGameplay.Add("phantom.pen", G, "Energy lost per phantom death", "Штраф энергии за смерть фантома", 0f, 0f, 1000f, 5f, false,
-                "Energy taken from the owner's home crystal every time a phantom dies (never below 0). 0 = no penalty.", "Сколько энергии забирается из домашнего кристалла владельца при каждой смерти фантома (не ниже 0). 0 = без штрафа.");
+            BtcGameplay.Add("phantom.pen", G, "Respawn price (energy)", "Цена возрождения (энергия)", 0f, 0f, 1000f, 5f, false,
+                "Energy a dead phantom costs to come back. Nothing is taken at the death: after the cooldown the phantom waits until the owner's home crystal holds this much energy, then it is taken and the phantom appears. 0 = free respawn.",
+                "Сколько энергии стоит возвращение погибшего фантома. При смерти ничего не забирается: после перезарядки фантом ждёт, пока в домашнем кристалле владельца накопится столько энергии, затем она списывается и фантом появляется. 0 = бесплатно.");
             BtcGameplay.Add("phantom.peace", G, "Appear when peace time ends", "Появляются после мирного времени", 0f, 0f, 1f, 1f, true,
                 "On: phantoms appear when the peace time of the advanced timer ends (at once if there is no peace time). Off: after the delay below.", "Вкл: фантомы появляются, когда кончается мирное время продвинутого таймера (сразу, если мирного времени нет). Выкл: после задержки ниже.");
             BtcGameplay.Add("phantom.delay", G, "Appear after (s, 0 = at once)", "Появляются через (с, 0 = сразу)", 0f, 0f, 3600f, 10f, false,
                 "Game time of the advanced timer after which the phantoms appear. 0 = right at the start.", "Игровое время продвинутого таймера, после которого появляются фантомы. 0 = сразу на старте.");
+            BtcGameplay.Add("phantom.ghost", G, "Phantoms walk through objects", "Фантомы ходят сквозь объекты", 1f, 0f, 1f, 1f, true,
+                "Phantoms find their way like workers, but walk through any buildings (enemy gates and doors too), through enemy bricktrons (not through their own) and through the forest. Terrain and blocks (bricks, beams) stop them as usual; they go round tree trunks, boulders and pyrite. Flying phantoms below take over when both are on.",
+                "Фантомы ищут путь как рабочие, но проходят сквозь любые постройки (и вражеские ворота и двери), сквозь вражеских бриктронов (не сквозь своих) и через лес. Земля и блоки (кирпичи, балки) останавливают их как обычно; стволы деревьев, валуны и пирит они обходят. Если включены оба пункта, работают летающие фантомы ниже.");
+            BtcGameplay.Add("phantom.fly", G, "Flying phantoms", "Летающие фантомы", 0f, 0f, 1f, 1f, true,
+                "Phantoms do not walk: they fly in a straight line at their own speed to wherever they are sent, through terrain and walls, also for their tasks, and hover in the air where they stop. Places no worker can walk to (islands, closed rooms) become reachable for them.",
+                "Фантомы не ходят: летят по прямой со своей скоростью туда, куда их отправили, сквозь землю и стены, и на заданиях тоже, и висят в воздухе там, где остановились. Места, куда рабочие не могут дойти (острова, закрытые комнаты), становятся для них доступны.");
             BtcGameplay.Add("vis.phantom", "vis", "Vision: phantoms (x of units)", "Обзор: фантомы (x от юнитов)", 0.25f, 0f, 5f, 0.05f, false,
                 "Vision radius of phantoms as a share of the normal unit vision (Vision: units above). 0.25 = a quarter.", "Радиус обзора фантомов как доля обычного обзора юнитов (Обзор: юниты выше). 0.25 = четверть.");
             iOn = BtcGameplay.Idx("phantom.on"); iCount = BtcGameplay.Idx("phantom.count"); iCd = BtcGameplay.Idx("phantom.cd"); iPen = BtcGameplay.Idx("phantom.pen");
             iPeace = BtcGameplay.Idx("phantom.peace"); iDelay = BtcGameplay.Idx("phantom.delay"); iVis = BtcGameplay.Idx("vis.phantom");
+            iFly = BtcGameplay.Idx("phantom.fly"); iGhost = BtcGameplay.Idx("phantom.ghost");
         }
 
         private static float Val(int i, float def)
@@ -125,6 +139,9 @@ namespace BetterThanCastle
             Mark m;
             return Marks.TryGetValue(go.GetInstanceID(), out m) && !m.Dead;
         }
+
+        /// <summary>Host: this unit is a live phantom that flies (phantom.fly).</summary>
+        internal static bool Flies(GameObject go) { return Fly && IsPhantom(go); }
 
 #if DEV
         internal static List<GameObject> DevLive()
@@ -358,21 +375,91 @@ namespace BetterThanCastle
                     if (l[i].Go != go) continue;
                     l[i].Go = null;
                     l[i].RespawnAt = now + Cooldown;
-                    int pen = Penalty;
-                    FireflyNest home;
-                    if (pen > 0 && Homes.TryGetValue(kv.Key, out home) && home != null)
-                    {
-                        try
-                        {
-                            if (_consume == null) _consume = AccessTools.Method(typeof(FireflyNest), "ConsumeUnnamedFirefliesUpTo");
-                            int got = _consume != null ? (int)_consume.Invoke(home, new object[] { pen }) : 0;
-                            BtcLog.Info("Phantom", "death penalty faction=" + kv.Key + " -" + Mathf.Min(got, pen));
-                        }
-                        catch (Exception e) { BtcLog.Warn("Phantom", "penalty: " + e.Message); }
-                    }
+                    l[i].Owes = true;
                     _dirty = true;
                     return;
                 }
+            }
+        }
+
+        /// <summary>Host: pay the respawn price of a dead phantom from its home crystal. False = not enough energy yet (it keeps waiting).
+        /// Same check and consume as the vanilla crystal spawning a bricktron.</summary>
+        private static bool PayRespawn(Slot s, int fac, FireflyNest home)
+        {
+            int pen = Penalty;
+            if (pen <= 0) { s.Owes = false; return true; }
+            if (home.GetAvailablePurifiedEnergy() < pen) return false;
+            try
+            {
+                if (_consume == null) _consume = AccessTools.Method(typeof(FireflyNest), "ConsumeUnnamedFirefliesUpTo");
+                int got = _consume != null ? (int)_consume.Invoke(home, new object[] { pen }) : 0;
+                BtcLog.Info("Phantom", "respawn paid faction=" + fac + " -" + Mathf.Min(got, pen));
+            }
+            catch (Exception e) { BtcLog.Warn("Phantom", "respawn price: " + e.Message); return false; }
+            s.Owes = false;
+            return true;
+        }
+
+        // ------------------------------------------------------------------ projectiles fly through enemy phantoms (host)
+        private static readonly List<Rigidbody> ThrownRb = new List<Rigidbody>();
+        private static readonly List<Vector3> ThrownVel = new List<Vector3>();
+        private static int _shotThrough;
+        internal static int ShotThrough { get { return _shotThrough; } }
+
+        /// <summary>The phantom a collider belongs to (the unit, or the flailing body it hangs in while it dies), or null.</summary>
+        private static GameObject PhantomOf(Collider c)
+        {
+            if (c == null) return null;
+            Transform sp = ProjectileAiming.GetSignificantParent(c);
+            if (sp != null && IsPhantom(sp.gameObject)) return sp.gameObject;
+            Labor l = c.GetComponentInChildren<Labor>();
+            return l != null && IsPhantom(l.gameObject) ? l.gameObject : null;
+        }
+
+        /// <summary>Host: a projectile touched this collider. True = it is a phantom not allied with the shooter: the phantom dies and the
+        /// projectile must fly on (it may still hit whatever is behind with its full damage).</summary>
+        internal static bool PassThrough(Collider c, GameObject attacker, Faction shooter)
+        {
+            if (LiveCount == 0 || !NetworkServer.active) return false;
+            GameObject ph = PhantomOf(c);
+            if (ph == null) return false;
+            if (shooter == null && attacker != null) shooter = Faction.GetFaction(attacker);
+            if (shooter != null && Allied(shooter, Faction.GetFaction(ph))) return false;
+            BricktronDamageReceiver dr = ph.GetComponent<BricktronDamageReceiver>();
+            if (dr != null && dr.CurrentHP > 0f)
+            {
+                dr.ApplyDamage(1000f, DamageType.Absolute, DamageReaction.Ignored, c.transform.position, Vector3.zero, 0f, attacker);
+                _shotThrough++;
+            }
+            return true;
+        }
+
+        /// <summary>PhysicalizedProjectile.Thrust postfix (catapult shots, thrown things): remember the velocity so a pass-through keeps it.</summary>
+        internal static void NoteThrown(Rigidbody rb)
+        {
+            if (rb == null || LiveCount == 0 || !NetworkServer.active) return;
+            if (ThrownRb.Count >= 64) { ThrownRb.RemoveAt(0); ThrownVel.RemoveAt(0); }
+            ThrownRb.Add(rb);
+            ThrownVel.Add(rb.velocity);
+        }
+
+        /// <summary>Rigidbody projectile hit an enemy phantom: no more contact with it, the velocity from before the contact.</summary>
+        internal static void ThrownThrough(Component proj, Collision col)
+        {
+            Collider[] own = proj.GetComponentsInChildren<Collider>();
+            for (int i = 0; i < own.Length; i++) Physics.IgnoreCollision(own[i], col.collider, true);
+            Rigidbody rb = proj.GetComponent<Rigidbody>();
+            int k = rb != null ? ThrownRb.IndexOf(rb) : -1;
+            if (k >= 0) rb.velocity = ThrownVel[k];
+        }
+
+        private static void TrackThrown()
+        {
+            for (int i = ThrownRb.Count - 1; i >= 0; i--)
+            {
+                Rigidbody rb = ThrownRb[i];
+                if (rb == null || rb.isKinematic || !rb.gameObject.activeInHierarchy) { ThrownRb.RemoveAt(i); ThrownVel.RemoveAt(i); continue; }
+                ThrownVel[i] = rb.velocity;
             }
         }
 
@@ -386,6 +473,8 @@ namespace BetterThanCastle
             {
                 Track = RuleOn;
                 bool on = Track && InMatch();
+                Fly = on && Host && iFly >= 0 && Val(iFly, 0f) > 0.5f;
+                Ghost = on && Host && !Fly && iGhost >= 0 && Val(iGhost, 1f) > 0.5f;
                 if (!on)
                 {
                     if (_wasOn) Clear("off");
@@ -400,10 +489,11 @@ namespace BetterThanCastle
                 {
                     float now = Time.time;
                     if (now >= _nextStep) { _nextStep = now + 0.25f; HostStep(now); }
+                    if (ThrownRb.Count > 0) TrackThrown();
                     if (_dirty && un >= _nextSend - 0.8f || un >= _nextSend) { _dirty = false; _nextSend = un + 1f; Broadcast(); }   // 1 Hz: a replay seek re-marks within a second
                 }
                 else if (un >= _nextClient) { _nextClient = un + 0.5f; ClientStep(); }
-                if (un >= _nextLog) { _nextLog = un + 30f; BtcLog.Info("Phantom", "live=" + LiveCount + " marks=" + Marks.Count + " spawned=" + _spawned + " died=" + _died + " fx=" + BtcPhantomFx.Bursts + " snd=" + BtcPhantomFx.Sounds); }
+                if (un >= _nextLog) { _nextLog = un + 30f; BtcLog.Info("Phantom", "live=" + LiveCount + " marks=" + Marks.Count + " spawned=" + _spawned + " died=" + _died + " fx=" + BtcPhantomFx.Bursts + " snd=" + BtcPhantomFx.Sounds + " shotThrough=" + _shotThrough); }
             }
             catch (Exception e) { BtcLog.Error("Phantom", "tick: " + e); }
         }
@@ -425,6 +515,8 @@ namespace BetterThanCastle
             CountedIn.Clear();
             _lastIds = new uint[0];
             LiveCount = 0;
+            BtcPhantomFly.Reset();
+            ThrownRb.Clear(); ThrownVel.Clear();
             _nextStep = _nextNest = _nextSend = 0f;
             BtcLog.Info("Phantom", "cleared (" + why + ") spawned=" + _spawned + " died=" + _died);
             _spawned = _died = 0;
@@ -480,9 +572,11 @@ namespace BetterThanCastle
                         if (IsPhantom(s.Go) && s.Go.activeInHierarchy) { Enforce(s.Go); continue; }
                         s.Go = null;                                       // gone without RpcDie (fell out, released)
                         if (s.RespawnAt < now) s.RespawnAt = now + Cooldown;
+                        s.Owes = true;
                         _dirty = true;
                     }
                     if (i >= n || !started || now < s.RespawnAt || budget <= 0) continue;
+                    if (s.Owes && !PayRespawn(s, kv.Key, home)) continue;
                     budget--;
                     s.Go = Spawn(home);
                     if (s.Go == null) s.RespawnAt = now + 2f;
@@ -570,7 +664,7 @@ namespace BetterThanCastle
         // ------------------------------------------------------------------ saves: btc-phantoms.txt next to the save (host, BC ON)
         internal const string FileName = "btc-phantoms.txt";
 
-        private sealed class Saved { internal bool Alive; internal Vector3 P; internal int Fac; internal float Left; }
+        private sealed class Saved { internal bool Alive; internal Vector3 P; internal int Fac; internal float Left; internal bool Owes; }
 
         private static List<Saved> _restore;
         private static float _restoreFrom, _restoreUntil;
@@ -596,7 +690,7 @@ namespace BetterThanCastle
                     }
                     else
                     {
-                        sb.Append("D ").Append(kv.Key).Append(' ').Append(Mathf.Max(0f, s.RespawnAt - now).ToString("F1", Inv)).Append('\n');
+                        sb.Append("D ").Append(kv.Key).Append(' ').Append(Mathf.Max(0f, s.RespawnAt - now).ToString("F1", Inv)).Append(s.Owes ? " 1" : "").Append('\n');
                         dead++;
                     }
                 }
@@ -622,7 +716,7 @@ namespace BetterThanCastle
                     && float.TryParse(t[3], NumberStyles.Float, Inv, out z) && int.TryParse(t[4], NumberStyles.Integer, Inv, out fac))
                     list.Add(new Saved { Alive = true, P = new Vector3(x, y, z), Fac = fac });
                 else if (t.Length >= 3 && t[0] == "D" && int.TryParse(t[1], NumberStyles.Integer, Inv, out fac) && float.TryParse(t[2], NumberStyles.Float, Inv, out left))
-                    list.Add(new Saved { Alive = false, Fac = fac, Left = left });
+                    list.Add(new Saved { Alive = false, Fac = fac, Left = left, Owes = t.Length >= 4 && t[3] == "1" });
             }
             if (list.Count == 0) return;
             _restore = list;
@@ -649,7 +743,7 @@ namespace BetterThanCastle
                 Saved sv = _restore[k];
                 List<Slot> l;
                 if (!Slots.TryGetValue(sv.Fac, out l)) { l = new List<Slot>(); Slots[sv.Fac] = l; }
-                if (!sv.Alive) { l.Add(new Slot { RespawnAt = now + sv.Left }); continue; }
+                if (!sv.Alive) { l.Add(new Slot { RespawnAt = now + sv.Left, Owes = sv.Owes }); continue; }
                 int best = -1;
                 float bestD = 2.5f * 2.5f;
                 for (int i = 0; i < all.Length; i++)

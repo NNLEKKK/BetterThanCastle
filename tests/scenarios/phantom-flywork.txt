@@ -1,0 +1,18 @@
+# phantom-flywork: flying phantoms doing real tasks: a terraform pit/mound next to the base, all workers (phantoms too) hired.
+# PhFly lines must show task locations (not only SpaceLocation) that arrive, the task must progress, no phantom dies.
+newgame
+waitgame 240
+gameplay phantom.on=1;phantom.count=6;phantom.cd=8;phantom.delay=0;phantom.fly=1
+wait 10
+phantom dump spawned
+tfspawn 7
+wait 3
+tfdump t0
+tfhire
+wait 30
+tfdump t30
+phantom dump t30
+wait 40
+tfdump t70
+phantom dump t70
+quit

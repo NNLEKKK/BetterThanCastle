@@ -34,16 +34,24 @@ namespace BetterThanCastle
             float delay = V(a, "phantom.delay", 0f);
             string when = On(a, "phantom.peace") ? Tt("when the peace time ends", "когда кончается мирное время")
                         : (delay <= 0f ? Tt("right at the start", "сразу на старте") : Tt("after " + BtcTimer.Clock(delay) + " of game time", "через " + BtcTimer.Clock(delay) + " игрового времени"));
-            return new[]
+            string fly = On(a, "phantom.fly") ? Tt("They fly in a straight line through anything and hover where they stop.", "Летают по прямой сквозь всё и висят там, где остановились.")
+                       : On(a, "phantom.ghost") ? Tt("They walk through buildings, enemy units and the forest; blocks stop them.", "Ходят сквозь постройки, вражеских юнитов и лес; блоки их останавливают.") : null;
+            string[] lines =
             {
                 Tt(n + " phantoms per player at the home crystal, " + when + ".", n + " фантомов у каждого игрока у домашнего кристалла, " + when + "."),
-                Tt("A dead phantom comes back after " + cd + " s" + (pen != "0" ? ", each death costs " + pen + " energy." : "."),
-                   "Погибший фантом возвращается через " + cd + " с" + (pen != "0" ? ", каждая смерть стоит " + pen + " энергии." : ".")),
+                Tt("A dead phantom comes back after " + cd + " s" + (pen != "0" ? " as soon as the home crystal has " + pen + " energy to pay for it." : "."),
+                   "Погибший фантом возвращается через " + cd + " с" + (pen != "0" ? ", как только в домашнем кристалле есть " + pen + " энергии на оплату." : ".")),
+                Tt("Enemy arrows, bolts and shots fly through a phantom: it dies, the shot flies on at full damage.", "Вражеские стрелы, болты и снаряды пролетают сквозь фантома: он погибает, снаряд летит дальше с полным уроном."),
                 Tt("Free: not in the bricktron limit, not in the spawn price.", "Бесплатные: не в лимите бриктронов, не в цене спавна."),
                 Tt("1 HP, 0 stamina; fists do no damage to units, a weapon does.", "1 ХП, 0 стамины; кулаками не бьют юнитов, оружием бьют."),
                 Tt("No damage to enemy buildings, no crystal capture, no call to arms.", "Не ломают вражеские постройки, не захватывают кристаллы, без призыва к оружию."),
                 Tt("Vision x" + vis + " of a unit. No corpse: what it carried vanishes.", "Обзор x" + vis + " от юнита. Без трупа: то, что нёс, исчезает.")
             };
+            if (fly == null) return lines;
+            string[] all = new string[lines.Length + 1];
+            lines.CopyTo(all, 0);
+            all[lines.Length] = fly;
+            return all;
         }
 
         internal static void Card(ref float y, float w, int fs, float[] shown, Vector2 off)

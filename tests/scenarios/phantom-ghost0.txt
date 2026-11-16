@@ -1,0 +1,45 @@
+# phantom-ghost0 (baseline, ghost off): phantom.ghost (walk through objects, vanilla pathfinding): a phantom walks to the far side of its home crystal;
+# 'where' every second must show it crossing the crystal centre (within ~1 block) instead of walking round.
+newgame
+waitgame 240
+gameplay phantom.on=1;phantom.count=1;phantom.cd=8;phantom.delay=0;phantom.ghost=0
+wait 10
+phantom flythru
+wait 1
+phantom where a1
+wait 1
+phantom where a2
+wait 1
+phantom where a3
+wait 1
+phantom where a4
+wait 1
+phantom where a5
+wait 1
+phantom where a6
+wait 1
+phantom where a7
+wait 1
+phantom where a8
+wait 1
+phantom where a9
+phantom flythru
+wait 1
+phantom where b1
+wait 1
+phantom where b2
+wait 1
+phantom where b3
+wait 1
+phantom where b4
+wait 1
+phantom where b5
+wait 1
+phantom where b6
+wait 1
+phantom where b7
+wait 1
+phantom where b8
+wait 1
+phantom where b9
+quit
