@@ -788,6 +788,7 @@ public static class BtcGameplay
 		BtcPing.RegisterHandlers(clientOverride);
 		BtcFocusHold.RegisterHandlers(clientOverride);
 		BtcShield.RegisterHandlers(clientOverride);
+		BtcPhantom.RegisterHandlers(clientOverride);
 		BtcTerraform.RegisterHandlers(clientOverride);
 		bool active = NetworkServer.active;
 		bool flag = active;

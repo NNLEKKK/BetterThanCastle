@@ -1,0 +1,14 @@
+# phantom-mp client: join, play, dump the phantom marks received from the host (look, vision, unit count).
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 90
+ready 120
+waitgame 240
+wait 22
+phantom dump client
+wait 6
+phantom dump clientkill
+wait 10
+phantom dump clientback
+wait 10
+quit

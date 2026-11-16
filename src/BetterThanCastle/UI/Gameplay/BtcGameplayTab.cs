@@ -26,7 +26,7 @@ namespace BetterThanCastle
         internal static readonly Color Minor = new Color(0.95f, 0.78f, 0.1f, 1f);
         internal static readonly Color Critical = new Color(1f, 0.45f, 0.25f, 1f);
 
-        private const int PRules = 0, PChanges = 1, PPresets = 2, PRequests = 3, PRecipes = 4, PMap = 5, PHandicap = 6, PTimer = 7, PShield = 8;
+        private const int PRules = 0, PChanges = 1, PPresets = 2, PRequests = 3, PRecipes = 4, PMap = 5, PHandicap = 6, PTimer = 7, PShield = 8, PPhantom = 9;
 
         internal static int Page { get { return BtcMenuState.Int("gameplay:page", 0); } set { BtcMenuState.SetInt("gameplay:page", value); } }
         internal static string Query { get { return BtcMenuState.Get("gameplay:q", ""); } set { BtcMenuState.Set("gameplay:q", value ?? ""); } }
@@ -73,7 +73,7 @@ namespace BetterThanCastle
             if (id == "dmg.adv" || id == "mov.adv" || id == "timer.ms" || id.StartsWith("gcol.")) return 0;
             if (id.StartsWith("path.")) return v < d.Val ? 2 : 1;
             if (id == "gen.maxp" || id.StartsWith("timer.")) return 1;
-            string[] crit = { "dmg.", "hp.", "stam.", "spd.", "rng.", "start.", "ore.", "vis.", "eco.income", "eco.pen", "eco.base", "eco.factor", "eco.begin", "eco.cap", "mov.noskip", "mov.allies", "mov.shootdown", "shield." };
+            string[] crit = { "dmg.", "hp.", "stam.", "spd.", "rng.", "start.", "ore.", "vis.", "eco.income", "eco.pen", "eco.base", "eco.factor", "eco.begin", "eco.cap", "mov.noskip", "mov.allies", "mov.shootdown", "shield.", "phantom." };
             for (int k = 0; k < crit.Length; k++) if (id.StartsWith(crit[k])) return 2;
             return 1;
         }
@@ -115,7 +115,7 @@ namespace BetterThanCastle
         }
 
         // ------------------------------------------------------------------ groups
-        private static readonly string[] GroupOrder = { "dmg", "hp", "spd", "rng", "eco", "ore", "vis", "gen", "build", "mov", "path", "timer", "shield", "spec" };
+        private static readonly string[] GroupOrder = { "dmg", "hp", "spd", "rng", "eco", "ore", "vis", "gen", "build", "mov", "path", "timer", "shield", "phantom", "spec" };
 
         private static string GroupName(string g)
         {
@@ -135,6 +135,7 @@ namespace BetterThanCastle
                 case "path": return Tt("Pathfinding budgets", "Бюджеты поиска пути");
                 case "timer": return Tt("Timer and game length", "Таймер и длина игры");
                 case "shield": return Tt("Base shields", "Защита базы");
+                case "phantom": return Tt("Phantoms", "Фантомы");
                 case "spec": return Tt("Spectators and returning players", "Зрители и возврат игроков");
                 case "local": return Tt("Local options (never a rule)", "Локальные опции (не правила)");
             }
@@ -156,6 +157,7 @@ namespace BetterThanCastle
                 case "build": return BtcReplayIcons.Blueprint;
                 case "timer": return BtcReplayIcons.Pause;
                 case "shield": return BtcReplayIcons.Shield;
+                case "phantom": return BtcReplayIcons.Ghost;
                 case "local": return BtcReplayIcons.Lock;
             }
             return BtcReplayIcons.Gear;
@@ -195,6 +197,7 @@ namespace BetterThanCastle
                 else if (!BtcQol.AdvShown(shown)) return false;
             }
             if (d.Group == "shield" && !BtcShieldPage.Vis(d, shown)) return false;
+            if (d.Group == "phantom" && !BtcPhantomPage.Vis(d, shown)) return false;
             return BtcSimplePhys.Vis(d, shown);
         }
 
@@ -318,6 +321,7 @@ namespace BetterThanCastle
                     case PHandicap: PageHandicap(ref cy, vw, fs); break;
                     case PTimer: PageRules(ref cy, vw, fs, shown, bas, interact, baseMine, "timer"); break;
                     case PShield: PageShield(ref cy, vw, fs, shown, bas, interact, baseMine); break;
+                    case PPhantom: PagePhantom(ref cy, vw, fs, shown, bas, interact, baseMine); break;
                 }
             }
             catch (Exception ex) { if (e.type == EventType.Repaint) BtcLog.Error("GameplayTab", ex.ToString()); }
@@ -340,6 +344,7 @@ namespace BetterThanCastle
                 case PHandicap: return Tt("Handicap", "Фора");
                 case PTimer: return Tt("Timer and game length", "Таймер и длина игры");
                 case PShield: return Tt("Base shields", "Защита базы");
+                case PPhantom: return Tt("Phantoms", "Фантомы");
                 case PMap: return Tt("Map: symmetry, scale, map presets", "Карта: симметрия, скейл, пресеты карт");
             }
             return "";
@@ -357,12 +362,13 @@ namespace BetterThanCastle
                 case PHandicap: return BtcReplayIcons.Group;
                 case PTimer: return BtcReplayIcons.Pause;
                 case PShield: return BtcReplayIcons.Shield;
+                case PPhantom: return BtcReplayIcons.Ghost;
                 case PMap: return BtcReplayIcons.Map;
             }
             return BtcReplayIcons.Gear;
         }
 
-        private static readonly int[] RailPages = { PRules, PChanges, PPresets, PRequests, PRecipes, PMap, PTimer, PShield, PHandicap };
+        private static readonly int[] RailPages = { PRules, PChanges, PPresets, PRequests, PRecipes, PMap, PTimer, PShield, PPhantom, PHandicap };
 
         private void DrawRail(Rect r, int fs, int reqN)
         {
@@ -464,7 +470,7 @@ namespace BetterThanCastle
             bool any = false;
             for (int g = 0; g < groups.Count; g++)
             {
-                if (only != null ? groups[g] != only : (groups[g] == "timer" || groups[g] == "shield")) continue;   // the timer and shield rules have their own pages
+                if (only != null ? groups[g] != only : (groups[g] == "timer" || groups[g] == "shield" || groups[g] == "phantom")) continue;   // the timer, shield and phantom rules have their own pages
                 rows.Clear();
                 int crit = 0, minor = 0;
                 for (int i = 0; i < BtcGameplay.Defs.Count; i++)
@@ -630,7 +636,7 @@ namespace BetterThanCastle
             if (i < 0 || i >= BtcGameplay.Defs.Count) return;
             string g = GroupOf(i);
             Query = "";
-            Page = g == "timer" ? PTimer : (g == "shield" ? PShield : PRules);
+            Page = g == "timer" ? PTimer : (g == "shield" ? PShield : (g == "phantom" ? PPhantom : PRules));
             BtcUi.SetOpen("gp:fold:" + g, true);
             BtcJump.Target("gp", BtcGameplay.Defs[i].Id);
         }

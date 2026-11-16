@@ -147,3 +147,12 @@
 - Old 5 questions = my defaults: task list inside the tool panel (edit, vanilla priority/delete commands), binds per mode (unassigned), selecting the task opens it for editing, piles question moot (no drops).
 - Terraform tasks never auto-delete and keep their crew while cells are left to dig (vanilla deleted a task whose goals hit 0 for a moment while a crust layer was removed).
 - 2026-11-14 N1/N16/N17/N18: no voluntary pause in the lobby; a pause is never applied on a client whose own level (or hot-join) still loads (kept as state, applied when live). Host drops a peer silent 30 s (120 s while it says loading) and keeps its player for the rejoin; the client reconnects itself at 20 s. Max 8 players/16 transport links with BC ON, vanilla 4 with BC OFF. Tests run with 5 games max (6 ran out of RAM).
+
+## 2026-11-16 Phantoms (0.5.1, Features/BtcPhantom.cs)
+- User answers: look = outline only (near-invisible body + blue outline), 0 damage to ENEMY buildings, an armed phantom deals normal weapon damage to units (fists 0), carried things vanish on death.
+- My defaults: 2 phantoms per player (1-20), "when" = two rows (phantom.peace switch, phantom.delay seconds; there is no choice row type), vision rule vis.phantom x0.25 in the Fog of war group.
+- Blocks have no owner: a block belongs to the nearest player crystal (home or captured) within 50 blocks; phantoms cannot damage blocks of an enemy crystal there. Terrain and nature are always allowed (digging). Objects with a faction: own/allied only.
+- Not counted: phantoms never enter Faction._unitCount (AnyUnitChangedFaction/RemoveUnit prefixes; host marks during its own spawn, clients mark from msg 118 and subtract once).
+- Death: RpcDie prefix on every peer: no corpse/firefly, carried items wiped (host), unit released to the pool; penalty eats unnamed fireflies of the home crystal (never below 0).
+- Outline: inverted hull (smoothed normals, Hidden/Internal-Colored _Cull Front) + depth-only body copy; width swapped among 5 meshes by camera distance. Phantom.png in the pack replaces the body texture (its alpha = opacity).
+- Known limits: saves and replay keyframe seeks lose the phantom mark (a loaded phantom is a normal worker); kill stats count phantom deaths.
