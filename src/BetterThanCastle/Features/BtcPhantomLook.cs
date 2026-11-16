@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Brix.Game;
+using Brix.Game.AI;
 using UnityEngine;
 
 namespace BetterThanCastle
@@ -18,9 +20,6 @@ namespace BetterThanCastle
         private const string Tag = "BtcPhantom";
         private static readonly float[] BandDist = { 12f, 25f, 45f, 80f };
         private static readonly float[] BandWidth = { 0.025f, 0.045f, 0.08f, 0.14f, 0.22f };   // world units
-        private static readonly Color Outline = new Color(0.35f, 0.8f, 1f, 0.95f);
-        private static readonly Color Tint = new Color(0.55f, 0.8f, 1f, 0.12f);
-        private static readonly Color TintNoHull = new Color(0.45f, 0.75f, 1f, 0.4f);
 
         private sealed class Part
         {
@@ -35,9 +34,8 @@ namespace BetterThanCastle
         private sealed class MeshSet { internal Mesh Depth; internal Mesh[] Bands; internal bool Failed; }
 
         private static readonly Dictionary<Mesh, MeshSet> MeshCache = new Dictionary<Mesh, MeshSet>();
-        private static readonly Dictionary<Texture, Material> BodyCache = new Dictionary<Texture, Material>();
         private static readonly Dictionary<int, Material[]> Pristine = new Dictionary<int, Material[]>();
-        private static Material _outlineMat, _depthMat, _bodyNoTex;
+        private static Material _depthMat;
         private static Texture2D _packTex;
         private static string _packDir;
         private static int _texVersion;
@@ -47,7 +45,7 @@ namespace BetterThanCastle
         private static int _camFrame = -1;
 
         private readonly List<Part> _parts = new List<Part>();
-        private int _myVersion = -1;
+        private int _myVersion = -1, _colKey = int.MinValue;
         private float _nextCheck, _nextBand;
         private bool _removing;
 
@@ -99,7 +97,7 @@ namespace BetterThanCastle
                 }
             }
             catch (Exception e) { BtcLog.Warn("Phantom", "pack texture: " + e.Message); }
-            if (old != _packTex) { _texVersion++; if (old != null) { BodyCache.Remove(old); Destroy(old); } }
+            if (old != _packTex) { _texVersion++; if (old != null) Destroy(old); }
         }
 
         // ------------------------------------------------------------------ lifecycle
@@ -149,7 +147,8 @@ namespace BetterThanCastle
             if (now >= _nextCheck)
             {
                 _nextCheck = now + 0.5f;
-                bool redo = _myVersion != _texVersion;
+                Color nc;
+                bool redo = _myVersion != _texVersion || ColorKey(gameObject, out nc) != _colKey;   // faction known late on a client, pack changed
                 for (int i = 0; i < _parts.Count && !redo; i++)
                 {
                     Part p = _parts[i];
@@ -184,6 +183,8 @@ namespace BetterThanCastle
             try
             {
                 _myVersion = _texVersion;
+                Color col;
+                _colKey = ColorKey(gameObject, out col);
                 SkinnedMeshRenderer[] all = GetComponentsInChildren<SkinnedMeshRenderer>(false);
                 for (int i = 0; i < all.Length; i++)
                 {
@@ -203,14 +204,14 @@ namespace BetterThanCastle
                     {
                         Material o = p.Orig[k];
                         if (Ours(o)) { p.Mine[k] = o; continue; }
-                        p.Mine[k] = Body(o != null ? o.mainTexture : null, hull);
+                        p.Mine[k] = Body(o != null ? o.mainTexture : null, hull, _colKey, col);
                     }
                     src.sharedMaterials = p.Mine;
                     if (hull)
                     {
                         p.Depth = Child(src, Tag + "Depth", ms.Depth, DepthMat());
                         p.Bands = ms.Bands;
-                        p.Hull = Child(src, Tag + "Hull", ms.Bands[0], OutlineMat());
+                        p.Hull = Child(src, Tag + "Hull", ms.Bands[0], OutlineMat(_colKey, col));
                         p.Band = 0;
                     }
                     _parts.Add(p);
@@ -263,32 +264,66 @@ namespace BetterThanCastle
             return r;
         }
 
-        // ------------------------------------------------------------------ materials
-        private static Material Body(Texture orig, bool hull)
+        // ------------------------------------------------------------------ colours (the owner's faction colour; Rainbow cycles its hue)
+        private const int RainbowKey = -1;
+
+        /// <summary>Colour key of a unit's faction: packed RGB, RainbowKey for the rainbow colour, 0 = no faction yet (light blue).</summary>
+        internal static int ColorKey(GameObject go, out Color c)
         {
-            Texture tex = _packTex != null ? (Texture)_packTex : orig;
-            if (tex == null) return BodyNoTex(hull);
-            Material m;
-            if (BodyCache.TryGetValue(tex, out m) && m != null && (m.color == (_packTex != null ? Color.white : (hull ? Tint : TintNoHull)))) return m;
-            m = new Material(Shader.Find("Sprites/Default"));
-            m.name = Tag + "Body";
-            m.mainTexture = tex;
-            m.color = _packTex != null ? Color.white : (hull ? Tint : TintNoHull);
-            m.renderQueue = 3000;
-            BodyCache[tex] = m;
-            return m;
+            c = new Color(0.35f, 0.8f, 1f);
+            Labor l = go != null ? go.GetComponent<Labor>() : null;
+            Faction f = l != null ? l.faction : null;
+            if (f == null) return 0;
+            if (f.name == "Rainbow" || f.name == "Black") { c = Color.HSVToRGB(Mathf.Repeat(Time.unscaledTime * 0.25f, 1f), 0.8f, 1f); return RainbowKey; }
+            c = f.FactionColor;
+            // very dark colours would vanish on the ground: lift them
+            float lum = 0.3f * c.r + 0.59f * c.g + 0.11f * c.b;
+            if (lum < 0.3f) c = Color.Lerp(c, Color.white, 0.5f);
+            c.a = 1f;
+            Color32 q = c;
+            return 1 + (q.r << 16 | q.g << 8 | q.b);
         }
 
-        private static Material BodyNoTex(bool hull)
+        /// <summary>Colour of the death effect (current rainbow hue for a rainbow faction).</summary>
+        internal static Color FxColor(GameObject go) { Color c; ColorKey(go, out c); return c; }
+
+        /// <summary>Every frame from BtcPhantom.Tick: the rainbow outline/body materials follow the hue.</summary>
+        internal static void TickShared()
         {
-            if (_bodyNoTex == null)
-            {
-                _bodyNoTex = new Material(Shader.Find("Sprites/Default"));
-                _bodyNoTex.name = Tag + "BodyPlain";
-                _bodyNoTex.renderQueue = 3000;
-            }
-            _bodyNoTex.color = hull ? Tint : TintNoHull;
-            return _bodyNoTex;
+            if (!OutlineCache.ContainsKey(RainbowKey) && _rainbowBodies.Count == 0) return;
+            Color c = Color.HSVToRGB(Mathf.Repeat(Time.unscaledTime * 0.25f, 1f), 0.8f, 1f);
+            Material o;
+            if (OutlineCache.TryGetValue(RainbowKey, out o) && o != null) o.SetColor("_Color", new Color(c.r, c.g, c.b, 0.95f));
+            for (int i = 0; i < _rainbowBodies.Count; i++) if (_rainbowBodies[i] != null) _rainbowBodies[i].color = BodyTint(c, true);
+        }
+
+        private static readonly Dictionary<int, Material> OutlineCache = new Dictionary<int, Material>();
+        private static readonly Dictionary<long, Material> BodyCache2 = new Dictionary<long, Material>();
+        private static readonly List<Material> _rainbowBodies = new List<Material>();
+
+        private static Color BodyTint(Color c, bool hull)
+        {
+            Color t = Color.Lerp(c, Color.white, 0.35f);
+            t.a = hull ? 0.12f : 0.4f;
+            return t;
+        }
+
+        // ------------------------------------------------------------------ materials
+        private static Material Body(Texture orig, bool hull, int key, Color col)
+        {
+            Texture tex = _packTex != null ? (Texture)_packTex : orig;
+            bool pack = _packTex != null;
+            long ck = ((long)(tex != null ? tex.GetInstanceID() : 0) << 32) ^ (uint)(pack ? 7 : key) ^ (hull ? 0x40000000L : 0L);
+            Material m;
+            if (BodyCache2.TryGetValue(ck, out m) && m != null) return m;
+            m = new Material(Shader.Find("Sprites/Default"));
+            m.name = Tag + "Body";
+            if (tex != null) m.mainTexture = tex;
+            m.color = pack ? Color.white : BodyTint(col, hull);
+            m.renderQueue = 3000;
+            BodyCache2[ck] = m;
+            if (!pack && key == RainbowKey) _rainbowBodies.Add(m);
+            return m;
         }
 
         private static Material Colored(string name, Color c, int cull, int zwrite, int src, int dst, int queue)
@@ -306,12 +341,14 @@ namespace BetterThanCastle
             return m;
         }
 
-        private static Material OutlineMat()
+        private static Material OutlineMat(int key, Color col)
         {
-            if (_outlineMat == null)
-                _outlineMat = Colored(Tag + "Outline", Outline, (int)UnityEngine.Rendering.CullMode.Front, 0,
-                    (int)UnityEngine.Rendering.BlendMode.SrcAlpha, (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha, 3002);
-            return _outlineMat;
+            Material m;
+            if (OutlineCache.TryGetValue(key, out m) && m != null) return m;
+            m = Colored(Tag + "Outline", new Color(col.r, col.g, col.b, 0.95f), (int)UnityEngine.Rendering.CullMode.Front, 0,
+                (int)UnityEngine.Rendering.BlendMode.SrcAlpha, (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha, 3002);
+            OutlineCache[key] = m;
+            return m;
         }
 
         private static Material DepthMat()

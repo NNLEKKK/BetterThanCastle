@@ -1,0 +1,14 @@
+# phantom-play: replay of a phantom-mp match (2 phantoms per side, one killed at ~30 s): marks during playback and after seeks.
+replay 05-11-34_Plateau
+waitreplay 180
+wait 20
+phantom dump play20
+seek 8
+wait 3
+phantom dump seek8
+seek 33
+wait 3
+phantom dump seek33
+wait 8
+phantom dump seek33+8
+quit

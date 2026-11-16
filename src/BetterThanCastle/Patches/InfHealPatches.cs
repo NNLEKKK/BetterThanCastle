@@ -14,6 +14,8 @@ namespace BetterThanCastle.Patches
             catch (Exception e) { BtcLog.Error("Hook", "InfHeal.Save: " + e); }
             try { BtcShieldBox.OnSave(__instance.path); }
             catch (Exception e) { BtcLog.Error("Hook", "InfHeal.Save: " + e); }
+            try { BtcPhantom.OnSave(__instance.path); }
+            catch (Exception e) { BtcLog.Error("Hook", "Phantom.Save: " + e); }
         }
     }
 
@@ -26,6 +28,8 @@ namespace BetterThanCastle.Patches
             catch (Exception e) { BtcLog.Error("Hook", "InfHeal.Load: " + e); }
             try { BtcShieldBox.OnLoad(__instance.path); }
             catch (Exception e) { BtcLog.Error("Hook", "InfHeal.Load: " + e); }
+            try { BtcPhantom.OnLoad(__instance.path); }
+            catch (Exception e) { BtcLog.Error("Hook", "Phantom.Load: " + e); }
         }
     }
 

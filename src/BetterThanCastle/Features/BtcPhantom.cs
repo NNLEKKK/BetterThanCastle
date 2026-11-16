@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Reflection;
 using System.Text;
 using Brix.Engine;
@@ -186,7 +187,7 @@ namespace BetterThanCastle
         }
 
         /// <summary>Marks an existing unit as a phantom on this peer; takes it out of the faction count if vanilla counted it.</summary>
-        private static void Adopt(GameObject go, uint netId)
+        private static void Adopt(GameObject go, uint netId, bool assumeCounted = false)
         {
             int id = go.GetInstanceID();
             Mark m;
@@ -200,8 +201,20 @@ namespace BetterThanCastle
             LiveCount++;
             Faction c;
             if (CountedIn.TryGetValue(id, out c)) { AdjustCount(c, -1); CountedIn.Remove(id); }
+            else if (assumeCounted)
+            {
+                // host after a save load: every loaded unit with a faction is in the vanilla count (the mirror may have missed the load)
+                Labor l = go.GetComponent<Labor>();
+                if (l != null && l.faction != null) AdjustCount(l.faction, -1);
+            }
             ApplyVision(m);
             BtcPhantomLook.Ensure(go);
+            if (BtcReplay.Mode == BtcReplay.State.Playing)
+            {
+                // playback keeps the spawn-time HP of the recording: show what the match had (1 HP, no stamina)
+                BricktronDamageReceiver dr = go.GetComponent<BricktronDamageReceiver>();
+                if (dr != null) { dr.MaxHP = 1f; dr.MaxStamina = 0f; }
+            }
         }
 
         /// <summary>Client: the host no longer lists this unit as a phantom (but it lives on): back to a normal unit.</summary>
@@ -307,6 +320,7 @@ namespace BetterThanCastle
             FCorpse(loco) = true;
             bool server = NetworkServer.active;
             if (Host) HostDied(go);
+            BtcPhantomFx.Burst(go, BtcPhantomLook.FxColor(go));
             RestoreVision(m);
             BtcPhantomLook.Remove(go);
             if (server)
@@ -380,15 +394,16 @@ namespace BetterThanCastle
                 if (!_wasOn) { _wasOn = true; _clock = 0f; BtcLog.Info("Phantom", "on (host=" + Host + ", count=" + Count + ")"); }
                 _clock += Time.deltaTime;
                 BtcPhantomLook.CheckPack();
+                BtcPhantomLook.TickShared();
                 float un = Time.unscaledTime;
                 if (Host)
                 {
                     float now = Time.time;
                     if (now >= _nextStep) { _nextStep = now + 0.25f; HostStep(now); }
-                    if (_dirty && un >= _nextSend - 1.5f || un >= _nextSend) { _dirty = false; _nextSend = un + 2f; Broadcast(); }
+                    if (_dirty && un >= _nextSend - 0.8f || un >= _nextSend) { _dirty = false; _nextSend = un + 1f; Broadcast(); }   // 1 Hz: a replay seek re-marks within a second
                 }
                 else if (un >= _nextClient) { _nextClient = un + 0.5f; ClientStep(); }
-                if (un >= _nextLog) { _nextLog = un + 30f; BtcLog.Info("Phantom", "live=" + LiveCount + " marks=" + Marks.Count + " spawned=" + _spawned + " died=" + _died); }
+                if (un >= _nextLog) { _nextLog = un + 30f; BtcLog.Info("Phantom", "live=" + LiveCount + " marks=" + Marks.Count + " spawned=" + _spawned + " died=" + _died + " fx=" + BtcPhantomFx.Bursts + " snd=" + BtcPhantomFx.Sounds); }
             }
             catch (Exception e) { BtcLog.Error("Phantom", "tick: " + e); }
         }
@@ -446,6 +461,7 @@ namespace BetterThanCastle
 
         private static void HostStep(float now)
         {
+            if (_restore != null && !TryRestore(now)) return;   // a loaded save: re-mark its phantoms before anything spawns
             if (now >= _nextNest || Homes.Count == 0) { _nextNest = now + 1f; RefreshNests(); }
             bool started = Started();
             int n = Count, budget = 4;
@@ -506,6 +522,115 @@ namespace BetterThanCastle
             _spawned++;
             _dirty = true;
             return go;
+        }
+
+        // ------------------------------------------------------------------ saves: btc-phantoms.txt next to the save (host, BC ON)
+        internal const string FileName = "btc-phantoms.txt";
+
+        private sealed class Saved { internal bool Alive; internal Vector3 P; internal int Fac; internal float Left; }
+
+        private static List<Saved> _restore;
+        private static float _restoreFrom, _restoreUntil;
+
+        /// <summary>Asset_Map.Disk_Save postfix: "P x y z faction" per live phantom, "D faction secondsLeft" per phantom waiting to respawn.</summary>
+        internal static void OnSave(string folder)
+        {
+            if (!NetworkServer.active || !BtcNetworkGate.Enabled || string.IsNullOrEmpty(folder)) return;
+            string file = System.IO.Path.Combine(folder, FileName);
+            if (!RuleOn || LiveCount == 0 && Slots.Count == 0) { if (File.Exists(file)) File.Delete(file); return; }
+            StringBuilder sb = new StringBuilder();
+            float now = Time.time;
+            int live = 0, dead = 0;
+            foreach (KeyValuePair<int, List<Slot>> kv in Slots)
+                for (int i = 0; i < kv.Value.Count; i++)
+                {
+                    Slot s = kv.Value[i];
+                    if (s.Go != null && IsPhantom(s.Go))
+                    {
+                        Vector3 p = s.Go.transform.position;
+                        sb.Append("P ").Append(p.x.ToString("F2", Inv)).Append(' ').Append(p.y.ToString("F2", Inv)).Append(' ').Append(p.z.ToString("F2", Inv)).Append(' ').Append(kv.Key).Append('\n');
+                        live++;
+                    }
+                    else
+                    {
+                        sb.Append("D ").Append(kv.Key).Append(' ').Append(Mathf.Max(0f, s.RespawnAt - now).ToString("F1", Inv)).Append('\n');
+                        dead++;
+                    }
+                }
+            File.WriteAllText(file, sb.ToString());
+            BtcLog.Info("Phantom", "saved " + live + " live, " + dead + " waiting");
+        }
+
+        /// <summary>Asset_Map.Disk_ReadGameObjects prefix: the save being loaded. Its phantoms are re-marked once the units exist.</summary>
+        internal static void OnLoad(string folder)
+        {
+            _restore = null;
+            if (!NetworkServer.active || !BtcNetworkGate.Enabled || string.IsNullOrEmpty(folder)) return;
+            string file = System.IO.Path.Combine(folder, FileName);
+            if (!File.Exists(file)) return;
+            List<Saved> list = new List<Saved>();
+            string[] lines = File.ReadAllLines(file);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string[] t = lines[i].Split(' ');
+                float x, y, z, left;
+                int fac;
+                if (t.Length >= 5 && t[0] == "P" && float.TryParse(t[1], NumberStyles.Float, Inv, out x) && float.TryParse(t[2], NumberStyles.Float, Inv, out y)
+                    && float.TryParse(t[3], NumberStyles.Float, Inv, out z) && int.TryParse(t[4], NumberStyles.Integer, Inv, out fac))
+                    list.Add(new Saved { Alive = true, P = new Vector3(x, y, z), Fac = fac });
+                else if (t.Length >= 3 && t[0] == "D" && int.TryParse(t[1], NumberStyles.Integer, Inv, out fac) && float.TryParse(t[2], NumberStyles.Float, Inv, out left))
+                    list.Add(new Saved { Alive = false, Fac = fac, Left = left });
+            }
+            if (list.Count == 0) return;
+            _restore = list;
+            _restoreFrom = Time.unscaledTime + 3f;
+            _restoreUntil = Time.unscaledTime + 90f;
+            BtcLog.Info("Phantom", "save has " + list.Count + " phantom slot(s), restoring after the load");
+        }
+
+        /// <summary>Host step while a loaded save waits: false = keep waiting (no spawns yet). Each saved live phantom takes the nearest unit of its
+        /// faction (within 2.5 blocks, the name Phantom first); saved dead ones keep their remaining cooldown.</summary>
+        private static bool TryRestore(float now)
+        {
+            float un = Time.unscaledTime;
+            if (un > _restoreUntil) { BtcLog.Warn("Phantom", "restore: gave up"); _restore = null; return true; }
+            if (un < _restoreFrom) return false;
+            Labor[] all = UnityEngine.Object.FindObjectsOfType<Labor>();
+            if (all.Length == 0) return false;
+            RefreshNests();
+            bool[] used = new bool[all.Length];
+            int ok = 0, miss = 0;
+            Slots.Clear();
+            for (int k = 0; k < _restore.Count; k++)
+            {
+                Saved sv = _restore[k];
+                List<Slot> l;
+                if (!Slots.TryGetValue(sv.Fac, out l)) { l = new List<Slot>(); Slots[sv.Fac] = l; }
+                if (!sv.Alive) { l.Add(new Slot { RespawnAt = now + sv.Left }); continue; }
+                int best = -1;
+                float bestD = 2.5f * 2.5f;
+                for (int i = 0; i < all.Length; i++)
+                {
+                    Labor lb = all[i];
+                    if (used[i] || lb == null || !lb.gameObject.activeInHierarchy || lb.faction == null || lb.faction.ID != sv.Fac || IsPhantom(lb.gameObject)) continue;
+                    float d = (lb.transform.position - sv.P).sqrMagnitude;
+                    Nom nm = lb.GetComponent<Nom>();
+                    if (nm != null && nm.GetNom() == "Phantom") d *= 0.25f;
+                    if (d < bestD) { bestD = d; best = i; }
+                }
+                if (best < 0) { miss++; l.Add(new Slot { RespawnAt = now + Cooldown }); continue; }
+                used[best] = true;
+                GameObject go = all[best].gameObject;
+                NetworkIdentity ni = go.GetComponent<NetworkIdentity>();
+                Adopt(go, ni != null ? ni.netId.Value : 0u, true);
+                Enforce(go);
+                l.Add(new Slot { Go = go });
+                ok++;
+            }
+            BtcLog.Info("Phantom", "restored " + ok + " phantom(s) from the save, " + miss + " not found (respawn after the cooldown)");
+            _restore = null;
+            _dirty = true;
+            return true;
         }
 
         // ------------------------------------------------------------------ wire: msg 118 host -> clients "1|netId,netId,..."

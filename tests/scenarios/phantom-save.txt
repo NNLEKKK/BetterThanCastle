@@ -1,0 +1,22 @@
+# phantom-save: phantoms survive a save + load: new sandbox game, 3 phantoms, kill 1 (a waiting slot), save "phlab", back to the menu,
+# load the save, rules on again, dump: 2 re-marked (+1 back after its cooldown), unit count unchanged, no extra spawns.
+newgame
+waitgame 240
+gameplay phantom.on=1;phantom.count=3;phantom.cd=25;phantom.delay=0
+wait 5
+phantom kill 1
+wait 2
+phantom dump saved
+phantom save phlab
+wait 3
+leave
+wait 15
+gameplay phantom.on=1;phantom.count=3;phantom.cd=25;phantom.delay=0
+phantom load phlab
+waitgame 240
+gameplay phantom.on=1;phantom.count=3;phantom.cd=25;phantom.delay=0
+wait 8
+phantom dump loaded
+wait 25
+phantom dump later
+quit

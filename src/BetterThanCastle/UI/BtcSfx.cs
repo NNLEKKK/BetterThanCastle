@@ -14,7 +14,7 @@ namespace BetterThanCastle
     {
         private enum K { Hover, Click, On, Off, Type0, Type1, Type2, Back, Delete, Ok, Tab, Find, Miss, Jump, Warn, Open, Close, Tick }
 
-        private const int SR = 44100;
+        internal const int SR = 44100;
         private static readonly byte[][] Wav = new byte[18][];
         private static readonly GCHandle[] Pins = new GCHandle[18];
         private static int _built = -1;

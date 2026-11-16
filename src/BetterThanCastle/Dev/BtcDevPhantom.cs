@@ -29,6 +29,8 @@ namespace BetterThanCastle.Dev
                     case "dump": Dump(p.Length > 2 ? p[2] : "-"); break;
                     case "kill": Kill(p.Length > 2 ? int.Parse(p[2]) : 1); break;
                     case "fist": Fist(); break;
+                    case "save": Save(p.Length > 2 ? p[2] : "phlab"); break;
+                    case "load": Load(p.Length > 2 ? p[2] : "phlab"); break;
                     default: BtcDevLab.Lab("phantom: unknown " + sub); break;
                 }
             }
@@ -66,6 +68,29 @@ namespace BetterThanCastle.Dev
                     + " vis=" + (v != null ? v.LineOfSightRange.ToString() : "?") + " look=" + (g.GetComponent<BtcPhantomLook>() != null)
                     + " pos=" + g.transform.position);
             }
+        }
+
+        /// <summary>Manual save of the running game under a custom name (the path of the Save dialog).</summary>
+        private static void Save(string name)
+        {
+            Brix.Assets.Asset_Map s = Brix.Assets.Asset_Map.CreateShellFrom(GameParam.Map, Brix.Assets.Asset_Map.MapType.Save);
+            s.customName = name;
+            s.saveType = Brix.Assets.Asset_Map.SaveType.Manualsave;
+            s.Disk_WriteAsNew(Brix.Assets.AssetAuthorType.Official);
+            BtcDevLab.Lab("phantom save " + name + " -> " + s.path);
+        }
+
+        /// <summary>From the main menu: starts the newest save with that custom name (sandbox), like Load game.</summary>
+        private static void Load(string name)
+        {
+            List<Brix.Assets.Asset_Map> all = Brix.Assets.AssetDispensary.saves.SendQuery(Brix.Assets.AssetQueryParameters.AllSources | Brix.Assets.AssetQueryParameters.RefreshCache, Brix.Assets.AssetPlayableContext.Any, false);
+            Brix.Assets.Asset_Map save = null;
+            for (int i = 0; i < all.Count; i++) if (all[i].customName == name) save = all[i];
+            if (save == null) { BtcDevLab.Lab("phantom load: no save " + name + " (of " + all.Count + ")"); return; }
+            if (!BtcDevMatch.Pick("default", "sandbox", null, Brix.Assets.AssetPlayableContext.Singleplayer)) { BtcDevLab.Lab("phantom load: menu not ready"); return; }
+            GameParam.Map = save;
+            BtcDevLab.Lab("phantom load " + name + " <- " + save.path);
+            GameParam.StartGame(null);
         }
 
         private static void Kill(int n)
