@@ -7,7 +7,7 @@ namespace BetterThanCastle
     /// Phantom death effect (every peer, from BtcPhantom.OnDie, before the unit goes back to the pool): the skinned body is baked once into a
     /// plain mesh, which glitches for 0.3 s (sideways jerks, flicker, stretch) and then collapses like a CRT switching off (to a line, then a dot).
     /// One additive faction-coloured material per colour, one baked mesh per death, nothing per frame but a transform and a colour.
-    /// Sound: a short synthesized digital zap with a falling, stuttering pitch (BtcSfx.Pin), only for deaths near the camera and in view,
+    /// Sound: a short soft synthesized "dissolve" (gliding detuned sines, BtcSfx.Pin), only for deaths near the camera and in view,
     /// three volume steps by distance, at most one every 0.12 s.
     /// </summary>
     internal sealed class BtcPhantomFx : MonoBehaviour
@@ -124,39 +124,37 @@ namespace BetterThanCastle
             if (_snd == null)
             {
                 _snd = new IntPtr[3];
-                float[] amp = { 0.2f, 0.12f, 0.06f };
-                for (int i = 0; i < 3; i++) _snd[i] = BtcSfx.Pin(Zap(amp[i]));
+                float[] amp = { 0.16f, 0.1f, 0.05f };
+                for (int i = 0; i < 3; i++) _snd[i] = BtcSfx.Pin(Dissolve(amp[i]));
             }
             Sounds++;
             BtcSfx.PlayPtr(_snd[d < 30f ? 0 : (d < 60f ? 1 : 2)]);
         }
 
-        /// <summary>0.28 s digital zap: square wave in 22 ms steps with a falling, randomly jumping pitch, sample-and-hold crush, a few dropouts.</summary>
-        private static float[] Zap(float amp)
+        /// <summary>0.45 s soft "dissolve": two slightly detuned sines and a quiet sub-octave glide down (560 -> 240 Hz) with a slow attack,
+        /// a gentle 14 Hz shimmer, a breath of low-passed noise, all through a 1.6 kHz low-pass. No square waves, no steps, no hard edges.</summary>
+        private static float[] Dissolve(float amp)
         {
             int sr = BtcSfx.SR;
-            int n = (int)(0.28f * sr);
+            int n = (int)(0.45f * sr);
             float[] s = new float[n];
-            System.Random r = new System.Random(7);
-            int seg = (int)(0.022f * sr), hold = 1;
-            float f = 900f, held = 0f, y = 0f;
-            bool mute = false;
-            double ph = 0.0;
-            float lp = Mathf.Exp(-2f * Mathf.PI * 3500f / sr);
+            System.Random r = new System.Random(11);
+            double p1 = 0.0, p2 = 0.0, p3 = 0.0;
+            float y = 0f, ny = 0f;
+            float lp = Mathf.Exp(-2f * Mathf.PI * 1600f / sr), nlp = Mathf.Exp(-2f * Mathf.PI * 900f / sr);
             for (int i = 0; i < n; i++)
             {
-                float t = (float)i / n;
-                if (i % seg == 0)
-                {
-                    f = Mathf.Lerp(900f, 140f, t) * (0.7f + (float)r.NextDouble() * 0.7f);
-                    hold = 1 + r.Next(6);
-                    mute = i > 0 && r.NextDouble() < 0.12;
-                }
-                ph += 2.0 * Math.PI * f / sr;
-                if (i % hold == 0) held = Math.Sin(ph) >= 0.0 ? 1f : -1f;
-                float q = Mathf.Round(held * 3f) / 3f;
-                float env = Mathf.Min(1f, i / (0.002f * sr)) * Mathf.Exp(-t * 3.2f) * Mathf.Min(1f, (n - i) / (0.01f * sr));
-                float x = mute ? 0f : q * env;
+                float t = (float)i / sr, k = (float)i / n;
+                float f = 560f * Mathf.Pow(240f / 560f, k);           // exponential glide: sounds even, not sliding
+                p1 += 2.0 * Math.PI * f / sr;
+                p2 += 2.0 * Math.PI * f * 1.012 / sr;
+                p3 += 2.0 * Math.PI * f * 0.5 / sr;
+                float tone = (float)(Math.Sin(p1) + Math.Sin(p2)) * 0.5f + 0.3f * (float)Math.Sin(p3);
+                float shimmer = 1f - 0.18f * (0.5f + 0.5f * Mathf.Sin(2f * Mathf.PI * 14f * t));
+                ny = (1f - nlp) * ((float)r.NextDouble() * 2f - 1f) + nlp * ny;
+                float breath = ny * 0.5f * Mathf.Exp(-t * 9f);
+                float env = (1f - Mathf.Exp(-t / 0.025f)) * Mathf.Exp(-t * 5f) * Mathf.Min(1f, (n - i) / (0.04f * sr));
+                float x = (tone * shimmer + breath) * env;
                 y = (1f - lp) * x + lp * y;
                 s[i] = y * amp;
             }

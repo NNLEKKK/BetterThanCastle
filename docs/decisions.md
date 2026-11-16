@@ -156,5 +156,5 @@
 - Death: RpcDie prefix on every peer: no corpse/firefly, carried items wiped (host), unit released to the pool; penalty eats unnamed fireflies of the home crystal (never below 0).
 - Outline: inverted hull (smoothed normals, Hidden/Internal-Colored _Cull Front) + depth-only body copy; width swapped among 5 meshes by camera distance. Phantom.png in the pack replaces the body texture (its alpha = opacity).
 - Saves: btc-phantoms.txt in the save folder (P x y z faction / D faction secondsLeft); on load the host re-marks the nearest unit of that faction (name Phantom first) before any spawn, dead slots keep their cooldown (lab phantom-save OK). Replays: msg 118 at 1 Hz re-marks after a keyframe seek (lab phantom-play OK); playback shows 1 HP locally.
-- User 2026-11-16: death = glitch + CRT collapse (baked mesh, 0.46 s, additive faction colour), synthesized zap sound (near + in view only); outline and body tint in the faction colour (Rainbow cycles, dark colours lifted).
+- User 2026-11-16: death = glitch + CRT collapse (baked mesh, 0.46 s, additive faction colour), soft synthesized "dissolve" sound (detuned sines gliding down, user found the 8-bit zap too harsh; near + in view only); outline and body tint in the faction colour (Rainbow cycles, dark colours lifted).
 - Known limit: kill stats count phantom deaths.
