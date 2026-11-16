@@ -1,0 +1,8 @@
+# client1 of mp-lobbyleave leaves on purpose; client2 is killed by the plan
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 120
+wait 25
+leave
+wait 20
+quit

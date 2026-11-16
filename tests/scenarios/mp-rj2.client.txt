@@ -1,0 +1,24 @@
+# client of mp-rj2: leave to the menu and join again twice (resume Ready each time), then the plan kills it (crash)
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 120
+ready 420
+waitgame 300
+mark ingame
+timerstart 90
+wait 60
+leave
+wait 8
+join 127.0.0.1
+waitgame 300
+resumeready 120
+mark back1
+wait 30
+leave
+wait 8
+join 127.0.0.1
+waitgame 300
+resumeready 120
+mark back2
+wait 120
+quit

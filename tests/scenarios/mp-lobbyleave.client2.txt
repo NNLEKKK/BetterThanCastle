@@ -1,0 +1,6 @@
+# client2 of mp-lobbyleave: sits in the lobby until the plan kills it (crash)
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 120
+wait 300
+quit

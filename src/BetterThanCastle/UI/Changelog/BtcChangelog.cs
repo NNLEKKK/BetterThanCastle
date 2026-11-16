@@ -15,7 +15,8 @@ namespace BetterThanCastle
         internal sealed class Entry
         {
             internal char Kind;          // + new, ~ reworked, * improved, = issue fixed (reported by a user), - removed
-            internal string Area;        // BtcReportData.AreaKeys value
+            internal string Area;        // AreaKeys value
+            internal bool Exp;           // experimental badge
             internal string Target;      // null or "tab:N[:arg]" / "url:..."
             internal string En, Ru;
         }
@@ -53,7 +54,7 @@ namespace BetterThanCastle
                         }
                         else if (cur != null && (l[0] == '+' || l[0] == '~' || l[0] == '*' || l[0] == '=' || l[0] == '-') && p.Length >= 4)
                         {
-                            cur.Entries.Add(new Entry { Kind = l[0], Area = p[0], Target = p[1] == "-" || p[1].Length == 0 ? null : p[1], En = p[2], Ru = p[3] });
+                            cur.Entries.Add(new Entry { Kind = l[0], Area = p[0], Target = p[1] == "-" || p[1].Length == 0 ? null : p[1], En = p[2], Ru = p[3], Exp = p.Length > 4 && p[4] == "exp" });
                         }
                         else BtcLog.Warn("Changelog", "bad line " + (i + 1) + ": " + l);
                     }
@@ -96,6 +97,11 @@ namespace BetterThanCastle
             }
             catch (Exception) { }
         }
+
+        // changelog places (own list: the bug report form indexes BtcReportData.Area*)
+        internal static readonly string[] AreaKeys = { "replay", "hotkeys", "visuals", "gameplay", "terraform", "mapedit", "shields", "spectate", "hud", "profile", "perf", "multiplayer", "duel", "packs", "menu", "other" };
+        internal static readonly string[] AreaEn = { "Replay", "Hotkeys", "Visuals", "Gameplay", "Terraforming", "Map editor", "Base shields", "Spectators and pings", "Statistics and HUD", "Profile", "Performance and loading", "Multiplayer", "Duel", "Packs", "Menu / UI", "Other" };
+        internal static readonly string[] AreaRu = { "Реплеи", "Хоткеи", "Визуал", "Геймплей", "Терраформинг", "Редактор карт", "Щиты баз", "Зрители и пинги", "Статистика и HUD", "Профиль", "Производительность и загрузка", "Мультиплеер", "Дуэль", "Паки", "Меню / UI", "Другое" };
 
         // ---- link targets
         internal static readonly string[] TabNameEn = { "Resource Packs", "Visuals", "BetterConnection", "Advanced Hotkeys", "Gameplay", "Share", "Profile", "Replay", "Duel", "Report a bug", "Changelog", "Statistics", "UI editor", "Notifications" };

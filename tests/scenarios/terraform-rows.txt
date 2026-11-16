@@ -1,0 +1,26 @@
+# terraform-rows: user case, one task = row dug 1 deep + row filled 1 high (12 long), no drops; worker state every 20 s
+newgame
+waitgame 240
+wait 5
+tfrows 7 12
+wait 3
+tfhire
+wait 20
+tfdump t20
+wait 20
+tfdump t40
+wait 20
+tfdump t60
+wait 20
+tfdump t80
+wait 20
+tfdump t100
+wait 20
+tfdump t120
+wait 20
+tfdump t140
+wait 20
+tfdump t160
+wait 20
+tfdump t180
+quit

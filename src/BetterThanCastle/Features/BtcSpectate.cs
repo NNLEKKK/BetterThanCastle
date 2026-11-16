@@ -958,7 +958,8 @@ public static class BtcSpectate
 				if (flag4)
 				{
 					// a closed connection's id is often reused at once by the same player's new link: only the same object is alive
-					return object.ReferenceEquals(networkConnection, c) && networkConnection.isConnected;
+					// (and a link the host already closed is gone even while UNET still lists it)
+					return object.ReferenceEquals(networkConnection, c) && networkConnection.isConnected && !BtcNetManager.ClosedByHost(c);
 				}
 			}
 			result = false;
@@ -1222,7 +1223,7 @@ public static class BtcSpectate
 				}
 				else
 				{
-					bool flag34 = job.stage > 0 && job.stage != 6 && now - job.t0 > 150f;   // stage 6 has its own Ready limit
+					bool flag34 = job.stage > 0 && job.stage != 6 && job.stage != 5 && now - job.t0 > 150f;   // stages 5 (client load) and 6 (Ready) have their own limits
 					bool flag35 = flag34;
 					if (flag35)
 					{
@@ -1419,7 +1420,7 @@ public static class BtcSpectate
 								}
 								else
 								{
-									bool flag57 = now - job.t0 > 90f;
+									bool flag57 = now - job.t0 > 240f;   // was 90 s: a slow PC loading a big running game needs longer (0.5.0a)
 									bool flag58 = flag57;
 									if (flag58)
 									{
@@ -1684,7 +1685,12 @@ public static class BtcSpectate
 			bool flag = BtcSpectate._cState == 1 || BtcSpectate._cState == 2;
 			bool flag2 = replyMsg.code == 0;
 			bool flag3 = flag2;
-			if (flag3)
+			if (flag3 && BtcNetManager.AutoRejoinPending && BtcSpectate._helloMsg != null && BtcSpectate._helloMsg.ing == 0)
+			{
+				// a full rejoin (from the menu) got a plain lobby join: the host left the match and hosts a new lobby
+				BtcNetManager.AbandonRejoin();
+			}
+			else if (flag3)
 			{
 				bool flag4 = flag;
 				bool flag5 = flag4;
@@ -2080,7 +2086,7 @@ public static class BtcSpectate
 			}
 			else
 			{
-				bool flag52 = now - BtcSpectate._cT0 > 120f;
+				bool flag52 = now - BtcSpectate._cT0 > 300f;   // was 120 s (host now waits 240 s for the load, 0.5.0a)
 				bool flag53 = flag52;
 				bool flag54 = flag53;
 				if (flag54)
@@ -3496,7 +3502,7 @@ public static class BtcSpectate
 		}
 		else
 		{
-			bool flag3 = !BtcSpectate.Alive(c);
+			bool flag3 = !BtcSpectate.Alive(c) || BtcNetManager.ClosedByHost(c);
 			bool flag4 = flag3;
 			if (flag4)
 			{

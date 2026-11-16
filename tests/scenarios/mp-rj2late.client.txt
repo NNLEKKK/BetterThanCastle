@@ -1,0 +1,8 @@
+# mp-rj2: the crashed player starts again and rejoins
+join 127.0.0.1
+waitgame 360
+resumeready 120
+mark back3
+netstat
+wait 60
+quit

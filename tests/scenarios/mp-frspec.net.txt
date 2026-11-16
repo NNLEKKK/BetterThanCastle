@@ -1,0 +1,4 @@
+# both clients go silent at the same moment for 35 s (like the host's own link dropping: the host closes both links after 30 s),
+# then both rejoin with a full reload while a spectator joins the running game. 'freeze' suspends the processes (clumsy needs admin)
+at host:ingame+60 freeze client1,client2 35
+at host:ingame+96 launch spec1 mp-late.client.txt BtcSpec1

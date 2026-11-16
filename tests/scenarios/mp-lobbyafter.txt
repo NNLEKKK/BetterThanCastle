@@ -1,0 +1,22 @@
+# 0.5.0a: after a match the host hosts a new lobby, both clients come back; client1 leaves on purpose, client2 is kicked.
+# Both must vanish from the host lobby (users line: lobby count). ~6 min.
+host default conquest
+waitclients 2 300
+wait 3
+startmatch 180
+waitgame 300
+wait 20
+leave
+wait 15
+host default conquest
+mark rehost
+waitclients 2 300
+wait 5
+users
+wait 75
+users
+kick Client2
+wait 20
+users
+wait 10
+quit

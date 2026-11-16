@@ -159,6 +159,17 @@
   drag goes up or down the slope by mouse direction (Shift no longer needed). Labs: climb 3 ramps + rooms 5 s, tunnel 1x2x6 23 s
   (was 33 s).
 
+- 0.5.0a fix (user: "1x2 tunnel: the lower block is dug, the upper one hangs; a long line into a hill goes up"):
+  - Stale crowding: pooled DigGoals keep their private Goal.workers list, so the goal reused for the next cell (Kick re-walk
+    right after the voxel died) still listed the old digger; everybody got "already enough workers doing it" with nobody on it.
+    TerraformCrowd.Busy (dig, fill, ladder matches) drops entries whose Labor.Goal is not the goal.
+  - Head room first: a dig cell under a marked block still to dig (TerraformReach.Capped) is reachable only from the next column
+    (horizontal <= 1.5) or from an opening with 2 empty cells; priority -3 blocks for it; distances exact (were rounded: upper and
+    lower block tied). Stops a second worker crawling through the 1-high hole and digging only the bottom row.
+  - Tool: a stroke on a wall stays level (horizontal plane at the anchor: along the wall or straight into the hill); Alt = up /
+    down on the wall plane. Top / bottom faces unchanged (Alt = depth).
+  - Labs: terraform-tunnel (1x2x6) 26 s (with only the head-room rule it stalled 20 s on the stale goal); terraform-tunnel14
+    (tftunnel 2 14).
 ## HAND-OFF (2026-11-12 end of session) - user is testing the Debug build in game
 Deployed: Debug build (DEV) 2026-11-12 ~16:00, all commits up to fb3cf3e. User will report symptoms + time.
 Open questions asked to the user (my defaults in brackets, all without Lua, ~15-20% of the limit):

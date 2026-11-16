@@ -649,8 +649,8 @@ public static class BtcLang
 		{ "normal priority", "обычный приоритет" },
 		{ "paused", "на паузе" },
 		{
-			"LMB hold and drag: a straight line along the face, Alt: into the blocks; ladders: drag up or down the slope. Ctrl+LMB deletes a mark, RMB rotates a ladder, Ctrl+Z undo, Shift / Ctrl+wheel height / width, Esc close. Edit a task: select it in the task list",
-			"ЛКМ зажать и вести: прямая линия по грани, с Alt вглубь блоков; лестницы: вести вверх или вниз по склону. Ctrl+ЛКМ удаляет метку, ПКМ поворачивает лестницу, Ctrl+Z назад, Shift / Ctrl+колесо высота / ширина, Esc закрыть. Изменить задание: выберите его в списке заданий"
+			"LMB hold and drag: a straight line (on a wall: level, along it or straight into the hill; Alt: up or down the wall; on top: Alt digs down); ladders: drag up or down the slope. Ctrl+LMB deletes a mark, RMB rotates a ladder, Ctrl+Z undo, Shift / Ctrl+wheel height / width, Esc close. Edit a task: select it in the task list",
+			"ЛКМ зажать и вести: прямая линия (на стене: ровно вдоль неё или прямо вглубь горы; с Alt вверх или вниз по стене; сверху: с Alt вниз); лестницы: вести вверх или вниз по склону. Ctrl+ЛКМ удаляет метку, ПКМ поворачивает лестницу, Ctrl+Z назад, Shift / Ctrl+колесо высота / ширина, Esc закрыть. Изменить задание: выберите его в списке заданий"
 		},
 		{ "Terraforming tool: dig mode","Инструмент терраформинга: режим копки" },
 		{ "Terraforming tool: fill mode", "Инструмент терраформинга: режим насыпи" },

@@ -34,6 +34,7 @@ namespace BetterThanCastle
         private const float LinkDeadWhileHostLoads = 120f;
         private const float PeerDropAfter = 60f;
         private const float PeerDropWhileLoading = 120f;
+        private const float LobbyDropAfter = 15f;
         private const float LinkOwnStallIgnore = 3f;
         private const float PauseRebroadcast = 1f;
         private const float RejoinFallback = 4f;
@@ -225,6 +226,7 @@ namespace BetterThanCastle
             if (InLobby(m) || BtcReplay.Mode == BtcReplay.State.Playing)
             {
                 if (s.hardPauseActive) SetHard(m, s, false, null);
+                if (InLobby(m)) DropSilentLobbyPeers(s);
                 return;
             }
             bool selfLoading = SelfLoading(m, s);
@@ -414,6 +416,28 @@ namespace BetterThanCastle
             return s != null && s.peers.TryGetValue(connId, out p) && p.seen ? p.silence : -1f;
         }
 
+        /// <summary>Host in the lobby: a player whose game closed or crashed sends no disconnect packet and BC's 1 h transport timeout
+        /// never fires, so it stayed in the lobby list forever (vanilla drops it after a few seconds). Nobody is kept for a rejoin in
+        /// the lobby: close the link, its disconnect event then runs the vanilla lobby removal.</summary>
+        private static void DropSilentLobbyPeers(State s)
+        {
+            _tmpConns.Clear();
+            for (int i = 0; i < NetworkServer.connections.Count; i++)
+            {
+                NetworkConnection c = NetworkServer.connections[i];
+                Peer dp;
+                if (NotAPeer(c) || !c.isConnected || !s.peers.TryGetValue(c.connectionId, out dp) || !dp.seen) continue;
+                if (dp.silence > LobbyDropAfter) _tmpConns.Add(c);
+            }
+            for (int i = 0; i < _tmpConns.Count; i++)
+            {
+                NetworkConnection c = _tmpConns[i];
+                BtcLog.Warn("Net", "Server: lobby connection " + c.connectionId + " silent " + PeerSilence(c.connectionId).ToString("0.0") + " s (game closed or crashed): closing it");
+                s.peers.Remove(c.connectionId);
+                try { c.Disconnect(); } catch (Exception e) { BtcLog.Warn("Net", "lobby drop: " + e.Message); }
+            }
+        }
+
         /// <summary>Host: the player came back on a new connection while its old one is still open but silent (cable pull: the 1 h
         /// transport timeout never fires). Treat the old one as dropped now: keep the player for the reconnect, close the old link.</summary>
         internal static bool DropStale(NetworkConnection old)
@@ -454,7 +478,15 @@ namespace BetterThanCastle
             bool hostLoads = h.loading;
             try { hostLoads |= GameParam.instance != null && !GameParam.instance.NetworkHostLoaded; } catch (Exception) { }
             float dead = hostLoads ? LinkDeadWhileHostLoads : LinkDeadAfter;
-            if (h.seen && h.silence > dead && !s.reconnectRecoveryInProgress && !InLobby(m) && NetLive(m, s) && !m.calledDisconnect)
+            // the host quit on purpose (msg 110) but its closing packet never came: leave to the menu, do not rejoin
+            if (s.hostEnded && h.seen && h.silence > 5f && !InLobby(m) && !m.calledDisconnect)
+            {
+                BtcLog.Info("Net", "link: the host ended the session and went silent, leaving");
+                h.seen = false;
+                try { m.Disconnect(); } catch (Exception e) { BtcLog.Warn("Net", "host ended leave: " + e.Message); }
+                return;
+            }
+            if (h.seen && h.silence > dead && !s.reconnectRecoveryInProgress && !InLobby(m) && NetLive(m, s) && !m.calledDisconnect && !s.hostEnded)
             {
                 BtcLog.Warn("Net", "link: host silent " + h.silence.ToString("0") + " s, link given up");
                 h.silence = 0f;

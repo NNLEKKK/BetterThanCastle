@@ -1,0 +1,5 @@
+# spectator early, crash after the 2nd rejoin, relaunch, second spectator at the end
+at host:ingame+20 launch spec1 mp-late.client.txt BtcSpec1
+at client1:back2+20 kill client1
+at client1:back2+30 launch client1r mp-rj2late.client.txt BtcClient1
+at client1r:back3+20 launch spec2 mp-late.client.txt BtcSpec2

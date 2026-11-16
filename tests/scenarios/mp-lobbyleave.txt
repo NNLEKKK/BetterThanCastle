@@ -1,0 +1,13 @@
+# 0.5.0a: players who leave the lobby (on purpose / crash) must vanish from the host lobby. ~4 min.
+host default conquest
+waitclients 2 300
+wait 5
+users
+mark lobby
+wait 30
+users
+wait 60
+users
+wait 30
+users
+quit

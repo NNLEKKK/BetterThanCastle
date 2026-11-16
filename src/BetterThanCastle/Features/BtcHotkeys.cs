@@ -1641,7 +1641,6 @@ public static class BtcHotkeys
 		group = "Terraforming";
 		BtcHotkeys.AddKey(group, "terraform_tool", "Open / close the terraforming tool (dig, fill, any shape; needs BetterConnection)", 0, "LeftControl+G", false);
 		BtcHotkeys.AddKey(group, "terraform_dig", "Terraforming tool: dig mode", 0, string.Empty, false);
-		BtcHotkeys.AddKey(group, "terraform_fill", "Terraforming tool: fill mode", 0, string.Empty, false);
 		BtcHotkeys.AddKey(group, "terraform_ladder", "Terraforming tool: ladder mode", 0, string.Empty, false);
 		group = "Match statistics";
 		BtcHotkeys.AddKey(group, "match_stats_panel", "Open / close the match statistics panel (graphs and table; Esc closes)", 0, "LeftShift+F7", false);

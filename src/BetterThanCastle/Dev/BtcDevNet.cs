@@ -125,6 +125,29 @@ namespace BetterThanCastle.Dev
             return "cap topo=" + topo + " maxConn=" + (m != null ? m.maxConnections : -1) + " maxPlayers=" + (m != null ? m.maxPlayers : -1) + " lobbySlots=" + slots + " modMax=" + BtcLobby.MaxPlayers;
         }
 
+        /// <summary>Host: users (name@conn, ! = pending rejoin), lobby list size, remote connections (leave/rejoin labs).</summary>
+        internal static string UsersText()
+        {
+            StringBuilder sb = new StringBuilder();
+            try
+            {
+                UNetManager m = UNetManager.instance;
+                List<User> pend = BtcNetManager.PendingUsers;
+                if (m != null && m.UserList != null)
+                    foreach (User u in m.UserList)
+                    {
+                        if (u == null) { sb.Append("null "); continue; }
+                        sb.Append("'").Append(u.ScreenName).Append("'@").Append(u.connectionToClient != null ? u.connectionToClient.connectionId.ToString() : "-");
+                        if (pend != null && pend.Contains(u)) sb.Append("!");
+                        sb.Append(' ');
+                    }
+                sb.Append("| lobby=").Append(m != null && m.LobbyPlayerList != null ? m.LobbyPlayerList.Count : -1);
+                sb.Append(" conns=").Append(RemoteConns()).Append(" pending=").Append(pend != null ? pend.Count : -1);
+            }
+            catch (Exception e) { sb.Append("err ").Append(e.Message); }
+            return sb.ToString();
+        }
+
         internal static int RemoteConns()
         {
             int n = 0;

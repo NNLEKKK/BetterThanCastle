@@ -13,7 +13,7 @@ namespace BetterThanCastle
     /// Client tool of the Terraforming task (docs/terraforming.md): paint a draft shape with brushes, then create the task
     /// on the host (BtcTerraform.RequestCreate). Opened with the Advanced Hotkeys bind "terraform_tool" (Ctrl+G) or a bind per mode.
     /// Modes: dig / fill / erase / ladder. Brushes: block (click), line (hold and drag), box (drag two corners). A drag runs along
-    /// the clicked face (top face: flat, wall: sideways / up / down); with Alt held it runs straight into the blocks. Marks act
+    /// the clicked face (top face: flat, Alt: down into the blocks; wall: level, sideways or into the hill, Alt: up / down). Marks act
     /// like blocks for the cursor, so a shape can be continued from its own marks (even inside a hill). Dig and quarry ladders
     /// aim at the full block under a crust; a tunnel ladder goes into the crust. Ladders: RMB / R rotates, a drag lays a chain
     /// up the climbing diagonal. Ctrl+LMB deletes a mark, Ctrl+Z undoes the last stroke. All settings are remembered (BtcMenuState).
@@ -21,7 +21,7 @@ namespace BetterThanCastle
     internal static class BtcTerraformTool
     {
         internal const string HotkeyId = "terraform_tool";
-        private static readonly string[] ModeKeys = { "terraform_dig", "terraform_fill", null, "terraform_ladder" };   // index = Mode (2 = old erase, gone)
+        private static readonly string[] ModeKeys = { "terraform_dig", null, null, "terraform_ladder" };   // index = Mode (2 = old erase, gone)
         private static readonly KeyCode[] DefKeys = { KeyCode.LeftControl, KeyCode.G };
         private static readonly KeyCode[] NoKeys = new KeyCode[0];
 
@@ -29,8 +29,8 @@ namespace BetterThanCastle
         private static BtcTerraform.Shape _draft = new BtcTerraform.Shape();
         private static readonly List<int> _strokes = new List<int>();
 
-        // 0 dig 1 fill 3 ladder (2 was the erase mode: removed, marks are deleted with Ctrl+LMB)
-        private static int Mode { get { int m = BtcMenuState.Int("terraform:mode", 0); return m == 2 ? 0 : m; } set { BtcMenuState.SetInt("terraform:mode", value); } }
+        // 0 dig 3 ladder (2 was the erase mode: removed, marks are deleted with Ctrl+LMB; 1 fill is TEMPORARILY off in the UI: it hangs workers, needs a fix, see STATUS)
+        private static int Mode { get { int m = BtcMenuState.Int("terraform:mode", 0); return m == 2 || m == 1 ? 0 : m; } set { BtcMenuState.SetInt("terraform:mode", value); } }
         private static int LadKind { get { return BtcMenuState.Int("terraform:ladkind", 0); } set { BtcMenuState.SetInt("terraform:ladkind", value); } } // 0 tunnel 1 quarry 2 landing
         private static int LadDir { get { return BtcMenuState.Int("terraform:laddir", 0) & 3; } set { BtcMenuState.SetInt("terraform:laddir", value & 3); } } // climb towards Dirs[i]
         private static readonly XYZ[] Dirs = { new XYZ(0, 0, 1), new XYZ(1, 0, 0), new XYZ(0, 0, -1), new XYZ(-1, 0, 0) };
@@ -531,12 +531,22 @@ namespace BetterThanCastle
         }
 
         /// <summary>Cell of the stroke under the cursor: on the plane of the clicked face (the anchor's coordinate along the
-        /// face normal stays), or with Alt along the axis straight into (dig) / out of (fill) the face.</summary>
+        /// face normal stays); a wall stroke stays level (into the hill or along it), Alt: on the wall plane; top / bottom face with Alt:
+        /// along the axis straight into (dig) / out of (fill) the face.</summary>
         private static bool DragCell(Camera cam, Vector3 screen, out XYZ cell)
         {
             cell = _cursor;
             Ray r = cam.ScreenPointToRay(screen);
-            if (_depth)
+            if (_n.y == 0 && !_depth)
+            {
+                // wall: the stroke stays level (along the wall or straight into the hill, whichever way the mouse goes);
+                // on the wall plane itself a drag towards the hill read as "up" (user 2026-11-15). Alt: up / down the wall
+                XYZ h;
+                if (!PlaneHit(r, _anchor.ToVector3(), Vector3.up, out h)) return false;
+                cell = new XYZ(h.x, _anchor.y, h.z);
+                return true;
+            }
+            if (_depth && _n.y != 0)
             {
                 float t;
                 if (!LineParam(r, _anchor.ToVector3(), _axis.ToVector3(), out t)) return false;
@@ -757,8 +767,8 @@ namespace BetterThanCastle
             if (!BtcTerraform.On) BtcUi.Status(ref y, w, fs, BtcLang.Tr("Terraforming needs BetterConnection (BC tab)"), new Color(1f, 0.55f, 0.3f, 1f));
 
             int cur = Mode == 3 ? 2 : Mode;
-            int m = Chips(ref y, w, fs, cur, BtcLang.Tr("Dig"), BtcLang.Tr("Fill"), BtcLang.Tr("Ladder"));
-            if (m != cur) Mode = m == 2 ? 3 : m;
+            int m = Chips(ref y, w, fs, cur == 2 ? 1 : 0, BtcLang.Tr("Dig"), BtcLang.Tr("Ladder"));
+            if (m != (cur == 2 ? 1 : 0)) Mode = m == 1 ? 3 : 0;
             if (Mode == 3)
             {
                 int k = Chips(ref y, w, fs, LadKind, BtcLang.Tr("Tunnel"), BtcLang.Tr("Quarry"), BtcLang.Tr("Landing"));

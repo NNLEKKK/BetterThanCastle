@@ -4,6 +4,7 @@ using Brix.Engine;
 using Brix.Game;
 using Brix.Game.AI;
 using Brix.Game.Components;
+using BetterThanCastle.Patches;
 using UnityEngine;
 
 namespace BetterThanCastle
@@ -44,8 +45,34 @@ namespace BetterThanCastle
             catch (Exception e) { BtcLog.Warn("DevTf", "spawn: " + e); }
         }
 
+        /// <summary>User case 2026-11-15: one task = a row dug 1 deep + a row filled 1 high (len long, 3 apart).</summary>
+        internal static void Rows(int harvest, int len)
+        {
+            try
+            {
+                Occupation[] occ = UnityEngine.Object.FindObjectsOfType<Occupation>();
+                if (occ.Length == 0) { BtcLog.Warn("DevTf", "no workers"); return; }
+                Vector3 b = occ[0].transform.position;
+                XYZ a, c;
+                if (!Ground(b.x + 5f, b.z, b.y, out a) || !Ground(b.x + 8f, b.z, b.y, out c)) { BtcLog.Warn("DevTf", "no ground"); return; }
+                BtcTerraform.Shape s = new BtcTerraform.Shape();
+                s.Harvest = harvest & 7;
+                s.NoStore = (harvest & 8) != 0;
+                for (int i = 0; i < len; i++)
+                {
+                    XYZ g;
+                    if (Ground(a.x, a.z + i - len / 2, a.y, out g)) { BtcTerraform.Op d; d.K = 'D'; d.A = g; d.B = g; s.Ops.Add(d); }
+                    if (Ground(c.x, c.z + i - len / 2, c.y, out g)) { BtcTerraform.Op f; f.K = 'F'; f.A = g + XYZ.up; f.B = g + XYZ.up; s.Ops.Add(f); }
+                }
+                s.Rebuild();
+                BtcTerraform.RequestCreate(s);
+                BtcLog.Info("DevTf", "rows dig@" + a + " fill@" + c + " dig=" + s.Dig.Count + " fill=" + s.Fill.Count + " harvest=" + s.Harvest);
+            }
+            catch (Exception e) { BtcLog.Warn("DevTf", "rows: " + e); }
+        }
+
         // two-phase labs (user cases 2026-11-15): tfpit digs a 3x3 pit 4 deep so the workers end up on its floor with no way out,
-        // then tftunnel (1 wide, 2 high, 6 long into the west wall at floor level) or tfclimb (quarry ladder chain up the
+        // then tftunnel H L (1 wide, H high (2), L long (6) into the west wall at floor level) or tfclimb (quarry ladder chain up the
         // north wall, room dug) is created from the pit floor
         private static XYZ _pit;
         private static bool _hasPit;
@@ -69,11 +96,11 @@ namespace BetterThanCastle
             catch (Exception e) { BtcLog.Warn("DevTf", "pit: " + e); }
         }
 
-        internal static void Tunnel(int h)
+        internal static void Tunnel(int h, int len)
         {
             if (!_hasPit) { BtcLog.Warn("DevTf", "tunnel: no pit"); return; }
             BtcTerraform.Shape s = new BtcTerraform.Shape();
-            BtcTerraform.Op d; d.K = 'D'; d.A = new XYZ(_pit.x - 7, _pit.y - 3, _pit.z); d.B = new XYZ(_pit.x - 2, _pit.y - 4 + Mathf.Clamp(h, 1, 3), _pit.z);
+            BtcTerraform.Op d; d.K = 'D'; d.A = new XYZ(_pit.x - 1 - Mathf.Clamp(len, 1, 30), _pit.y - 3, _pit.z); d.B = new XYZ(_pit.x - 2, _pit.y - 4 + Mathf.Clamp(h, 1, 3), _pit.z);
             s.Ops.Add(d);
             s.Rebuild();
             BtcTerraform.RequestCreate(s);
@@ -315,8 +342,32 @@ namespace BetterThanCastle
                         + " goals=" + p.goalProvider.GoalCount() + " crew=" + p.CrewCount() + " harvest=" + s.Harvest + " nostore=" + s.NoStore);
                 }
                 BtcLog.Info("DevTf", tag + ": terraform tasks=" + tasks + " landscape=" + UnityEngine.Object.FindObjectsOfType<LandscapeProject>().Length);
+                Workers(tag);
             }
             catch (Exception e) { BtcLog.Warn("DevTf", "dump: " + e); }
+        }
+
+        private static readonly System.Collections.Generic.Dictionary<int, Vector3> LastPos = new System.Collections.Generic.Dictionary<int, Vector3>();
+
+        // every worker: transform cell vs locomotion cell (a mismatch = moved by BuryBehavior), moved since the last dump, task, icon
+        private static void Workers(string tag)
+        {
+            foreach (Labor l in UnityEngine.Object.FindObjectsOfType<Labor>())
+            {
+                if (l.navigation == null || l.navigation.Locomotion == null) continue;
+                Locomotion4 loc = l.navigation.Locomotion;
+                Vector3 at = l.transform.position;
+                Vector3 last;
+                float moved = LastPos.TryGetValue(l.GetInstanceID(), out last) ? Vector3.Distance(last, at) : -1f;
+                LastPos[l.GetInstanceID()] = at;
+                XYZ cell = XYZ.FromVector3(at);
+                BtcLog.Info("DevTf", tag + ": worker " + l.name + " cell=" + cell + " occ=" + loc.PositionOccupied + " ent=" + loc.PositionEntering
+                    + " st=" + loc.state + " inPlace=" + loc.IsInPlace() + " moved=" + moved.ToString("0.0")
+                    + " feetSolid=" + (!Voxel.IsEmpty(cell)) + " headSolid=" + (!Voxel.IsEmpty(cell + XYZ.up))
+                    + " task=" + (l.CurrentTask == null ? "-" : l.CurrentTask.GetType().Name)
+                    + " goal=" + (l.Goal.IsNullOrReleased() ? "-" : l.Goal.GetType().Name + "@" + l.Goal.voxel.position + (TerraformDigSetting.IsFill(l.Goal) ? "F" : ""))
+                    + " bag=" + l.recepteur.ContentDescription.Value<Stones>());
+            }
         }
     }
 }

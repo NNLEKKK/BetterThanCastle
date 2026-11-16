@@ -1,0 +1,59 @@
+# 0.5.0a connection fixes: spectator joins a running game; one player leaves + rejoins twice on purpose, then crashes and
+# rejoins a third time; a second spectator at the end. Host lists users every 30 s. ~13 min.
+host default conquest
+waitclients 1 300
+wait 3
+startmatch 180
+waitgame 300
+mark ingame
+wait 8
+timerstart 90
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+wait 30
+users
+quit

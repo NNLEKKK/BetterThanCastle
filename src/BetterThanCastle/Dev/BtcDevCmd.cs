@@ -327,13 +327,14 @@ namespace BetterThanCastle.Dev
                     }
                     break;
                 case "tfspawn": BtcDevTerraform.Spawn((int)F(p, 1, 7f)); break;
+                case "tfrows": BtcDevTerraform.Rows((int)F(p, 1, 0f), (int)F(p, 2, 12f)); break;
                 case "tfhire": BtcDevTerraform.Hire(); break;
                 case "tfdump": BtcDevTerraform.Dump(p.Length > 1 ? p[1] : "x"); break;
                 case "tfladder": BtcDevTerraform.Ladders((int)F(p, 1, 7f)); break;
                 case "tfsteps": BtcDevTerraform.Steps(); break;
                 case "tfedit": BtcDevTerraform.Edit(); break;
                 case "tfpit": BtcDevTerraform.Pit(); break;
-                case "tftunnel": BtcDevTerraform.Tunnel((int)F(p, 1, 2f)); break;
+                case "tftunnel": BtcDevTerraform.Tunnel((int)F(p, 1, 2f), (int)F(p, 2, 6f)); break;
                 case "tfclimb": BtcDevTerraform.Climb(); break;
                 case "taskset": BtcDevTasks.SetBounds(); break;
                 case "taskdump": BtcDevTasks.Dump(p.Length > 1 ? p[1] : "x"); break;
@@ -362,6 +363,18 @@ namespace BetterThanCastle.Dev
                 case "mark": File.WriteAllText(Path.Combine(BtcDevPaths.LogDir, "mark-" + (p.Length > 1 ? p[1] : "x") + ".txt"), DateTime.Now.ToString("o")); break; // scenario.ps1 net plan triggers on these
                 case "netcap": BtcLog.Info("Cmd", "netcap " + BtcDevNet.CapText() + " | " + BtcNetManager.StatusText()); break;
                 case "netstat": BtcLog.Info("Cmd", "netstat " + BtcNetManager.StatusText()); break;
+                // client: leave the game/lobby on purpose (menu "Quit to menu" path); host: list users + lobby slots
+                case "leave": { Brix.Network.UNetManager lm = UnityEngine.Networking.NetworkManager.singleton as Brix.Network.UNetManager; BtcLog.Info("Cmd", "leave (manager " + (lm != null) + ")"); if (lm != null) lm.Disconnect(); break; }
+                case "users": BtcLog.Info("Cmd", "users " + BtcDevNet.UsersText()); break;
+                // host: kick the lobby player whose nick contains the argument (vanilla lobby kick)
+                case "kick":
+                    {
+                        Brix.Network.UNetManager km = UnityEngine.Networking.NetworkManager.singleton as Brix.Network.UNetManager;
+                        Brix.Network.LobbyPlayer kp = km == null || p.Length < 2 ? null : km.LobbyPlayerList.Find(x => x != null && !x.isLocalPlayer && x.playerName != null && x.playerName.Contains(p[1]));
+                        BtcLog.Info("Cmd", "kick " + (p.Length > 1 ? p[1] : "?") + " -> " + (kp != null ? kp.playerName : "not found"));
+                        if (kp != null) km.KickPlayer(kp);
+                        break;
+                    }
                 // host: end the timer's Waiting phase (base shields keep units inside while it waits, so walk labs need it)
                 case "timerstart": _wait = "timer"; _waitUntil = now + F(p, 1, 60f); break;
                 // press Ready once the timer waits, then wait until the match runs (logs how many players the Ready list showed)

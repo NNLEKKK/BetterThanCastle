@@ -413,6 +413,12 @@ namespace BetterThanCastle
         private static int _rjPort;
         private static float _rjUntil, _rjNext;
         private static bool _rjConnecting;
+        private static bool _rjAbandon;
+        private static LobbyPlayer _rjOldLobby;
+
+        /// <summary>The host answered a full rejoin with a plain lobby join: it left the match and hosts a new lobby. Stop rejoining
+        /// and leave that lobby (we sat in it unseen from the menu: a row nobody could remove, back again after every kick).</summary>
+        internal static void AbandonRejoin() { if (_rjAddr != null) _rjAbandon = true; }
 
         internal static bool AutoRejoinPending { get { return _rjAddr != null && Time.realtimeSinceStartup < _rjUntil; } }
 
@@ -425,6 +431,7 @@ namespace BetterThanCastle
             _rjUntil = Time.realtimeSinceStartup + RejoinGiveUp;
             _rjNext = Time.realtimeSinceStartup + 2f;
             _rjConnecting = false;
+            _rjOldLobby = m.LocalLobbyPlayer;
             BtcLog.Warn("Net", "full rejoin: " + why + " -> back to the menu, then joining " + _rjAddr + ":" + _rjPort + " again");
             BtcHud.Notice(BtcReplayUI.T("Connection lost: rejoining the game", "Связь потеряна: заходим в игру заново"), BtcReplayIcons.Cross, BtcHud.Warn);
             if (s.clientReconnectCoroutine != null) { m.StopCoroutine(s.clientReconnectCoroutine); s.clientReconnectCoroutine = null; }
@@ -437,6 +444,15 @@ namespace BetterThanCastle
         private static void AutoRejoinTick(UNetManager m)
         {
             if (_rjAddr == null) return;
+            if (_rjAbandon)
+            {
+                _rjAbandon = false; _rjAddr = null; _rjConnecting = false;
+                Get(m).hostEnded = true;
+                BtcLog.Info("Net", "full rejoin: the host is in a lobby now (match over), not rejoining");
+                BtcHud.Notice(BtcReplayUI.T("The host ended the match", "Хост завершил матч"), BtcReplayIcons.Cross, BtcHud.Warn);
+                try { m.Disconnect(); } catch (Exception e) { BtcLog.Warn("Net", "full rejoin abandon: " + e.Message); }
+                return;
+            }
             float now = Time.realtimeSinceStartup;
             if (now >= _rjUntil) { BtcLog.Warn("Net", "full rejoin: gave up after " + RejoinGiveUp + " s"); _rjAddr = null; return; }
             if (NetworkServer.active) { _rjAddr = null; return; }   // the player started hosting: stop
@@ -448,6 +464,10 @@ namespace BetterThanCastle
                     BtcLog.Info("Net", "full rejoin: back in the game");
                     _rjAddr = null;
                 }
+                // a host in a running game spawns no lobby player for a returning one (it sends the scene): a fresh own lobby
+                // player means the host left the match ("session end" lost with the closing link) and hosts a new lobby
+                else if (_rjConnecting && !inGame && m.LocalLobbyPlayer != null && !ReferenceEquals(m.LocalLobbyPlayer, _rjOldLobby))
+                    _rjAbandon = true;
                 return;
             }
             if (inGame || now < _rjNext) return;
@@ -477,6 +497,7 @@ namespace BetterThanCastle
         /// <summary>BtcSpectate quick return: this old link of a player was replaced; its disconnect event must not queue the player again.</summary>
         internal static void Superseded(NetworkConnection old)
         {
+            MarkClosed(old);
             if (old != null && !_superseded.Contains(old)) _superseded.Add(old);
             if (_superseded.Count > 32) _superseded.RemoveAt(0);
         }
@@ -488,11 +509,40 @@ namespace BetterThanCastle
             if (s != null && conn != null && !string.IsNullOrEmpty(name)) s.cachedPlayerNameByConnectionId[conn.connectionId] = name;
         }
 
+        private static readonly List<NetworkConnection> _closedByHost = new List<NetworkConnection>();
+
+        /// <summary>The host already treated this link as gone (disconnect event, silent-link drop, replaced): it is dead for
+        /// BtcSpectate.Stale even while UNET still lists it. Without this, a closed link whose disconnect event never came stayed
+        /// "connected" (its heartbeat record is removed, so it never went silent) and the next rejoin of that player waited 20 s and
+        /// was refused with "still connected from another client".</summary>
+        internal static bool ClosedByHost(NetworkConnection c)
+        {
+            return c != null && _closedByHost.Contains(c);
+        }
+
+        private static void MarkClosed(NetworkConnection c)
+        {
+            if (c == null || _closedByHost.Contains(c)) return;
+            _closedByHost.Add(c);
+            if (_closedByHost.Count > 64) _closedByHost.RemoveAt(0);
+        }
+
         internal static bool TryKeepDroppedPlayer(UNetManager m, NetworkConnection conn)
         {
+            MarkClosed(conn);
             State s = Get(m);
             if (!s.bcSession) { BtcLog.Warn("Net", "Server: connection " + conn.connectionId + " dropped outside a BC session"); return false; }
             if (conn is BtcReplay.RecConn) return false;   // the replay recorder's ghost is not a player to wait for
+            // nobody is kept in the lobby: a User or cached name left over from the previous match (conn ids are reused) used to
+            // "keep" a player who left or was kicked, the base call never ran and the lobby row stayed until the lobby was remade
+            if (InLobby(m))
+            {
+                BtcLog.Info("Net", "Server: lobby connection " + conn.connectionId + " left");
+                s.peers.Remove(conn.connectionId);
+                s.awaitingRejoin.Remove(conn.connectionId);
+                s.cachedPlayerNameByConnectionId.Remove(conn.connectionId);
+                return false;
+            }
             User user = SafeUser(m, conn);
             if (user == null)
             {

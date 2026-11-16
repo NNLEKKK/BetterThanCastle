@@ -1,0 +1,13 @@
+# client2 of mp-lobbyafter: same, but stays in the new lobby until the host kicks it
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 120
+ready 420
+waitgame 300
+waitfile BTClogs/host/mark-rehost.txt 300
+wait 40
+wait 5
+join 127.0.0.1
+waitlobby 120
+wait 120
+quit

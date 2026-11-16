@@ -55,7 +55,7 @@ namespace BetterThanCastle
 
         private static string AreaName(string key)
         {
-            for (int i = 0; i < BtcReportData.AreaKeys.Length; i++) if (BtcReportData.AreaKeys[i] == key) return T(BtcReportData.AreaEn[i], BtcReportData.AreaRu[i]);
+            for (int i = 0; i < BtcChangelog.AreaKeys.Length; i++) if (BtcChangelog.AreaKeys[i] == key) return T(BtcChangelog.AreaEn[i], BtcChangelog.AreaRu[i]);
             return key;
         }
 
@@ -224,6 +224,13 @@ namespace BetterThanCastle
                 case "duel": return BtcReplayIcons.Target;
                 case "packs": return BtcReplayIcons.Blueprint;
                 case "menu": return BtcReplayIcons.Layout;
+                case "terraform": return BtcReplayIcons.PathI;
+                case "mapedit": return BtcReplayIcons.Map;
+                case "shields": return BtcReplayIcons.Shield;
+                case "spectate": return BtcReplayIcons.Camera;
+                case "hud": return BtcReplayIcons.Chart;
+                case "profile": return BtcReplayIcons.Plate;
+                case "perf": return BtcReplayIcons.Bolt;
             }
             return BtcReplayIcons.Gear;
         }
@@ -234,7 +241,7 @@ namespace BetterThanCastle
             bool byKind = GroupMode == 0;
             List<string> prim = new List<string>();
             if (byKind) { for (int i = 0; i < KindOrder.Length; i++) prim.Add(KindOrder[i].ToString()); }
-            else { for (int i = 0; i < BtcReportData.AreaKeys.Length; i++) prim.Add(BtcReportData.AreaKeys[i]); }
+            else { for (int i = 0; i < BtcChangelog.AreaKeys.Length; i++) prim.Add(BtcChangelog.AreaKeys[i]); }
             for (int p = 0; p < prim.Count; p++)
             {
                 List<BtcChangelog.Entry> sub = new List<BtcChangelog.Entry>();
@@ -244,7 +251,7 @@ namespace BetterThanCastle
                 Color pc = byKind ? KindColor(pk) : BtcMenu.Accent;
                 Header(ref y, w, fs, byKind ? KindIcon(pk) : AreaIcon(prim[p]), byKind ? KindName(pk) : AreaName(prim[p]), sub.Count, pc, 0);
                 List<string> sec = new List<string>();
-                if (byKind) { for (int i = 0; i < BtcReportData.AreaKeys.Length; i++) sec.Add(BtcReportData.AreaKeys[i]); }
+                if (byKind) { for (int i = 0; i < BtcChangelog.AreaKeys.Length; i++) sec.Add(BtcChangelog.AreaKeys[i]); }
                 else { for (int i = 0; i < KindOrder.Length; i++) sec.Add(KindOrder[i].ToString()); }
                 for (int s = 0; s < sec.Count; s++)
                 {
@@ -341,10 +348,20 @@ namespace BetterThanCastle
             Color kc = KindColor(en.Kind);
             BtcReplayUI.Fill(new Rect(row.x + fs * 1.2f, row.y + fs * 0.9f, fs * 0.4f, fs * 0.4f), new Color(kc.r, kc.g, kc.b, 0.9f));
             Color oc = GUI.contentColor;
-            GUI.contentColor = new Color(1f, 1f, 1f, 0.45f);
             GUI.contentColor = Color.white;
             GUI.Label(new Rect(textX, row.y + fs * 0.45f, textW, th), text, _wrap);
             GUI.contentColor = oc;
+            if (en.Exp)
+            {
+                // experimental badge in the left gutter under the dot
+                Rect br = new Rect(row.x + fs * 0.2f, row.y + fs * 1.6f, fs * 2.2f, fs * 1.1f);
+                Color ec = new Color(1f, 0.75f, 0.3f, 1f);
+                BtcReplayUI.Fill(br, new Color(ec.r, ec.g, ec.b, 0.22f));
+                Color c3 = GUI.contentColor; GUI.contentColor = ec;
+                GUI.Label(br, "exp", _chip);
+                GUI.contentColor = c3;
+                BtcReplayIcons.Hint(br, T("Experimental: not verified in real games yet, may change or have bugs", "Экспериментально: ещё не проверено в реальных играх, может измениться или глючить"));
+            }
             if (link)
             {
                 Rect cr = new Rect(row.xMax - chipW - fs * 0.4f, row.y + (rowH - fs * 1.7f) * 0.5f, chipW, fs * 1.7f);

@@ -1,0 +1,17 @@
+# 0.5.0a: host loses both clients for 30 s (mp-frspec.net.txt), both rejoin with a full reload at the same time while a
+# spectator joins the running game; every returning player must get back in and the spectator must load. ~9 min, 4 games.
+host default conquest
+waitclients 2 300
+wait 3
+startmatch 180
+waitgame 300
+mark ingame
+wait 8
+timerstart 90
+wait 150
+users
+netstat
+wait 90
+users
+netstat
+quit

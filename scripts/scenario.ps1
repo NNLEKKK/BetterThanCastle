@@ -75,6 +75,7 @@ function Launch($r) {
 # at <sub>:<mark>+<sec> net <targets> <durSec|0=to end> <clumsy args...>   (targets: client1,client2 | clients | all)
 # at <sub>:<mark>+<sec> cut <targets> <durSec>                                (100% drop both ways = cable pull, no disconnect event)
 # at <sub>:<mark>+<sec> kill <targets>                                        (process killed = crash)
+# at <sub>:<mark>+<sec> freeze <targets> <durSec>                             (process suspended: total silence both ways, no admin needed)
 # at <sub>:<mark>+<sec> launch <newSub> <scenario file under tests/scenarios> <nick>
 $plan = @(); $netf = Join-Path $root "tests\scenarios\$Name.net.txt"
 if (Test-Path $netf) {
@@ -86,6 +87,8 @@ if (Test-Path $netf) {
 }
 Get-Process -Name clumsy -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 $clumsy = @()   # @{ Pid; Until }
+$frozen = @()   # @{ R; Until }
+if (-not ('BtcProc' -as [type])) { Add-Type 'using System; using System.Runtime.InteropServices; public static class BtcProc { [DllImport("ntdll.dll")] public static extern int NtSuspendProcess(IntPtr h); [DllImport("ntdll.dll")] public static extern int NtResumeProcess(IntPtr h); }' }
 $netlog = Join-Path $logs 'net-plan.txt'; Set-Content $netlog "net plan $Name $(Get-Date -Format o)"
 function NetLog($s) { $line = "$([int]((Get-Date) - $t0).TotalSeconds)s $s"; Add-Content $netlog $line }
 function Targets($spec) {
@@ -147,6 +150,7 @@ function NetTick {
                 NetLog "clumsy pid=$id dur=$($w[1]) [--drop on --drop-chance 100.0] on $($w[0]) $(($o | Where-Object { $_ -is [string] }) -join ' ')"
                 if ($id) { $script:clumsy += @{ Pid=$id; Until=(Get-Date).AddSeconds([int]$w[1]) } }
             }
+            'freeze' { foreach ($r in (Targets $w[0])) { [void][BtcProc]::NtSuspendProcess($r.P.Handle); $script:frozen += @{ R=$r; Until=(Get-Date).AddSeconds([int]$w[1]) }; NetLog "froze $($r.Sub) for $($w[1]) s" } }
             'kill'   { foreach ($r in (Targets $w[0])) { Stop-Process -Id $r.P.Id -Force; $r.Killed = $true; NetLog "killed $($r.Sub)" } }
             'launch' {
                 $nr = @{ Role='client'; Sub=$w[0]; Sc=(Join-Path $root "tests\scenarios\$($w[1])"); Nick=$w[2] }
@@ -156,6 +160,7 @@ function NetTick {
             }
         }
     }
+    foreach ($fz in $script:frozen) { if (-not $fz.Gone -and (Get-Date) -ge $fz.Until) { [void][BtcProc]::NtResumeProcess($fz.R.P.Handle); $fz.Gone = $true; NetLog "resumed $($fz.R.Sub)" } }
     foreach ($c in $script:clumsy) { if (-not $c.Gone -and (Get-Date) -ge $c.Until) { Stop-Process -Id $c.Pid -Force -ErrorAction SilentlyContinue; $c.Gone = $true; NetLog "clumsy pid=$($c.Pid) stopped" } }
     $temp = @($script:clumsy | Where-Object { -not $_.Gone }).Count -gt 0
     if ($script:baseSpec -and -not $temp) {

@@ -301,7 +301,7 @@ namespace BetterThanCastle.Patches
             {
                 XYZ pos = __instance.voxel.position;
                 __result = false;
-                if (__instance.HasOtherWorkerAssigned(labor)) { errorDestination.AddDecisionError(SharedWorkException<Exceptions.GoalTooCrowded>.Get.Problem, labor); return false; }
+                if (TerraformCrowd.Busy(__instance, labor)) { errorDestination.AddDecisionError(SharedWorkException<Exceptions.GoalTooCrowded>.Get.Problem, labor); return false; }
                 time += 0.05f;
                 if (!TerraformReach.Can(labor, __instance)) { errorDestination.AddDecisionError(SharedWorkException<Exceptions.CantReach>.Get.Problem, labor); return false; }
                 if (!TerraformHarvest.Overkill(s, pos) && labor.recepteur.CanFitUpTo(RawResources.RawStone) < TerraformHarvest.InGround(pos))
@@ -315,20 +315,93 @@ namespace BetterThanCastle.Patches
         }
     }
 
+    /// <summary>Vanilla Goal.HasOtherWorkerAssigned without stale entries: a DigGoal is pooled and its private workers list is
+    /// never cleared, so when the voxel died under a worker (Kick re-walks the task at once) the reused goal of the next cell
+    /// still listed him; nobody worked on it and everybody got "enough workers doing it" (lab terraform-tunnel 2026-11-15:
+    /// the upper block of a 1x2 tunnel waited 20 s with every worker idle).</summary>
+    internal static class TerraformCrowd
+    {
+        private static readonly System.Reflection.FieldInfo Workers = AccessTools.Field(typeof(Goal), "workers");
+
+        internal static bool Busy(Goal g, Labor labor)
+        {
+            if (!g.HasOtherWorkerAssigned(labor)) return false;
+            List<Labor> w = Workers == null ? null : Workers.GetValue(g) as List<Labor>;
+            if (w == null) return true;
+            for (int i = w.Count - 1; i >= 0; i--)
+            {
+                Labor l = w[i];
+                if (l == null || l.Goal != g) w.RemoveAt(i);
+            }
+            return g.HasOtherWorkerAssigned(labor);
+        }
+    }
+
     /// <summary>Reach check of terraform goals: the knowledge regions catch up a while after a voxel is dug, so a cell that the
     /// worker just opened next to himself looked unreachable and he stood idle. A cell within arm's reach (the worker's
     /// neighbours, one up or down included) counts as reachable at once.</summary>
     internal static class TerraformReach
     {
+        // worker id + goal cell -> time of his last failed walk to it
+        private static readonly Dictionary<long, float> Failed = new Dictionary<long, float>();
+        private const float FailedFor = 30f;
+
+        private static long Key(Labor labor, XYZ p)
+        {
+            return ((long)labor.GetInstanceID() << 32) ^ (uint)((p.x & 0x7FF) | ((p.y & 0x3FF) << 11) | ((p.z & 0x7FF) << 21));
+        }
+
+        /// <summary>The worker's walk to this goal failed: for a while only the knowledge space decides (no near / unknown
+        /// shortcut). Else a cell he cannot stand next to (a fill 3 above him) stayed "close and unknown", he took it again
+        /// every few seconds, stood still and blocked it for everybody (lab terraform-stuck 2026-11-15).</summary>
+        internal static void MarkFailed(Labor labor, Goal g)
+        {
+            if (Failed.Count > 512) Failed.Clear();
+            Failed[Key(labor, g.voxel.position)] = Time.time;
+        }
+
         internal static bool Can(Labor labor, Goal g)
         {
-            if (Knowledge.Instance.CanReach(labor, g, -1)) return true;
+            float at;
+            if (Failed.TryGetValue(Key(labor, g.voxel.position), out at) && Time.time - at < FailedFor) return Knowledge.Instance.CanReach(labor, g, -1);
             Vector3 d = g.transform.position - labor.transform.position;
+            XYZ under;
+            if (Capped(g, out under))
+            {
+                // a marked block still sits on this cell (1x2 tunnel: the lower block of the next column): only from the next
+                // column, or from an opening with head room; else a second worker crawled through the 1-high hole left by the
+                // lower block and dug a 1-high tunnel into the hill while the upper blocks stayed (user 2026-11-15)
+                if (Mathf.Abs(d.y) <= 2.6f && d.x * d.x + d.z * d.z <= 2.25f) return true;
+                return HeadRoom(under) && Knowledge.Instance.CanReach(labor, g, -1);
+            }
+            if (Knowledge.Instance.CanReach(labor, g, -1)) return true;
             if (Mathf.Abs(d.y) <= 2.6f && d.x * d.x + d.z * d.z <= 6.5f) return true;   // within arm's reach (DigGoal: 2 up)
             // a goal spawned a moment ago is not in the knowledge regions yet (KnowsAbout false = unknown, not unreachable):
             // close to the worker it counts as reachable, else he ran off to an old goal far away while the one he just
             // opened waited for the region update; a real dead end fails the walk and vanilla excludes it
             return !Knowledge.Instance.KnowsAbout(g.gameObject) && d.sqrMagnitude <= 36f;
+        }
+
+        /// <summary>A terraform dig cell with a marked block still to dig right above it (the upper block goes first).</summary>
+        internal static bool Capped(Goal g, out XYZ p)
+        {
+            p = XYZ.zero;
+            DigGoal dg = g as DigGoal;
+            if (dg == null) return false;
+            BtcTerraform.Shape s = TerraformDigSetting.Of(dg);
+            if (s == null) return false;
+            p = dg.voxel.position;
+            XYZ up = p + XYZ.up;
+            return s.Dig.Contains(up) && !Voxel.IsEmpty(up);
+        }
+
+        private static readonly XYZ[] Side = { new XYZ(1, 0, 0), new XYZ(-1, 0, 0), new XYZ(0, 0, 1), new XYZ(0, 0, -1) };
+
+        // a side neighbour a bricktron (2 high) can stand in
+        private static bool HeadRoom(XYZ p)
+        {
+            for (int i = 0; i < Side.Length; i++) { XYZ n = p + Side[i]; if (Voxel.IsEmpty(n) && Voxel.IsEmpty(n + XYZ.up)) return true; }
+            return false;
         }
     }
 
@@ -347,8 +420,12 @@ namespace BetterThanCastle.Patches
             int carried = labor.recepteur.ContentDescription.Value<Stones>();
             bool wantFill = carried > 0 || LooseStonesNear(labor);
             int bonus = (fill ? wantFill : !wantFill) ? Inventory : 0;
-            int dist = Mathf.Min(Mathf.RoundToInt(Vector3.Distance(labor.transform.position, g.transform.position)), 4000);
-            return fill ? bonus - Mathf.Clamp(y + 1100, 0, 4000) * 65536 / 16 - dist * 64 : bonus - dist * 1024;
+            float far = Mathf.Min(Vector3.Distance(labor.transform.position, g.transform.position), 4000f);
+            if (fill) return bonus - Mathf.Clamp(y + 1100, 0, 4000) * 65536 / 16 - Mathf.RoundToInt(far) * 64;
+            // dig: the nearest (exact distance: the upper and the lower block of a tunnel column tied when rounded), a cell
+            // under a marked block still to dig 3 blocks later (head room first, a 2-high tunnel is walked into, not crawled)
+            XYZ p;
+            return bonus - Mathf.RoundToInt(far * 1024f) - (TerraformReach.Capped(g, out p) ? 3 * 1024 : 0);
         }
 
         private struct Loose { internal bool Near; internal float At; }
@@ -432,13 +509,67 @@ namespace BetterThanCastle.Patches
             WorkNodeGenerator<DigGoal> gen = d.workNodeGenerator;
             gen.ActionWrappers.Clear();
             gen.PrepareAction = (g, l) => Prepare(l);
-            gen.WorkAction = (g, l) => Node.Sequence.Do(delegate(DigGoal goal, Labor labor) { Apply(goal, labor); }, g, l).Label("Terraform fill").ToNode;
+            gen.WorkAction = (g, l) => Node.Sequence.Do((DigGoal goal, Labor labor) => Hit(goal, labor), g, l).Label("Terraform fill").ToNode;
             gen.WorkDoneCondition = (g, l) => Filled(g.voxel.position);
             gen.WorkInvalidCondition = (g, l) => g.IsNullOrReleased() || Filled(g.voxel.position);
             gen.ReleaseWhen = ReleaseNodeWhen.Ended | ReleaseNodeWhen.Invalid;
         }
 
         internal static bool Filled(XYZ p) { return !Voxel.IsEmpty(p) && !Voxel.IsCrust(p); }
+
+        /// <summary>A bricktron stands in the cell (feet in p, or feet under it and the head in p). Vanilla fills it anyway and
+        /// its BuryBehavior then moves only the transform out of the earth, the locomotion stays in the old cell: the unit hangs
+        /// for good and answers no order (same as vanilla Flatten). Such a cell waits until it is free.</summary>
+        internal static bool Occupied(XYZ p, Labor labor)
+        {
+            if (VoxelPresence.HasPresenceAt(p) || VoxelPresence.HasPresenceAt(p - XYZ.up)) return true;
+            if (labor != null && In(labor.navigation.Locomotion, labor.transform, p)) return true;
+            // the presence registry knows only the cell a unit stands in: one walking over a 1-high fill row is entering it
+            // (its feet end up in the earth, BuryBehavior only frees a buried head, the unit hangs for good)
+            int n = Physics.OverlapSphereNonAlloc(p.ToVector3(), 1.6f, Hits, ~0, QueryTriggerInteraction.Ignore);
+            bool hit = false;
+            Bounds cell = new Bounds(p.ToVector3(), new Vector3(0.9f, 0.9f, 0.9f));
+            for (int i = 0; i < n && !hit; i++)
+            {
+                Collider c = Hits[i];
+                if (c == null) continue;
+                Locomotion4 loc = c.GetComponentInParent<Locomotion4>();
+                if (loc == null) continue;
+                hit = c.bounds.Intersects(cell) || In(loc, loc.transform, p);
+            }
+            Array.Clear(Hits, 0, n);
+            return hit;
+        }
+
+        private static readonly Collider[] Hits = new Collider[64];
+
+        // the unit stands in or enters p, or into the cell under it (head in p)
+        private static bool In(Locomotion4 loc, Transform t, XYZ p)
+        {
+            XYZ low = p - XYZ.up;
+            XYZ feet = XYZ.FromVector3(t.position);
+            if (feet == p || feet == low) return true;
+            if (loc == null) return false;
+            XYZ a = loc.PositionOccupied, b = loc.PositionEntering;
+            return a == p || a == low || b == p || b == low;
+        }
+
+        // one tool hit: never into a unit; a cell that takes no earth (holds 10 already but is still crust) ends the work
+        // instead of looping the animation for nothing
+        private static Node Hit(DigGoal goal, Labor labor)
+        {
+            XYZ p = goal.voxel.position;
+            if (Occupied(p, labor))
+            {
+#if DEV
+                BtcLog.Info("TfFill", labor.name + " skip occupied " + p);
+#endif
+                return Node.FailWork<Exceptions.GoalTooCrowded>();
+            }
+            if (10 - TerraformHarvest.InGround(p) <= 0) return Node.FailWork<Exceptions.VoxelHasBeenBuildOver>();
+            Apply(goal, labor);
+            return Node.Empty;
+        }
 
         // stones lying close by first (picked up on the way), else vanilla: the bag or the nearest source
         private static Node Prepare(Labor l)
@@ -498,12 +629,14 @@ namespace BetterThanCastle.Patches
             {
                 XYZ pos = __instance.voxel.position;
                 __result = false;
-                if (__instance.HasOtherWorkerAssigned(labor)) { errorDestination.AddDecisionError(SharedWorkException<Exceptions.GoalTooCrowded>.Get.Problem, labor); return false; }
+                if (TerraformCrowd.Busy(__instance, labor)) { errorDestination.AddDecisionError(SharedWorkException<Exceptions.GoalTooCrowded>.Get.Problem, labor); return false; }
                 time += 0.05f;
                 if (t.Fill)
                 {
                     // vanilla LandscapeGoal fill rules: a floor under the cell, stones the worker can get (bag or nearest)
                     if (Voxel.IsEmpty(pos - XYZ.up)) return false;
+                    if (TerraformFill.Occupied(pos, labor)) { errorDestination.AddDecisionError(SharedWorkException<Exceptions.GoalTooCrowded>.Get.Problem, labor); return false; }
+                    if (!TerraformReach.Can(labor, __instance)) { errorDestination.AddDecisionError(SharedWorkException<Exceptions.CantReach>.Get.Problem, labor); return false; }
                     GameObject st = labor.Find(Adjectif.stones.Profile);
                     if (st == null || !labor.recepteur.HasRoomFor(st)) { errorDestination.AddDecisionError(SharedWorkException<Exceptions.CannotFindWhatINeedToPickUp>.Get.Problem, labor); return false; }
                     time += 0.1f;
@@ -611,7 +744,7 @@ namespace BetterThanCastle.Patches
             {
                 if (!BtcTerraform.IsLadderCell(__instance.voxel.position)) return true;
                 __result = false;
-                if (__instance.HasOtherWorkerAssigned(labor)) { errorDestination.AddDecisionError(SharedWorkException<Exceptions.GoalTooCrowded>.Get.Problem, labor); return false; }
+                if (TerraformCrowd.Busy(__instance, labor)) { errorDestination.AddDecisionError(SharedWorkException<Exceptions.GoalTooCrowded>.Get.Problem, labor); return false; }
                 time += 0.05f;
                 if (!TerraformReach.Can(labor, __instance)) { errorDestination.AddDecisionError(SharedWorkException<Exceptions.CantReach>.Get.Problem, labor); return false; }
                 time += 0.05f;
@@ -715,6 +848,25 @@ namespace BetterThanCastle.Patches
         {
             try { BtcTerraform.OnLoad(__instance.path); }
             catch (Exception e) { BtcLog.Error("Hook", "Terraform.Load: " + e); }
+        }
+    }
+
+    [HarmonyPatch(typeof(Labor), "HandleWorkException")]
+    internal static class TerraformWorkFailPatch
+    {
+        // a failed walk to a terraform goal (path failed / cannot reach): TerraformReach stops guessing for that worker and cell
+        private static void Prefix(Labor __instance, Exceptions.WorkFailedException exception)
+        {
+            if (BtcTerraform.ByObj.Count == 0) return;
+            try
+            {
+                if (!(exception is Exceptions.PathException) && !(exception is Exceptions.CantReach)) return;
+                Goal g = __instance.Goal;
+                if (g == null) return;
+                if (TerraformDigSetting.Get(g as DigGoal) == null && !(g is BuildStairsGoal && BtcTerraform.IsLadderCell(g.voxel.position))) return;
+                TerraformReach.MarkFailed(__instance, g);
+            }
+            catch (Exception e) { BtcLog.Error("Hook", "Terraform.WorkFail: " + e.Message); }
         }
     }
 }

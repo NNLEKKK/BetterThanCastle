@@ -1,0 +1,26 @@
+# terraform-stuck: dig pit + fill mound, worker state every 20 s (stuck = moved 0.0 for several dumps, occ != cell)
+newgame
+waitgame 240
+wait 5
+tfspawn 7
+wait 3
+tfhire
+wait 20
+tfdump t20
+wait 20
+tfdump t40
+wait 20
+tfdump t60
+wait 20
+tfdump t80
+wait 20
+tfdump t100
+wait 20
+tfdump t120
+wait 20
+tfdump t140
+wait 20
+tfdump t160
+wait 20
+tfdump t180
+quit
