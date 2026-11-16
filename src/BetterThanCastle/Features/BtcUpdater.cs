@@ -71,6 +71,7 @@ namespace BetterThanCastle
 			}
 			_inst._latest = "9.9.9"; _inst._msg = "dev error text"; _inst._restarting = true;
 			_inst._phase = phase == 1 ? Phase.Available : phase == 2 ? Phase.Downloading : phase == 3 ? Phase.Done : phase == 4 ? Phase.Error : Phase.Hidden;
+			if (phase == 5) { _inst._restarting = false; _inst.Restart(); }   // really relaunch the game (lab update-restart)
 		}
 #endif
 
@@ -316,10 +317,18 @@ namespace BetterThanCastle
 				string[] a = Environment.GetCommandLineArgs();
 				for (int i = 1; i < a.Length; i++) target += " \"" + a[i] + "\"";
 				string dir = Path.GetDirectoryName(exe);
-				System.Diagnostics.ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo("cmd.exe", "/c ping -n 5 127.0.0.1 >nul & start \"\" /d \"" + dir + "\" " + target);
+				// wait ~5 s (Application.Quit has run by then), kill this process if it still hangs (mono can crash in exit and stall for 30 s), then start the new one
+				int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
+				string wait = "ping -n 6 127.0.0.1 >nul";
+				System.Diagnostics.ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo("cmd.exe", "/c " + wait + " & taskkill /f /pid " + pid + " >nul 2>&1 & ping -n 2 127.0.0.1 >nul & start \"\" /d \"" + dir + "\" " + target);
 				psi.CreateNoWindow = true; psi.UseShellExecute = false; psi.WorkingDirectory = dir;
 				psi.EnvironmentVariables["SteamAppId"] = "227860";
 				psi.EnvironmentVariables["SteamGameId"] = "227860";
+				// Doorstop marks its process with DOORSTOP_INITIALIZED (and friends) and a child that inherits it does NOT load BepInEx:
+				// the relaunched game would be plain vanilla without the mod (0.5.0a report). Strip every DOORSTOP_* variable.
+				System.Collections.Generic.List<string> drop = new System.Collections.Generic.List<string>();
+				foreach (string k in psi.EnvironmentVariables.Keys) if (k.StartsWith("DOORSTOP_", StringComparison.OrdinalIgnoreCase)) drop.Add(k);
+				for (int i = 0; i < drop.Count; i++) psi.EnvironmentVariables.Remove(drop[i]);
 				System.Diagnostics.Process.Start(psi);
 				BtcLog.Info("Updater", "restarting: " + target);
 				Application.Quit();

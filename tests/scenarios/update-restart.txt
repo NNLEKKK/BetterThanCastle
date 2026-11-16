@@ -1,0 +1,4 @@
+# DEV: relaunch path of the updater (0.5.0a bug: relaunched game came up without BepInEx). The relaunched game must load the mod.
+wait 15
+updtest 5
+wait 60
