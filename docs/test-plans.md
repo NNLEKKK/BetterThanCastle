@@ -138,3 +138,15 @@ Logs: `[Net] Server: old connection N is silent`, `[Spec] quick return`, `[Spec]
 5. Visuals > World overlays > Team pings: duration, cooldown, max per player (4th ping removes the oldest at max 3), size, volume (slider plays the chime), hide allies' pings, edge arrow. Settings survive a restart.
 6. Replay of that match: pings appear at their time with the chime; after a seek they appear silently.
 7. BC OFF: the bind does nothing, no message 117 on the wire.
+
+## Wormhole wards (2026-11-17, BC ON, phantoms + "Wormhole wards" rule set in the lobby BEFORE the match; labs wormward-lab/-craft/-build/-mp OK)
+1. Altar panel: "Wormhole Ward" right after the Sentinel ward, white icon, cost 1 iron ingot + 30 brimstone; queue it, the result is a white-gem sentinel ward.
+2. Altar pie (right-click wheel): "Wormhole Ward" queue button. Rule off: the slot is empty, panel has no entry.
+3. Build menu > wards section: "Wormhole Ward" button (no hotkey). Place 1-2 blueprints: builders bring ONLY wormhole wards (a plain sentinel blueprint never takes a wormhole ward). Built ward is white.
+4. Phantom sent far: walks to the nearest own wormhole ward / crystal (crystals only with Crystal wormholes on), appears at the one nearest to the goal. Normal workers never use them.
+5. Wormhole ward never shoots enemies. Enemies can break it and carry it away like any ward.
+6. Bury a ward (block on top / dirt over it): no teleport through it. Carried / stored ward: no teleport.
+7. "Only when powered" rule: an unpowered wormhole ward (far from crystals/pylons) does not work, powered does.
+8. Pie with bricktrons selected hovering an own wormhole ward: "Teleport: off" / "on"; same on the home crystal pie (needs Crystal wormholes). Client: the switch reaches the host.
+9. Save + load (host): marks, switched-off wards and crystals, tagged blueprints, a carried wormhole ward come back.
+10. Client sees own wormhole wards white; replay shows them white.

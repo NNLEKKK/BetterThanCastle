@@ -2825,6 +2825,7 @@ public static class BtcReplay
 				BtcSpectate.RegisterHandlers(networkClient);
 				BtcShield.RegisterHandlers(networkClient);   // recorded barrier states (msg 109)
 				BtcPhantom.RegisterHandlers(networkClient);  // recorded phantom marks (msg 118)
+				BtcWormWard.RegisterHandlers(networkClient); // recorded wormhole ward marks (msg 119)
 				NetworkMessageDelegate networkMessageDelegate = BtcReplay.GetSpec("_orig") as NetworkMessageDelegate;
 				NetworkMessageDelegate networkMessageDelegate2;
 				bool flag78 = networkMessageDelegate != null && networkClient.handlers.TryGetValue(39, out networkMessageDelegate2) && networkMessageDelegate2 != null && networkMessageDelegate2.Method.DeclaringType == typeof(BtcSpectate);

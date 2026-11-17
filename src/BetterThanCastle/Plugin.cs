@@ -9,9 +9,9 @@ namespace BetterThanCastle
     {
         public const string Guid = "com.btc.betterthancastle";
         public const string Name = "Better Than Castle";
-        public const string Version = "0.5.1";
+        public const string Version = "0.5.2";
         // BepInEx parses the plugin version with System.Version: no letter suffix allowed here (the mod is skipped otherwise)
-        public const string BepVersion = "0.5.1";
+        public const string BepVersion = "0.5.2";
 
         internal static ManualLogSource Log;
         internal static Harmony Harmony;
@@ -30,6 +30,7 @@ namespace BetterThanCastle
             BtcPatcher.Apply(Harmony, typeof(BtcPlugin).Assembly);
             BtcLiveSymUI.Init();
             BtcPing.Init();
+            BtcWormWardCraft.Init();
 #if DEV
             Dev.BtcDevProbe.Init();
             Dev.BtcDevLoadProbe.Init();

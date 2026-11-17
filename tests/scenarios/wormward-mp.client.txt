@@ -1,0 +1,14 @@
+# wormward-mp client: sees the host's marks (white), switches its own ward off (accepted) and tries the host's one (refused).
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 90
+ready 120
+waitgame 240
+wait 18
+wormward dump client
+wormward ctoggle own
+wormward ctoggle other
+wait 5
+wormward dump clientafter
+wait 20
+quit

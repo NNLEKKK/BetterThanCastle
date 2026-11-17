@@ -1,0 +1,23 @@
+# wormward-build: build tasks for wormhole wards (BtcWormWardBuild). Loose wards near home: plain, wormhole, plain. A tagged blueprint
+# refuses a plain ward (fillwrong: dropped, blueprint stays); then find/fill: Labor.Find filter (accept), the tagged blueprint turns
+# into a WORM ward, the plain one into a plain ward (the delivered item decides).
+newgame
+waitgame 240
+gameplay phantom.on=1;phantom.count=1;phantom.at=0;phantom.wardWorm=1;phantom.wardPower=0;phantom.worm=0
+wait 6
+wormward plain 3 3
+wormward spawn -3 3
+wormward plain 0 6
+wait 2
+wormward bp 9 -6 worm
+wormward bp -9 -6 plain
+wait 2
+wormward fillwrong
+wait 2
+wormward wards afterwrong
+wait 2
+wormward find
+wormward fill
+wait 3
+wormward dump end
+quit

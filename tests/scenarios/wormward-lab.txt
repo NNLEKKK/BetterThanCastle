@@ -1,0 +1,32 @@
+# wormward-lab: wormhole wards (BtcWormWard) on a new sandbox game. Crystal wormholes OFF, so only wards are travel points.
+# Two own wormhole wards (near home, far), one plain sentinel ward. Phantom trip near -> far (trips=1), back (trips=2),
+# far ward switched off (no trip), switched on + buried (voxel above: no trip), crystal switch, look/material log line.
+newgame
+waitgame 240
+gameplay phantom.on=1;phantom.count=1;phantom.at=0;phantom.cd=5;phantom.wardWorm=1;phantom.wardPower=0;phantom.worm=0
+wait 10
+wormward spawn 5 0
+wormward spawn 40 -12
+wormward plain 0 6
+wait 3
+wormward dump start
+wormward go 1
+wait 15
+wormward dump trip1
+wormward go 0
+wait 15
+wormward dump trip2
+wormward toggle 1
+wormward go 1
+wait 15
+wormward dump offtrip
+wormward toggle 1
+wormward go 0
+wait 15
+wormward bury 1
+wormward go 1
+wait 15
+wormward dump buried
+wormward nest
+wormward dump nest
+quit

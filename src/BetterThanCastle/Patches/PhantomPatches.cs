@@ -210,12 +210,18 @@ namespace BetterThanCastle
     [HarmonyPatch(typeof(Navigation), "NavigateToOrAway")]
     internal static class PhantomFlyNavigatePatch
     {
-        private static bool Prefix(Navigation __instance, Location location, bool away, ref Motus.Behavior.Node __result)
+        private static bool Prefix(Navigation __instance, Location location, bool exact, bool precise, bool away, bool aggressive, ref Motus.Behavior.Node __result)
         {
-            if (!BtcPhantom.Fly || BtcPhantom.LiveCount == 0) return true;
+            if ((!BtcPhantom.Fly && !BtcPhantomWorm.Any) || BtcPhantom.LiveCount == 0) return true;
             try
             {
                 if (!BtcPhantom.IsPhantom(__instance.gameObject)) return true;
+                if (BtcPhantomWorm.Any && !away)   // wormholes (crystals, wormhole wards) first (their legs come back here with the worm decision off)
+                {
+                    Motus.Behavior.Node w = BtcPhantomWorm.TryMake(__instance, location, exact, precise, aggressive);
+                    if (w != null) { __result = w; return false; }
+                }
+                if (!BtcPhantom.Fly) return true;
                 __result = BtcPhantomFly.Make(__instance, location, away);
                 return false;
             }
@@ -316,31 +322,24 @@ namespace BetterThanCastle
     {
         private static bool Prefix(GameObject exceptThis, Brix.Engine.XYZ position, bool avoidCharacterCollisions, ref bool __result)
         {
-            if (!BtcPhantom.Ghost || BtcPhantom.LiveCount == 0 || !BtcPhantomGhost.On(exceptThis)) return true;
-            __result = BtcPhantomGhost.Occupied(exceptThis, position, avoidCharacterCollisions);
+            if (BtcPhantom.LiveCount == 0) return true;
+            if (BtcPhantom.Ghost && BtcPhantomGhost.On(exceptThis)) { __result = BtcPhantomGhost.Occupied(exceptThis, position, avoidCharacterCollisions); return false; }
+            if (!avoidCharacterCollisions || !BtcPhantomBody.On) return true;
+            __result = BtcPhantomBody.Occupied(exceptThis, position, true);   // phantoms are no characters for normal units (and normal units for flying phantoms)
             return false;
         }
     }
 
-    /// <summary>Ghost phantoms: enemy bricktrons do not block them (the vanilla aggressive presence test), own ones still do.</summary>
+    /// <summary>Ghost phantoms: enemy bricktrons do not block them, own ones block as for a vanilla worker (allies pass when the caller asked
+    /// for "pass through to work").</summary>
     [HarmonyPatch(typeof(VoxelPresence), "BuildPresenceTest")]
     internal static class PhantomGhostPresencePatch
     {
-        private static void Prefix(VoxelPresence __instance, ref bool aggressive)
+        private static void Postfix(VoxelPresence __instance, bool tryPassThrough, bool aggressive, ref Func<Brix.Engine.XYZ, bool> __result)
         {
             if (!BtcPhantom.Ghost || BtcPhantom.LiveCount == 0 || aggressive) return;
-            if (BtcPhantomGhost.On(__instance.gameObject)) aggressive = true;
-        }
-    }
-
-    /// <summary>Ghost phantoms walk in the forest (vanilla path branch type Forest).</summary>
-    [HarmonyPatch(typeof(Profession), "CanWalkInForest")]
-    internal static class PhantomGhostForestPatch
-    {
-        private static void Postfix(Profession __instance, ref bool __result)
-        {
-            if (__result || !BtcPhantom.Ghost || BtcPhantom.LiveCount == 0) return;
-            if (BtcPhantomGhost.On(__instance.gameObject)) __result = true;
+            try { if (BtcPhantomGhost.On(__instance.gameObject)) __result = BtcPhantomGhost.PresenceTest(__instance, tryPassThrough); }
+            catch (Exception e) { BtcLog.Error("Hook", "PhantomGhostPresence: " + e.Message); }
         }
     }
 

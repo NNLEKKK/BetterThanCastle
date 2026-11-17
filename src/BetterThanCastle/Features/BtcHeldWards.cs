@@ -123,6 +123,7 @@ namespace BetterThanCastle
 					GameObject ward = Transactor.SpawnUNet(Keys[ki], f, w.transform.position, Quaternion.identity, null, true);
 					if (ward == null) { left.Add(_pending[k]); BtcLog.Warn("HeldWard", "SpawnUNet returned null"); continue; }
 					w.recepteur.AddObject(ward);
+					BtcWormWard.HeldGiven((Vector3)_pending[k], ward);
 					BtcLog.Info("HeldWard", "gave ward " + ki + " to a worker " + Mathf.Sqrt(bestD).ToString("F1") + " blocks from the saved spot, carries now: " + w.recepteur.CarriesSomething());
 					done++;
 				}

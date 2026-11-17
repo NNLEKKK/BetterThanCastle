@@ -26,7 +26,7 @@ namespace BetterThanCastle
                 catch (Exception e)
                 {
                     Failed++;
-                    BtcLog.Error("Patch", "FAIL " + t.Name + ": " + e.Message);
+                    BtcLog.Error("Patch", "FAIL " + t.Name + ": " + e.Message + (e.InnerException != null ? " <- " + e.InnerException.GetType().Name + ": " + e.InnerException.Message : ""));
                 }
             }
             BtcLog.Info("Patch", "summary ok=" + Ok + " fail=" + Failed);

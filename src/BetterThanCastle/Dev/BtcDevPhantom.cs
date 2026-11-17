@@ -36,6 +36,9 @@ namespace BetterThanCastle.Dev
                     case "energy": Energy(p.Length > 2 ? int.Parse(p[2]) : 50); break;
                     case "ghostprobe": GhostProbe(p.Length > 2 ? int.Parse(p[2]) : 24); break;
                     case "where": Where(p.Length > 2 ? p[2] : "-"); break;
+                    case "forest": Forest(); break;
+                    case "meet": Meet(); break;
+                    case "pair": Pair(p.Length > 2 ? p[2] : "-"); break;
                     case "save": Save(p.Length > 2 ? p[2] : "phlab"); break;
                     case "load": Load(p.Length > 2 ? p[2] : "phlab"); break;
                     default: BtcDevLab.Lab("phantom: unknown " + sub); break;
@@ -115,6 +118,59 @@ namespace BetterThanCastle.Dev
         }
 
         private static Vector3 _flyTarget;
+
+        private static GameObject _meetWorker;
+
+        /// <summary>phantom forest: sends the first phantom to the nearest open forest cell (next to a tree, not a trunk) 8..40 blocks away.</summary>
+        private static void Forest()
+        {
+            List<GameObject> live = BtcPhantom.DevLive();
+            if (live.Count == 0) { BtcDevLab.Lab("phantom forest: no phantom"); return; }
+            GameObject ph = live[0];
+            _fly = ph;
+            Brix.Engine.XYZ c = Brix.Engine.XYZ.FromVector3(ph.transform.position);
+            float best = float.MaxValue; Brix.Engine.XYZ bp = c; int found = 0;
+            for (int x = -40; x <= 40; x++) for (int z = -40; z <= 40; z++) for (int y = -8; y <= 10; y++)
+            {
+                Brix.Engine.XYZ p = new Brix.Engine.XYZ(c.x + x, c.y + y, c.z + z);
+                if (!Brix.Engine.Voxel.IsOpen(p) || Brix.Engine.Voxel.IsOpen(p - Brix.Engine.XYZ.up)) continue;
+                if (Brix.Engine.Nature.NatureRegistry.HasNatureBlockerAt(p) || !Brix.Legacy.TreeRegistry.Instance.IsNearATree(p)) continue;
+                float d = x * x + z * z + y * y;
+                if (d < 64f) continue;
+                found++;
+                if (d < best) { best = d; bp = p; }
+            }
+            if (found == 0) { BtcDevLab.Lab("phantom forest: no forest cell"); return; }
+            _flyTarget = bp.ToVector3();
+            Order.Move.RunToward.Send(ph.GetComponent<Labor>(), new SpaceLocation(_flyTarget, true), Labor.DecisionSource.User);
+            BtcDevLab.Lab("phantom forest " + ph.name + " from=" + ph.transform.position + " to=" + _flyTarget + " cells=" + found + " dist=" + Mathf.Sqrt(best).ToString("F1"));
+        }
+
+        /// <summary>phantom meet: an own normal worker and the first phantom both run to one cell between them.</summary>
+        private static void Meet()
+        {
+            List<GameObject> live = BtcPhantom.DevLive();
+            if (live.Count == 0) { BtcDevLab.Lab("phantom meet: no phantom"); return; }
+            GameObject ph = live[0];
+            _fly = ph;
+            Labor pl = ph.GetComponent<Labor>();
+            _meetWorker = null;
+            foreach (Labor l in UnityEngine.Object.FindObjectsOfType<Labor>())
+                if (l.faction == pl.faction && l.gameObject.activeInHierarchy && !BtcPhantom.IsPhantom(l.gameObject)) { _meetWorker = l.gameObject; break; }
+            if (_meetWorker == null) { BtcDevLab.Lab("phantom meet: no worker"); return; }
+            _flyTarget = Brix.Engine.XYZ.FromVector3((ph.transform.position + _meetWorker.transform.position) * 0.5f).ToVector3();
+            Order.Move.RunToward.Send(pl, new SpaceLocation(_flyTarget, true), Labor.DecisionSource.User);
+            Order.Move.RunToward.Send(_meetWorker.GetComponent<Labor>(), new SpaceLocation(_flyTarget, true), Labor.DecisionSource.User);
+            BtcDevLab.Lab("phantom meet worker=" + _meetWorker.name + " from=" + _meetWorker.transform.position + " common cell=" + _flyTarget + " body=" + BtcPhantomBody.On);
+        }
+
+        private static void Pair(string tag)
+        {
+            if (_meetWorker == null || _fly == null) { BtcDevLab.Lab("phantom pair " + tag + ": no pair"); return; }
+            Brix.Engine.XYZ w = Brix.Engine.XYZ.FromVector3(_meetWorker.transform.position), p = Brix.Engine.XYZ.FromVector3(_fly.transform.position);
+            BtcDevLab.Lab("phantom pair " + tag + " worker=" + _meetWorker.transform.position.ToString("F2") + " phantom=" + _fly.transform.position.ToString("F2")
+                + " sameCell=" + (w == p) + " phantomToCell=" + Vector3.Distance(_fly.transform.position, _flyTarget).ToString("F2") + " workerToCell=" + Vector3.Distance(_meetWorker.transform.position, _flyTarget).ToString("F2") + " body=" + BtcPhantomBody.On);
+        }
         private static GameObject _fly;
 
         /// <summary>phantom fly &lt;dx&gt; &lt;dy&gt; &lt;dz&gt; [walk]: the first phantom gets a user move order to its position + offset

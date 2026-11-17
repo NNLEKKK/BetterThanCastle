@@ -1,0 +1,26 @@
+# wormward-craft: wormhole wards rule. First game: recipe result (marked, carried = not usable), LuaCrafting enum mapping, one placed
+# ward switched off, home crystal switched off, save "wwcraft". Then back to the menu, rule on, load the save: the Lua altar list
+# (Meta.Operable[fy_Altar].Recipes) has the wormhole ward after the sentinel ward with its name, marks + switches come back.
+newgame
+waitgame 240
+gameplay phantom.on=1;phantom.count=1;phantom.at=0;phantom.wardWorm=1;phantom.wardPower=0;phantom.worm=1
+wait 8
+wormward craft
+wait 2
+wormward spawn 8 4
+wormward toggle 1
+wormward nest
+wait 3
+wormward dump presave
+phantom save wwcraft
+wait 3
+leave
+wait 15
+gameplay phantom.on=1;phantom.count=1;phantom.at=0;phantom.wardWorm=1;phantom.wardPower=0;phantom.worm=1
+phantom load wwcraft
+waitgame 240
+gameplay phantom.on=1;phantom.count=1;phantom.at=0;phantom.wardWorm=1;phantom.wardPower=0;phantom.worm=1
+wait 8
+wormward lua
+wormward dump loaded
+quit

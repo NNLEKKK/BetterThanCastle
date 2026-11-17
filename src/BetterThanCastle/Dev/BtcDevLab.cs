@@ -81,6 +81,7 @@ namespace BetterThanCastle.Dev
                     return true;
                 case "dueldump": Dump(); return true;
                 case "phantom": return BtcDevPhantom.Cmd(p);
+                case "wormward": return BtcDevWormWard.Cmd(p);
                 case "shieldbar":
                     {
                         // shieldbar <side> <x> <z>: a base-shield barrier owned by that side's faction at an arena point (y of the side's first unit)

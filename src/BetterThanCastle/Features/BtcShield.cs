@@ -98,7 +98,7 @@ namespace BetterThanCastle
         private static bool _dirty;
         private static int _hitsSent;
 
-        private static int iOn = -1, iHome, iCapt, iRad, iDps, iPeace, iShards, iShardN, iTeam, iMage, iMageR, iMageD, iMageT, iAi, iKnock = -1, iCube = -1;
+        private static int iOn = -1, iHome, iCapt, iRad, iHomeR = -1, iDps, iPeace, iShards, iShardN, iTeam, iMage, iMageR, iMageD, iMageT, iAi, iKnock = -1, iCube = -1;
 
         // ------------------------------------------------------------------ rules
         internal static void AddRows()
@@ -109,10 +109,12 @@ namespace BetterThanCastle
                 "Энергетические барьеры вокруг кристаллов игроков. Пока барьер активен, враг не может зайти внутрь, наносить урон, копать, взрывать и захватывать что-либо внутри; владелец спокойно бьёт изнутри наружу. Вражеские юниты, оказавшиеся внутри в момент включения, бессильны и получают урон, пока не выйдут. Критичное изменение правил. Нужен BetterConnection ВКЛ у всех.");
             BtcGameplay.Add("shield.home", G, "Shield the home crystal", "Барьер вокруг домашнего кристалла", 1f, 0f, 1f, 1f, true,
                 "A barrier around every player's home crystal.", "Барьер вокруг домашнего кристалла каждого игрока.");
+            BtcGameplay.Add("shield.homeR", G, "Home crystal barrier radius (blocks)", "Радиус барьера домашнего кристалла (блоки)", 20f, 4f, 80f, 1f, false,
+                "Sphere radius, or half the side of the cube, around a home crystal. 20 = the range in which a crystal powers wards.", "Радиус сферы или половина стороны куба вокруг домашнего кристалла. 20 = дальность, в которой кристалл запитывает варды.");
             BtcGameplay.Add("shield.capt", G, "Shield captured crystals", "Барьер вокруг захваченных кристаллов", 1f, 0f, 1f, 1f, true,
                 "A barrier around every crystal a player has captured. It goes up as soon as the crystal is taken.", "Барьер вокруг каждого кристалла, захваченного игроком. Включается сразу после захвата.");
-            BtcGameplay.Add("shield.radius", G, "Barrier radius (blocks)", "Радиус барьера (блоки)", 20f, 4f, 80f, 1f, false,
-                "Sphere radius, or half the side of the cube, around the crystal. 20 = the range in which a crystal powers wards.", "Радиус сферы или половина стороны куба вокруг кристалла. 20 = дальность, в которой кристалл запитывает варды.");
+            BtcGameplay.Add("shield.radius", G, "Captured crystal barrier radius (blocks)", "Радиус барьера захваченных кристаллов (блоки)", 20f, 4f, 80f, 1f, false,
+                "Sphere radius, or half the side of the cube, around a captured crystal (shard). 20 = the range in which a crystal powers wards.", "Радиус сферы или половина стороны куба вокруг захваченного кристалла (осколка). 20 = дальность, в которой кристалл запитывает варды.");
             BtcGameplay.Add("shield.cube", G, "Cube barriers (off = sphere)", "Кубические барьеры (выкл = сфера)", 1f, 0f, 1f, 1f, true,
                 "On: every barrier is a cube aligned with the voxel grid (easy to see where it ends on blocks). Off: a sphere (dome above ground).",
                 "Вкл: каждый барьер - куб по сетке вокселей (на блоках легко видно, где он кончается). Выкл: сфера (купол над землёй).");
@@ -143,7 +145,7 @@ namespace BetterThanCastle
             iRad = BtcGameplay.Idx("shield.radius"); iDps = BtcGameplay.Idx("shield.dps"); iPeace = BtcGameplay.Idx("shield.peace");
             iShards = BtcGameplay.Idx("shield.shards"); iShardN = BtcGameplay.Idx("shield.shardN"); iTeam = BtcGameplay.Idx("shield.team");
             iMage = BtcGameplay.Idx("shield.mage"); iMageR = BtcGameplay.Idx("shield.mageR"); iMageD = BtcGameplay.Idx("shield.mageD"); iMageT = BtcGameplay.Idx("shield.mageT"); iAi = BtcGameplay.Idx("shield.ai");
-            iKnock = BtcGameplay.Idx("shield.knock"); iCube = BtcGameplay.Idx("shield.cube");
+            iKnock = BtcGameplay.Idx("shield.knock"); iCube = BtcGameplay.Idx("shield.cube"); iHomeR = BtcGameplay.Idx("shield.homeR");
         }
 
         private static float Val(int i, float def)
@@ -156,7 +158,10 @@ namespace BetterThanCastle
 
         /// <summary>The rule is on in the current rules (host: own values, client: the host's).</summary>
         internal static bool RuleOn { get { return iOn >= 0 && BtcNetworkGate.Enabled && B(iOn); } }
+        /// <summary>Barrier radius / half side around a captured crystal (shard).</summary>
         internal static float Radius { get { return Mathf.Max(1f, Val(iRad, 20f)); } }
+        /// <summary>Barrier radius / half side around a home crystal.</summary>
+        internal static float HomeRadius { get { return iHomeR < 0 ? Radius : Mathf.Max(1f, Val(iHomeR, 20f)); } }
         /// <summary>Barrier shape of the current rules: true = axis-aligned cube (half side R), false = sphere (radius R). Same on every peer (rules are synced).</summary>
         internal static bool Cube { get { return iCube < 0 || Val(iCube, 1f) > 0.5f; } }
 
@@ -251,7 +256,8 @@ namespace BetterThanCastle
             if (now >= _nextFacFlush) { _nextFacFlush = now + 3f; FacCache.Clear(); UnitCache.Clear(); }
             if (now >= _nextNest) { _nextNest = now + 1f; RefreshNests(); }
             float r = Radius;
-            for (int i = 0; i < Bars.Count; i++) if (!Bars[i].Custom) Bars[i].R = r;
+            float hr = HomeRadius;
+            for (int i = 0; i < Bars.Count; i++) if (!Bars[i].Custom) Bars[i].R = Bars[i].Home ? hr : r;
             CollectUnits();
             ComputeStates(now);
             StepUnits(dt, now);
@@ -308,7 +314,7 @@ namespace BetterThanCastle
         private static void RefreshNests()
         {
             bool home = B(iHome), capt = B(iCapt);
-            float r = Radius;
+            float r = Radius, hr = HomeRadius;
             List<FireflyNest> list = BtcMatchStats.NestList();
             for (int i = 0; i < Bars.Count; i++) Bars[i].Seen = false;
             Shards.Clear();
@@ -339,7 +345,7 @@ namespace BetterThanCastle
                     }
                     b.Seen = true;
                     b.C = n.transform.position;
-                    b.R = r;
+                    b.R = isHome ? hr : r;
                     b.Home = isHome;
                     ApplyMapBox(b, b.C);
                 }

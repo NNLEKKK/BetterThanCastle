@@ -1,6 +1,6 @@
 # phantom-mp host: phantoms on, 1 client; host kills one phantom; both dump (client gets the marks via msg 118). <= 7 min.
 host default conquest
-gameplay phantom.on=1;phantom.count=2;phantom.cd=6;phantom.delay=0;phantom.peace=0
+gameplay phantom.on=1;phantom.count=2;phantom.cd=6;phantom.at=0;phantom.peace=0
 waitclients 1 200
 wait 3
 startmatch 120

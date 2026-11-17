@@ -13,7 +13,7 @@ namespace BetterThanCastle
     internal sealed class BtcPhantomFx : MonoBehaviour
     {
         private const float Glitch = 0.3f, Collapse = 0.16f;
-        private static IntPtr[] _snd;
+        private static IntPtr[] _snd, _warp;
         private static float _lastSnd;
         internal static int Bursts, Sounds;
 
@@ -25,7 +25,12 @@ namespace BetterThanCastle
         private Mesh _mesh;
         private readonly System.Random _rnd = new System.Random();
 
-        internal static void Burst(GameObject unit, Color col)
+        internal static void Burst(GameObject unit, Color col) { Burst(unit, col, false); }
+
+        /// <summary>A wormhole trip (BtcPhantomWorm): the same glitch flash, with the short warp sound instead of the dissolve.</summary>
+        internal static void Warp(GameObject unit, Color col) { Burst(unit, col, true); }
+
+        private static void Burst(GameObject unit, Color col, bool warp)
         {
             try
             {
@@ -66,7 +71,7 @@ namespace BetterThanCastle
                     fx._mat.SetColor("_Color", new Color(col.r, col.g, col.b, 0.8f));
                     mr.sharedMaterial = fx._mat;
                 }
-                if (visible) { Bursts++; Sound(unit.transform.position); }
+                if (visible) { Bursts++; Sound(unit.transform.position, warp); }
             }
             catch (Exception e) { BtcLog.Warn("Phantom", "death fx: " + e.Message); }
         }
@@ -110,7 +115,7 @@ namespace BetterThanCastle
         }
 
         // ------------------------------------------------------------------ sound
-        private static void Sound(Vector3 p)
+        private static void Sound(Vector3 p, bool warp)
         {
             Camera cam = Camera.main;
             if (cam == null) return;
@@ -121,14 +126,46 @@ namespace BetterThanCastle
             float now = Time.realtimeSinceStartup;
             if (now - _lastSnd < 0.12f) return;
             _lastSnd = now;
+            float[] amp = { 0.16f, 0.1f, 0.05f };
             if (_snd == null)
             {
                 _snd = new IntPtr[3];
-                float[] amp = { 0.16f, 0.1f, 0.05f };
                 for (int i = 0; i < 3; i++) _snd[i] = BtcSfx.Pin(Dissolve(amp[i]));
             }
+            if (_warp == null)
+            {
+                _warp = new IntPtr[3];
+                for (int i = 0; i < 3; i++) _warp[i] = BtcSfx.Pin(Whoosh(amp[i] * 0.8f));
+            }
             Sounds++;
-            BtcSfx.PlayPtr(_snd[d < 30f ? 0 : (d < 60f ? 1 : 2)]);
+            BtcSfx.PlayPtr((warp ? _warp : _snd)[d < 30f ? 0 : (d < 60f ? 1 : 2)]);
+        }
+
+        /// <summary>0.3 s soft "whoosh" of a wormhole trip: one sine gliding up (260 -> 720 Hz) with its fifth, a breath of low-passed
+        /// noise, smooth attack and release, through a 1.8 kHz low-pass. Rising, so it never sounds like the death dissolve.</summary>
+        private static float[] Whoosh(float amp)
+        {
+            int sr = BtcSfx.SR;
+            int n = (int)(0.3f * sr);
+            float[] s = new float[n];
+            System.Random r = new System.Random(23);
+            double p1 = 0.0, p2 = 0.0;
+            float y = 0f, ny = 0f;
+            float lp = Mathf.Exp(-2f * Mathf.PI * 1800f / sr), nlp = Mathf.Exp(-2f * Mathf.PI * 1200f / sr);
+            for (int i = 0; i < n; i++)
+            {
+                float t = (float)i / sr, k = (float)i / n;
+                float f = 260f * Mathf.Pow(720f / 260f, k);
+                p1 += 2.0 * Math.PI * f / sr;
+                p2 += 2.0 * Math.PI * f * 1.5 / sr;
+                float tone = (float)Math.Sin(p1) + 0.25f * (float)Math.Sin(p2);
+                ny = (1f - nlp) * ((float)r.NextDouble() * 2f - 1f) + nlp * ny;
+                float env = (1f - Mathf.Exp(-t / 0.03f)) * Mathf.Min(1f, (n - i) / (0.08f * sr));
+                float x = (tone * 0.8f + ny * 0.6f * (1f - k)) * env;
+                y = (1f - lp) * x + lp * y;
+                s[i] = y * amp;
+            }
+            return s;
         }
 
         /// <summary>0.45 s soft "dissolve": two slightly detuned sines and a quiet sub-octave glide down (560 -> 240 Hz) with a slow attack,

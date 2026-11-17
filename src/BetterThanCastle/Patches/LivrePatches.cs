@@ -40,8 +40,8 @@ namespace BetterThanCastle.Patches
             {
                 string p = path != null ? path.Replace((char)92, '/') : string.Empty;
                 bool crlf = text.IndexOf((char)13) >= 0;
-                if (p.EndsWith("/PieMenu_Buttons.txt")) return Back(text.Replace("\r\n", "\n") + RackButtons(), crlf);
-                if (p.EndsWith("/PieMenu_Menus.txt")) return Back(PatchMenus(text.Replace("\r\n", "\n")), crlf);
+                if (p.EndsWith("/PieMenu_Buttons.txt")) return Back(text.Replace("\r\n", "\n") + RackButtons() + WormButtons(), crlf);
+                if (p.EndsWith("/PieMenu_Menus.txt")) return Back(PatchWormMenus(PatchMenus(text.Replace("\r\n", "\n"))), crlf);
             }
             catch (Exception e) { BtcLog.Error("Livre", "inject failed: " + e); }
             return text;
@@ -70,6 +70,61 @@ namespace BetterThanCastle.Patches
                  .Append(T("Only " + k.ToLowerInvariant() + " kits can be stored on this rack", "На стойку можно класть только набор: " + ru[i])).Append('\n');
             }
             return b.ToString();
+        }
+
+        // ------------------------------------------------------------------ wormhole wards (BtcWormWard, BtcWormWardCraft)
+        private static void Btn(StringBuilder b, string id, string name, string effect, string cond, string icon, string tip)
+        {
+            b.Append("\nBUTTON ").Append(id).Append("\n\tName : ").Append(name).Append("\n\tEffect : ").Append(effect)
+             .Append("\n\tCondition : ").Append(cond).Append("\n\tIcon : ").Append(icon).Append("\n\tTooltip : ").Append(tip).Append('\n');
+        }
+
+        private static string WormButtons()
+        {
+            StringBuilder b = new StringBuilder(1024);
+            b.Append('\n');
+            Btn(b, "Queue Wormhole Ward", T("Wormhole Ward", "Вард-червоточина"), "Event_Workbench_OrderWormWard", "Condition_Worm_Ward_Craft", BtcWormWardLook.IconName,
+                T("A white ward that never shoots: own wormhole wards and crystals are instant travel points for phantoms", "Белый вард, который не стреляет: свои варды-червоточины и кристаллы становятся для фантомов точками мгновенного перемещения"));
+            Btn(b, "WormWardOff", T("Teleport: off", "Выключить телепорт"), "Event_Worm_Ward_Toggle", "Condition_Worm_Ward_On", "UI_X",
+                T("Phantoms ignore this wormhole ward until you switch it on again", "Фантомы не используют этот вард-червоточину, пока вы снова его не включите"));
+            Btn(b, "WormWardOn", T("Teleport: on", "Включить телепорт"), "Event_Worm_Ward_Toggle", "Condition_Worm_Ward_Off", "UI_Check",
+                T("Phantoms may travel through this wormhole ward again", "Фантомы снова могут перемещаться через этот вард-червоточину"));
+            Btn(b, "WormNestOff", T("Teleport: off", "Выключить телепорт"), "Event_Worm_Nest_Toggle", "Condition_Worm_Nest_On", "UI_X",
+                T("Phantoms do not use this crystal as a wormhole until you switch it on again", "Фантомы не используют этот кристалл как портал, пока вы снова его не включите"));
+            Btn(b, "WormNestOn", T("Teleport: on", "Включить телепорт"), "Event_Worm_Nest_Toggle", "Condition_Worm_Nest_Off", "UI_Check",
+                T("Phantoms may use this crystal as a wormhole again", "Фантомы снова могут использовать этот кристалл как портал"));
+            return b.ToString();
+        }
+
+        /// <summary>One pie slot that shows the "off" button while the point is on, the "on" button while it is off, else a hole.</summary>
+        private static string Slot(string condOn, string btnOff, string condOff, string btnOn, string ind)
+        {
+            return ind + "If: " + condOn + "\n" + ind + "\tButton: " + btnOff + "\n" + ind + "Else:\n" + ind + "\tIf: " + condOff + "\n" + ind + "\t\tButton: " + btnOn
+                 + "\n" + ind + "\tElse:\n" + ind + "\t\tHole\n" + ind + "\tEnd\n" + ind + "End\n";
+        }
+
+        /// <summary>Replace the first "Hole" line after the anchor inside the named menu.</summary>
+        private static string ReplaceHole(string text, string menu, string anchor, string with, string what)
+        {
+            int m = text.IndexOf("MENU " + menu + "\n", StringComparison.Ordinal);
+            if (m < 0) m = text.IndexOf("MENU " + menu, StringComparison.Ordinal);
+            int a = m < 0 ? -1 : text.IndexOf(anchor, m, StringComparison.Ordinal);
+            int h = a < 0 ? -1 : text.IndexOf("\tHole\n", a + anchor.Length, StringComparison.Ordinal);
+            int next = m < 0 ? -1 : text.IndexOf("\nMENU ", m + 5, StringComparison.Ordinal);
+            if (h < 0 || (next >= 0 && h > next))
+            {
+                BtcLog.Error("Livre", "MENU " + menu + " anchor not found, " + what + " not injected");
+                return text;
+            }
+            return text.Substring(0, h) + with + text.Substring(h + "\tHole\n".Length);
+        }
+
+        private static string PatchWormMenus(string text)
+        {
+            text = ReplaceHole(text, "Altar", "Queue Geomancer Kit", "\tIf: Condition_Worm_Ward_Craft\n\t\tButton: Queue Wormhole Ward\n\tElse:\n\t\tHole\n\tEnd\n", "altar wormhole ward");
+            text = ReplaceHole(text, "BuilderWard", "Break Object", Slot("Condition_Worm_Ward_On", "WormWardOff", "Condition_Worm_Ward_Off", "WormWardOn", "\t"), "wormhole ward switch");
+            text = ReplaceHole(text, "Crystal", "Call To Arms", Slot("Condition_Worm_Nest_On", "WormNestOff", "Condition_Worm_Nest_Off", "WormNestOn", "\t"), "crystal wormhole switch");
+            return text;
         }
 
         private static string PatchMenus(string text)

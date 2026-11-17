@@ -1,0 +1,18 @@
+# wormward-mp host: wormhole wards with 1 client. Host spawns one own and one client-owned wormhole ward; the client must see both
+# white (msg 119), switch its own one off (msg 120, accepted) and fail to switch the host's one (refused); host dumps the result.
+host default conquest
+gameplay phantom.on=1;phantom.count=1;phantom.at=0;phantom.peace=0;phantom.wardWorm=1;phantom.wardPower=0
+waitclients 1 200
+wait 3
+startmatch 120
+waitgame 240
+timerstart
+wait 10
+wormward spawn 5 0
+wormward spawn 5 0 other
+wait 4
+wormward dump host
+wait 20
+wormward dump hostafter
+wait 10
+quit

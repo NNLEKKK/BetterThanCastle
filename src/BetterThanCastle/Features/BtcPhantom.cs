@@ -40,6 +40,8 @@ namespace BetterThanCastle
             internal uint NetId;
             internal bool Dead;
             internal int BaseVis = -1;
+            internal Vector3 LastPos;         // client: last seen position (a long jump = a wormhole trip, effect at the arrival)
+            internal bool HasLast;
         }
 
         private sealed class Slot
@@ -73,12 +75,16 @@ namespace BetterThanCastle
         private static uint[] _lastIds = new uint[0];
         private static int _spawned, _died;
 
-        private static int iOn = -1, iCount, iCd, iPen, iPeace, iDelay, iVis = -1, iFly = -1, iGhost = -1;
+        private static int iOn = -1, iCount, iCd, iPen, iPeace, iAt, iVis = -1, iFly = -1, iGhost = -1, iWorm = -1, iWormAlly = -1, iWormCd = -1;
 
         /// <summary>Host, rule on, phantom.fly on (set every tick): phantoms fly instead of walking (BtcPhantomFly).</summary>
         internal static bool Fly;
         /// <summary>Host, rule on, phantom.ghost on and not flying (set every tick): phantoms walk through objects (BtcPhantomGhost).</summary>
         internal static bool Ghost;
+        /// <summary>Host, rule on, phantom.worm on (set every tick): phantoms travel through their crystals (BtcPhantomWorm).</summary>
+        internal static bool Worm;
+        internal static bool WormAlly { get { return iWormAlly >= 0 && Val(iWormAlly, 0f) > 0.5f; } }
+        internal static float WormCd { get { return iWormCd < 0 ? 0f : Mathf.Max(0f, Val(iWormCd, 0f)); } }
 
         // ------------------------------------------------------------------ rules
         internal static void AddRows()
@@ -95,20 +101,30 @@ namespace BetterThanCastle
                 "Energy a dead phantom costs to come back. Nothing is taken at the death: after the cooldown the phantom waits until the owner's home crystal holds this much energy, then it is taken and the phantom appears. 0 = free respawn.",
                 "Сколько энергии стоит возвращение погибшего фантома. При смерти ничего не забирается: после перезарядки фантом ждёт, пока в домашнем кристалле владельца накопится столько энергии, затем она списывается и фантом появляется. 0 = бесплатно.");
             BtcGameplay.Add("phantom.peace", G, "Appear when peace time ends", "Появляются после мирного времени", 0f, 0f, 1f, 1f, true,
-                "On: phantoms appear when the peace time of the advanced timer ends (at once if there is no peace time). Off: after the delay below.", "Вкл: фантомы появляются, когда кончается мирное время продвинутого таймера (сразу, если мирного времени нет). Выкл: после задержки ниже.");
-            BtcGameplay.Add("phantom.delay", G, "Appear after (s, 0 = at once)", "Появляются через (с, 0 = сразу)", 0f, 0f, 3600f, 10f, false,
-                "Game time of the advanced timer after which the phantoms appear. 0 = right at the start.", "Игровое время продвинутого таймера, после которого появляются фантомы. 0 = сразу на старте.");
+                "On: phantoms appear when the peace time of the advanced timer ends (at once if there is no peace time). Off: at the minute below.", "Вкл: фантомы появляются, когда кончается мирное время продвинутого таймера (сразу, если мирного времени нет). Выкл: на минуте ниже.");
+            BtcGameplay.Add("phantom.at", G, "Appear at minute (0 = at load)", "Появляются на минуте (0 = при загрузке)", 0f, 0f, 60f, 1f, false,
+                "Minute of the advanced timer at which all phantoms appear: 1 = at 1:00. 0 = right when the map has loaded, before everybody is ready. Without the advanced timer: game minutes since the load.",
+                "Минута продвинутого таймера, на которой появляются все фантомы: 1 = на 1:00. 0 = сразу после загрузки карты, ещё до того, как все готовы. Без продвинутого таймера: игровые минуты с загрузки.");
             BtcGameplay.Add("phantom.ghost", G, "Phantoms walk through objects", "Фантомы ходят сквозь объекты", 1f, 0f, 1f, 1f, true,
-                "Phantoms find their way like workers, but walk through any buildings (enemy gates and doors too), through enemy bricktrons (not through their own) and through the forest. Terrain and blocks (bricks, beams) stop them as usual; they go round tree trunks, boulders and pyrite. Flying phantoms below take over when both are on.",
-                "Фантомы ищут путь как рабочие, но проходят сквозь любые постройки (и вражеские ворота и двери), сквозь вражеских бриктронов (не сквозь своих) и через лес. Земля и блоки (кирпичи, балки) останавливают их как обычно; стволы деревьев, валуны и пирит они обходят. Если включены оба пункта, работают летающие фантомы ниже.");
+                "Phantoms find their way like workers, but walk through any buildings (enemy gates and doors too), and through the foliage of trees. Normal bricktrons (own and enemy) and phantoms never touch: they walk through each other, may stand in one cell and do not push each other; the same between allied phantoms, only enemy phantoms push each other. Everything else is the worker path search: terrain, blocks (bricks, beams), tree trunks, boulders and pyrite are walked round, jumps and steps as usual. Flying phantoms below take over when both are on.",
+                "Фантомы ищут путь как рабочие, но проходят сквозь любые постройки (и вражеские ворота и двери), и сквозь листву деревьев. Обычные бриктроны (свои и вражеские) и фантомы не касаются друг друга: проходят насквозь, могут стоять в одной клетке и не выталкивают друг друга; так же и союзные фантомы между собой, толкаются только вражеские фантомы. Всё остальное как у рабочих: землю, блоки (кирпичи, балки), стволы деревьев, валуны и пирит обходят, прыгают и спускаются как обычно. Если включены оба пункта, работают летающие фантомы ниже.");
             BtcGameplay.Add("phantom.fly", G, "Flying phantoms", "Летающие фантомы", 0f, 0f, 1f, 1f, true,
                 "Phantoms do not walk: they fly in a straight line at their own speed to wherever they are sent, through terrain and walls, also for their tasks, and hover in the air where they stop. Places no worker can walk to (islands, closed rooms) become reachable for them.",
                 "Фантомы не ходят: летят по прямой со своей скоростью туда, куда их отправили, сквозь землю и стены, и на заданиях тоже, и висят в воздухе там, где остановились. Места, куда рабочие не могут дойти (острова, закрытые комнаты), становятся для них доступны.");
+            BtcGameplay.Add("phantom.worm", G, "Crystal wormholes", "Кристальные порталы", 0f, 0f, 1f, 1f, true,
+                "The owner's crystals (home crystal and captured shards) are instant travel points for phantoms: when the way through two crystals is clearly shorter, a phantom walks to the nearest crystal, vanishes and appears at the crystal nearest to its goal, with what it carries. A crystal lost to the enemy stops being a portal.",
+                "Свои кристаллы (домашний и захваченные осколки) становятся для фантомов точками мгновенного перемещения: если путь через два кристалла заметно короче, фантом идёт к ближайшему кристаллу, исчезает и появляется у кристалла, ближайшего к цели, вместе с грузом. Кристалл, захваченный врагом, перестаёт быть порталом.");
+            BtcGameplay.Add("phantom.wormAlly", G, "Wormholes: allied crystals too", "Порталы: и кристаллы союзников", 0f, 0f, 1f, 1f, true,
+                "Phantoms also travel through the crystals of their team mates.", "Фантомы перемещаются и через кристаллы союзников по команде.");
+            BtcGameplay.Add("phantom.wormCd", G, "Wormholes: cooldown per phantom (s)", "Порталы: перезарядка у каждого фантома (с)", 0f, 0f, 300f, 1f, false,
+                "Seconds a phantom has to wait before its next jump through a crystal. 0 = no cooldown.", "Сколько секунд фантом ждёт до следующего прыжка через кристалл. 0 = без перезарядки.");
             BtcGameplay.Add("vis.phantom", "vis", "Vision: phantoms (x of units)", "Обзор: фантомы (x от юнитов)", 0.25f, 0f, 5f, 0.05f, false,
                 "Vision radius of phantoms as a share of the normal unit vision (Vision: units above). 0.25 = a quarter.", "Радиус обзора фантомов как доля обычного обзора юнитов (Обзор: юниты выше). 0.25 = четверть.");
             iOn = BtcGameplay.Idx("phantom.on"); iCount = BtcGameplay.Idx("phantom.count"); iCd = BtcGameplay.Idx("phantom.cd"); iPen = BtcGameplay.Idx("phantom.pen");
-            iPeace = BtcGameplay.Idx("phantom.peace"); iDelay = BtcGameplay.Idx("phantom.delay"); iVis = BtcGameplay.Idx("vis.phantom");
+            iPeace = BtcGameplay.Idx("phantom.peace"); iAt = BtcGameplay.Idx("phantom.at"); iVis = BtcGameplay.Idx("vis.phantom");
             iFly = BtcGameplay.Idx("phantom.fly"); iGhost = BtcGameplay.Idx("phantom.ghost");
+            iWorm = BtcGameplay.Idx("phantom.worm"); iWormAlly = BtcGameplay.Idx("phantom.wormAlly"); iWormCd = BtcGameplay.Idx("phantom.wormCd");
+            BtcWormWard.RegisterRules(G);
         }
 
         private static float Val(int i, float def)
@@ -284,8 +300,9 @@ namespace BetterThanCastle
             Component c = recv as Component;
             if (c != null)
             {
+                // ownerless things (stumps, dug quarry ladders...) report Faction.DefaultNeutral: they follow the territory rule, not "enemy"
                 Faction tf = Faction.GetFaction(c.gameObject);
-                if (tf != null) return !Allied(af, tf);
+                if (tf != null && (IsPlayer(tf) || tf.isAI)) return !Allied(af, tf);
             }
             return EnemyTerritory(af, ShieldHookUtil.PosOf(recv, contact));
         }
@@ -475,6 +492,8 @@ namespace BetterThanCastle
                 bool on = Track && InMatch();
                 Fly = on && Host && iFly >= 0 && Val(iFly, 0f) > 0.5f;
                 Ghost = on && Host && !Fly && iGhost >= 0 && Val(iGhost, 1f) > 0.5f;
+                Worm = on && Host && iWorm >= 0 && Val(iWorm, 0f) > 0.5f;
+                BtcWormWard.Tick(on);
                 if (!on)
                 {
                     if (_wasOn) Clear("off");
@@ -516,20 +535,29 @@ namespace BetterThanCastle
             _lastIds = new uint[0];
             LiveCount = 0;
             BtcPhantomFly.Reset();
+            BtcPhantomGhost.Reset();
+            BtcPhantomBody.Reset();
+            BtcPhantomWorm.Reset();
             ThrownRb.Clear(); ThrownVel.Clear();
             _nextStep = _nextNest = _nextSend = 0f;
             BtcLog.Info("Phantom", "cleared (" + why + ") spawned=" + _spawned + " died=" + _died);
             _spawned = _died = 0;
         }
 
-        /// <summary>Phantoms may appear: peace over (rule on) or the delay passed. Waiting/3-2-1 of the advanced timer = not yet.</summary>
+        /// <summary>Phantoms may appear. Minute 0 without the peace rule = right at the load. Otherwise the advanced timer decides once it runs
+        /// (peace over / its minute reached). Without the advanced timer: at once for the peace rule, game minutes since the load for the minute.
+        /// The timer is judged by its settings, not its phase: BtcPhantom ticks before BtcTimer, so the first match frames still show Phase.None.</summary>
         private static bool Started()
         {
-            if (BtcTimer.Cur == BtcTimer.Phase.Waiting || BtcTimer.Cur == BtcTimer.Phase.Counting) return false;
-            bool timer = BtcTimer.Cur == BtcTimer.Phase.Running;
-            float el = timer ? BtcTimer.Elapsed : _clock;
-            if (Val(iPeace, 0f) > 0.5f) return !timer || el >= BtcTimer.PeaceSec;
-            return el >= Val(iDelay, 0f);
+            bool peace = Val(iPeace, 0f) > 0.5f;
+            float at = Mathf.Max(0f, Val(iAt, 0f)) * 60f;
+            if (!peace && at <= 0f) return true;
+            if (BtcNetworkGate.Enabled && Neo.multiplayer && BtcTimer.SettingOn)
+            {
+                if (BtcTimer.Cur != BtcTimer.Phase.Running) return false;
+                return BtcTimer.Elapsed >= (peace ? BtcTimer.PeaceSec : at);
+            }
+            return peace || _clock >= at;
         }
 
         private static bool IsPlayer(Faction f) { return f != null && BtcMatchStats.Tracks(f) && !f.isAI; }
@@ -556,7 +584,7 @@ namespace BetterThanCastle
             if (_restore != null && !TryRestore(now)) return;   // a loaded save: re-mark its phantoms before anything spawns
             if (now >= _nextNest || Homes.Count == 0) { _nextNest = now + 1f; RefreshNests(); }
             bool started = Started();
-            int n = Count, budget = 4;
+            int n = Count, budget = 64;   // the first wave appears at once
             foreach (KeyValuePair<int, FireflyNest> kv in Homes)
             {
                 FireflyNest home = kv.Value;
@@ -590,7 +618,7 @@ namespace BetterThanCastle
 
         /// <summary>Like a vanilla firefly (surface under the crystal, a walkable path node, no obstacle/unit volume there), but the nearest
         /// cells first instead of a random spot 2-6 blocks away; one of the 3 nearest free cells, so phantoms do not stack on one cell.</summary>
-        private static Vector3 SpawnPoint(FireflyNest home)
+        internal static Vector3 SpawnPoint(FireflyNest home)
         {
             Vector3 top = home.transform.position + Vector3.up * 4f;
             try
@@ -849,6 +877,12 @@ namespace BetterThanCastle
                 Mark m = kv.Value;
                 if (m.Dead) { if (m.Go == null) Tmp.Add(kv.Key); continue; }
                 if (m.Go == null) { Tmp.Add(kv.Key); LiveCount--; continue; }
+                if (m.Go.activeInHierarchy)
+                {
+                    Vector3 pos = m.Go.transform.position;
+                    if (m.HasLast && (pos - m.LastPos).sqrMagnitude > 144f) BtcPhantomFx.Warp(m.Go, BtcPhantomLook.FxColor(m.Go));   // 12+ blocks in 0.5 s: a wormhole trip
+                    m.LastPos = pos; m.HasLast = true;
+                }
                 if (!HostIds.Contains(m.NetId))
                 {
                     if (!m.Go.activeInHierarchy) { m.Dead = true; LiveCount--; }

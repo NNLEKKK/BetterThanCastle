@@ -1,0 +1,10 @@
+# phantom-spawnmp client: join and play; dump the phantom marks after the 1:00 spawn.
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 90
+ready 120
+waitgame 240
+wait 90
+phantom dump client
+wait 10
+quit

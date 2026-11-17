@@ -22,6 +22,8 @@ namespace BetterThanCastle
         {
             if (d.Id == "shield.on") return true;
             if (!On(shown, "shield.on")) return false;
+            if (d.Id == "shield.homeR") return On(shown, "shield.home");
+            if (d.Id == "shield.radius") return On(shown, "shield.capt");
             if (d.Id == "shield.shardN") return On(shown, "shield.shards");
             if (d.Id == "shield.mageR" || d.Id == "shield.mageD" || d.Id == "shield.mageT") return On(shown, "shield.mage");
             if (d.Id == "shield.team") return On(shown, "shield.shards") || On(shown, "shield.mage");
@@ -34,7 +36,8 @@ namespace BetterThanCastle
             if (!On(a, "shield.on")) return new[] { Tt("Off: no barriers, vanilla fights.", "Выключено: барьеров нет, бои как в ванили.") };
             bool home = On(a, "shield.home"), capt = On(a, "shield.capt");
             string where = home && capt ? Tt("home and captured crystals", "домашний и захваченные кристаллы") : (home ? Tt("home crystals only", "только домашние кристаллы") : (capt ? Tt("captured crystals only", "только захваченные кристаллы") : Tt("no crystal (both switches are off)", "ни одного кристалла (оба переключателя выкл)")));
-            string r = V(a, "shield.radius", 20f).ToString("0", CultureInfo.InvariantCulture);
+            string rc = V(a, "shield.radius", 20f).ToString("0", CultureInfo.InvariantCulture), rh = V(a, "shield.homeR", 20f).ToString("0", CultureInfo.InvariantCulture);
+            string r = home && capt && rc != rh ? Tt(rh + " (home) / " + rc + " (captured)", rh + " (домашний) / " + rc + " (захваченные)") : (home ? rh : rc);
             string l1 = On(a, "shield.cube") ? Tt("Cube barriers around " + where + ", half side " + r + ".", "Кубические барьеры вокруг: " + where + ", половина стороны " + r + ".")
                                              : Tt("Sphere barriers around " + where + ", radius " + r + ".", "Сферические барьеры вокруг: " + where + ", радиус " + r + ".");
             bool peace = On(a, "shield.peace"), sh = On(a, "shield.shards"), mg = On(a, "shield.mage"), team = On(a, "shield.team");

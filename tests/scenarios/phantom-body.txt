@@ -1,0 +1,36 @@
+# phantom-body: ghost phantom walks into tree foliage (where: dist to target must reach ~0), then an own worker walks into the phantom's cell
+# (pair: sameCell=True, phantomMoved ~0 = no unstack/push). hits.txt: PhantomBody*/PhantomForest* patches must be called.
+newgame
+waitgame 240
+gameplay phantom.on=1;phantom.count=1;phantom.cd=8;phantom.at=0;phantom.ghost=1
+wait 10
+phantom forest
+wait 2
+phantom where f1
+wait 2
+phantom where f2
+wait 2
+phantom where f3
+wait 2
+phantom where f4
+wait 2
+phantom where f5
+wait 2
+phantom where f6
+wait 2
+phantom where f7
+wait 2
+phantom where f8
+wait 2
+phantom where f9
+wait 2
+phantom where f10
+phantom meet
+wait 3
+phantom pair a0
+wait 3
+phantom pair a1
+phantom pair a
+wait 2
+phantom pair b
+quit

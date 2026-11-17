@@ -1,0 +1,20 @@
+# wormward-carry: the wormhole mark must survive carrying: craft into a worker's hands, drop it, pick it up again, drop again.
+# WormTrace lines show which vanilla calls (ResetComponent / OnRequested) happen on each step.
+newgame
+waitgame 240
+gameplay phantom.on=1;phantom.count=1;phantom.at=0;phantom.wardWorm=1;phantom.wardPower=0;phantom.worm=1
+wait 6
+wormward craft
+wait 2
+wormward wards held
+wormward drop
+wait 6
+wormward wards dropped
+wormward pickup -1
+wait 10
+wormward wards picked
+wormward drop
+wait 6
+wormward wards dropped2
+wormward dump end
+quit

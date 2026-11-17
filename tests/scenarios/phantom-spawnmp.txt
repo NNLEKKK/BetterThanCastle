@@ -1,0 +1,17 @@
+# phantom-spawnmp host: phantom.at=1 (all phantoms at 1:00 of the advanced timer), 1 client. Expect: no phantom before Ready
+# (dump preready live=0), none at ~0:30 (t30), all 4 (2 per player) at ~1:10 (t70), spawned in one wave.
+host default conquest
+gameplay phantom.on=1;phantom.count=2;phantom.cd=6;phantom.at=1;phantom.peace=0;timer.on=1;timer.peace=0
+waitclients 1 200
+wait 3
+startmatch 120
+waitgame 240
+wait 8
+phantom dump preready
+timerstart
+wait 33
+phantom dump t30
+wait 40
+phantom dump t70
+wait 5
+quit
