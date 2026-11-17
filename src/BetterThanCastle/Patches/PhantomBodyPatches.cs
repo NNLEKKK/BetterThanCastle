@@ -205,4 +205,40 @@ namespace BetterThanCastle
             return !BtcPhantom.Ghost || BtcPhantom.LiveCount == 0 || !BtcPhantomGhost.On(__instance.gameObject);
         }
     }
+
+    // ------------------------------------------------------------------ ghost phantoms on tasks (searches outside SearchPathRequest)
+    /// <summary>The builder's own search for build spots (BuildGoalFinder) used the vanilla obstacle rule: a ghost phantom builder found no
+    /// spot behind or inside objects. Same rule as its path search: only block-made obstacles stop it, enemies never block.</summary>
+    [HarmonyPatch(typeof(Brix.Game.AI.BuildGoalFinder.BranchEvaluator), "PresenceTest")]
+    internal static class PhantomGhostBuildFinderPatch
+    {
+        private static bool Prefix(Brix.Game.AI.BuildGoalFinder.BranchEvaluator __instance, XYZ p, ref bool __result)
+        {
+            if (!BtcPhantom.Ghost || BtcPhantom.LiveCount == 0) return true;
+            try
+            {
+                Labor c = __instance.Finder != null ? __instance.Finder.Character : null;
+                if (c == null || !BtcPhantomGhost.On(c.gameObject)) return true;
+                __result = !BtcPhantomGhost.PassBlocked(c.gameObject, p) && BtcPhantomGhost.PresenceTest(c.presence, true)(p);
+                return false;
+            }
+            catch (Exception e) { BtcLog.Error("Hook", "PhantomGhostBuildFinder: " + e.Message); return true; }
+        }
+    }
+
+    /// <summary>Task goals are picked from the shared knowledge regions, which objects and buildings split (vanilla walkers cannot cross them):
+    /// a ghost phantom saw nothing behind a wall of objects and skipped those tasks. It belongs to every region; a goal that terrain makes
+    /// unreachable fails its path search and is excluded by vanilla (SignalOutOfReach), as for any stale region.</summary>
+    [HarmonyPatch(typeof(Brix.Game.AI.KnowledgeSpace.Knowledge), "RegionsOf")]
+    internal static class PhantomGhostRegionsPatch
+    {
+        private static bool Prefix(Brix.Game.AI.KnowledgeSpace.Knowledge __instance, GameObject go, ref List<Brix.Game.AI.KnowledgeSpace.KnowledgeRegion> __result)
+        {
+            if (!BtcPhantom.Ghost || BtcPhantom.LiveCount == 0 || !BtcPhantomGhost.On(go)) return true;
+            Brix.Game.AI.KnowledgeSpace.KnowledgeUpdater u = __instance.knowledgeUpdater;
+            if (u == null || u.Regions == null) return true;
+            __result = u.Regions;
+            return false;
+        }
+    }
 }
