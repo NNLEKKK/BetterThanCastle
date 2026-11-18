@@ -129,6 +129,13 @@ namespace BetterThanCastle
             return true;
         }
 
+        /// <summary>World surface point under the cursor when it hovers the mini map (camera binds reuse it).</summary>
+        internal static bool MinimapCursorPoint(out Vector3 p)
+        {
+            p = Vector3.zero;
+            return CursorPicker.IsHoveringMinimap && MinimapPoint(out p);
+        }
+
         private static bool MinimapPoint(out Vector3 p)
         {
             p = Vector3.zero;

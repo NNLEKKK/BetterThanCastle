@@ -761,6 +761,270 @@ public static class BtcLang
 			"Показать / скрыть панель групп"
 		},
 		{
+			"Camera in the ground",
+			"Камера в земле"
+		},
+		{
+			"Put the camera into the ground under the cursor, looking level (press again to go back)",
+			"Поставить камеру в землю под курсором, взгляд параллельно земле (повторное нажатие возвращает назад)"
+		},
+		{
+			"Depth below the top of the block (blocks)",
+			"Глубина под верхом блока (блоков)"
+		},
+		{
+			"Step back from the point (blocks)",
+			"Отступ назад от точки (блоков)"
+		},
+		{
+			"Tilt (degrees, + looks down, 0 = level)",
+			"Наклон (градусы, + вниз, 0 = параллельно земле)"
+		},
+		{
+			"Keep the camera turn (off = turn to the nearest block axis)",
+			"Сохранять поворот камеры (выкл = по ближайшей оси блоков)"
+		},
+		{
+			"Jump to the cursor",
+			"Прыжок к курсору"
+		},
+		{
+			"Jump the camera right over the block under the cursor or the mini map point (same level, angle and zoom; hold to keep jumping)",
+			"Перенести камеру ровно над блоком под курсором или точкой миникарты (тот же уровень, угол и зум; зажатие повторяет прыжки)"
+		},
+		{
+			"Hold: wait before repeating (ms)",
+			"Зажатие: задержка перед повтором (мс)"
+		},
+		{
+			"Hold: repeat every (ms, 0 = no repeat)",
+			"Зажатие: повтор каждые (мс, 0 = без повтора)"
+		},
+		{
+			"Keep the height above the ground (off = like WASD, the Shift+scroll level stays)",
+			"Сохранять высоту над землёй (выкл = как WASD, уровень Shift+скролл не меняется)"
+		},
+		{
+			"Mouse turn",
+			"Поворот мышью"
+		},
+		{
+			"Hold and move the mouse: the camera turns with it (1x = 360 degrees per screen width, 180 degrees per screen height)",
+			"Зажмите и ведите мышью: камера поворачивается за ней (1x = 360 градусов на ширину экрана, 180 градусов на высоту)"
+		},
+		{
+			"Sensitivity left / right",
+			"Чувствительность влево / вправо"
+		},
+		{
+			"Same sensitivity up / down (off = its own value below)",
+			"Та же чувствительность вверх / вниз (выкл = своё значение ниже)"
+		},
+		{
+			"Sensitivity up / down",
+			"Чувствительность вверх / вниз"
+		},
+		{
+			"Turn left / right",
+			"Поворот влево / вправо"
+		},
+		{
+			"Tilt up / down",
+			"Наклон вверх / вниз"
+		},
+		{
+			"Invert left / right",
+			"Инвертировать влево / вправо"
+		},
+		{
+			"Invert up / down",
+			"Инвертировать вверх / вниз"
+		},
+		{
+			"Smoothing (0 = follows the mouse at once)",
+			"Сглаживание (0 = сразу за мышью)"
+		},
+		{
+			"Turn around (0 = view centre, 1 = the camera itself)",
+			"Поворот вокруг (0 = центр обзора, 1 = самой камеры)"
+		},
+		{
+			"Lowest tilt (degrees, negative = looks up)",
+			"Наименьший наклон (градусы, минус = взгляд вверх)"
+		},
+		{
+			"Highest tilt (degrees, 90 = straight down)",
+			"Наибольший наклон (градусы, 90 = прямо вниз)"
+		},
+		{
+			"Insta zoom",
+			"Мгновенный зум"
+		},
+		{
+			"Zoom in at once; press again to zoom back out to where you were",
+			"Мгновенно приблизить; повторное нажатие отдаляет обратно, как было"
+		},
+		{
+			"Proportional (zoom by a share of the current distance; off = by a fixed number of blocks)",
+			"Пропорционально (зум на долю текущего расстояния; выкл = на фиксированное число блоков)"
+		},
+		{
+			"Proportional: zoom by (percent of the distance)",
+			"Пропорционально: зум на (процент расстояния)"
+		},
+		{
+			"Fixed: zoom by (blocks)",
+			"Фиксированно: зум на (блоков)"
+		},
+		{
+			"Never closer than (blocks)",
+			"Не ближе чем (блоков)"
+		},
+		{
+			"Zoom out instead of in",
+			"Отдалять вместо приближения"
+		},
+		{
+			"Zoom towards the point under the cursor or the mini map (off = the view centre)",
+			"Зум к точке под курсором или на миникарте (выкл = к центру обзора)"
+		},
+		{
+			"Towards the cursor: move the view there (like Jump to the cursor; off = the point stays under the cursor)",
+			"К курсору: переносить обзор туда (как прыжок к курсору; выкл = точка остаётся под курсором)"
+		},
+		{
+			"Tap on a bricktron: follow it (until you move the camera some other way or press Esc)",
+			"Тап по бриктрону: следить за ним (пока не сдвинете камеру иначе или не нажмёте Esc)"
+		},
+		{
+			"Zooming back out yourself (wheel or anything else) counts as the zoom back: the next press zooms in again",
+			"Если вы сами отдалили камеру (колесом или чем угодно), это считается отзумом: следующее нажатие снова приближает"
+		},
+		{
+			"Double tap: back into the previous zoom point (ms window, 0 = off)",
+			"Двойной тап: обратно в прошлую точку зума (окно в мс, 0 = выкл)"
+		},
+		{
+			"Re-zoom: back into the last zoom point, wherever the cursor is",
+			"Резум: обратно в последнюю точку зума, где бы ни был курсор"
+		},
+		{
+			"Add to group: hold this key + a group's select key to add the selected units to that group",
+			"Добавить в группу: зажмите эту клавишу + клавишу выбора группы, чтобы добавить выделенных юнитов в эту группу"
+		},
+		{
+			"Honest wheel zoom",
+			"Честный зум колесом"
+		},
+		{
+			"Honest wheel zoom: every notch zooms by the same step at once, no speed-up and no inertia (replaces the game's wheel zoom; Shift+wheel still sets the level)",
+			"Честный зум колесом: каждый щелчок колеса сразу зумит на одинаковый шаг, без ускорений и инерции (заменяет игровой зум колесом; Shift+колесо по-прежнему меняет уровень)"
+		},
+		{
+			"Proportional (percent of the distance per notch; off = blocks per notch)",
+			"Пропорционально (процент расстояния за щелчок; выкл = блоков за щелчок)"
+		},
+		{
+			"Proportional: step per notch (percent)",
+			"Пропорционально: шаг за щелчок (процент)"
+		},
+		{
+			"Fixed: step per notch (blocks)",
+			"Фиксированно: шаг за щелчок (блоков)"
+		},
+		{
+			"Closest zoom (blocks)",
+			"Ближайший зум (блоков)"
+		},
+		{
+			"Farthest zoom (blocks)",
+			"Дальний зум (блоков)"
+		},
+		{
+			"Zoom towards the cursor (the point under the cursor stays under it)",
+			"Зум к курсору (точка под курсором остаётся под ним)"
+		},
+		{
+			"Invert the wheel",
+			"Инвертировать колесо"
+		},
+		{
+			"Glide per notch (sec, 0 = instant)",
+			"Плавность щелчка (сек, 0 = мгновенно)"
+		},
+		{
+			"Camera history",
+			"История камеры"
+		},
+		{
+			"Camera back: to where it was before the last jump, zoom or turn",
+			"Камера назад: туда, где она была до последнего прыжка, зума или поворота"
+		},
+		{
+			"Camera forward: undo a step back",
+			"Камера вперёд: отменить шаг назад"
+		},
+		{
+			"Remember up to (steps)",
+			"Помнить до (шагов)"
+		},
+		{
+			"While in the ground: Jump to the cursor does nothing",
+			"Когда камера в земле: прыжок к курсору не работает"
+		},
+		{
+			"While in the ground: Insta zoom does nothing",
+			"Когда камера в земле: мгновенный зум не работает"
+		},
+		{
+			"Animation (sec, 0 = instant)",
+			"Анимация (сек, 0 = мгновенно)"
+		},
+		{
+			"Camera when a map loads",
+			"Камера при загрузке карты"
+		},
+		{
+			"Set the camera angle when a map loads",
+			"Ставить угол камеры при загрузке карты"
+		},
+		{
+			"Tilt (degrees, 90 = straight down)",
+			"Наклон (градусы, 90 = прямо вниз)"
+		},
+		{
+			"Also set the turn (off = keep the game's turn)",
+			"Ставить и поворот (выкл = поворот игры)"
+		},
+		{
+			"Turn (degrees, 0 = north)",
+			"Поворот (градусы, 0 = север)"
+		},
+		{
+			"Zoom distance (blocks, 0 = keep the game's)",
+			"Дальность зума (блоков, 0 = как у игры)"
+		},
+		{
+			"Wait after the map is ready (sec)",
+			"Задержка после готовности карты (сек)"
+		},
+		{
+			"Quick turn",
+			"Быстрый поворот"
+		},
+		{
+			"Hold, draw an arrow with the mouse, release: the camera turns to look where the arrow points (Esc cancels)",
+			"Зажмите, проведите мышью стрелку и отпустите: камера развернётся туда, куда указывает стрелка (Esc отменяет)"
+		},
+		{
+			"Turn around (0 = view centre, 1 = arrow start, 2 = the camera itself)",
+			"Поворот вокруг (0 = центр обзора, 1 = начало стрелки, 2 = самой камеры)"
+		},
+		{
+			"Snap the angle to steps of (degrees, 0 = free)",
+			"Шаг угла (градусы, 0 = свободно)"
+		},
+		{
 			"Save group",
 			"Сохранить группу"
 		},

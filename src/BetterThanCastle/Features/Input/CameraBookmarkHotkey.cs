@@ -15,8 +15,24 @@ namespace Brix.Input
 {
 	public class CameraBookmarkHotkey : MonoBehaviour
 	{
+		private void Start()
+		{
+			// Added from UIGameObserver.Start: when that happens after the load, this is the "map ready" moment.
+			if (!BtcLoadBoost.Loading)
+			{
+				CameraBookmarkHotkey.OnLevelReady("start");
+			}
+		}
+
 		private void Update()
 		{
+			// End of a map load (LevelReady may fire before this component exists, so the load flag is watched too).
+			bool loading = BtcLoadBoost.Loading;
+			if (CameraBookmarkHotkey._wasLoading && !loading)
+			{
+				CameraBookmarkHotkey.OnLevelReady("load end");
+			}
+			CameraBookmarkHotkey._wasLoading = loading;
 			CameraScript instance = CameraScript.Instance;
 			bool flag = instance == null;
 			bool flag2 = !flag;
@@ -36,6 +52,16 @@ namespace Brix.Input
 				this.HandleGroupClearAll();
 				this.HandleAutoGroups();
 				this.HandleFocusSelection(instance);
+				this.HandleCameraDive(instance);
+				this.HandleJumpCursor(instance);
+				this.HandleQuickTurn(instance);
+				this.HandleMouseTurn(instance);
+				this.HandleInstaZoom(instance);
+				this.HandleWheel(instance);
+				this.WheelStep(instance);
+				this.HandleFollow(instance);
+				this.HandleHistory(instance);
+				this.HandleStartAngle(instance);
 				this.HandleDigVoxel();
 				this.HandleBreakObject();
 				this.HandleGoDetonate();
@@ -468,7 +494,7 @@ namespace Brix.Input
 						this._groups[i] = list;
 					}
 				}
-				else
+				else if (!this.HandleGroupAdd(i))
 				{
 					KeyCode[] keys2 = BtcHotkeys.GetKeys("group_select_" + (i + 1), CameraBookmarkHotkey.GroupSelectDefaults[i]);
 					bool flag11 = CameraBookmarkHotkey.IsComboPressed(keys2) && this._groups[i].Count > 0;
@@ -518,6 +544,42 @@ namespace Brix.Input
 					}
 				}
 			}
+		}
+
+		// Add to group: the "add" modifier held + a group's select key adds the selected units to that group (true = consumed).
+		private bool HandleGroupAdd(int i)
+		{
+			KeyCode[] mod = BtcHotkeys.GetKeys("group_add_modifier", CameraBookmarkHotkey.NoKeys);
+			if (mod.Length == 0 || !CameraBookmarkHotkey.AllHeld(mod))
+			{
+				return false;
+			}
+			KeyCode[] sel = BtcHotkeys.GetKeys("group_select_" + (i + 1), CameraBookmarkHotkey.GroupSelectDefaults[i]);
+			if (sel == null || sel.Length == 0)
+			{
+				return false;
+			}
+			KeyCode[] combo = new KeyCode[mod.Length + sel.Length];
+			mod.CopyTo(combo, 0);
+			sel.CopyTo(combo, mod.Length);
+			if (!CameraBookmarkHotkey.IsComboPressed(combo))
+			{
+				// the modifier is held: never fall through to a plain group select
+				return true;
+			}
+			List<GameObject> source = new List<GameObject>();
+			UIGameSelector.GetSelectedEverything(ref source);
+			List<GameObject> add = CameraBookmarkHotkey.FilterToUnits(source);
+			List<GameObject> group = CameraBookmarkHotkey.FilterToUnits(this._groups[i]);
+			for (int k = 0; k < add.Count; k++)
+			{
+				if (!group.Contains(add[k]))
+				{
+					group.Add(add[k]);
+				}
+			}
+			this._groups[i] = group;
+			return true;
 		}
 
 		private void HandleGroupAssignFirstEmpty()
@@ -928,6 +990,7 @@ namespace Brix.Input
 				this.DrawOverlay();
 			}
 			this.DrawAttribution();
+			this.DrawQuickTurnArrow();
 			BtcFocusMark.DrawIcon();
 		}
 
@@ -1163,6 +1226,814 @@ namespace Brix.Input
 			}
 		}
 
+		// Camera in the ground: puts the camera inside the terrain block under the cursor, looking level; a second press goes back.
+		private void HandleCameraDive(CameraScript cam)
+		{
+			KeyCode[] keys = BtcHotkeys.GetKeys("camera_dive", CameraBookmarkHotkey.NoKeys);
+			// left the ground some other way (bookmark, jump to selection...): the dive is over
+			if (this._diveActive)
+			{
+				Vector3 now = cam.transform.position;
+				// any instant camera move (control group, bookmark, jump to selection, ...) ends the dive; WASD/drag moves are small per frame
+				if (now.y > this._diveY + 3f || (this._diveCamId == cam.GetInstanceID() && (now - this._divePos).sqrMagnitude > 9f))
+				{
+					this._diveActive = false;
+				}
+				this._divePos = now;
+			}
+			if (!CameraBookmarkHotkey.IsComboPressed(keys))
+			{
+				return;
+			}
+			try
+			{
+				if (this._diveActive && this._diveCamId == cam.GetInstanceID())
+				{
+					this._diveActive = false;
+					CameraBookmarkHotkey.ApplyState(cam, this._diveReturn);
+					return;
+				}
+				this._diveActive = false;
+				Camera main = Camera.main;
+				if (main == null)
+				{
+					return;
+				}
+				RaycastHit hit;
+				if (!CameraBookmarkHotkey.TerrainRay(main.ScreenPointToRay(UnityEngine.Input.mousePosition), 132096, out hit))
+				{
+					return;
+				}
+				Vector3 cell = Calcule.RoundVecteur(hit.point - hit.normal * 0.0001f);
+				float depth = BtcHotkeys.GetFloat("camera_dive_depth", 0.5f);
+				float back = BtcHotkeys.GetFloat("camera_dive_back", 0f);
+				float tilt = BtcHotkeys.GetFloat("camera_dive_tilt", 0f);
+				float yaw = cam.transform.eulerAngles.y;
+				if (!BtcHotkeys.GetBool("camera_dive_keep_yaw", true))
+				{
+					yaw = Mathf.Round(yaw / 90f) * 90f;
+				}
+				Vector3 flat = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+				Vector3 pos = new Vector3(cell.x, cell.y + 0.5f - depth, cell.z) - flat * back;
+				CameraBookmarkHotkey.RecordCam(cam);
+				this._diveReturn = CameraBookmarkHotkey.CaptureState(cam);
+				this._diveCamId = cam.GetInstanceID();
+				this._diveActive = true;
+				this._diveY = pos.y;
+				this._divePos = pos;
+				cam.Positionner(pos, Quaternion.Euler(tilt, yaw, 0f), 2f);
+			}
+			catch (Exception ex)
+			{
+				BtcLog.Error("CamDive", ex.Message);
+			}
+		}
+
+		// Jump to the cursor: the camera moves right over the block under the cursor (or the mini map point), like a WASD move:
+		// angle, zoom and the Shift+scroll level stay. Holding the bind repeats the jump.
+		private void HandleJumpCursor(CameraScript cam)
+		{
+			KeyCode[] keys = BtcHotkeys.GetKeys("camera_jump_cursor", CameraBookmarkHotkey.NoKeys);
+			float now = Time.unscaledTime;
+			if (CameraBookmarkHotkey.IsComboPressed(keys))
+			{
+				if (this.DiveBlocks("camera_dive_block_jump"))
+				{
+					return;
+				}
+				CameraBookmarkHotkey.RecordCam(cam);
+				CameraBookmarkHotkey._follow = null;
+				if (BtcHotkeys.GetBool("camera_jump_follow", true) && CameraBookmarkHotkey.StartFollow(cam))
+				{
+					return;
+				}
+				CameraBookmarkHotkey.JumpToCursor(cam);
+				this._jumpHeld = true;
+				this._jumpNext = now + BtcHotkeys.GetFloat("camera_jump_repeat_delay", 250f) / 1000f;
+				return;
+			}
+			if (!this._jumpHeld)
+			{
+				return;
+			}
+			if (keys.Length == 0 || !BtcHotkeys.AllHeld(keys))
+			{
+				this._jumpHeld = false;
+				return;
+			}
+			float every = BtcHotkeys.GetFloat("camera_jump_repeat", 150f) / 1000f;
+			if (every > 0f && now >= this._jumpNext)
+			{
+				CameraBookmarkHotkey.JumpToCursor(cam);
+				this._jumpNext = now + every;
+			}
+		}
+
+		// Follow: a tap of Jump to the cursor on a bricktron keeps the camera over it until the camera is moved some other way.
+		private static bool StartFollow(CameraScript cam)
+		{
+			Vector3 mm;
+			if (BtcPing.MinimapCursorPoint(out mm))
+			{
+				return false;
+			}
+			Camera main = Camera.main;
+			RaycastHit hit;
+			if (main == null || !Physics.Raycast(main.ScreenPointToRay(UnityEngine.Input.mousePosition), out hit, 1000f, -1, QueryTriggerInteraction.Ignore))
+			{
+				return false;
+			}
+			Labor unit = hit.collider.GetComponentInParent<Labor>();
+			if (unit == null || hit.collider.GetComponentInParent<Corpse>() != null)
+			{
+				return false;
+			}
+			CameraBookmarkHotkey._follow = unit.transform;
+			CameraBookmarkHotkey.FollowStep(cam);
+			return true;
+		}
+
+		private static void FollowStep(CameraScript cam)
+		{
+			Vector3 camPos = cam.transform.position;
+			Vector3 u = CameraBookmarkHotkey._follow.position;
+			Vector3 delta = new Vector3(u.x - camPos.x, 0f, u.z - camPos.z);
+			CameraScript.Target += delta;
+			cam.transform.position = camPos + delta;
+			CameraBookmarkHotkey._followSet = CameraScript.Target;
+		}
+
+		private void HandleFollow(CameraScript cam)
+		{
+			if (CameraBookmarkHotkey._follow == null)
+			{
+				return;
+			}
+			Vector3 d = CameraScript.Target - CameraBookmarkHotkey._followSet;
+			// moved by hand (WASD, drag, another bind) or Esc: stop following
+			if (d.x * d.x + d.z * d.z > 0.0025f || UnityEngine.Input.GetKeyDown(KeyCode.Escape) || !CameraBookmarkHotkey._follow.gameObject.activeInHierarchy)
+			{
+				CameraBookmarkHotkey._follow = null;
+				return;
+			}
+			CameraBookmarkHotkey.FollowStep(cam);
+		}
+
+		// Camera history (back / forward like a browser) over the jumps, zooms and turns of the camera binds.
+		internal static void RecordCam(CameraScript cam)
+		{
+			if (cam == null)
+			{
+				return;
+			}
+			List<CameraBookmarkHotkey.CamState> back = CameraBookmarkHotkey._histBack;
+			if (back.Count > 0 && CameraBookmarkHotkey.IsCameraAtState(cam, back[back.Count - 1]))
+			{
+				return;
+			}
+			back.Add(CameraBookmarkHotkey.CaptureState(cam));
+			if (back.Count > Mathf.Max(1, Mathf.RoundToInt(BtcHotkeys.GetFloat("camera_history_size", 50f))))
+			{
+				back.RemoveAt(0);
+			}
+			CameraBookmarkHotkey._histFwd.Clear();
+		}
+
+		private void HandleHistory(CameraScript cam)
+		{
+			List<CameraBookmarkHotkey.CamState> from;
+			List<CameraBookmarkHotkey.CamState> to;
+			if (CameraBookmarkHotkey.IsComboPressed(BtcHotkeys.GetKeys("camera_history_back", CameraBookmarkHotkey.NoKeys)))
+			{
+				from = CameraBookmarkHotkey._histBack;
+				to = CameraBookmarkHotkey._histFwd;
+			}
+			else if (CameraBookmarkHotkey.IsComboPressed(BtcHotkeys.GetKeys("camera_history_forward", CameraBookmarkHotkey.NoKeys)))
+			{
+				from = CameraBookmarkHotkey._histFwd;
+				to = CameraBookmarkHotkey._histBack;
+			}
+			else
+			{
+				return;
+			}
+			if (from.Count == 0)
+			{
+				return;
+			}
+			to.Add(CameraBookmarkHotkey.CaptureState(cam));
+			CameraBookmarkHotkey.CamState s = from[from.Count - 1];
+			from.RemoveAt(from.Count - 1);
+			this._zoomOn = false;
+			this._zoomAnim = false;
+			CameraBookmarkHotkey._follow = null;
+			CameraBookmarkHotkey.ApplyState(cam, s);
+		}
+
+		// Honest wheel zoom: every notch zooms by the same step at once, no speed-up and no inertia (the game's wheel zoom is muted).
+		private void HandleWheel(CameraScript cam)
+		{
+			if (!BtcHotkeys.GetBool("camera_wheel", false))
+			{
+				return;
+			}
+			float fast = cam.ZoomSpeedMod / Mathf.Max(0.0001f, this._fastBaseZoomMod);
+			cam.ZoomSpeedMod = 0f;
+			float w = UnityEngine.Input.mouseScrollDelta.y;
+			if (w == 0f || UnityEngine.Input.GetKey(KeyCode.LeftShift) || UnityEngine.Input.GetKey(KeyCode.RightShift)
+				|| (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()))
+			{
+				return;
+			}
+			try
+			{
+				if (BtcHotkeys.GetBool("camera_wheel_invert", false))
+				{
+					w = -w;
+				}
+				// one step per notch whatever the device reports per notch
+				w = Mathf.Sign(w) * Mathf.Max(1f, Mathf.Round(Mathf.Abs(w))) * fast;
+				float d0 = this._wheelAnim ? this._wheelTo : cam.Distance;
+				float d1 = BtcHotkeys.GetBool("camera_wheel_prop", true)
+					? d0 * Mathf.Pow(1f - Mathf.Clamp(BtcHotkeys.GetFloat("camera_wheel_percent", 12f) / 100f, 0.01f, 0.9f), w)
+					: d0 - w * BtcHotkeys.GetFloat("camera_wheel_blocks", 4f);
+				d1 = Mathf.Clamp(d1, BtcHotkeys.GetFloat("camera_wheel_min", 2f), Mathf.Max(BtcHotkeys.GetFloat("camera_wheel_min", 2f), BtcHotkeys.GetFloat("camera_wheel_max", 300f)));
+				Vector3 point;
+				if (BtcHotkeys.GetBool("camera_wheel_cursor", false) && d0 > 0.01f && CameraBookmarkHotkey.CursorWorldPoint(out point))
+				{
+					Vector3 shift = (point - CameraScript.Target) * (1f - d1 / d0);
+					shift.y = 0f;
+					CameraScript.Target += shift;
+				}
+				this._wheelFrom = cam.Distance;
+				this._wheelTo = d1;
+				this._wheelT0 = Time.unscaledTime;
+				this._wheelAnim = true;
+			}
+			catch (Exception ex)
+			{
+				BtcLog.Error("CamWheel", ex.Message);
+			}
+		}
+
+		private void WheelStep(CameraScript cam)
+		{
+			if (!this._wheelAnim)
+			{
+				return;
+			}
+			float dur = BtcHotkeys.GetFloat("camera_wheel_time", 0f);
+			float t = dur <= 0f ? 1f : Mathf.Clamp01((Time.unscaledTime - this._wheelT0) / dur);
+			cam.Distance = Mathf.Lerp(this._wheelFrom, this._wheelTo, t);
+			if (t >= 1f)
+			{
+				this._wheelAnim = false;
+			}
+		}
+
+		private static Transform _follow;
+
+		private static Vector3 _followSet;
+
+		private static readonly List<CameraBookmarkHotkey.CamState> _histBack = new List<CameraBookmarkHotkey.CamState>();
+
+		private static readonly List<CameraBookmarkHotkey.CamState> _histFwd = new List<CameraBookmarkHotkey.CamState>();
+
+		private bool _wheelAnim;
+
+		private float _wheelFrom;
+
+		private float _wheelTo;
+
+		private float _wheelT0;
+
+		// True while the camera is in the ground (dive) and the given "blocked while in the ground" option is on.
+		private bool DiveBlocks(string option)
+		{
+			return this._diveActive && BtcHotkeys.GetBool(option, true);
+		}
+
+		// World point under the cursor: the mini map point when hovering it, else the first terrain hit.
+		private static bool CursorWorldPoint(out Vector3 p)
+		{
+			if (BtcPing.MinimapCursorPoint(out p))
+			{
+				return true;
+			}
+			Camera main = Camera.main;
+			RaycastHit hit;
+			if (main == null || !CameraBookmarkHotkey.TerrainRay(main.ScreenPointToRay(UnityEngine.Input.mousePosition), 132096, out hit))
+			{
+				return false;
+			}
+			p = hit.point;
+			return true;
+		}
+
+		private static void JumpToCursor(CameraScript cam)
+		{
+			try
+			{
+				Vector3 cell;
+				Vector3 p;
+				if (BtcPing.MinimapCursorPoint(out p))
+				{
+					cell = Calcule.RoundVecteur(p - Vector3.up * 0.01f);
+				}
+				else
+				{
+					Camera main = Camera.main;
+					RaycastHit hit;
+					if (main == null || !CameraBookmarkHotkey.TerrainRay(main.ScreenPointToRay(UnityEngine.Input.mousePosition), 132096, out hit))
+					{
+						return;
+					}
+					cell = Calcule.RoundVecteur(hit.point - hit.normal * 0.0001f);
+				}
+				Vector3 camPos = cam.transform.position;
+				Vector3 delta = new Vector3(cell.x - camPos.x, 0f, cell.z - camPos.z);
+				if (BtcHotkeys.GetBool("camera_jump_keep_height", false))
+				{
+					RaycastHit ground;
+					float top = cell.y + 0.5f;
+					float height = Physics.Raycast(camPos, Vector3.down, out ground, 1000f, 1024, QueryTriggerInteraction.Ignore) ? camPos.y - ground.point.y : camPos.y - top;
+					delta.y = top + height - camPos.y;
+				}
+				CameraScript.Target += delta;
+				cam.transform.position = camPos + delta;
+			}
+			catch (Exception ex)
+			{
+				BtcLog.Error("CamJump", ex.Message);
+			}
+		}
+
+		// Mouse turn: while held (or toggled on) mouse movement turns / tilts the camera; 1x = 360 deg per screen width, 180 per height.
+		private void HandleMouseTurn(CameraScript cam)
+		{
+			KeyCode[] keys = BtcHotkeys.GetKeys("camera_mouse_turn", CameraBookmarkHotkey.NoKeys);
+			bool toggle = BtcHotkeys.GetString("camera_mouse_turn_mode", "hold").Equals("toggle", StringComparison.OrdinalIgnoreCase);
+			bool pressed = CameraBookmarkHotkey.IsComboPressed(keys);
+			Vector2 mouse = UnityEngine.Input.mousePosition;
+			if (!this._mtHeld)
+			{
+				if (pressed)
+				{
+					this._mtHeld = true;
+					this._mtLast = mouse;
+					if (!this._mtRun)
+					{
+						this._mtYaw = cam.CamOrientation;
+						this._mtPitch = cam.AngleOfView;
+					}
+					this._mtRun = true;
+					return;
+				}
+			}
+			else if (UnityEngine.Input.GetKeyDown(KeyCode.Escape) || (toggle ? pressed : (keys.Length == 0 || !BtcHotkeys.AllHeld(keys))))
+			{
+				this._mtHeld = false;
+			}
+			if (!this._mtRun)
+			{
+				return;
+			}
+			try
+			{
+				if (this._mtHeld)
+				{
+					Vector2 d = mouse - this._mtLast;
+					this._mtLast = mouse;
+					float sx = BtcHotkeys.GetFloat("camera_mouse_turn_sens_x", 1f);
+					float sy = BtcHotkeys.GetBool("camera_mouse_turn_same", true) ? sx : BtcHotkeys.GetFloat("camera_mouse_turn_sens_y", 1f);
+					if (BtcHotkeys.GetBool("camera_mouse_turn_x", true))
+					{
+						this._mtYaw += d.x / Mathf.Max(1f, (float)Screen.width) * 360f * sx * (BtcHotkeys.GetBool("camera_mouse_turn_inv_x", false) ? -1f : 1f);
+					}
+					if (BtcHotkeys.GetBool("camera_mouse_turn_y", true))
+					{
+						this._mtPitch -= d.y / Mathf.Max(1f, (float)Screen.height) * 180f * sy * (BtcHotkeys.GetBool("camera_mouse_turn_inv_y", false) ? -1f : 1f);
+					}
+					float lo = BtcHotkeys.GetFloat("camera_mouse_turn_min", -80f);
+					float hi = BtcHotkeys.GetFloat("camera_mouse_turn_max", 89f);
+					this._mtPitch = Mathf.Clamp(this._mtPitch, Mathf.Min(lo, hi), Mathf.Max(lo, hi));
+				}
+				float smooth = Mathf.Clamp(BtcHotkeys.GetFloat("camera_mouse_turn_smooth", 0f), 0f, 0.95f);
+				float k = smooth <= 0f ? 1f : 1f - Mathf.Pow(smooth, Time.unscaledDeltaTime * 60f);
+				float yaw = Mathf.LerpAngle(cam.CamOrientation, this._mtYaw, k);
+				float pitch = Mathf.Lerp(cam.AngleOfView, this._mtPitch, k);
+				CameraBookmarkHotkey.SetAngles(cam, yaw, pitch, Mathf.RoundToInt(BtcHotkeys.GetFloat("camera_mouse_turn_pivot", 0f)) == 1);
+				if (!this._mtHeld && Mathf.Abs(Mathf.DeltaAngle(yaw, this._mtYaw)) < 0.05f && Mathf.Abs(pitch - this._mtPitch) < 0.05f)
+				{
+					this._mtRun = false;
+				}
+			}
+			catch (Exception ex)
+			{
+				this._mtRun = this._mtHeld = false;
+				BtcLog.Error("CamMouseTurn", ex.Message);
+			}
+		}
+
+		// Sets the orbit angles; aroundCamera keeps the camera in place (moves the pivot) instead of orbiting the view centre.
+		private static void SetAngles(CameraScript cam, float yaw, float pitch, bool aroundCamera)
+		{
+			if (aroundCamera)
+			{
+				Vector3 camPos = CameraScript.Target - Quaternion.Euler(cam.AngleOfView, cam.CamOrientation, 0f) * Vector3.forward * cam.Distance;
+				CameraScript.Target = camPos + Quaternion.Euler(pitch, yaw, 0f) * Vector3.forward * cam.Distance;
+			}
+			cam.CamOrientation = yaw;
+			cam.AngleOfView = pitch;
+		}
+
+		// Insta zoom: one press zooms by a set amount, the next press (or the release in hold mode) zooms back.
+		private void HandleInstaZoom(CameraScript cam)
+		{
+			KeyCode[] keys = BtcHotkeys.GetKeys("camera_insta_zoom", CameraBookmarkHotkey.NoKeys);
+			bool pressed = CameraBookmarkHotkey.IsComboPressed(keys);
+			if (pressed && !this._zoomOn && this.DiveBlocks("camera_dive_block_zoom"))
+			{
+				pressed = false;
+			}
+			bool hold = BtcHotkeys.GetString("camera_insta_zoom_mode", "toggle").Equals("hold", StringComparison.OrdinalIgnoreCase);
+			try
+			{
+				// the player zoomed back out himself (wheel or anything else): no way back, the next press zooms in again
+				if (this._zoomOn && !this._zoomAnim && BtcHotkeys.GetBool("camera_insta_zoom_reset", true))
+				{
+					float dd = cam.Distance - this._zoomSet;
+					if (this._zoomOutward ? dd < -0.3f : dd > 0.3f)
+					{
+						this._zoomOn = false;
+					}
+				}
+				if (pressed && !this._zoomOn)
+				{
+					float d0 = cam.Distance;
+					float d1;
+					bool outward = BtcHotkeys.GetBool("camera_insta_zoom_out", false);
+					if (BtcHotkeys.GetBool("camera_insta_zoom_prop", true))
+					{
+						float f = BtcHotkeys.GetFloat("camera_insta_zoom_percent", 60f) / 100f;
+						d1 = outward ? d0 / Mathf.Max(0.05f, 1f - f) : d0 * (1f - f);
+					}
+					else
+					{
+						float b = BtcHotkeys.GetFloat("camera_insta_zoom_blocks", 30f);
+						d1 = outward ? d0 + b : d0 - b;
+					}
+					d1 = Mathf.Max(d1, BtcHotkeys.GetFloat("camera_insta_zoom_limit", 3f));
+					Vector3 shift = Vector3.zero;
+					Vector3 point;
+					if (!outward && d0 > 0.01f && BtcHotkeys.GetBool("camera_insta_zoom_cursor", true) && CameraBookmarkHotkey.CursorWorldPoint(out point))
+					{
+						// centre the view on the point (like Jump to the cursor), or keep the point under the cursor
+						shift = (point - CameraScript.Target) * (BtcHotkeys.GetBool("camera_insta_zoom_center", true) ? 1f : 1f - d1 / d0);
+						shift.y = 0f;
+					}
+					this._zoomOn = true;
+					this._zoomOutward = d1 > d0;
+					this._zoomBack = d0;
+					this._zoomShift = shift;
+					this.StartZoom(d0, d1, Vector3.zero, shift);
+					this.RememberZoomPoint(CameraScript.Target + shift, d1);
+					this._zoomInTime = Time.unscaledTime;
+					CameraBookmarkHotkey.RecordCam(cam);
+				}
+				else if (this._zoomOn && pressed && !hold && this._hasPrevZoom
+					&& Time.unscaledTime - this._zoomInTime <= BtcHotkeys.GetFloat("camera_insta_zoom_double", 300f) / 1000f)
+				{
+					// double tap: back into the previous zoom point instead of zooming out
+					Vector3 delta = this._prevZoomPt - this._lastZoomPt;
+					delta.y = 0f;
+					CameraScript.Target += delta;
+					this._zoomShift += delta;
+					Vector3 swap = this._lastZoomPt;
+					this._lastZoomPt = this._prevZoomPt;
+					this._prevZoomPt = swap;
+					this._zoomInTime = -100f;
+				}
+				else if (this._zoomOn && (hold ? (keys.Length == 0 || !BtcHotkeys.AllHeld(keys)) : pressed))
+				{
+					CameraBookmarkHotkey.RecordCam(cam);
+					this._zoomOn = false;
+					this.StartZoom(cam.Distance, this._zoomBack, Vector3.zero, -this._zoomShift);
+				}
+				else if (this._hasLastZoom && CameraBookmarkHotkey.IsComboPressed(BtcHotkeys.GetKeys("camera_insta_rezoom", CameraBookmarkHotkey.NoKeys)) && !this.DiveBlocks("camera_dive_block_zoom"))
+				{
+					// re-zoom: into the last zoom point, wherever the cursor is
+					CameraBookmarkHotkey.RecordCam(cam);
+					Vector3 shift = this._lastZoomPt - CameraScript.Target;
+					shift.y = 0f;
+					if (!this._zoomOn)
+					{
+						this._zoomOn = true;
+						this._zoomBack = cam.Distance;
+						this._zoomShift = shift;
+					}
+					else
+					{
+						this._zoomShift += shift;
+					}
+					this._zoomOutward = this._lastZoomDist > cam.Distance;
+					this.StartZoom(cam.Distance, this._lastZoomDist, Vector3.zero, shift);
+				}
+				if (this._zoomAnim)
+				{
+					float t = this._zoomDur <= 0f ? 1f : Mathf.Clamp01((Time.unscaledTime - this._zoomT0) / this._zoomDur);
+					float e = t * t * (3f - 2f * t);
+					cam.Distance = Mathf.Lerp(this._zoomFrom, this._zoomTo, e);
+					Vector3 s = this._zoomShiftTo * e;
+					CameraScript.Target += s - this._zoomShiftDone;
+					this._zoomShiftDone = s;
+					if (t >= 1f)
+					{
+						this._zoomAnim = false;
+						this._zoomSet = cam.Distance;
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				this._zoomAnim = false;
+				BtcLog.Error("CamZoom", ex.Message);
+			}
+		}
+
+		private void RememberZoomPoint(Vector3 pt, float dist)
+		{
+			if (this._hasLastZoom)
+			{
+				this._prevZoomPt = this._lastZoomPt;
+				this._hasPrevZoom = true;
+			}
+			this._lastZoomPt = pt;
+			this._lastZoomDist = dist;
+			this._hasLastZoom = true;
+		}
+
+		private bool _hasLastZoom;
+
+		private bool _hasPrevZoom;
+
+		private Vector3 _lastZoomPt;
+
+		private Vector3 _prevZoomPt;
+
+		private float _lastZoomDist;
+
+		private float _zoomInTime = -100f;
+
+		private float _zoomSet;
+
+		private bool _zoomOutward;
+
+		private void StartZoom(float from, float to, Vector3 shiftFrom, Vector3 shiftTo)
+		{
+			this._zoomFrom = from;
+			this._zoomTo = to;
+			this._zoomShiftDone = shiftFrom;
+			this._zoomShiftTo = shiftTo;
+			this._zoomT0 = Time.unscaledTime;
+			this._zoomDur = BtcHotkeys.GetFloat("camera_insta_zoom_time", 0f);
+			this._zoomAnim = true;
+		}
+
+		// Camera when a map loads: after LevelReady (+ delay) the camera gets the set tilt / turn / zoom around its view centre.
+		private void HandleStartAngle(CameraScript cam)
+		{
+			if (!CameraBookmarkHotkey._levelReadyHooked)
+			{
+				CameraBookmarkHotkey._levelReadyHooked = true;
+				Brix.Engine.GameSignals.Connect(Brix.Engine.GameSignals.LevelReady, new Action(CameraBookmarkHotkey.OnLevelReadySignal), null);
+			}
+			if (CameraBookmarkHotkey._startCheckAt > 0f && Time.unscaledTime >= CameraBookmarkHotkey._startCheckAt)
+			{
+				CameraBookmarkHotkey._startCheckAt = -1f;
+				BtcLog.Info("CamStart", "3 s later: yaw " + cam.CamOrientation.ToString("0") + " pitch " + cam.AngleOfView.ToString("0") + " dist " + cam.Distance.ToString("0"));
+			}
+			if (CameraBookmarkHotkey._startSerial == CameraBookmarkHotkey._levelReadySerial || Time.unscaledTime < CameraBookmarkHotkey._levelReadyAt + BtcHotkeys.GetFloat("camera_start_delay", 0.5f))
+			{
+				return;
+			}
+			CameraBookmarkHotkey._startSerial = CameraBookmarkHotkey._levelReadySerial;
+			if (!BtcHotkeys.GetBool("camera_start", false))
+			{
+				return;
+			}
+			try
+			{
+				float yaw = BtcHotkeys.GetBool("camera_start_yaw_on", false) ? BtcHotkeys.GetFloat("camera_start_yaw", 0f) : cam.CamOrientation;
+				CameraBookmarkHotkey.SetAngles(cam, yaw, BtcHotkeys.GetFloat("camera_start_pitch", 45f), false);
+				float dist = BtcHotkeys.GetFloat("camera_start_dist", 0f);
+				if (dist > 0f)
+				{
+					cam.Distance = dist;
+				}
+				BtcLog.Info("CamStart", "yaw " + yaw.ToString("0") + " pitch " + cam.AngleOfView.ToString("0") + " dist " + cam.Distance.ToString("0") + " via " + CameraBookmarkHotkey._readySrc);
+				CameraBookmarkHotkey._startCheckAt = Time.unscaledTime + 3f;
+			}
+			catch (Exception ex)
+			{
+				BtcLog.Error("CamStart", ex.Message);
+			}
+		}
+
+		private static void OnLevelReadySignal()
+		{
+			CameraBookmarkHotkey.OnLevelReady("signal");
+		}
+
+		private static void OnLevelReady(string src)
+		{
+			CameraBookmarkHotkey._readySrc = src;
+			CameraBookmarkHotkey._levelReadyAt = Time.unscaledTime;
+			CameraBookmarkHotkey._levelReadySerial++;
+		}
+
+		private bool _jumpHeld;
+
+		private float _jumpNext;
+
+		private bool _mtHeld;
+
+		private bool _mtRun;
+
+		private Vector2 _mtLast;
+
+		private float _mtYaw;
+
+		private float _mtPitch;
+
+		private bool _zoomOn;
+
+		private bool _zoomAnim;
+
+		private float _zoomBack;
+
+		private Vector3 _zoomShift;
+
+		private float _zoomFrom;
+
+		private float _zoomTo;
+
+		private Vector3 _zoomShiftDone;
+
+		private Vector3 _zoomShiftTo;
+
+		private float _zoomT0;
+
+		private float _zoomDur;
+
+		private static int _startSerial;
+
+		private static bool _levelReadyHooked;
+
+		private static bool _wasLoading;
+
+		private static int _levelReadySerial;
+
+		private static float _levelReadyAt = -1f;
+
+		private static string _readySrc = "";
+
+		private static float _startCheckAt = -1f;
+
+		// Quick turn: hold the bind, draw an arrow, release -> the camera turns to face the arrow direction on the ground.
+		private void HandleQuickTurn(CameraScript cam)
+		{
+			KeyCode[] keys = BtcHotkeys.GetKeys("camera_quick_turn", CameraBookmarkHotkey.NoKeys);
+			if (!this._turnActive)
+			{
+				if (!CameraBookmarkHotkey.IsComboPressed(keys))
+				{
+					return;
+				}
+				this._turnActive = true;
+				this._turnStart = UnityEngine.Input.mousePosition;
+				Camera main = Camera.main;
+				RaycastHit hit = default(RaycastHit);
+				this._turnHasWorld = main != null && CameraBookmarkHotkey.TerrainRay(main.ScreenPointToRay(this._turnStart), 132096, out hit);
+				this._turnStartWorld = this._turnHasWorld ? hit.point : CameraScript.Target;
+				return;
+			}
+			if (UnityEngine.Input.GetKeyDown(KeyCode.Escape))
+			{
+				this._turnActive = false;
+				return;
+			}
+			if (keys.Length > 0 && BtcHotkeys.AllHeld(keys))
+			{
+				return;
+			}
+			this._turnActive = false;
+			try
+			{
+				Vector2 end = UnityEngine.Input.mousePosition;
+				Vector2 drag = end - this._turnStart;
+				if (drag.magnitude < 12f)
+				{
+					return;
+				}
+				float curYaw = cam.transform.eulerAngles.y;
+				// Screen angle as a fallback, the arrow projected on the ground plane when both ends hit it.
+				float yaw = curYaw + Mathf.Atan2(drag.x, drag.y) * Mathf.Rad2Deg;
+				Camera main = Camera.main;
+				if (main != null)
+				{
+					Plane plane = new Plane(Vector3.up, this._turnStartWorld);
+					Ray r0 = main.ScreenPointToRay(this._turnStart);
+					Ray r1 = main.ScreenPointToRay(end);
+					float d0, d1;
+					if (plane.Raycast(r0, out d0) && plane.Raycast(r1, out d1))
+					{
+						Vector3 dir = r1.GetPoint(d1) - r0.GetPoint(d0);
+						dir.y = 0f;
+						if (dir.sqrMagnitude > 0.01f)
+						{
+							yaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
+						}
+					}
+				}
+				float snap = BtcHotkeys.GetFloat("camera_quick_turn_snap", 0f);
+				if (snap >= 1f)
+				{
+					yaw = Mathf.Round(yaw / snap) * snap;
+				}
+				float delta = Mathf.DeltaAngle(curYaw, yaw);
+				int mode = Mathf.RoundToInt(BtcHotkeys.GetFloat("camera_quick_turn_pivot", 0f));
+				Vector3 camPos = cam.transform.position;
+				Vector3 pivot = mode == 2 ? camPos : (mode == 1 ? this._turnStartWorld : CameraScript.Target);
+				Vector3 pos = pivot + Quaternion.Euler(0f, delta, 0f) * (camPos - pivot);
+				Quaternion rot = Quaternion.Euler(cam.transform.eulerAngles.x, curYaw + delta, 0f);
+				CameraBookmarkHotkey.RecordCam(cam);
+				cam.Positionner(pos, rot, cam.Distance);
+			}
+			catch (Exception ex)
+			{
+				BtcLog.Error("CamTurn", ex.Message);
+			}
+		}
+
+		private void DrawQuickTurnArrow()
+		{
+			if (!this._turnActive || Event.current.type != EventType.Repaint || this._overlayWhiteTex == null)
+			{
+				return;
+			}
+			Vector2 a = new Vector2(this._turnStart.x, Screen.height - this._turnStart.y);
+			Vector3 m = UnityEngine.Input.mousePosition;
+			Vector2 b = new Vector2(m.x, Screen.height - m.y);
+			Vector2 d = b - a;
+			float len = d.magnitude;
+			Color col = GUI.color;
+			Matrix4x4 mat = GUI.matrix;
+			GUI.color = BtcMenu.Accent;
+			GUI.DrawTexture(new Rect(a.x - 4f, a.y - 4f, 8f, 8f), this._overlayWhiteTex);
+			if (len >= 12f)
+			{
+				float ang = Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg;
+				float head = Mathf.Min(16f, len * 0.4f);
+				for (int pass = 0; pass < 2; pass++)
+				{
+					float th = pass == 0 ? 6f : 3f;
+					GUI.color = pass == 0 ? new Color(0f, 0f, 0f, 0.6f) : BtcMenu.Accent;
+					GUI.matrix = mat;
+					GUIUtility.RotateAroundPivot(ang, a);
+					GUI.DrawTexture(new Rect(a.x, a.y - th * 0.5f, len, th), this._overlayWhiteTex);
+					for (int s = -1; s <= 1; s += 2)
+					{
+						GUI.matrix = mat;
+						GUIUtility.RotateAroundPivot(ang + 180f + 35f * s, b);
+						GUI.DrawTexture(new Rect(b.x, b.y - th * 0.5f, head, th), this._overlayWhiteTex);
+					}
+				}
+			}
+			GUI.matrix = mat;
+			GUI.color = col;
+		}
+
+		private bool _turnActive;
+
+		private Vector2 _turnStart;
+
+		private bool _turnHasWorld;
+
+		private Vector3 _turnStartWorld;
+
+		private static readonly KeyCode[] NoKeys = new KeyCode[0];
+
+		private bool _diveActive;
+
+		private int _diveCamId;
+
+		private float _diveY;
+
+		private Vector3 _divePos;
+
+		private CameraBookmarkHotkey.CamState _diveReturn;
+
 		private static List<GameObject> GetAliveObjects(List<GameObject> source)
 		{
 			List<GameObject> list = new List<GameObject>();
@@ -1203,6 +2074,7 @@ namespace Brix.Input
 
 		private static void JumpCameraTo(CameraScript cam, List<GameObject> objs)
 		{
+			CameraBookmarkHotkey.RecordCam(cam);
 			Vector3 position = cam.transform.position;
 			Vector3 target = Vector3.zero;
 			float num = float.MaxValue;
