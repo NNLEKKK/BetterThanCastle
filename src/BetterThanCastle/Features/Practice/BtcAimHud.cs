@@ -218,6 +218,7 @@ namespace BetterThanCastle
             else if (r.PrevBest >= 0) sub += "   ·   " + T("best ", "рекорд ") + r.PrevBest;
             if (r.NewCatBest && r.PrevBestAll >= 0) sub += "   ·   " + T("best in the mode!", "рекорд режима!");
             else if (r.PrevBestAll > r.PrevBest && r.PrevBestAll >= 0) sub += "   ·   " + T("mode best ", "рекорд режима ") + r.PrevBestAll;
+            if (r.Penalty < 1f) sub += "   ·   " + T("few targets x", "мало целей x") + r.Penalty.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
             Color sc = _dim.normal.textColor; if (r.NewBest) _dim.normal.textColor = new Color(1f, 0.82f, 0.3f, 1f);
             GUI.Label(new Rect(rx, rb.y + fs * 3.1f, rw, fs * 1.4f), sub, _dim);
             _dim.normal.textColor = sc;
@@ -329,6 +330,8 @@ namespace BetterThanCastle
             y += fs * 0.4f;
             GUI.Label(new Rect(x, y, w, fs * 1.4f), T("Difficulty: ", "Сложность: ") + BtcAimScore.DifficultyName(bits) + "  (" + bits.ToString("0.0") + T(" bit", " бит") + ")", _dim);
             y += fs * 1.4f;
+            string few = BtcAimScore.FewNote(BtcAimConfig.Targets, (int)BtcAimConfig.Game);
+            if (few != null) { GUI.Label(new Rect(x, y, w, fs * 1.4f), few, _dim); y += fs * 1.4f; }
             int pb = BtcAimScore.Best(BtcAimConfig.Key(BtcAimConfig.Take()));
             GUI.Label(new Rect(x, y, w, fs * 1.4f), pb >= 0 ? T("Best on this setup: ", "Рекорд на этих настройках: ") + pb : T("No runs on this setup yet", "На этих настройках ещё не играл"), _dim);
             y += fs * 1.4f;

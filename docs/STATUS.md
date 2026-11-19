@@ -1,5 +1,5 @@
 # STATUS (read first; keep <=60 lines; update at the end of every session)
-Updated: 2026-11-19 (v0.5.4b "Aim Result" PUBLISHED, public 84ef889: result card shows rating at 100% acc, UI not hand-checked. v0.5.4a "Aim Rebalance" public 4eb659c: speed-driven aim rating v2 + Non-stop movement, user-verified; user updates Steam via the auto-updater. Before: v0.5.4 "Practice" public 772f9e0).
+Updated: 2026-11-19 (v0.5.4c "Non-stop Pack" PUBLISHED, public 6e6caa0: aim move NonStopPack=5, not hand-tested. v0.5.4b "Aim Result" public 84ef889: result card shows rating at 100% acc, UI not hand-checked. v0.5.4a "Aim Rebalance" public 4eb659c: speed-driven aim rating v2 + Non-stop movement, user-verified; user updates Steam via the auto-updater. Before: v0.5.4 "Practice" public 772f9e0).
 Terraforming state after the release: docs/terraforming.md (last sections); panel without task list / Erase mode.
 
 ## Done (code committed; user confirmed in game: hotkeys, input lock, menu look, thumbnail scale, handicap dmg/hp/income/penalty, symmetry crystal)

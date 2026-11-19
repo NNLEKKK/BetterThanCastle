@@ -151,6 +151,8 @@ namespace BetterThanCastle
             if (BtcUi.Fold(ref y, w, fs, KeyAdd("aim:score"), Tt("Difficulty and score", "Сложность и счёт"), 0))
             {
                 BtcUi.Status(ref y, w, fs, Tt("Difficulty: ", "Сложность: ") + BtcAimScore.DifficultyName(bits) + "  ·  " + bits.ToString("0.0") + Tt(" bit per target", " бит на цель"), BtcMenu.Accent);
+                string few = BtcAimScore.FewNote(BtcAimConfig.Targets, (int)BtcAimConfig.Game);
+                if (few != null) BtcUi.Status(ref y, w, fs, few, new Color(1f, 0.65f, 0.25f));
                 int pb = BtcAimScore.Best(BtcAimConfig.Key(BtcAimConfig.Take())), all = BtcAimScore.Best(null);
                 BtcUi.Status(ref y, w, fs, (pb >= 0 ? Tt("Best on this setup: ", "Рекорд на этих настройках: ") + pb + "  ·  " + BtcAimScore.RankName(BtcAimScore.RankOf(pb)) : Tt("No runs on this setup yet", "На этих настройках ещё не играл"))
                     + (all >= 0 ? "   ·   " + Tt("overall ", "общий ") + all : ""), Color.white);

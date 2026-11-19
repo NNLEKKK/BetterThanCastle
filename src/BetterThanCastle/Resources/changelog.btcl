@@ -9,6 +9,9 @@
 # Optional 5th field "exp" = experimental (not verified in real games), shown as a badge.
 # Do not use the pipe character inside texts. Keep every entry on ONE line.
 
+@ 0.5.4d | 2026-11-19 | | Aim Fair Play
+= duel | tab:8 | Aim training: fewer than 6 targets now lowers the rating for every missing target (x0.85 each), and only accuracy above blind guessing counts there. Focus with 2 targets gives almost nothing (x0.03): the next target is always the other one. Old results are rescored. | Тренировка аима: меньше 6 целей теперь снижает рейтинг за каждую недостающую цель (x0.85 за каждую), и там считается только точность выше слепого угадывания. Фокус с 2 целями почти ничего не даёт (x0.03): следующая цель всегда другая. Старые результаты пересчитаны.
+
 @ 0.5.4c | 2026-11-19 | | Non-stop Pack
 + duel | tab:8 | Aim training: new movement Non-stop pack: all targets run together as one pack, never stop and zigzag with sharp turns. It shares the non-stop ranks. | Тренировка аима: новое движение «Нон-стоп пачка»: все цели бегут вместе одной кучей, никогда не останавливаются и бегут зигзагом с резкими поворотами. Ранги общие с нон-стопом.
 

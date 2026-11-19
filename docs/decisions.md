@@ -188,3 +188,4 @@
 
 ## 2026-11-19 Multi-camera out of Release
 - User order: multi-camera is unfinished, Release builds leave it out (BtcMultiCam.Attach and its binds under #if DEV); changelog line removed from 0.5.4 (now "Practice"). Re-enable in a later release.
+- 2026-11-19 aim few-targets anti-abuse: x0.85 per target under 6, Focus n=2 x0.03 (next target is always the other), accuracy above blind-guess rate under 6 targets (Focus 1/(n-1), Most wounded (1+(k-1)/k)/k); history rescored to v3 (backup .v2).

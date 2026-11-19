@@ -30,6 +30,8 @@ namespace BetterThanCastle
             internal int Rating;
             /// <summary>What the same speed would earn at 100% accuracy (shown next to the rating).</summary>
             internal int RatingMax;
+            /// <summary>Few-targets multiplier that was applied (1 = none).</summary>
+            internal float Penalty = 1f;
             internal int PrevBest = -1, PrevBestAll = -1;
             internal bool NewBest, NewCatBest;
             internal int MissPick;
@@ -142,18 +144,54 @@ namespace BetterThanCastle
             float v = 0f;
             for (int i = 0; i < n; i++) { float dd = r.Hits[i].Mt - r.AvgMt; v += dd * dd; }
             r.SdMt = n > 1 ? Mathf.Sqrt(v / (n - 1)) : 0f;
-            r.Rating = RatingOf(n, r.Duration, r.AvgId, r.Acc);
-            r.RatingMax = RatingOf(n, r.Duration, r.AvgId, 1f);
+            r.Penalty = FewFactor(r.Cfg.Targets, r.Cfg.Game);
+            r.Rating = RatingOf(n, r.Duration, r.AvgId, r.Acc, r.Cfg.Targets, r.Cfg.Game, r.Cfg.Wound);
+            r.RatingMax = RatingOf(n, r.Duration, r.AvgId, 1f, r.Cfg.Targets, r.Cfg.Game, r.Cfg.Wound);
         }
 
         /// <summary>K puts a fast clean run (0.385 s per target, 4.4 bits, 100%) at about 1700.</summary>
         private const float K = 194f;
 
-        internal static int RatingOf(int hits, float duration, float avgId, float acc)
+        /// <summary>Below this many targets the run is too predictable: the rating shrinks per missing target.</summary>
+        internal const int FairTargets = 6;
+
+        /// <summary>Rating multiplier for small setups (2026-11-19, after a 4000+ run of blind clicking between 2 targets): x0.85 per target
+        /// under 6; Focus with 2 targets is a pumpkin (x0.03), the next target is always the other one, nothing to react to.</summary>
+        internal static float FewFactor(int targets, int game)
+        {
+            if (targets >= FairTargets) return 1f;
+            if (game == (int)BtcAimGame.Focus && targets <= 2) return 0.03f;
+            return Mathf.Pow(0.85f, FairTargets - targets);
+        }
+
+        /// <summary>Short note about the few-targets penalty for the settings, null when there is none.</summary>
+        internal static string FewNote(int targets, int game)
+        {
+            float f = FewFactor(targets, game);
+            if (f >= 1f) return null;
+            if (f < 0.05f) return BtcGameplay.T("2 targets in Focus: the next one is always the other, rating x0.03",
+                                               "2 цели в Фокусе: следующая всегда другая, рейтинг x0.03");
+            return BtcGameplay.T("Fewer than 6 targets: rating x", "Меньше 6 целей: рейтинг x") + f.ToString("0.00", CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>Hit rate of a blind click (no looking) in small setups. Focus: the next target is any of the n-1 others. Most wounded:
+        /// a random wounded one is correct with (1 + (k-1)/k)/k (one bar at the base level, each other one at it with chance 1/k).</summary>
+        private static float GuessRate(int targets, int game, int wound)
+        {
+            if (targets >= FairTargets) return 0f;
+            if (game == (int)BtcAimGame.Focus) return targets > 2 ? 1f / (targets - 1) : 0f;
+            int k = BtcAimConfig.WoundedCount(targets, wound);
+            return (1f + (k - 1f) / k) / k;
+        }
+
+        internal static int RatingOf(int hits, float duration, float avgId, float acc, int targets, int game, int wound)
         {
             if (hits <= 0 || duration <= 0.1f) return 0;
             float t = duration / hits;
-            return Mathf.RoundToInt(K * Mathf.Sqrt(Mathf.Max(0f, avgId)) / Mathf.Pow(t, 1.5f) * Mathf.Pow(Mathf.Clamp01(acc), 1.5f));
+            // accuracy above chance: spamming clicks at the few candidates earns (almost) nothing
+            float g = GuessRate(targets, game, wound);
+            if (g > 0f) acc = (acc - g) / (1f - g);
+            return Mathf.RoundToInt(K * Mathf.Sqrt(Mathf.Max(0f, avgId)) / Mathf.Pow(t, 1.5f) * Mathf.Pow(Mathf.Clamp01(acc), 1.5f) * FewFactor(targets, game));
         }
 
         // ---------------- history (<game>/BetterThanCastle/practice-logs/aim-history.txt) ----------------
@@ -173,8 +211,8 @@ namespace BetterThanCastle
             {
                 if (!File.Exists(HistPath)) return;
                 string[] lines = File.ReadAllLines(HistPath);
-                bool v2 = lines.Length > 0 && lines[0] == HistV2;
-                if (!v2) lines = MigrateV1(lines);
+                bool cur = lines.Length > 0 && lines[0] == HistV3;
+                if (!cur) lines = Rescore(lines);
                 foreach (string line in lines)
                 {
                     string[] p = line.Split('|');
@@ -185,12 +223,14 @@ namespace BetterThanCastle
             catch (Exception e) { BtcLog.Warn("Aim", "history read: " + e.Message); }
         }
 
-        private const string HistV2 = "#v2 rating = K*sqrt(id)/t^1.5*acc^1.5";
+        private const string HistV2 = "#v2 rating = K*sqrt(id)/t^1.5*acc^1.5", HistV3 = "#v3 rating = K*sqrt(id)/t^1.5*acc^1.5*few(n), acc above chance under 6 targets";
 
-        /// <summary>v1 ratings rescored with the v2 formula from the stored stats (hits, acc, id, run length in the key); the old file is kept as .v1.</summary>
-        private static string[] MigrateV1(string[] lines)
+        /// <summary>v1/v2 ratings rescored with the current formula from the stored stats (hits, acc, id; run length, targets, game, wounded % in the key);
+        /// the old file is kept as .v1 / .v2.</summary>
+        private static string[] Rescore(string[] lines)
         {
-            List<string> o = new List<string>(lines.Length + 1) { HistV2 };
+            string ver = lines.Length > 0 && lines[0] == HistV2 ? ".v2" : ".v1";
+            List<string> o = new List<string>(lines.Length + 1) { HistV3 };
             CultureInfo ci = CultureInfo.InvariantCulture;
             for (int i = 0; i < lines.Length; i++)
             {
@@ -199,18 +239,30 @@ namespace BetterThanCastle
                 int hits = (int)Stat(p[3], "hits="), ti = p[1].IndexOf("_t");
                 float acc = Stat(p[3], "acc="), id = Stat(p[3], "id="), dur = 0f;
                 if (ti >= 0) { int e = ti + 2; while (e < p[1].Length && char.IsDigit(p[1][e])) e++; float.TryParse(p[1].Substring(ti + 2, e - ti - 2), NumberStyles.Float, ci, out dur); }
-                p[2] = RatingOf(hits, dur, id, acc).ToString(ci);
+                p[2] = RatingOf(hits, dur, id, acc, KeyInt(p[1], "n", 9), p[1].Contains("_g1") ? (int)BtcAimGame.Triage : (int)BtcAimGame.Focus, KeyInt(p[1], "_w", 60)).ToString(ci);
                 o.Add(string.Join("|", p));
             }
             try
             {
-                string bak = HistPath + ".v1";
+                string bak = HistPath + ver;
                 if (!File.Exists(bak)) File.Copy(HistPath, bak);
                 File.WriteAllText(HistPath, string.Join("\r\n", o.ToArray()) + "\r\n");
-                BtcLog.Info("Aim", "history rescored v1 -> v2: " + (o.Count - 1) + " runs, old file kept as .v1");
+                BtcLog.Info("Aim", "history rescored " + ver.Substring(1) + " -> v3: " + (o.Count - 1) + " runs, old file kept as " + ver);
             }
             catch (Exception e) { BtcLog.Warn("Aim", "history migrate: " + e.Message); }
             return o.ToArray();
+        }
+
+        /// <summary>Integer after a tag in a settings key ("n" at the start = targets, "_w" = wounded %).</summary>
+        private static int KeyInt(string key, string tag, int def)
+        {
+            int a = tag == "n" ? (key.StartsWith("n") ? 1 : -1) : key.IndexOf(tag);
+            if (a < 0) return def;
+            if (tag != "n") a += tag.Length;
+            int e = a;
+            while (e < key.Length && char.IsDigit(key[e])) e++;
+            int v;
+            return e > a && int.TryParse(key.Substring(a, e - a), out v) ? v : def;
         }
 
         private static float Stat(string s, string name)
@@ -256,7 +308,7 @@ namespace BetterThanCastle
                 Directory.CreateDirectory(LogDir);
                 CultureInfo ci = CultureInfo.InvariantCulture;
                 StringBuilder sb = new StringBuilder();
-                if (!File.Exists(HistPath)) sb.Append(HistV2).Append("\r\n");
+                if (!File.Exists(HistPath)) sb.Append(HistV3).Append("\r\n");
                 sb.Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", ci)).Append('|').Append(key).Append('|').Append(r.Rating)
                   .Append("|hits=").Append(r.Hits.Count).Append(" pick=").Append(r.MissPick).Append(" wrong=").Append(r.MissWrong).Append(" empty=").Append(r.MissEmpty)
                   .Append(" acc=").Append(r.Acc.ToString("0.000", ci)).Append(" tp=").Append(r.Tp.ToString("0.00", ci))
