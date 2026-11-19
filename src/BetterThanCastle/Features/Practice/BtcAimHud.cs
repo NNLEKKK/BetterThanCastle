@@ -316,7 +316,12 @@ namespace BetterThanCastle
             dir = Step(ref y, x, w, rh, T("Time", "Время"), BtcAimConfig.Duration + T(" s", " с"), e);
             if (dir != 0) { BtcAimConfig.Duration += dir * (e.shift ? 30 : 15); BtcAimConfig.Save(); }
             y += fs * 0.3f;
-            int m = Chips(ref y, x, w, rh, BtcAimTab.MoveNames(), (int)BtcAimConfig.Move, e);
+            // movement chips in two rows of three (six do not fit the narrow column)
+            string[] mv = BtcAimTab.MoveShort();
+            int cm = (int)BtcAimConfig.Move;
+            int m = Chips(ref y, x, w, rh, new string[] { mv[0], mv[1], mv[2] }, cm, e);
+            int m2 = Chips(ref y, x, w, rh, new string[] { mv[3], mv[4], mv[5] }, cm - 3, e);
+            if (m2 >= 0) m = m2 + 3;
             if (m >= 0) { BtcAimConfig.Move = (BtcAimMove)m; BtcAimConfig.Save(); }
             int s = Chips(ref y, x, w, rh, BtcAimTab.UnitShort(), (int)BtcAimConfig.Unit, e);
             if (s >= 0) { BtcAimConfig.Unit = (BtcAimUnit)s; BtcAimConfig.Save(); }

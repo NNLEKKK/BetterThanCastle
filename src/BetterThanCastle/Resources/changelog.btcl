@@ -9,6 +9,9 @@
 # Optional 5th field "exp" = experimental (not verified in real games), shown as a badge.
 # Do not use the pipe character inside texts. Keep every entry on ONE line.
 
+@ 0.5.4c | 2026-11-19 | | Non-stop Pack
++ duel | tab:8 | Aim training: new movement Non-stop pack: all targets run together as one pack, never stop and zigzag with sharp turns. It shares the non-stop ranks. | Тренировка аима: новое движение «Нон-стоп пачка»: все цели бегут вместе одной кучей, никогда не останавливаются и бегут зигзагом с резкими поворотами. Ранги общие с нон-стопом.
+
 @ 0.5.4b | 2026-11-19 | | Aim Result
 * duel | tab:8 | Aim training: the result card also shows what your speed would have earned with 100% accuracy, next to the performance. | Тренировка аима: в карточке результата рядом с перформансом показано, сколько дала бы ваша скорость со 100% точностью.
 

@@ -701,6 +701,7 @@ namespace BetterThanCastle
         {
             if (_cfg.Move == (int)BtcAimMove.Pack) { PackTick(); return; }
             if (_cfg.Move == (int)BtcAimMove.DontStop) { NonStopTick(); return; }
+            if (_cfg.Move == (int)BtcAimMove.NonStopPack) { NonStopPackTick(); return; }
             float now = Time.time;
             Vector3 right = Quaternion.Euler(0f, _cfg.Yaw, 0f) * Vector3.right;
             for (int i = 0; i < _t.Count; i++)
@@ -805,6 +806,43 @@ namespace BetterThanCastle
                 SendMove(t, d, now);
                 t.NextMoveAt = now + 0.5f + (float)_rng.NextDouble();
             }
+        }
+
+        private float _nsPackHead = -1f;
+
+        /// <summary>Non-stop pack: the whole grid runs as one, turning sharply (>= 60 degrees) every 0.5-1.5 s, never stopping; the shared
+        /// run point lies ahead of where the pack really is now (mean offset from home), kept inside PackRoom.</summary>
+        private void NonStopPackTick()
+        {
+            float now = Time.time;
+            if (now < _packNext) return;
+            Vector3 cur = Vector3.zero; int alive = 0;
+            for (int i = 0; i < _t.Count; i++)
+            {
+                Target t = _t[i];
+                if (t.Go == null || t.Labor == null) continue;
+                cur += t.Tf.position - t.Home; alive++;
+            }
+            if (alive == 0) return;
+            cur /= alive; cur.y = 0f;
+            Vector3 off = _packOff;
+            for (int tries = 0; tries < 10; tries++)
+            {
+                float a = (float)(_rng.NextDouble() * Math.PI * 2.0);
+                if (_nsPackHead >= 0f && tries < 9 && Mathf.Abs(Mathf.DeltaAngle(a * Mathf.Rad2Deg, _nsPackHead * Mathf.Rad2Deg)) < 60f) continue;
+                Vector3 cand = cur + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * NonStopLeg;
+                if (cand.magnitude > PackRoom) cand = cand.normalized * PackRoom;
+                if ((cand - cur).sqrMagnitude < 9f && tries < 9) continue;     // the edge of the room is too close that way
+                off = cand; _nsPackHead = a; break;
+            }
+            _packOff = off;
+            for (int i = 0; i < _t.Count; i++)
+            {
+                Target t = _t[i];
+                if (t.Go == null || t.Labor == null) continue;
+                SendMove(t, t.Home + _packOff, now);
+            }
+            _packNext = now + 0.5f + (float)_rng.NextDouble();
         }
 
         private void SendMove(Target t, Vector3 d, float now)

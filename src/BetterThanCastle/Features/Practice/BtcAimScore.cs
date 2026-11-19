@@ -41,7 +41,7 @@ namespace BetterThanCastle
         internal static float MotionFactor(int move, int unit)
         {
             float b = move == (int)BtcAimMove.Strafe ? 0.35f : move == (int)BtcAimMove.Wander ? 0.45f : move == (int)BtcAimMove.Pack ? 0.4f
-                    : move == (int)BtcAimMove.DontStop ? 0.6f : 0f;
+                    : move == (int)BtcAimMove.DontStop ? 0.6f : move == (int)BtcAimMove.NonStopPack ? 0.55f : 0f;
             float k = unit == (int)BtcAimUnit.KnightShield ? 0.45f : unit == (int)BtcAimUnit.Knight ? 0.8f : unit == (int)BtcAimUnit.Worker ? 0.9f : 1f;
             return 1f + b * k;
         }
@@ -95,9 +95,9 @@ namespace BetterThanCastle
 
         // ---------------- categories: separate bests and ranks for every game x standing/moving/don't stop ----------------
         internal const int Cats = 6, MoveCats = 3;
-        private static int MoveCat(int move) { return move == (int)BtcAimMove.Stand ? 0 : move == (int)BtcAimMove.DontStop ? 2 : 1; }
+        private static int MoveCat(int move) { return move == (int)BtcAimMove.Stand ? 0 : move >= (int)BtcAimMove.DontStop ? 2 : 1; }
         internal static int CatOf(BtcAimConfig.Snap s) { return s.Game * MoveCats + MoveCat(s.Move); }
-        private static int CatOfKey(string key) { return (key.Contains("_g1") ? MoveCats : 0) + (key.Contains("_m0") ? 0 : key.Contains("_m4") ? 2 : 1); }
+        private static int CatOfKey(string key) { return (key.Contains("_g1") ? MoveCats : 0) + (key.Contains("_m0") ? 0 : (key.Contains("_m4") || key.Contains("_m5")) ? 2 : 1); }
         internal static string GameName(int c) { return c >= MoveCats ? BtcGameplay.T("Most wounded", "Самый раненый") : BtcGameplay.T("Focus", "Фокус"); }
         internal static string MoveCatName(int c)
         {

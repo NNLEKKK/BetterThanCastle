@@ -205,7 +205,15 @@ namespace BetterThanCastle
 
         internal static string[] MoveNames()
         {
-            return new string[] { Tt("Stand", "Стоят"), Tt("Strafe", "Стрейф"), Tt("Wander", "Бродят"), Tt("Pack", "Пачка"), Tt("Non-stop", "Нон-стоп") };
+            return new string[] { Tt("Stand", "Стоят"), Tt("Strafe", "Стрейф"), Tt("Wander", "Бродят"), Tt("Pack", "Пачка"), Tt("Non-stop", "Нон-стоп"), Tt("Non-stop pack", "Нон-стоп пачка") };
+        }
+
+        /// <summary>Short movement names for the narrow result card.</summary>
+        internal static string[] MoveShort()
+        {
+            string[] n = MoveNames();
+            n[5] = Tt("NS pack", "НС пачка");
+            return n;
         }
 
         private void History(ref float y, float w, int fs)
