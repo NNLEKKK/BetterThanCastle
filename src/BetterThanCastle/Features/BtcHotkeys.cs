@@ -1652,6 +1652,26 @@ public static class BtcHotkeys
 		BtcHotkeys.AddFloat(group, "camera_start_yaw", "Turn (degrees, 0 = north)", "0", -180f, 180f, 5f, "0", string.Empty);
 		BtcHotkeys.AddFloat(group, "camera_start_dist", "Zoom distance (blocks, 0 = keep the game's)", "0", 0f, 300f, 1f, "0", string.Empty);
 		BtcHotkeys.AddFloat(group, "camera_start_delay", "Wait after the map is ready (sec)", "0.5", 0f, 5f, 0.1f, "0.0", string.Empty);
+#if DEV   // multi-camera is not finished: Release builds leave it out (user order 2026-11-19)
+		BtcHotkeys._curSub = "Multi-camera";
+		BtcHotkeys.AddKey(group, "multicam_split", "Split the screen: add one more camera view (up to 8, the new view starts where you look)", 0, string.Empty, false);
+		BtcHotkeys.AddKey(group, "multicam_toggle", "Split into two / collapse to one camera (press again to bring the old layout back)", 0, string.Empty, false);
+		BtcHotkeys.AddKey(group, "multicam_close", "Close the view under the cursor", 0, string.Empty, false);
+		BtcHotkeys.AddKey(group, "multicam_max", "Fullscreen the view under the cursor (press again to go back)", 0, string.Empty, false);
+		BtcHotkeys.AddKey(group, "multicam_float", "Pull the view under the cursor out as a free window / put it back into the grid", 0, string.Empty, false);
+		BtcHotkeys.AddKey(group, "multicam_dock_all", "Put every free window back into the grid", 0, string.Empty, false);
+		BtcHotkeys.AddKey(group, "multicam_next", "Control the next view (stays until the mouse moves)", 0, string.Empty, false);
+		BtcHotkeys.AddKey(group, "multicam_prev", "Control the previous view (stays until the mouse moves)", 0, string.Empty, false);
+		BtcHotkeys.AddKey(group, "multicam_sync", "Every view jumps to where the current one looks", 0, string.Empty, false);
+		for (int mc = 1; mc <= 8; mc++)
+		{
+			BtcHotkeys.AddKey(group, "multicam_focus_" + mc, "Control this view (stays until the mouse moves)", mc, string.Empty, false);
+		}
+		BtcHotkeys.AddKey(group, "multicam_drag_modifier", "Hold + left mouse drag anywhere in a view moves it as a free window, + right mouse drag resizes it", 0, "LeftAlt", false);
+		BtcHotkeys.AddBool(group, "multicam_title", "Show the small title bar (number, free / max / close buttons) on every view", true);
+		BtcHotkeys.AddBool(group, "multicam_lite", "Lighter picture on the views you are not controlling (no ambient occlusion), saves video card time", true);
+		BtcHotkeys.AddBool(group, "multicam_restore", "Remember the split between games (every view starts where the camera starts)", true);
+#endif
 		BtcHotkeys._curSub = null;
 		group = "Control groups";
 		string[] array = new string[]

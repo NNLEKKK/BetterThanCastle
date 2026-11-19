@@ -14,6 +14,22 @@ namespace BetterThanCastle.Patches
     [HarmonyPatch(typeof(LuaMenuComponent), "Load")]
     internal static class LuaMenuComponentLoadPatch
     {
+        [HarmonyPrefix]
+        private static bool Prefix(LuaMenuComponent __instance, ref bool __result)
+        {
+            // aim trainer: the game HUD (GameMenu.lua: taskbar, task panels, mini map...) is not loaded at all; clicks use their own ray
+            if (!BtcAim.Active) return true;
+            try
+            {
+                string p = __instance.Path ?? "";
+                if (!p.Replace('\\', '/').EndsWith("LUI/Menus/GameMenu.lua", StringComparison.OrdinalIgnoreCase)) return true;
+                BtcLog.Info("Aim", "game HUD skipped: " + p);
+                __result = true;
+                return false;
+            }
+            catch (Exception) { return true; }
+        }
+
         [HarmonyPostfix]
         private static void Postfix(LuaMenuComponent __instance)
         {

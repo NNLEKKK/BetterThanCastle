@@ -985,6 +985,66 @@ public static class BtcLang
 			"Камера при загрузке карты"
 		},
 		{
+			"Multi-camera",
+			"Мультикамера"
+		},
+		{
+			"Split the screen: add one more camera view (up to 8, the new view starts where you look)",
+			"Разделить экран: добавить ещё одну камеру (до 8, новая смотрит туда же, куда вы)"
+		},
+		{
+			"Split into two / collapse to one camera (press again to bring the old layout back)",
+			"Разделить на два / схлопнуть в одну камеру (повторное нажатие возвращает прежнюю раскладку)"
+		},
+		{
+			"Close the view under the cursor",
+			"Закрыть экран под курсором"
+		},
+		{
+			"Fullscreen the view under the cursor (press again to go back)",
+			"Развернуть экран под курсором на весь монитор (повторно: назад)"
+		},
+		{
+			"Pull the view under the cursor out as a free window / put it back into the grid",
+			"Вытащить экран под курсором в свободное окно / вернуть в сетку"
+		},
+		{
+			"Put every free window back into the grid",
+			"Вернуть все свободные окна в сетку"
+		},
+		{
+			"Control the next view (stays until the mouse moves)",
+			"Управлять следующим экраном (держится, пока не сдвинете мышь)"
+		},
+		{
+			"Control the previous view (stays until the mouse moves)",
+			"Управлять предыдущим экраном (держится, пока не сдвинете мышь)"
+		},
+		{
+			"Every view jumps to where the current one looks",
+			"Все экраны переходят туда, куда смотрит текущий"
+		},
+		{
+			"Control this view (stays until the mouse moves)",
+			"Управлять этим экраном (держится, пока не сдвинете мышь)"
+		},
+		{
+			"Hold + left mouse drag anywhere in a view moves it as a free window, + right mouse drag resizes it",
+			"Удерживать + перетаскивание левой кнопкой в любом месте экрана двигает его как свободное окно, правой кнопкой меняет размер"
+		},
+		{
+			"Show the small title bar (number, free / max / close buttons) on every view",
+			"Показывать маленькую полоску на каждом экране (номер, кнопки: окно / во весь / закрыть)"
+		},
+		{
+			"Lighter picture on the views you are not controlling (no ambient occlusion), saves video card time",
+			"Упрощённая картинка на экранах, которыми вы не управляете (без затенения углов), экономит видеокарту"
+		},
+		{
+			"Remember the split between games (every view starts where the camera starts)",
+			"Помнить раскладку между играми (каждый экран стартует там же, где камера)"
+		},
+		{
 			"Set the camera angle when a map loads",
 			"Ставить угол камеры при загрузке карты"
 		},

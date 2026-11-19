@@ -1,0 +1,15 @@
+# Aim trainer GC check: two rounds (auto clicker 400 ms), profile only the rounds; GC must happen only in the countdown.
+aimauto 400
+aim
+waitaim 90
+prof reset
+wait 13
+dump run
+wait 4
+aimagain
+waitaim 30
+prof reset
+wait 13
+dump run2
+wait 3
+quit

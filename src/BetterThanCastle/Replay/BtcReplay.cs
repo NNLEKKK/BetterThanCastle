@@ -263,7 +263,7 @@ public static class BtcReplay
 							}
 							else
 							{
-								bool flag40 = (Neo.multiplayer || BtcReplay.RecordSingleplayer) && unscaledTime >= BtcReplay.recRetryAt && BtcReplay.attempts < 3 && !BtcReplay.recordedThisMatch;
+								bool flag40 = (Neo.multiplayer || BtcReplay.RecordSingleplayer) && unscaledTime >= BtcReplay.recRetryAt && BtcReplay.attempts < 3 && !BtcReplay.recordedThisMatch && !BtcAim.Active;   // aim trainer: never recorded
 								bool flag41 = flag40;
 								bool flag42 = flag41;
 								bool flag43 = flag42;

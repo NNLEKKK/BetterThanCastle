@@ -1,0 +1,9 @@
+# Multi-camera restore lab part 1: split into three and quit WITHOUT collapsing (layout file stays).
+newgame
+waitgame 240
+wait 5
+mc split
+mc split
+wait 2
+mc info
+quit

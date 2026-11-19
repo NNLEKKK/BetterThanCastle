@@ -176,3 +176,15 @@
 2026-11-17 | Altar + build menu entries appear only if the rule is on when the map loads (Lua tables are built at load) | Lua UI cannot hide a recipe slot later; rules do not change during a match
 2026-11-17 | Build menu "Wormhole Ward" = sentinel blueprint in wormhole mode; host tags the placed blueprint by position (msg 120 b|x|y|z) | the blueprint morphs into a NEW ward object (the delivered one is destroyed), so the tag sits on the blueprint and passes to the result in MorphToObject
 2026-11-17 | Pie: switch button in the BuilderWard menu (bricktrons selected, hovering the ward) and in the Crystal menu, owner only | the vanilla ward has no own pie menu; slots replace one Hole each, Hole again when the rule is off
+
+2026-11-18 | Multi-camera = time-multiplexed single rig, not extra Camera clones | the main camera carries CameraScript, deferred post effects, AO, fog image effect and Wwise listener; cloning duplicates scripts. The view under the mouse OWNS the rig (CameraScript state swapped in the early Update, order -32000), the other views re-pose the same sky+main cameras and render them by hand in the late LateUpdate (order +32000), Camera.onPostRender puts the rig back on the active view so OnGUI, picking and the next frame see it | all camera binds, Picking, selection box work unchanged; cost = one extra full render per view (lab 640x360: 1 view 1.5 ms, 4 views 5.6 ms, 8 views 10.8 ms render phase)
+2026-11-18 | Selection and groups shared by all views; active view by mouse hover (locked while a mouse button is held, pinned by the focus binds until the mouse moves) | user answers 2026-11-18 (hover, shared selection, auto grid + free windows, SP + MP local + replays)
+2026-11-18 | No dedicated menu tab; binds + 4 options live in Hotkeys > View > "Multi-camera"; the layout (count, free rects) is remembered in configs/multicam.txt and restored 3 s after the map load, every view on the start camera | full tab would cost as much as the feature; poses are map specific so they are not stored
+2026-11-18 | "Lighter picture on non-controlled views" = ambient occlusion off while they render (default on); event-driven view opening and auto quality tiers NOT done (user did not pick them) | keep scope
+
+## 2026-11-19 Aim trainer map
+- The aim trainer writes its own empty map once into Info/UGC/Maps/BtcAimTraining (copied Void heightmap/thumbnail + one Player Starting Point marker in gameobjects.json; btc-version.txt stamp). It is user content like any custom map (shows in the custom map list as "BTC Aim training"); game files are only read. Reason: stock Void has playable context 0 (no query finds it) and no spawn marker (sandbox errors "No spawnpoints in map"). Fallback: cfg Practice/AimEmptyMap turns off by itself when no faction after 20 s.
+- Practice modes (aim, duel) turn phantoms off: the user had phantom.count 10, they respawned on a cooldown under the aim floor.
+
+## 2026-11-19 Multi-camera out of Release
+- User order: multi-camera is unfinished, Release builds leave it out (BtcMultiCam.Attach and its binds under #if DEV); changelog line removed from 0.5.4 (now "Practice"). Re-enable in a later release.

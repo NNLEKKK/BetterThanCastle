@@ -649,7 +649,7 @@ public partial class ResourcePackManager : MonoBehaviour
 			"Share",
 			BtcLang.Tr("Profile"),
 			BtcReplayUI.T("Replay", "Реплеи"),
-			BtcGameplay.T("Duel", "Дуэль"),
+			BtcGameplay.T("Practice", "Практика"),
 			BtcGameplay.T("Report a bug", "Сообщить о баге"),
 			BtcGameplay.T("What's new", "Что нового"),
 			BtcReplayUI.T("Statistics", "Статистика"),

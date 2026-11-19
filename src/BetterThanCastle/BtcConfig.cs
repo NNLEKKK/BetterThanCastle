@@ -41,6 +41,7 @@ namespace BetterThanCastle
         internal static void Init(ConfigFile cfg)
         {
             BtcDuelConfig.Init(cfg);
+            BtcAimConfig.Init(cfg);
             WindowMode = cfg.Bind("Display", "WindowMode", 3, "0 = keep the game setting, 1 = fullscreen, 2 = windowed, 3 = borderless.");
             SkipIntro = cfg.Bind("Display", "SkipIntro", true, "Skip the logo screens on startup (applies on next launch).");
             UiSound = cfg.Bind("Display", "UiSound", 2, "Sound feedback of the mod menu (hover, clicks, typing, delete): 0 = off, 1 = low, 2 = medium, 3 = high.");

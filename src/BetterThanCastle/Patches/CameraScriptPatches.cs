@@ -15,6 +15,10 @@ namespace BetterThanCastle.Patches
                 if (BtcQol.CamLock) __instance.EnableEditorCamera();
             }
             catch (Exception e) { BtcLog.Error("Hook", "CameraScript.Start: " + e); }
+#if DEV       // multi-camera unfinished: DEV builds only (user order 2026-11-19)
+            try { BtcMultiCam.Attach(__instance); }
+            catch (Exception e) { BtcLog.Error("Hook", "CameraScript.Start multicam: " + e); }
+#endif
         }
     }
 

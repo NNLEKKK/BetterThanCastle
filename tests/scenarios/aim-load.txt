@@ -1,0 +1,5 @@
+# Aim trainer load check: generated empty map, floor, targets, no own workers.
+aim
+wait 45
+dump basic
+quit

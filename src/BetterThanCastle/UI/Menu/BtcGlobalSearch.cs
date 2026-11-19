@@ -62,7 +62,7 @@ namespace BetterThanCastle
                 Add(0, icons[i], BtcChangelog.TabNameEn[id], BtcChangelog.TabNameRu[id], "Tab", "Вкладка", Link("tab:" + id), "");
             }
             // curated: pages and features inside tabs (tab = where it lives)
-            string G = "Gameplay", GR = "Геймплей", P = "Profile", PR = "Профиль", V = "Visuals", VR = "Визуал", R = "Replay", RR = "Реплеи", E = "UI editor", ER = "UI редактор", H = "Advanced Hotkeys", K = "Resource Packs", KR = "Ресурс-паки", S = "Statistics", SR = "Статистика", B = "BetterConnection", D = "Duel", DR = "Дуэль", SH = "Share", SHR = "Обмен";
+            string G = "Gameplay", GR = "Геймплей", P = "Profile", PR = "Профиль", V = "Visuals", VR = "Визуал", R = "Replay", RR = "Реплеи", E = "UI editor", ER = "UI редактор", H = "Advanced Hotkeys", K = "Resource Packs", KR = "Ресурс-паки", S = "Statistics", SR = "Статистика", B = "BetterConnection", D = "Practice", DR = "Практика", SH = "Share", SHR = "Обмен";
             Add(1, BtcReplayIcons.Map, "Map symmetry and scale", "Симметрия и скейл карты", G, GR, delegate { OpenGameplay(5, null); }, "mirror axis map зеркало ось карта preset пресет карты");
             Add(1, BtcReplayIcons.Group, "Handicap", "Фора", G, GR, delegate { OpenGameplay(6, null); }, "income damage hp start workers доход урон здоровье рабочие");
             Add(1, BtcReplayIcons.Gear, "Recipes", "Рецепты", G, GR, delegate { OpenGameplay(4, null); }, "craft ingredients крафт ингредиенты");
@@ -96,7 +96,8 @@ namespace BetterThanCastle
             Add(1, BtcReplayIcons.Blueprint, "Resource packs", "Ресурс-паки", K, KR, Link("tab:0"), "textures hats thumbnail текстуры шляпы миниатюра");
             Add(1, BtcReplayIcons.Wave, "BetterConnection: ping, heartbeat, reconnect", "BetterConnection: пинг, сердцебиение, переподключение", B, B, Link("tab:2"), "network multiplayer сеть мультиплеер");
             Add(1, BtcReplayIcons.Chart, "Statistics table and graph", "Таблица и график статистики", S, SR, Link("tab:11"), "players stats игроки показатели");
-            Add(1, BtcReplayIcons.Swords, "Duel against a bot", "Дуэль против бота", D, DR, Link("tab:8"), "bot difficulty бот сложность");
+            Add(1, BtcReplayIcons.Swords, "Duel against a bot", "Дуэль против бота", D, DR, delegate { OpenPractice(BtcPracticeTab.PDuel); }, "duel bot difficulty дуэль бот сложность");
+            Add(1, BtcReplayIcons.Target, "Aim training (focus clicks)", "Тренировка аима (клики фокусом)", D, DR, delegate { OpenPractice(BtcPracticeTab.PAim); }, "aim trainer focus reaction аим тренировка фокус реакция");
             Add(1, BtcReplayIcons.Share, "Send maps to clients (.btcs)", "Отправка карт клиентам (.btcs)", SH, SHR, Link("tab:5"), "map thumbnail карта миниатюра");
             Add(1, BtcReplayIcons.Bug, "Report a bug", "Сообщить о баге", "Menu header", "Шапка меню", Link("tab:9"), "issue github ошибка");
             // hotkeys
@@ -150,6 +151,12 @@ namespace BetterThanCastle
         {
             public BtcVisualSetting S;
             public void Open() { if (ResourcePackManager.GoTab(1) && BtcVisualTab.Instance != null) BtcVisualTab.Instance.JumpSetting(S); }
+        }
+
+        private static void OpenPractice(int page)
+        {
+            if (!ResourcePackManager.GoTab(8)) return;
+            BtcPracticeTab.Page = page;
         }
 
         private static void OpenGameplay(int page, string query)

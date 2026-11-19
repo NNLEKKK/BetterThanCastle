@@ -6,16 +6,12 @@ using UnityEngine;
 namespace BetterThanCastle
 {
     /// <summary>
-    /// Duel tab (menu tab 8) in the new menu style: start button with state, match options, bot difficulty chips, the unit table with presets,
+    /// Duel page of the Practice tab (menu tab 8, BtcPracticeTab): start button with state, match options, bot difficulty chips, the unit table with presets,
     /// logs folder. Settings live in BtcDuelConfig (unchanged cfg keys). Every change pushes an undo step (scope "duel"); folds are persisted.
     /// </summary>
-    internal sealed class BtcDuelTab : BtcMenuTab
+    internal sealed class BtcDuelTab
     {
         internal static readonly BtcDuelTab Instance = new BtcDuelTab();
-
-        internal override int Id { get { return 8; } }
-        internal override bool IsActive { get { return BtcMenu.CurrentId == 8; } }
-        internal override string UndoScope { get { return Scope; } }
 
         internal const string Scope = "duel";
 
@@ -38,18 +34,10 @@ namespace BetterThanCastle
             _ctr = new GUIStyle(_lab); _ctr.alignment = TextAnchor.MiddleCenter;
         }
 
-        internal override void Draw(Rect area, int fs)
+        internal void Draw(Rect area, int fs)
         {
             Styles(fs);
             Event e = Event.current;
-            if (e.type == EventType.KeyDown && e.keyCode == BtcMenu.MenuKeyMain)
-            {
-                GUIUtility.keyboardControl = 0;
-                BtcMenu.PgDownFrame = Time.frameCount;
-                ResourcePackManager.CloseMenu();
-                e.Use();
-                return;
-            }
             float pad = fs, ib = fs * 1.9f;
             float y0 = area.y + fs * 0.4f;
             GUI.Label(new Rect(area.x + pad, y0, area.width * 0.5f, ib), Tt("Micro duel vs bot", "Микродуэль против бота"), _ttl);
@@ -73,7 +61,6 @@ namespace BetterThanCastle
             Body(ref cy, vw, fs, e);
             GUI.EndScrollView();
             _h = cy + fs * 3f;
-            BtcReplayIcons.DrawTip(fs, area.xMax, false);
         }
 
         private string KeyAdd(string k) { _keys.Add(k); return k; }

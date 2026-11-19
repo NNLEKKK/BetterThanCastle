@@ -1,0 +1,54 @@
+# Multi-camera lab: split, move one view, switch, check poses and fps (no screenshots; read agent.log "MultiCam").
+newgame
+waitgame 240
+wait 5
+mc info
+prof start
+prof reset
+wait 10
+dump single
+mc split
+wait 3
+mc move 20 0
+wait 3
+mc info
+mc focus 0
+wait 3
+mc info
+mc split
+mc split
+wait 3
+mc info
+prof reset
+wait 10
+dump quad
+mc float
+wait 2
+mc info
+mc dock
+mc max
+wait 2
+mc info
+mc max
+mc split
+mc split
+mc split
+mc split
+mc split
+mc split
+wait 5
+mc info
+prof reset
+wait 10
+dump eight
+mc toggle
+wait 3
+mc info
+mc toggle
+wait 3
+mc info
+mc close
+mc close
+mc info
+mc collapse
+quit

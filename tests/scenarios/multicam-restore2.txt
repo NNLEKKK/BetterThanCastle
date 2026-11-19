@@ -1,0 +1,7 @@
+# Multi-camera restore lab part 2: the layout comes back on its own after the load, every view on the camera pose; then collapse (cleans the file).
+newgame
+waitgame 240
+wait 12
+mc info
+mc collapse
+quit

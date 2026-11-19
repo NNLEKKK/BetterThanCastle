@@ -192,14 +192,11 @@ public partial class ResourcePackManager : MonoBehaviour
 		BtcHotkeys.Tick();
 		BtcDiscord.Poll();
 		BtcOverlays.Tick();
-		BtcTerraform.Tick();
-		BtcTerraformTool.Tick();
+		if (!BtcAim.Active) { BtcTerraform.Tick(); BtcTerraformTool.Tick(); }
 		BtcVisualCompare.Tick();
 		BtcUnitPlates.Tick();
 		BtcInterface.Tick();
-		BtcMatchStats.Tick();
-		BtcTimer.Tick();
-		BtcMatchStatsUI.Tick();
+		if (!BtcAim.Active) { BtcMatchStats.Tick(); BtcTimer.Tick(); BtcMatchStatsUI.Tick(); }
 		BtcReplay.Tick();
 		BtcReplayKeys.Tick();
 		BtcNetDiag.Tick();
@@ -286,19 +283,23 @@ public partial class ResourcePackManager : MonoBehaviour
 		}
 		this.UpdateAlwaysRings();
 		this.ForceShowHp();
-		this.ApplyStaminaRules();
-		this.UpdateAmmoUnits();
-		this.UpdateStatUnits();
-		this.UpdateBuildingUnits();
-		this.PollClientOrders();
-		this.ProcessPredictions();
-		this.UpdateBombMap();
-		this.UpdateHitCounters();
-		this.UpdateCenters();
-		this.UpdateExplosionDist();
-		this.UpdateCrystalTimers();
-		this.UpdatePathUnits();
-		this.UpdateEnemyTextures();
+		// aim trainer: no match systems (they scan the world every few seconds and cause 30-70 ms frames during a round)
+		if (!BtcAim.Active)
+		{
+			this.ApplyStaminaRules();
+			this.UpdateAmmoUnits();
+			this.UpdateStatUnits();
+			this.UpdateBuildingUnits();
+			this.PollClientOrders();
+			this.ProcessPredictions();
+			this.UpdateBombMap();
+			this.UpdateHitCounters();
+			this.UpdateCenters();
+			this.UpdateExplosionDist();
+			this.UpdateCrystalTimers();
+			this.UpdatePathUnits();
+			this.UpdateEnemyTextures();
+		}
 		bool flag65 = this.optSaveAt > 0f && Time.unscaledTime >= this.optSaveAt && !Input.GetMouseButton(0);
 		bool flag66 = flag65;
 		bool flag67 = flag66;

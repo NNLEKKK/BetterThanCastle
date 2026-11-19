@@ -104,8 +104,8 @@ namespace BetterThanCastle
         internal static readonly string[] AreaRu = { "Реплеи", "Хоткеи", "Визуал", "Геймплей", "Терраформинг", "Редактор карт", "Щиты баз", "Зрители и пинги", "Статистика и HUD", "Профиль", "Производительность и загрузка", "Мультиплеер", "Дуэль", "Паки", "Меню / UI", "Другое" };
 
         // ---- link targets
-        internal static readonly string[] TabNameEn = { "Resource Packs", "Visuals", "BetterConnection", "Advanced Hotkeys", "Gameplay", "Share", "Profile", "Replay", "Duel", "Report a bug", "Changelog", "Statistics", "UI editor", "Notifications" };
-        internal static readonly string[] TabNameRu = { "Ресурс-паки", "Визуал", "BetterConnection", "Advanced Hotkeys", "Геймплей", "Share", "Профиль", "Реплеи", "Дуэль", "Сообщить о баге", "Что нового", "Статистика", "UI редактор", "Уведомления" };
+        internal static readonly string[] TabNameEn = { "Resource Packs", "Visuals", "BetterConnection", "Advanced Hotkeys", "Gameplay", "Share", "Profile", "Replay", "Practice", "Report a bug", "Changelog", "Statistics", "UI editor", "Notifications" };
+        internal static readonly string[] TabNameRu = { "Ресурс-паки", "Визуал", "BetterConnection", "Advanced Hotkeys", "Геймплей", "Share", "Профиль", "Реплеи", "Практика", "Сообщить о баге", "Что нового", "Статистика", "UI редактор", "Уведомления" };
 
         /// <summary>Where a target leads, for the tooltip / chip ("Replay", "Advanced Hotkeys", "web").</summary>
         internal static string TargetName(string target)

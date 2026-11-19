@@ -489,7 +489,7 @@ namespace BetterThanCastle
             try
             {
                 Track = RuleOn;
-                bool on = Track && InMatch();
+                bool on = Track && InMatch() && !BtcAim.Active && !BtcDuel.Active;   // practice modes: no phantoms (aim trainer floor, duel arena)
                 Fly = on && Host && iFly >= 0 && Val(iFly, 0f) > 0.5f;
                 Ghost = on && Host && !Fly && iGhost >= 0 && Val(iGhost, 1f) > 0.5f;
                 Worm = on && Host && iWorm >= 0 && Val(iWorm, 0f) > 0.5f;

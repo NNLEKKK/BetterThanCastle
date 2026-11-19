@@ -97,6 +97,7 @@ namespace BetterThanCastle.Dev
                 if (_menuAct == "host") BtcDevNet.Host(_newMap, _newMode, _newPreset);
                 else if (_menuAct == "join") BtcDevNet.Join(_joinIp, _joinPort);
                 else if (_menuAct == "duel") BtcDuel.Launch();
+                else if (_menuAct == "aim") BtcAim.Launch();
                 else if (_menuAct == "replay") StartReplay(_replayWant);
                 else BtcDevMatch.NewGame(_newMap, _newMode, _newPreset);
                 return true;
@@ -108,6 +109,7 @@ namespace BetterThanCastle.Dev
                 return true; }
             if (_wait == "duelstate") return BtcDuel.Match != null && (BtcDuel.Match.State == BtcDuelState.Fight || BtcDuel.Match.State == BtcDuelState.Over || (_n == 9 && BtcDuel.Match.State == BtcDuelState.Countdown));
             if (_wait == "duelover") return BtcDuel.Match != null && BtcDuel.Match.State == BtcDuelState.Over;
+            if (_wait == "aimrun") return BtcAim.Run != null && BtcAim.Run.State == BtcAimState.Run;
             if (_wait == "spawn") return BtcDevMatch.Pending == 0;
             if (_wait == "eco") return !BtcDevEcoOps.Busy;
             if (_wait == "clients") return BtcDevNet.ClientsReady(_n);
@@ -146,6 +148,10 @@ namespace BetterThanCastle.Dev
                 case "waitfile": _file = BtcDevNet.ResolvePath(p.Length > 1 ? p[1] : "BTClogs/host/host-ready.txt"); _wait = "file"; _waitUntil = now + F(p, 2, 300f); break;
                 case "newgame": _menuAct = null; _newMap = p.Length > 1 ? p[1] : null; _newMode = p.Length > 2 ? p[2] : null; _newPreset = p.Length > 3 ? p[3] : null; _wait = "menu"; _waitUntil = now + 120f; break;
                 case "duel": _menuAct = "duel"; _wait = "menu"; _waitUntil = now + 120f; break;
+                case "aim": _menuAct = "aim"; _wait = "menu"; _waitUntil = now + 120f; break;
+                case "waitaim": _wait = "aimrun"; _waitUntil = now + F(p, 1, 120f); break;
+                case "aimauto": BtcAim.DevAutoMs = F(p, 1, 400f); break;
+                case "aimagain": if (BtcAim.Run != null) BtcAim.Run.Again(); break;
                 case "waitduel": _n = 0; _wait = "duelstate"; _waitUntil = now + F(p, 1, 240f); break;
                 case "waitduelover": _wait = "duelover"; _waitUntil = now + F(p, 1, 300f); break;
                 case "duelunits": { int k = (int)F(p, 1, 4f); BtcDuelConfig.PlayerCount[k] = (int)F(p, 2, 5f); BtcDuelConfig.BotCount[k] = (int)F(p, 3, 5f); } break;
@@ -173,6 +179,8 @@ namespace BetterThanCastle.Dev
                 case "gameplaytest": BtcGameplayTab.UseLegacy = false; BtcGameplayTab.Page = (int)F(p, 1, 0f); ResourcePackManager.GoTab(4); break;
                 case "gameplayrec": BtcMenuState.SetInt("gameplay:rec:g", (int)F(p, 1, -1f)); BtcMenuState.SetInt("gameplay:rec:k", (int)F(p, 2, -1f)); break;
                 case "updtest": BtcUpdater.DevShow((int)F(p, 1, 1f)); break;
+                case "camdump": BtcDevMultiCam.Dump(); break;
+                case "mc": BtcDevMultiCam.Cmd(p); break;
                 case "tabtest":
                     {
                         int tt = (int)F(p, 1, 0f);

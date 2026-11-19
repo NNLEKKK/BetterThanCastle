@@ -48,7 +48,7 @@ namespace BetterThanCastle
             Tabs.Add(BtcChangelogTab.Instance);
             Tabs.Add(BtcStatsTab.Instance);
             Tabs.Add(BtcShareTab.Instance);
-            Tabs.Add(BtcDuelTab.Instance);
+            Tabs.Add(BtcPracticeTab.Instance);
             Tabs.Add(BtcGameplayTab.Instance);
             Tabs.Add(BtcUiEditorTab.Instance);
             Tabs.Add(BtcNoticesTab.Instance);

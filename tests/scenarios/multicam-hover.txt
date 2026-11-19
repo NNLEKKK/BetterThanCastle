@@ -1,0 +1,44 @@
+# Multi-camera hover lab: the view under the (fake) mouse owns the camera rig and keeps its own pose.
+newgame
+waitgame 240
+wait 5
+mc split
+mc split
+mc split
+wait 2
+mc mouse 0.25 0.75
+wait 2
+mc move 30 0
+wait 2
+mc mouse 0.75 0.75
+wait 2
+mc move 0 30
+wait 2
+mc mouse 0.25 0.25
+wait 2
+mc info
+mc mouse 0.25 0.75
+wait 2
+mc info
+mc mouse 0.75 0.75
+wait 2
+mc info
+mc mouse 0.75 0.25
+wait 2
+mc info
+mc max
+wait 2
+mc info
+mc max
+mc float
+mc mouse 0.7 0.3
+wait 2
+mc info
+mc mouse -1 0
+mc toggle
+wait 2
+mc toggle
+wait 2
+mc info
+mc collapse
+quit

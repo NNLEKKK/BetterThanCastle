@@ -45,7 +45,7 @@ namespace BetterThanCastle
         /// <summary>Menu button: pick sandbox on the default map and start a local game; the driver then builds the arena.</summary>
         internal static bool Launch()
         {
-            if (Active) return false;
+            if (Active || BtcAim.Active) return false;
             BtcDuelConfig.Save();
             if (!BtcDuelLaunch.PickSandbox()) return false;
             Active = true;
@@ -178,12 +178,16 @@ namespace BetterThanCastle
     {
         private const string DefMap = "PlateauMont-Royal_34885478-77e1-4597-ac79-de48e3f5f9a1";
 
-        internal static bool PickSandbox()
+        internal static bool PickSandbox() { return PickSandbox(DefMap); }
+
+        /// <summary>Sandbox on the given map codename (falls back to the default map, then to the first single player map).</summary>
+        internal static bool PickSandbox(string codename)
         {
             try
             {
                 if (GameParam.instance == null) { BtcLog.Warn("Duel", "GameParam.instance == null (not in main menu)"); return false; }
-                Brix.Assets.Asset_Map map = Brix.Assets.AssetDispensary.maps.SendCodenameQuery(DefMap);
+                Brix.Assets.Asset_Map map = Brix.Assets.AssetDispensary.maps.SendCodenameQuery(codename);
+                if (map == null && codename != DefMap) { BtcLog.Warn("Duel", "map " + codename + " not found, default map"); map = Brix.Assets.AssetDispensary.maps.SendCodenameQuery(DefMap); }
                 if (map == null)
                 {
                     List<Brix.Assets.Asset_Map> all = Brix.Assets.AssetDispensary.maps.SendQuery(Brix.Assets.AssetQueryParameters.AllSources, Brix.Assets.AssetPlayableContext.Singleplayer, false);

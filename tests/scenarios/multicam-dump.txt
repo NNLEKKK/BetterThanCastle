@@ -1,0 +1,6 @@
+# Multi-camera lab: dump the cameras of a running match.
+newgame
+waitgame 240
+wait 5
+camdump
+quit

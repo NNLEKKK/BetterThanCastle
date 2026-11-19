@@ -62,6 +62,7 @@ namespace Brix.Input
 				this.HandleFollow(instance);
 				this.HandleHistory(instance);
 				this.HandleStartAngle(instance);
+				this.HandleMultiCam();
 				this.HandleDigVoxel();
 				this.HandleBreakObject();
 				this.HandleGoDetonate();
@@ -2436,6 +2437,34 @@ namespace Brix.Input
 			{
 				BtcFocusMark.Place();
 			}
+		}
+
+		private static bool McPressed(string id)
+		{
+			KeyCode[] keys = BtcHotkeys.GetKeys(id, null);
+			return keys != null && keys.Length != 0 && CameraBookmarkHotkey.IsComboPressed(keys);
+		}
+
+		// Multi-camera binds (Features/BtcMultiCam.cs).
+		private void HandleMultiCam()
+		{
+			try
+			{
+				if (McPressed("multicam_split")) BtcMultiCam.Split();
+				if (McPressed("multicam_toggle")) BtcMultiCam.Toggle();
+				if (McPressed("multicam_close")) BtcMultiCam.CloseActive();
+				if (McPressed("multicam_max")) BtcMultiCam.ToggleMax(BtcMultiCam.Active);
+				if (McPressed("multicam_float")) BtcMultiCam.ToggleFloat(BtcMultiCam.Active);
+				if (McPressed("multicam_dock_all")) BtcMultiCam.DockAll();
+				if (McPressed("multicam_next")) BtcMultiCam.FocusNext(1);
+				if (McPressed("multicam_prev")) BtcMultiCam.FocusNext(-1);
+				if (McPressed("multicam_sync")) BtcMultiCam.SyncAll();
+				for (int i = 1; i <= 8; i++)
+				{
+					if (McPressed("multicam_focus_" + i)) BtcMultiCam.Focus(i - 1);
+				}
+			}
+			catch (Exception e) { BtcLog.Error("MultiCam", "binds: " + e.Message); }
 		}
 
 		private void HandlePing()

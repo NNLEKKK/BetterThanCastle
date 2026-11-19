@@ -150,3 +150,15 @@ Logs: `[Net] Server: old connection N is silent`, `[Spec] quick return`, `[Spec]
 8. Pie with bricktrons selected hovering an own wormhole ward: "Teleport: off" / "on"; same on the home crystal pie (needs Crystal wormholes). Client: the switch reaches the host.
 9. Save + load (host): marks, switched-off wards and crystals, tagged blueprints, a carried wormhole ward come back.
 10. Client sees own wormhole wards white; replay shows them white.
+
+## Multi-camera (2026-11-18, local only, no net; labs multicam-lab/-hover/-restore1/-restore2 OK, look NOT verified by screenshot)
+Binds: Hotkeys tab > View > "Multi-camera" (all unassigned except the drag modifier LeftAlt): split, toggle, close, max, float, dock all, next/prev, sync, focus 1..8.
+1. Bind "Split": the screen halves, both views show the same place; the view under the mouse has a green frame and owns the camera (WASD, mouse drag, selection box, orders, camera binds act in THAT view only). Move the mouse to the other view: it takes over, the first keeps its place.
+2. Split up to 8 (2 side by side, 3 = 2 + 1 wide, 4 = 2x2, 5 = 3 + 2 ... 8 = 4x2). The 9th does nothing.
+3. Title bar (top-left of every view): number, free / max / x. "max" = that view fills the screen (others stop rendering), again = back. Double click on the bar = max. "x" closes; closing the second to last one returns to one normal camera at the place of the remaining view.
+4. Drag a title bar of a grid view onto another view = they swap places. "free" (or Alt + left drag anywhere) pulls the view out as a window: drag by its bar, resize by the corner handle (or Alt + right drag); "dock" puts it back. A free window is drawn over the grid.
+5. Bind "Toggle": collapses to one camera (stays where the active view looked), press again = the old layout and view places come back. "Sync" = every view jumps to the active one. "Focus N / next / prev" keep the chosen view until the mouse moves.
+6. Clicks on the title bars must NOT select or order anything. Orders / selection boxes across views: select in one view, give the order in another (selection is shared).
+7. Close the game with a split, start a map: the same split comes back about 3 s after the load, every view on the start camera (option "Remember the split between games").
+8. Replay: same things work while watching a replay. FPS: 4 views cost roughly 40% more render time, 8 views about 2x (lab 640x360); "Lighter picture on the views you are not controlling" removes ambient occlusion there.
+Known limits: world labels drawn by scripts (HP bars, pings, unit plates) follow the view under the mouse only; the fog of war vision list is picked around the active camera; the mini map shows the active view.
