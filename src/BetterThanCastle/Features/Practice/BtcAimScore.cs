@@ -12,8 +12,9 @@ namespace BetterThanCastle
     /// Aim trainer scoring. Every hit is a Fitts pointing task: ID = log2(D/W + 1) (D = screen distance from the cursor to the target when it
     /// dropped, W = target width on screen) + a search term 0.6*log2(N) (Hick: more targets = longer to find the wounded one) + a precision
     /// term log2(1 + 24px/W) (tiny targets are harder than Fitts alone says), times a motion factor for moving targets.
-    /// Throughput TP = sum(ID) / sum(reaction time) in bits per second; it barely depends on the settings, so it measures the hand, not the setup.
-    /// Rating = 150 * TP * accuracy^2 (misclicks cost a lot, as in a real fight).
+    /// Rating (v2, 2026-11-19) = K * sqrt(avg ID) / t^1.5 * accuracy^1.5, t = run length / hits (waiting and misses count as time).
+    /// Speed dominates: v1 (150 * ID/reaction * acc^2) let slow players on hard setups (10 bits at 950 ms) outscore fast ones and gave a top
+    /// rank to one quick click followed by waiting. Accuracy only trims what the speed earned.
     /// </summary>
     internal static class BtcAimScore
     {
@@ -37,7 +38,8 @@ namespace BetterThanCastle
         /// class speed (shield-up knight walks, halberdier runs fastest). First runs showed the old wander factor too generous.</summary>
         internal static float MotionFactor(int move, int unit)
         {
-            float b = move == (int)BtcAimMove.Strafe ? 0.35f : move == (int)BtcAimMove.Wander ? 0.45f : move == (int)BtcAimMove.Pack ? 0.4f : 0f;
+            float b = move == (int)BtcAimMove.Strafe ? 0.35f : move == (int)BtcAimMove.Wander ? 0.45f : move == (int)BtcAimMove.Pack ? 0.4f
+                    : move == (int)BtcAimMove.DontStop ? 0.6f : 0f;
             float k = unit == (int)BtcAimUnit.KnightShield ? 0.45f : unit == (int)BtcAimUnit.Knight ? 0.8f : unit == (int)BtcAimUnit.Worker ? 0.9f : 1f;
             return 1f + b * k;
         }
@@ -89,15 +91,18 @@ namespace BetterThanCastle
         internal static int RankOf(int rating) { int r = 0; for (int i = 0; i < RankAt.Length; i++) if (rating >= RankAt[i]) r = i; return r; }
         internal static string RankName(int r) { return RankNames[r]; }
 
-        // ---------------- categories: separate bests and ranks for every game x standing/moving ----------------
-        internal const int Cats = 4;
-        internal static int CatOf(BtcAimConfig.Snap s) { return s.Game * 2 + (s.Move != (int)BtcAimMove.Stand ? 1 : 0); }
-        private static int CatOfKey(string key) { return (key.Contains("_g1") ? 2 : 0) + (key.Contains("_m0") ? 0 : 1); }
-        internal static string CatName(int c)
+        // ---------------- categories: separate bests and ranks for every game x standing/moving/don't stop ----------------
+        internal const int Cats = 6, MoveCats = 3;
+        private static int MoveCat(int move) { return move == (int)BtcAimMove.Stand ? 0 : move == (int)BtcAimMove.DontStop ? 2 : 1; }
+        internal static int CatOf(BtcAimConfig.Snap s) { return s.Game * MoveCats + MoveCat(s.Move); }
+        private static int CatOfKey(string key) { return (key.Contains("_g1") ? MoveCats : 0) + (key.Contains("_m0") ? 0 : key.Contains("_m4") ? 2 : 1); }
+        internal static string GameName(int c) { return c >= MoveCats ? BtcGameplay.T("Most wounded", "Самый раненый") : BtcGameplay.T("Focus", "Фокус"); }
+        internal static string MoveCatName(int c)
         {
-            string g = c >= 2 ? BtcGameplay.T("Most wounded", "Самый раненый") : BtcGameplay.T("Focus", "Фокус");
-            return g + " · " + ((c & 1) != 0 ? BtcGameplay.T("moving", "движутся") : BtcGameplay.T("standing", "стоят"));
+            int m = c % MoveCats;
+            return m == 0 ? BtcGameplay.T("standing", "стоят") : m == 1 ? BtcGameplay.T("moving", "движутся") : BtcGameplay.T("non-stop", "нон-стоп");
         }
+        internal static string CatName(int c) { return GameName(c) + " · " + MoveCatName(c); }
 
         /// <summary>Best rating in a category (-1 = no runs) and how many runs it has.</summary>
         internal static int BestCat(int cat, out int runs)
@@ -124,7 +129,7 @@ namespace BetterThanCastle
             List<float> mts = new List<float>(n);
             for (int i = 0; i < n; i++) { Hit h = r.Hits[i]; sumId += h.Id; sumMt += h.Mt; sumOff += h.Off; mts.Add(h.Mt); }
             r.Acc = r.Clicks > 0 ? n / (float)r.Clicks : 0f;
-            r.Tp = sumMt > 0.01f ? sumId / sumMt : 0f;
+            r.Tp = r.Duration > 0.1f ? sumId / r.Duration : 0f;
             r.AvgMt = n > 0 ? sumMt / n : 0f;
             r.AvgId = n > 0 ? sumId / n : 0f;
             r.AvgOff = n > 0 ? sumOff / n : 0f;
@@ -135,7 +140,17 @@ namespace BetterThanCastle
             float v = 0f;
             for (int i = 0; i < n; i++) { float dd = r.Hits[i].Mt - r.AvgMt; v += dd * dd; }
             r.SdMt = n > 1 ? Mathf.Sqrt(v / (n - 1)) : 0f;
-            r.Rating = Mathf.RoundToInt(150f * r.Tp * r.Acc * r.Acc);
+            r.Rating = RatingOf(n, r.Duration, r.AvgId, r.Acc);
+        }
+
+        /// <summary>K puts a fast clean run (0.385 s per target, 4.4 bits, 100%) at about 1700.</summary>
+        private const float K = 194f;
+
+        internal static int RatingOf(int hits, float duration, float avgId, float acc)
+        {
+            if (hits <= 0 || duration <= 0.1f) return 0;
+            float t = duration / hits;
+            return Mathf.RoundToInt(K * Mathf.Sqrt(Mathf.Max(0f, avgId)) / Mathf.Pow(t, 1.5f) * Mathf.Pow(Mathf.Clamp01(acc), 1.5f));
         }
 
         // ---------------- history (<game>/BetterThanCastle/practice-logs/aim-history.txt) ----------------
@@ -154,7 +169,10 @@ namespace BetterThanCastle
             try
             {
                 if (!File.Exists(HistPath)) return;
-                foreach (string line in File.ReadAllLines(HistPath))
+                string[] lines = File.ReadAllLines(HistPath);
+                bool v2 = lines.Length > 0 && lines[0] == HistV2;
+                if (!v2) lines = MigrateV1(lines);
+                foreach (string line in lines)
                 {
                     string[] p = line.Split('|');
                     int rt;
@@ -162,6 +180,44 @@ namespace BetterThanCastle
                 }
             }
             catch (Exception e) { BtcLog.Warn("Aim", "history read: " + e.Message); }
+        }
+
+        private const string HistV2 = "#v2 rating = K*sqrt(id)/t^1.5*acc^1.5";
+
+        /// <summary>v1 ratings rescored with the v2 formula from the stored stats (hits, acc, id, run length in the key); the old file is kept as .v1.</summary>
+        private static string[] MigrateV1(string[] lines)
+        {
+            List<string> o = new List<string>(lines.Length + 1) { HistV2 };
+            CultureInfo ci = CultureInfo.InvariantCulture;
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string[] p = lines[i].Split('|');
+                if (p.Length < 4) { if (lines[i].Length > 0 && lines[i][0] != '#') o.Add(lines[i]); continue; }
+                int hits = (int)Stat(p[3], "hits="), ti = p[1].IndexOf("_t");
+                float acc = Stat(p[3], "acc="), id = Stat(p[3], "id="), dur = 0f;
+                if (ti >= 0) { int e = ti + 2; while (e < p[1].Length && char.IsDigit(p[1][e])) e++; float.TryParse(p[1].Substring(ti + 2, e - ti - 2), NumberStyles.Float, ci, out dur); }
+                p[2] = RatingOf(hits, dur, id, acc).ToString(ci);
+                o.Add(string.Join("|", p));
+            }
+            try
+            {
+                string bak = HistPath + ".v1";
+                if (!File.Exists(bak)) File.Copy(HistPath, bak);
+                File.WriteAllText(HistPath, string.Join("\r\n", o.ToArray()) + "\r\n");
+                BtcLog.Info("Aim", "history rescored v1 -> v2: " + (o.Count - 1) + " runs, old file kept as .v1");
+            }
+            catch (Exception e) { BtcLog.Warn("Aim", "history migrate: " + e.Message); }
+            return o.ToArray();
+        }
+
+        private static float Stat(string s, string name)
+        {
+            int a = s.IndexOf(name);
+            if (a < 0) return 0f;
+            a += name.Length;
+            int e = s.IndexOf(' ', a);
+            float v;
+            return float.TryParse(e < 0 ? s.Substring(a) : s.Substring(a, e - a), NumberStyles.Float, CultureInfo.InvariantCulture, out v) ? v : 0f;
         }
 
         internal static int Best(string key)
@@ -197,6 +253,7 @@ namespace BetterThanCastle
                 Directory.CreateDirectory(LogDir);
                 CultureInfo ci = CultureInfo.InvariantCulture;
                 StringBuilder sb = new StringBuilder();
+                if (!File.Exists(HistPath)) sb.Append(HistV2).Append("\r\n");
                 sb.Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", ci)).Append('|').Append(key).Append('|').Append(r.Rating)
                   .Append("|hits=").Append(r.Hits.Count).Append(" pick=").Append(r.MissPick).Append(" wrong=").Append(r.MissWrong).Append(" empty=").Append(r.MissEmpty)
                   .Append(" acc=").Append(r.Acc.ToString("0.000", ci)).Append(" tp=").Append(r.Tp.ToString("0.00", ci))

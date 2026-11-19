@@ -50,6 +50,8 @@ namespace BetterThanCastle
         {
             internal GameObject Go; internal Transform Tf; internal Labor Labor; internal DamageReceiver Dr;
             internal Vector3 Home, Dest; internal float NextMoveAt, RestUntil = -1f; internal int Dir = 1;
+            /// <summary>Non-stop: current run direction (radians), the next turn must differ by at least 60 degrees.</summary>
+            internal float Head = -1f;
             /// <summary>HP share this target is held at (1 = full).</summary>
             internal float Want = 1f;
         }
@@ -698,6 +700,7 @@ namespace BetterThanCastle
         private void MoveTick()
         {
             if (_cfg.Move == (int)BtcAimMove.Pack) { PackTick(); return; }
+            if (_cfg.Move == (int)BtcAimMove.DontStop) { NonStopTick(); return; }
             float now = Time.time;
             Vector3 right = Quaternion.Euler(0f, _cfg.Yaw, 0f) * Vector3.right;
             for (int i = 0; i < _t.Count; i++)
@@ -772,6 +775,37 @@ namespace BetterThanCastle
 
         private Vector3 _packDir;
         private int _packLog;
+
+        /// <summary>Non-stop: how far from its spot a target may run, and how far ahead its run point lies (never reached before the next turn).</summary>
+        private const float NonStopRoom = PackRoom - 1f, NonStopLeg = 7f;
+
+        /// <summary>Every target runs all the time and turns sharply (>= 60 degrees) every 0.5-1.5 s, or at once when it reached its point.</summary>
+        private void NonStopTick()
+        {
+            float now = Time.time;
+            for (int i = 0; i < _t.Count; i++)
+            {
+                Target t = _t[i];
+                if (t.Go == null || t.Labor == null) continue;
+                Vector3 p = t.Tf.position;
+                bool arrived = new Vector2(p.x - t.Dest.x, p.z - t.Dest.z).sqrMagnitude < 0.5f;
+                if (!arrived && now < t.NextMoveAt) continue;
+                Vector3 d = t.Dest;
+                for (int tries = 0; tries < 10; tries++)
+                {
+                    float a = (float)(_rng.NextDouble() * Math.PI * 2.0);
+                    if (t.Head >= 0f && tries < 9 && Mathf.Abs(Mathf.DeltaAngle(a * Mathf.Rad2Deg, t.Head * Mathf.Rad2Deg)) < 60f) continue;
+                    Vector3 off = p + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * NonStopLeg - t.Home;
+                    off.y = 0f;
+                    if (off.magnitude > NonStopRoom) off = off.normalized * NonStopRoom;
+                    Vector3 cand = t.Home + off;
+                    if (new Vector2(cand.x - p.x, cand.z - p.z).sqrMagnitude < 9f && tries < 9) continue;   // the wall of the room is too close that way
+                    d = cand; t.Head = a; break;
+                }
+                SendMove(t, d, now);
+                t.NextMoveAt = now + 0.5f + (float)_rng.NextDouble();
+            }
+        }
 
         private void SendMove(Target t, Vector3 d, float now)
         {

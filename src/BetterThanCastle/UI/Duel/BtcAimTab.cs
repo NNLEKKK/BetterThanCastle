@@ -155,8 +155,8 @@ namespace BetterThanCastle
                 BtcUi.Status(ref y, w, fs, (pb >= 0 ? Tt("Best on this setup: ", "Рекорд на этих настройках: ") + pb + "  ·  " + BtcAimScore.RankName(BtcAimScore.RankOf(pb)) : Tt("No runs on this setup yet", "На этих настройках ещё не играл"))
                     + (all >= 0 ? "   ·   " + Tt("overall ", "общий ") + all : ""), Color.white);
                 History(ref y, w, fs);
-                BtcUi.Note(ref y, w, fs, Tt("Performance = 150 x throughput x accuracy². Throughput (Fitts' law, bit/s) = difficulty of every target / your reaction time; difficulty grows with the distance to the target, smaller targets (farther camera), more targets to search and movement. So an easy setup gives fast but cheap clicks, a hard one slow but valuable clicks: the number shows your hand, not the settings.",
-                    "Перформанс = 150 x пропускная способность x точность². Пропускная способность (закон Фиттса, бит/с) = сложность каждой цели / время реакции; сложность растёт с дистанцией до цели, с уменьшением цели (дальше камера), числом целей для поиска и движением. Лёгкие настройки дают быстрые, но дешёвые клики, сложные - медленные, но дорогие: число отражает руку, а не настройки."));
+                BtcUi.Note(ref y, w, fs, Tt("Performance is earned by speed: time per target (the whole run divided by hits, waiting counts) weighs far more than difficulty (distance, target size, number of targets, movement). Accuracy only cuts what the speed earned: 90% keeps about 85%. Slow careful clicking never reaches the top ranks, even without a miss.",
+                    "Перформанс зарабатывается скоростью: время на цель (весь забег / попадания, ожидание тоже считается) весит гораздо больше сложности (дистанция, размер цели, число целей, движение). Точность только срезает заработанное скоростью: 90% оставляет около 85%. Медленное аккуратное тыканье до верхних рангов не дотянет, даже без промахов."));
             }
         }
 
@@ -164,13 +164,14 @@ namespace BetterThanCastle
         private void Ranks(ref float y, float w, int fs)
         {
             float pad = fs, gap = fs * 0.4f, ch = fs * 4.4f;
-            float cw = (w - pad * 2f - gap * (BtcAimScore.Cats - 1)) / BtcAimScore.Cats;
+            int cols = BtcAimScore.MoveCats;   // one row per game, one column per movement class
+            float cw = (w - pad * 2f - gap * (cols - 1)) / cols;
             int cur = BtcAimScore.CatOf(BtcAimConfig.Take());
             GUIStyle big = new GUIStyle(_ttl); big.fontSize = Mathf.RoundToInt(fs * 1.9f); big.alignment = TextAnchor.MiddleLeft;
             GUIStyle dim = new GUIStyle(_ctr); dim.fontSize = Mathf.RoundToInt(fs * 0.78f); dim.alignment = TextAnchor.MiddleLeft; dim.normal.textColor = new Color(1f, 1f, 1f, 0.55f);
             for (int c = 0; c < BtcAimScore.Cats; c++)
             {
-                Rect r = new Rect(pad + c * (cw + gap), y, cw, ch);
+                Rect r = new Rect(pad + (c % cols) * (cw + gap), y + (c / cols) * (ch + gap), cw, ch);
                 int runs, best = BtcAimScore.BestCat(c, out runs);
                 int rank = best >= 0 ? BtcAimScore.RankOf(best) : -1;
                 Color rc = rank >= 0 ? BtcAimScore.RankColor(rank) : new Color(1f, 1f, 1f, 0.25f);
@@ -184,7 +185,8 @@ namespace BetterThanCastle
                 GUI.Label(new Rect(r.x + fs * 0.7f, r.y + ch - fs * 1.5f, r.width - fs, fs * 1.2f), BtcAimScore.CatName(c), dim);
                 BtcReplayIcons.Hint(r, Tt("Best performance in this mode, its rank and the number of runs", "Лучший перформанс в этом режиме, его ранг и число попыток"));
             }
-            y += ch + fs * 0.6f;
+            int rows = (BtcAimScore.Cats + cols - 1) / cols;
+            y += rows * ch + (rows - 1) * gap + fs * 0.6f;
         }
 
         private GUIStyle _left;
@@ -203,7 +205,7 @@ namespace BetterThanCastle
 
         internal static string[] MoveNames()
         {
-            return new string[] { Tt("Stand", "Стоят"), Tt("Strafe", "Стрейф"), Tt("Wander", "Бродят"), Tt("Pack", "Пачка") };
+            return new string[] { Tt("Stand", "Стоят"), Tt("Strafe", "Стрейф"), Tt("Wander", "Бродят"), Tt("Pack", "Пачка"), Tt("Non-stop", "Нон-стоп") };
         }
 
         private void History(ref float y, float w, int fs)

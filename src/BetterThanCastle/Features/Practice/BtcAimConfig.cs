@@ -4,8 +4,9 @@ using UnityEngine;
 
 namespace BetterThanCastle
 {
-    /// <summary>Stand still, strafe left-right, wander one by one, or move as one pack in changing directions (most like a real fight).</summary>
-    internal enum BtcAimMove { Stand = 0, Strafe, Wander, Pack }
+    /// <summary>Stand still, strafe left-right, wander one by one, move as one pack in changing directions (most like a real fight), or
+    /// DontStop: every unit runs all the time and zigzags (sharp turn every 0.5-1.5 s, never arrives).</summary>
+    internal enum BtcAimMove { Stand = 0, Strafe, Wander, Pack, DontStop }
 
     /// <summary>Target class = movement speed: knight with the shield up (defensive, slowest), knight, worker, halberdier (fastest).</summary>
     internal enum BtcAimUnit { KnightShield = 0, Knight, Worker, Halberdier }
@@ -81,7 +82,7 @@ namespace BetterThanCastle
             Pitch = Mathf.Clamp(Pitch, MinPitch, MaxPitch);
             Yaw = Mathf.Repeat(Yaw, 360f);
             Duration = Mathf.Clamp(Duration, MinDuration, MaxDuration);
-            if ((int)Move < 0 || (int)Move > 3) Move = BtcAimMove.Stand;
+            if ((int)Move < 0 || (int)Move > (int)BtcAimMove.DontStop) Move = BtcAimMove.Stand;
             if ((int)Unit < 0 || (int)Unit > 3) Unit = BtcAimUnit.Halberdier;
             if ((int)Game < 0 || (int)Game > 1) Game = BtcAimGame.Focus;
             WoundPct = Mathf.Clamp(WoundPct, MinWound, MaxWound);
