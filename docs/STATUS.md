@@ -1,5 +1,5 @@
 # STATUS (read first; keep <=60 lines; update at the end of every session)
-Updated: 2026-11-19 (v0.5.4 "Practice" PUBLISHED on GitHub, public 772f9e0, tag v0.5.4; Steam install updated to 0.5.4 + aim data).
+Updated: 2026-11-19 (v0.5.4a "Aim Rebalance" PUBLISHED, public 4eb659c, tag v0.5.4a: speed-driven aim rating v2 + Non-stop movement, user-verified; user updates Steam via the auto-updater. Before: v0.5.4 "Practice" public 772f9e0).
 Terraforming state after the release: docs/terraforming.md (last sections); panel without task list / Erase mode.
 
 ## Done (code committed; user confirmed in game: hotkeys, input lock, menu look, thumbnail scale, handicap dmg/hp/income/penalty, symmetry crystal)

@@ -198,7 +198,12 @@ namespace BetterThanCastle
             BtcReplayUI.Fill(new Rect(rb.x, rb.y, 3f, rb.height), rc);
             GUIStyle rs = new GUIStyle(_big); rs.fontSize = Mathf.RoundToInt(fs * 3f); rs.alignment = TextAnchor.MiddleLeft; rs.normal.textColor = Color.white;
             GUI.Label(new Rect(rb.x + fs, rb.y, fs * 9f, rb.height * 0.75f), r.Rating.ToString(), rs);
-            GUI.Label(new Rect(rb.x + fs, rb.y + rb.height * 0.62f, fs * 9f, rb.height * 0.35f), T("performance", "перформанс"), _dim);
+            Rect pl = new Rect(rb.x + fs, rb.y + rb.height * 0.62f, fs * 9f, rb.height * 0.35f);
+            bool showMax = r.RatingMax > r.Rating;
+            string pt = T("performance", "перформанс") + (showMax ? "  ·  100%: " + r.RatingMax : "");
+            if (showMax && _dim.CalcSize(new GUIContent(pt)).x > pl.width) pt = T("at 100%: ", "при 100%: ") + r.RatingMax;   // narrow card: keep the number
+            GUI.Label(pl, pt, _dim);
+            if (showMax) BtcReplayIcons.Hint(pl, T("What this speed would earn with 100% accuracy", "Сколько дала бы эта скорость со 100% точностью"));
             Color lc = _lab.normal.textColor; _lab.normal.textColor = rc;
             GUIStyle rn = new GUIStyle(_lab); rn.fontSize = Mathf.RoundToInt(fs * 1.4f); rn.fontStyle = FontStyle.Bold;
             _lab.normal.textColor = lc;

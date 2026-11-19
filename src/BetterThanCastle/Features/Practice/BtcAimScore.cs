@@ -28,6 +28,8 @@ namespace BetterThanCastle
             internal BtcAimConfig.Snap Cfg;
             internal float Tp, Acc, AvgMt, MedMt, BestMt, SdMt, AvgId, AvgOff, PerMin;
             internal int Rating;
+            /// <summary>What the same speed would earn at 100% accuracy (shown next to the rating).</summary>
+            internal int RatingMax;
             internal int PrevBest = -1, PrevBestAll = -1;
             internal bool NewBest, NewCatBest;
             internal int MissPick;
@@ -141,6 +143,7 @@ namespace BetterThanCastle
             for (int i = 0; i < n; i++) { float dd = r.Hits[i].Mt - r.AvgMt; v += dd * dd; }
             r.SdMt = n > 1 ? Mathf.Sqrt(v / (n - 1)) : 0f;
             r.Rating = RatingOf(n, r.Duration, r.AvgId, r.Acc);
+            r.RatingMax = RatingOf(n, r.Duration, r.AvgId, 1f);
         }
 
         /// <summary>K puts a fast clean run (0.385 s per target, 4.4 bits, 100%) at about 1700.</summary>
