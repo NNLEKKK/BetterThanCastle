@@ -1,0 +1,107 @@
+using BepInEx.Configuration;
+
+namespace BetterThanCastle
+{
+    internal static class BtcConfig
+    {
+        internal static ConfigEntry<int> WindowMode;
+        internal static ConfigEntry<bool> SkipIntro;
+        internal static ConfigEntry<bool> LoadTimer;
+        internal static ConfigEntry<bool> LoadCancel;
+        internal static ConfigEntry<bool> LiveSymmetry;
+        internal static ConfigEntry<bool> CleanHanging;
+        internal static ConfigEntry<int> UiSound;
+        internal static ConfigEntry<bool> ReuseMenuPanels;
+        internal static ConfigEntry<bool> EarlyClientUi;
+        internal static ConfigEntry<bool> BetterConnection;
+        internal static ConfigEntry<bool> ShowPing;
+        internal static ConfigEntry<bool> ShowPauseLabel;
+        internal static ConfigEntry<bool> DiagLog;
+        internal static ConfigEntry<bool> AnimatorCulling;
+        internal static ConfigEntry<bool> LogMove;
+        internal static ConfigEntry<bool> LogBuildAi;
+        internal static ConfigEntry<bool> LogVis;
+        internal static ConfigEntry<bool> LogFaction;
+        internal static ConfigEntry<bool> LogFactionDump;
+        internal static ConfigEntry<bool> UpdateCheck;
+        internal static ConfigEntry<string> UpdateSkipped;
+        internal static ConfigEntry<bool> ReplayAutoShare, ReplayDownloadFromHost, ChatFade;
+        internal static ConfigEntry<float> ChatFadeSeconds;
+        internal static ConfigEntry<bool> PovShowCone;
+        internal static ConfigEntry<int> ReplayUnitDots;
+        internal static ConfigEntry<bool> ReplaySkipPauses, ReplayAutoMarks, ReplayMinimapFights, ReplayRecordPov, PovFollowCam, PovShowCursor, ReplayInfo, ReplayHideMinimap, ReplayShowApm;
+        internal static ConfigEntry<int> ReplayKeysMode, ReplayApmMode, GifWidth, GifFps, GifColors;
+        internal static ConfigEntry<bool> GifDither, GifDiff;
+        internal static ConfigEntry<string> ReplayHiddenKinds, ReplayUiLayout;
+        internal static ConfigEntry<float> ReplayFreezeGap;
+        internal static ConfigEntry<bool> StatsEnabled, StatsBar, StatsBarBottom;
+        internal static ConfigEntry<float> StatsBarOffset, StatsBarScale, StatsBarOpacity, StatsPanelScale, StatsPanelOpacity;
+        internal static ConfigEntry<string> StatsBarList, StatsPanelHidden;
+
+        internal static void Init(ConfigFile cfg)
+        {
+            BtcDuelConfig.Init(cfg);
+            BtcAimConfig.Init(cfg);
+            WindowMode = cfg.Bind("Display", "WindowMode", 3, "0 = keep the game setting, 1 = fullscreen, 2 = windowed, 3 = borderless.");
+            SkipIntro = cfg.Bind("Display", "SkipIntro", true, "Skip the logo screens on startup (applies on next launch).");
+            UiSound = cfg.Bind("Display", "UiSound", 2, "Sound feedback of the mod menu (hover, clicks, typing, delete): 0 = off, 1 = low, 2 = medium, 3 = high.");
+            LiveSymmetry = cfg.Bind("Editor", "LiveSymmetry", true, "Map editor: when a symmetry mode is set in Gameplay settings (mirror/point/quadrants), objects, trees and Island terrain you place are mirrored instantly to the other side. Uses the map Heightmap.png for the axis.");
+            CleanHanging = cfg.Bind("Editor", "CleanHanging", true, "Map editor: after you dig or lower terrain, ore, plants, boulders and trees that no longer sit on the surface are removed automatically.");
+            LoadTimer = cfg.Bind("Display", "LoadTimer", true, "Show how many seconds the world load has been running (and the total after it).");
+            LoadCancel = cfg.Bind("Display", "LoadCancel", true, "Show a cross at the bottom right while a world loads; it aborts the load and returns to the main menu.");
+            ReuseMenuPanels = cfg.Bind("LoadingExperimental", "ReuseMenuPanels", false, "EXPERIMENTAL (off since 0.5.0, loads were slower with it). While the world loads, reuse already built menu panels instead of destroying and re-creating them (faster load). Turn off if the in-game UI looks wrong.");
+            EarlyClientUi = cfg.Bind("LoadingExperimental", "EarlyClientUi", false, "EXPERIMENTAL (off since 0.5.0: host and clients load together like 0.3.0). MP client: build the in-game UI while the host finishes loading. Off = vanilla order.");
+            UpdateCheck = cfg.Bind("Update", "CheckOnStart", true, "Check GitHub Releases at game start and offer to update the mod.");
+            UpdateSkipped = cfg.Bind("Update", "SkippedVersion", "", "Version the player chose to skip.");
+            BetterConnection = cfg.Bind("Network", "BetterConnection", true,
+                "ON: mod network extensions are active (all players need the mod). " +
+                "OFF: the mod behaves exactly like vanilla on the wire (play with vanilla clients/hosts).");
+            ShowPing = cfg.Bind("Network", "ShowPing", true, "Show ping overlay (BetterConnection only).");
+            ShowPauseLabel = cfg.Bind("Network", "ShowPauseLabel", true, "Show the pause label (BetterConnection only).");
+            DiagLog = cfg.Bind("Network", "DiagLog2", false, "Write detailed network diagnostics files (BetterThanCastle/debug/unet_netdiag_*.log, max 20 MB per session). Normal [Net] lines in the BepInEx log are always written.");
+            LogMove = cfg.Bind("Logging", "PathBlocks", false, "Write path blocks to BetterThanCastle/qol_blocked.log (debug).");
+            LogBuildAi = cfg.Bind("Logging", "BuildAI", false, "Log build AI decisions to btc_netdiag.txt (debug).");
+            LogVis = cfg.Bind("Logging", "VisObjects", false, "Log object names and categories of the vision rules (debug).");
+            LogFaction = cfg.Bind("Logging", "FactionReplay", false, "Verbose log of the faction replay (debug).");
+            LogFactionDump = cfg.Bind("Logging", "FactionDump", false, "Log minimap object positions once after load (debug).");
+            ReplayAutoShare = cfg.Bind("Replay", "AutoShare", true, "Host: after a multiplayer match send the recorded replay (.btcr) to every connected BetterConnection client (BetterConnection only).");
+            ReplayDownloadFromHost = cfg.Bind("Replay", "DownloadFromHost", true, "Client: accept the replay the host sends after a multiplayer match and save it to Replays (file name carries the host name; BetterConnection only).");
+            ChatFade = cfg.Bind("Chat", "FadeMessages", true, "In-game chat: hide messages after FadeSeconds; opening the chat shows the history.");
+            ChatFadeSeconds = cfg.Bind("Chat", "FadeSeconds", 10f, new ConfigDescription("Seconds an in-game chat message stays visible.", new AcceptableValueRange<float>(2f, 60f)));
+            ReplaySkipPauses = cfg.Bind("Replay", "SkipPauses", false, "Replay playback: jump over the recorded pauses of the advanced timer and over host freezes (record gaps) at once.");
+            ReplayFreezeGap = cfg.Bind("Replay", "FreezeGap", 1f, "With SkipPauses: a gap without any recorded message longer than this (seconds) counts as a host freeze and is skipped.");
+            ReplayAutoMarks = cfg.Bind("Replay", "AutoMarks", true, "Record automatic timeline marks (deaths, crystals, barrels, large fights) into new replays.");
+            ReplayMinimapFights = cfg.Bind("Replay", "MinimapFights", true, "Highlight combat on the mini map while watching a replay.");
+            ReplayHiddenKinds = cfg.Bind("Replay", "HiddenMarkKinds", "", "Timeline mark kinds hidden by the player (D C X F Z).");
+            ReplayRecordPov = cfg.Bind("Replay", "RecordCameraCursor", true, "Record player cameras and cursors into new replays (BetterConnection clients send them to the host, ~300 B/s each).");
+            PovFollowCam = cfg.Bind("Replay", "PovFollowCamera", true, "Watching a player in a replay: follow their recorded camera.");
+            PovShowCursor = cfg.Bind("Replay", "ShowCursors", true, "Replay: draw the recorded cursors of the players.");
+            ReplayInfo = cfg.Bind("Replay", "ShowBlueprintsAndQueues", true, "Replay: draw the blueprints of all players and the crafting queues of all buildings.");
+            ReplayHideMinimap = cfg.Bind("Replay", "HideMinimap", false, "Replay: hide the mini map (bar icon).");
+            ReplayShowApm = cfg.Bind("Replay", "ShowApm", true, "Replay: draw the actions-per-minute graph of every player above the timeline (replays recorded since this feature only).");
+            ReplayKeysMode = cfg.Bind("Replay", "PressedKeysMode", 1, "Replay: pressed keys of the watched player (0 hidden, 1 feed, 2 keyboard).");
+            ReplayApmMode = cfg.Bind("Replay", "ApmGraphMode", 1, "Replay: graph above the timeline (0 hidden, 1 APM, 2 EPM without spam).");
+            GifWidth = cfg.Bind("Replay", "GifWidth", 480, "Replay clip GIF: width in pixels (height follows the screen aspect).");
+            GifFps = cfg.Bind("Replay", "GifFps", 12, "Replay clip GIF: frames per second.");
+            GifColors = cfg.Bind("Replay", "GifColors", 0, "Replay clip GIF: palette size, 0 = 252 colours, 1 = 125, 2 = 64, 3 = 27 (fewer = smaller file).");
+            GifDither = cfg.Bind("Replay", "GifDither", true, "Replay clip GIF: ordered dithering (nicer gradients, bigger file).");
+            GifDiff = cfg.Bind("Replay", "GifOptimize", true, "Replay clip GIF: skip pixels that did not change since the previous frame (much smaller file for calm scenes).");
+            PovShowCone = cfg.Bind("Replay", "ShowViewCones", true, "Replay: draw the field of view of every player as a translucent pyramid over the map.");
+            ReplayUnitDots = cfg.Bind("Replay", "UnitOwnerDots", 1, "Replay: coloured owner dot over every unit. 0 off, 1 only while Alt is held, 2 always.");
+            ReplayUiLayout = cfg.Bind("Replay", "UiLayout", "", "Replay player UI layout (scale, position, visibility); edited in the replay with F7.");
+            AnimatorCulling = cfg.Bind("Performance", "AnimatorCulling", false,
+                "Unit animators skip skeleton/transform updates while off-screen (CullUpdateTransforms). Visual only; needs BetterConnection ON. Measured: no frame-time gain (state machine cost dominates), so OFF by default.");
+            StatsEnabled = cfg.Bind("Stats", "Enabled", true, "Match statistics: collecting, bar and panel. Off = nothing is collected, sent or recorded (players see only their own stats; spectators and replays see everyone).");
+            StatsBar = cfg.Bind("Stats", "ShowBar", true, "Show the thin match statistics bar.");
+            StatsBarBottom = cfg.Bind("Stats", "BarAtBottom", false, "Bar at the bottom of the screen instead of the top.");
+            StatsBarOffset = cfg.Bind("Stats", "BarOffset", 0f, "Bar distance from the screen edge (px).");
+            StatsBarScale = cfg.Bind("Stats", "BarScale", 1f, "Bar scale.");
+            StatsBarOpacity = cfg.Bind("Stats", "BarOpacity", 0.85f, "Bar opacity.");
+            StatsPanelScale = cfg.Bind("Stats", "PanelScale", 1f, "Panel scale.");
+            StatsPanelOpacity = cfg.Bind("Stats", "PanelOpacity", 0.95f, "Panel opacity.");
+            StatsBarList = cfg.Bind("Stats", "BarStats", "0,1,2,3,4,7,9", "Stat indices shown in the bar (see the Overlays tab, section Match statistics).");
+            StatsPanelHidden = cfg.Bind("Stats", "PanelHidden", "", "Stat indices hidden in the panel.");
+            BtcDisplay.Init();
+        }
+    }
+}
