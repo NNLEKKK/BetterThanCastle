@@ -1,0 +1,37 @@
+# Day vs night frame cost + per-subsystem A/B at night (sandbox, 60 workers building). Results: BTClogs/engine.txt, vfx-day.txt, vfx-night.txt, prof-night.txt.
+prof start
+newgame
+waitgame 240
+daytime 12
+wait 5
+spawn bricktron 60
+spawn stockpile 20
+spawn workbench 10
+waitspawn 120
+order build 150
+wait 30
+vfxdump day
+measure day 20
+daytime 1
+wait 5
+vfxdump night
+prof reset
+measure night 20
+engine particles off
+wait 2
+measure night-no-particles 15
+engine particles on
+wait 2
+engine lights off
+wait 2
+measure night-no-lights 15
+engine lights on
+wait 2
+engine shadows off
+wait 2
+measure night-no-shadows 15
+engine shadows on
+wait 2
+measure night2 15
+dump night
+quit

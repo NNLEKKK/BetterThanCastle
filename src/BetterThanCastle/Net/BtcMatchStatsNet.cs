@@ -286,7 +286,7 @@ namespace BetterThanCastle
         private static void RefreshUsers()
         {
             UserByConn.Clear();
-            User[] us = UnityEngine.Object.FindObjectsOfType<User>();
+            User[] us = BtcRegistry.UsersArray(); // was FindObjectsOfType every second (~40 ms scene walk)
             for (int i = 0; i < us.Length; i++)
             {
                 User u = us[i];

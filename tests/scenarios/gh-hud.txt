@@ -1,0 +1,7 @@
+# C# game menu (cfg Display/CsGameMenu must be true): build in a sandbox game, dump (BTClogs/uidump-cshud.txt), quit.
+newgame
+waitgame 240
+wait 15
+uidump Menu:_Taskbar_(Lua) cshud
+gcprobe cshud
+quit

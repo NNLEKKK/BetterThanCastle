@@ -169,8 +169,9 @@ public static class BtcPlateImg
 				}
 				float unscaledTime = Time.unscaledTime;
 				BtcPlateImg.AnimateOne(BtcPlateImg._local, unscaledTime);
-				foreach (KeyValuePair<uint, BtcPlateImg.Rx> keyValuePair in BtcPlateImg._view)
+				for (Dictionary<uint, BtcPlateImg.Rx>.Enumerator en = BtcPlateImg._view.GetEnumerator(); en.MoveNext(); )   // no foreach: old Mono boxes the enumerator
 				{
+					KeyValuePair<uint, BtcPlateImg.Rx> keyValuePair = en.Current;
 					BtcPlateImg.AnimateOne(keyValuePair.Value.anim, unscaledTime);
 				}
 			}

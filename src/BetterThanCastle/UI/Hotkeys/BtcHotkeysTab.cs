@@ -21,6 +21,7 @@ namespace BetterThanCastle
         internal override int Id { get { return 3; } }
         internal override bool IsActive { get { return BtcHotkeysUI.TabActive; } }
         internal override string UndoScope { get { return "hotkeys"; } }
+        internal override void ClearSearch() { _q = ""; }
 
         // ---- state
         private int _page { get { return BtcMenuState.Int("hotkeys:page", 0); } set { BtcMenuState.SetInt("hotkeys:page", value); } }
@@ -215,7 +216,10 @@ namespace BetterThanCastle
         private bool ChipConflict(string id, KeyCode[] combo)
         {
             List<string> l;
-            return _modOwners.TryGetValue(BtcHotkeys.ComboKey(combo), out l) && (l.Count > 1);
+            if (!_modOwners.TryGetValue(BtcHotkeys.ComboKey(combo), out l) || l.Count < 2) return false;
+            if (!id.StartsWith("job_")) return true;
+            for (int i = 0; i < l.Count; i++) if (l[i] != id && !l[i].StartsWith("job_")) return true;
+            return false;
         }
 
         private string OverlapTip(string id, KeyCode[] combo)

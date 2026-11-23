@@ -93,7 +93,7 @@ public static class BtcLobby
 		return result;
 	}
 
-	private static Color ExtraColor(int k)
+	internal static Color ExtraColor(int k)
 	{
 		return BtcLobby.ExtraColorFrom(BtcGameplay.E, k);
 	}
@@ -603,7 +603,7 @@ public static class BtcLobby
 				UnityEngine.Object.Destroy(sprite.texture);
 				UnityEngine.Object.Destroy(sprite);
 			}
-			sprite = BtcLobby.MakeFlag(c, BtcLobby.ColName[k] == "Rainbow");
+			sprite = BtcLobby.FlagFor(k, c);
 			BtcLobby._flags[k] = sprite;
 			BtcLobby._flagCol[k] = num;
 			result = sprite;
@@ -616,72 +616,167 @@ public static class BtcLobby
 		bool flag = BtcLobby._specSprite == null;
 		if (flag)
 		{
-			BtcLobby._specSprite = BtcLobby.MakeFlag(new Color(0.6f, 0.6f, 0.64f, 1f));
+			BtcLobby._specSprite = BtcLobby.MakeFlag(IconKeys.FlagBlue, new Color(0.62f, 0.62f, 0.66f, 1f), FlagStyle.Eye);
 		}
 		return BtcLobby._specSprite;
 	}
 
-	private static Sprite MakeFlag(Color target)
+	internal enum FlagStyle { Tint, Rainbow, Eye }
+
+	/// Extra colour k: the vanilla flag of the closest hue with only the banner recoloured (the pole stays). Purple at its default colour
+	/// is the vanilla purple flag itself; Rainbow gets the six pride stripes.
+	internal static Sprite FlagFor(int k, Color c)
 	{
-		return BtcLobby.MakeFlag(target, false);
+		string n = BtcLobby.ColName[k];
+		if (n == "Rainbow") return BtcLobby.MakeFlag(IconKeys.FlagBlue, c, FlagStyle.Rainbow);
+		if (n == "Purple")
+		{
+			if (BtcLobby.ToUint(c) == BtcLobby.ToUint(BtcLobby.DefColor(k)))
+			{
+				Sprite v = IconKeys.FlagPurple.Get64();
+				if (v != null) return v;
+			}
+			return BtcLobby.MakeFlag(IconKeys.FlagPurple, c, FlagStyle.Tint);
+		}
+		return BtcLobby.MakeFlag(n == "Pink" ? IconKeys.FlagRed : IconKeys.FlagBlue, c, FlagStyle.Tint);
 	}
 
-	// rainbow: coloured pixels of the vanilla flag get a bright diagonal rainbow instead of the target hue.
-	private static Sprite MakeFlag(Color target, bool rainbow)
+	private static Color DefColor(int k)
+	{
+		return new Color((float)BtcLobby.DefRgb[k * 3] / 255f, (float)BtcLobby.DefRgb[k * 3 + 1] / 255f, (float)BtcLobby.DefRgb[k * 3 + 2] / 255f, 1f);
+	}
+
+	/// <summary>Pixels of a (possibly atlas-packed, non-readable) sprite: the whole atlas is blitted into a render texture and read back in
+	/// full, then the sprite rect is cut out of that copy (bottom-up rows, like Texture2D.GetPixels).</summary>
+	internal static Color[] SpritePixels(Sprite s, out int w, out int h)
+	{
+		w = 0; h = 0;
+		if (s == null || s.texture == null) return null;
+		Texture2D tex = s.texture;
+		Rect r = s.textureRect;
+		int x0 = Mathf.RoundToInt(r.x), y0 = Mathf.RoundToInt(r.y);
+		w = Mathf.RoundToInt(r.width); h = Mathf.RoundToInt(r.height);
+		if (w <= 0 || h <= 0) return null;
+		try { return tex.GetPixels(x0, y0, w, h); } catch (Exception) { }
+		RenderTexture rt = RenderTexture.GetTemporary(tex.width, tex.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default);
+		RenderTexture prev = RenderTexture.active;
+		Texture2D full = null;
+		try
+		{
+			Graphics.Blit(tex, rt);
+			RenderTexture.active = rt;
+			full = new Texture2D(tex.width, tex.height, TextureFormat.RGBA32, false);
+			full.ReadPixels(new Rect(0f, 0f, (float)tex.width, (float)tex.height), 0, 0);
+			full.Apply();
+			return full.GetPixels(x0, y0, w, h);
+		}
+		finally
+		{
+			RenderTexture.active = prev;
+			RenderTexture.ReleaseTemporary(rt);
+			if (full != null) UnityEngine.Object.Destroy(full);
+		}
+	}
+
+	// LGBT pride stripes, top to bottom
+	private static readonly Color[] Pride = new Color[]
+	{
+		new Color(0.89f, 0.01f, 0.01f), new Color(1f, 0.55f, 0f), new Color(1f, 0.93f, 0f),
+		new Color(0f, 0.5f, 0.15f), new Color(0f, 0.3f, 1f), new Color(0.46f, 0.03f, 0.53f)
+	};
+
+	/// <summary>The banner (saturated pixels) of a vanilla flag gets the target colour with the original shading; the grey pole and outline are
+	/// kept. Rainbow paints pride stripes across the banner's bounding box; Eye adds an eye in the middle of the banner (spectators).</summary>
+	internal static Sprite MakeFlag(IconKey key, Color target, FlagStyle style)
 	{
 		try
 		{
-			Sprite sprite = Faction.IconKeyMap["Blue"].Get64();
-			bool flag = sprite != null && sprite.texture != null;
-			if (flag)
+			Sprite src = key.Get64();
+			int w, h;
+			Color[] px = BtcLobby.SpritePixels(src, out w, out h);
+			if (px != null)
 			{
-				Texture2D texture = sprite.texture;
-				Rect textureRect = sprite.textureRect;
-				int num = (int)textureRect.width;
-				int num2 = (int)textureRect.height;
-				RenderTexture temporary = RenderTexture.GetTemporary(texture.width, texture.height, 0);
-				Graphics.Blit(texture, temporary);
-				RenderTexture active = RenderTexture.active;
-				RenderTexture.active = temporary;
-				Texture2D texture2D = new Texture2D(num, num2, TextureFormat.RGBA32, false);
-				texture2D.ReadPixels(new Rect(textureRect.x, textureRect.y, (float)num, (float)num2), 0, 0);
-				RenderTexture.active = active;
-				RenderTexture.ReleaseTemporary(temporary);
-				float h;
-				float num3;
-				float num4;
-				Color.RGBToHSV(target, out h, out num3, out num4);
-				Color[] pixels = texture2D.GetPixels();
-				for (int i = 0; i < pixels.Length; i++)
+				// the banner = saturated pixels of the dominant hue (the wooden pole is saturated too, but brown and smaller)
+				int[] bins = new int[24];
+				for (int i = 0; i < px.Length; i++)
 				{
-					float num5;
-					float num6;
-					float num7;
-					Color.RGBToHSV(pixels[i], out num5, out num6, out num7);
-					bool flag2 = num6 > 0.2f;
-					if (flag2)
+					float hh, ss, vv;
+					Color.RGBToHSV(px[i], out hh, out ss, out vv);
+					if (ss > 0.4f && px[i].a > 0.5f) bins[Mathf.Min(23, (int)(hh * 24f))]++;
+				}
+				int best = 0;
+				for (int b = 1; b < 24; b++) if (bins[b] > bins[best]) best = b;
+				float domHue = ((float)best + 0.5f) / 24f;
+				bool[] banner = new bool[px.Length];
+				int minX = w, maxX = -1, minY = h, maxY = -1;
+				float vMax = 0.01f;
+				for (int i = 0; i < px.Length; i++)
+				{
+					float hh, ss, vv;
+					Color.RGBToHSV(px[i], out hh, out ss, out vv);
+					if (ss <= 0.2f || px[i].a < 0.05f) continue;
+					float dh = Mathf.Abs(hh - domHue);
+					if (Mathf.Min(dh, 1f - dh) > 0.09f) continue;
+					banner[i] = true;
+					int x = i % w, y = i / w;
+					if (x < minX) minX = x; if (x > maxX) maxX = x;
+					if (y < minY) minY = y; if (y > maxY) maxY = y;
+					if (vv > vMax) vMax = vv;
+				}
+				if (maxX >= 0)
+				{
+					float th, ts, tv;
+					Color.RGBToHSV(target, out th, out ts, out tv);
+					float bw = (float)(maxX - minX + 1), bh = (float)(maxY - minY + 1);
+					float cx = (float)minX + bw * 0.5f, cy = (float)minY + bh * 0.5f;
+					float ea = bw * 0.30f, eb = bh * 0.22f, ir = eb * 0.78f;
+					for (int i = 0; i < px.Length; i++)
 					{
-						float a = pixels[i].a;
-						Color color = Color.HSVToRGB(h, Mathf.Clamp01(num6 * (num3 / 0.7f)), Mathf.Clamp01(num7 * (num4 / 0.9f)));
-						if (rainbow)
+						if (!banner[i]) continue;
+						float hh, ss, vv;
+						Color.RGBToHSV(px[i], out hh, out ss, out vv);
+						float shade = vv / vMax; // 1 = lit part of the cloth, lower = folds and outline
+						int x = i % w, y = i / w;
+						Color c;
+						if (style == FlagStyle.Rainbow)
 						{
-							float rh = ((float)(i % num) + (float)(i / num) * 0.6f) / ((float)num * 1.6f);
-							color = Color.HSVToRGB(rh - Mathf.Floor(rh), 1f, Mathf.Max(num7, 0.85f));
+							int band = Mathf.Clamp((int)((float)(maxY - y) / bh * 6f), 0, 5);
+							c = Pride[band] * Mathf.Lerp(0.45f, 1f, shade);
 						}
-						color.a = a;
-						pixels[i] = color;
+						else
+						{
+							c = Color.HSVToRGB(th, ts, Mathf.Clamp01(tv * Mathf.Lerp(0.4f, 1f, shade)));
+							if (style == FlagStyle.Eye)
+							{
+								float dx = ((float)x + 0.5f - cx) / ea, dy = (float)y + 0.5f - cy;
+								float lid = eb * (1f - dx * dx);
+								if (Mathf.Abs(dx) < 1f && Mathf.Abs(dy) <= lid)
+								{
+									float d = Mathf.Sqrt(((float)x + 0.5f - cx) * ((float)x + 0.5f - cx) + dy * dy);
+									bool rim = Mathf.Abs(dy) > lid - 1.2f;
+									if (rim) c = new Color(0.12f, 0.12f, 0.14f);
+									else if (d <= ir * 0.45f) c = new Color(0.05f, 0.05f, 0.06f);
+									else if (d <= ir) c = new Color(0.2f, 0.42f, 0.62f);
+									else c = new Color(0.96f, 0.96f, 0.96f) * Mathf.Lerp(0.8f, 1f, shade);
+								}
+							}
+						}
+						c.a = px[i].a;
+						px[i] = c;
 					}
 				}
-				texture2D.SetPixels(pixels);
-				texture2D.Apply();
-				texture2D.hideFlags = HideFlags.HideAndDontSave;
-				return Sprite.Create(texture2D, new Rect(0f, 0f, (float)num, (float)num2), new Vector2(0.5f, 0.5f), sprite.pixelsPerUnit);
+				Texture2D t = new Texture2D(w, h, TextureFormat.RGBA32, false);
+				t.SetPixels(px);
+				t.Apply();
+				t.hideFlags = HideFlags.HideAndDontSave;
+				return Sprite.Create(t, new Rect(0f, 0f, (float)w, (float)h), new Vector2(0.5f, 0.5f), src.pixelsPerUnit);
 			}
 		}
-		catch (Exception)
+		catch (Exception e)
 		{
+			BtcLog.Warn("Lobby", "flag sprite: " + e.Message);
 		}
-		return BtcLobby.MakeDisc(rainbow ? new Color(1f, 0.2f, 0.6f, 1f) : target);
+		return BtcLobby.MakeDisc(style == FlagStyle.Rainbow ? new Color(1f, 0.2f, 0.6f, 1f) : target);
 	}
 
 	private static Sprite MakeDisc(Color c)
@@ -708,12 +803,14 @@ public static class BtcLobby
 		{
 			string[] array = new string[]
 			{
+				"Purple",
 				"Pink",
 				"Cyan",
 				"Rainbow"
 			};
 			IconKey[] array2 = new IconKey[]
 			{
+				IconKeys.FlagPurple,
 				IconKeys.FlagRed,
 				IconKeys.FlagBlue,
 				IconKeys.FlagGreen

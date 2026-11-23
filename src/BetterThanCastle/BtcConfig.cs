@@ -17,7 +17,14 @@ namespace BetterThanCastle
         internal static ConfigEntry<bool> ShowPing;
         internal static ConfigEntry<bool> ShowPauseLabel;
         internal static ConfigEntry<bool> DiagLog;
+        internal static ConfigEntry<bool> AnimSync;
+        internal static ConfigEntry<bool> PosSync;
+        internal static ConfigEntry<bool> SoundSync;
+        internal static ConfigEntry<bool> FogSounds;
+        internal static ConfigEntry<bool> OwnTransport;
         internal static ConfigEntry<bool> AnimatorCulling;
+        internal static ConfigEntry<bool> MemoryFixes, FrameSavers, FastSave, FastLoad, ReplayNoGameHud, CsGameMenu;
+        internal static ConfigEntry<bool> WarmShaders, UnitNightLights, FireflyLights, CrystalShadows, PauseHiddenAnims, HideNameTags, StaticCrystals, SimpleFireflies, CrystalLights, ShortShadows, NoAmbientOcclusion, NoBloom, NoSunShadows;
         internal static ConfigEntry<bool> LogMove;
         internal static ConfigEntry<bool> LogBuildAi;
         internal static ConfigEntry<bool> LogVis;
@@ -47,6 +54,7 @@ namespace BetterThanCastle
             UiSound = cfg.Bind("Display", "UiSound", 2, "Sound feedback of the mod menu (hover, clicks, typing, delete): 0 = off, 1 = low, 2 = medium, 3 = high.");
             LiveSymmetry = cfg.Bind("Editor", "LiveSymmetry", true, "Map editor: when a symmetry mode is set in Gameplay settings (mirror/point/quadrants), objects, trees and Island terrain you place are mirrored instantly to the other side. Uses the map Heightmap.png for the axis.");
             CleanHanging = cfg.Bind("Editor", "CleanHanging", true, "Map editor: after you dig or lower terrain, ore, plants, boulders and trees that no longer sit on the surface are removed automatically.");
+            CsGameMenu = cfg.Bind("Display", "CsGameMenu", true, "The in-game interface is built in C# instead of the game Lua menu (much less memory, shorter freezes, faster loads). Off = vanilla Lua menu.");
             LoadTimer = cfg.Bind("Display", "LoadTimer", true, "Show how many seconds the world load has been running (and the total after it).");
             LoadCancel = cfg.Bind("Display", "LoadCancel", true, "Show a cross at the bottom right while a world loads; it aborts the load and returns to the main menu.");
             ReuseMenuPanels = cfg.Bind("LoadingExperimental", "ReuseMenuPanels", false, "EXPERIMENTAL (off since 0.5.0, loads were slower with it). While the world loads, reuse already built menu panels instead of destroying and re-creating them (faster load). Turn off if the in-game UI looks wrong.");
@@ -58,6 +66,11 @@ namespace BetterThanCastle
                 "OFF: the mod behaves exactly like vanilla on the wire (play with vanilla clients/hosts).");
             ShowPing = cfg.Bind("Network", "ShowPing", true, "Show ping overlay (BetterConnection only).");
             ShowPauseLabel = cfg.Bind("Network", "ShowPauseLabel", true, "Show the pause label (BetterConnection only).");
+            AnimSync = cfg.Bind("Network", "SmoothAnimations", true, "Clients see unit animations (strikes, hits, steps) like the host, without the vanilla 10 Hz sampling and lost updates; no extra delay. Host: sends them to clients that ask; client: asks the host. BetterConnection only.");
+            PosSync = cfg.Bind("Network", "SmoothMovement", true, "Clients get unit positions at 20 Hz with the host clock and interpolate with an adaptive delay (vanilla 6 Hz lerp). BetterConnection only, both sides.");
+            SoundSync = cfg.Bind("Network", "UnitSounds", true, "Clients hear unit sounds like the host: the host sends unit jobs (right voice after a kit change) and the sounds only its own code plays (aiming, spotting, arrow hits, kills, racks). BetterConnection only, both sides.");
+            FogSounds = cfg.Bind("Network", "NoFogSounds", true, "Nobody hears objects their faction cannot see (fog of war; vanilla host hears everything). BetterConnection only, local.");
+            OwnTransport = cfg.Bind("Network", "OwnTransport", false, "Experimental: reliable UNET traffic goes through the mod's own delivery over the unreliable channel (never gives up, separate lanes). BetterConnection only, both sides.");
             DiagLog = cfg.Bind("Network", "DiagLog2", false, "Write detailed network diagnostics files (BetterThanCastle/debug/unet_netdiag_*.log, max 20 MB per session). Normal [Net] lines in the BepInEx log are always written.");
             LogMove = cfg.Bind("Logging", "PathBlocks", false, "Write path blocks to BetterThanCastle/qol_blocked.log (debug).");
             LogBuildAi = cfg.Bind("Logging", "BuildAI", false, "Log build AI decisions to btc_netdiag.txt (debug).");
@@ -77,6 +90,7 @@ namespace BetterThanCastle
             PovFollowCam = cfg.Bind("Replay", "PovFollowCamera", true, "Watching a player in a replay: follow their recorded camera.");
             PovShowCursor = cfg.Bind("Replay", "ShowCursors", true, "Replay: draw the recorded cursors of the players.");
             ReplayInfo = cfg.Bind("Replay", "ShowBlueprintsAndQueues", true, "Replay: draw the blueprints of all players and the crafting queues of all buildings.");
+            ReplayNoGameHud = cfg.Bind("Replay", "NoGameHud", true, "Replay playback: the game HUD (task bar, task and build panels) is not loaded at all: faster replay loads, much less memory and shorter freezes. The mini map is shown on its own.");
             ReplayHideMinimap = cfg.Bind("Replay", "HideMinimap", false, "Replay: hide the mini map (bar icon).");
             ReplayShowApm = cfg.Bind("Replay", "ShowApm", true, "Replay: draw the actions-per-minute graph of every player above the timeline (replays recorded since this feature only).");
             ReplayKeysMode = cfg.Bind("Replay", "PressedKeysMode", 1, "Replay: pressed keys of the watched player (0 hidden, 1 feed, 2 keyboard).");
@@ -89,8 +103,25 @@ namespace BetterThanCastle
             PovShowCone = cfg.Bind("Replay", "ShowViewCones", true, "Replay: draw the field of view of every player as a translucent pyramid over the map.");
             ReplayUnitDots = cfg.Bind("Replay", "UnitOwnerDots", 1, "Replay: coloured owner dot over every unit. 0 off, 1 only while Alt is held, 2 always.");
             ReplayUiLayout = cfg.Bind("Replay", "UiLayout", "", "Replay player UI layout (scale, position, visibility); edited in the replay with F7.");
-            AnimatorCulling = cfg.Bind("Performance", "AnimatorCulling", false,
+            AnimatorCulling = cfg.Bind("Performance", "AnimatorCulling", true,
                 "Unit animators skip skeleton/transform updates while off-screen (CullUpdateTransforms). Visual only; needs BetterConnection ON. Measured: no frame-time gain (state machine cost dominates), so OFF by default.");
+            MemoryFixes = cfg.Bind("Performance", "MemoryFixes", true, "Fewer and shorter freezes from garbage collection: smaller Lua heap and stacks, fixes of game memory leaks, no dead analytics (ported from Castle Story Plus). Local only, nothing changes on the wire. Applies after a restart.");
+            FrameSavers = cfg.Bind("Performance", "FrameSavers", true, "Less CPU per frame for the same game: work the game repeated for the same answer is done once (overhead icons, sound positions, input names, animator states, picking rays...; ported from Castle Story Plus). Local only, nothing changes on the wire or in the simulation. Applies after a restart.");
+            FastSave = cfg.Bind("Performance", "FastSave", true, "Saving a running game no longer freezes it: quicksave and the save menu write the game objects a slice per frame, and the big data files are written by a background thread into a new folder that then replaces the old save (instead of copying the whole save back and forth). Ported from Castle Story Plus. Local only; applies at once.");
+            FastLoad = cfg.Bind("Performance", "FastLoad", true, "Faster world load: the terrain is drawn in a few frames instead of one step per frame, loader waits are checked every frame, the loading curtain is faster, and the serializer is warmed up in the background so the replay snapshot at match start no longer freezes the game (~1.6 s). Ideas partly from Castle Story Plus. Local only, nothing changes on the wire. Applies after a restart.");
+            WarmShaders = cfg.Bind("Performance", "WarmShaders", true, "Compile the shaders once per game start (a short pause in the main menu, about 1 s in the first world load) instead of in the middle of a match: the first night, fireflies or effects then no longer freeze the game for up to half a second. Local only.");
+            UnitNightLights = cfg.Bind("Performance", "UnitNightLights", false, "Lanterns of your units at night (one point light per unit). Off = darker units at night, less GPU work. Local only.");
+            FireflyLights = cfg.Bind("Performance", "FireflyLights", false, "Glow lights of the night fireflies around crystals (dozens of small point lights). Off = fireflies keep their particles, less GPU work. Local only.");
+            CrystalShadows = cfg.Bind("Performance", "CrystalShadows", false, "Crystal lights cast shadows (point light shadows: six extra shadow renders per crystal). Off = crystals still glow, much less GPU work. Local only.");
+            PauseHiddenAnims = cfg.Bind("Performance", "PauseHiddenAnims", true, "Overhead icons, name tags and thought bubbles animate only while shown; crystal shards only on screen; beacon handles only right after a change. Looks the same. Local only.");
+            HideNameTags = cfg.Bind("Performance", "HideNameTags", true, "Never show the name tags over units and beacons (maximum performance). Local only.");
+            StaticCrystals = cfg.Bind("Performance", "StaticCrystals", false, "Crystals do not animate at all (no breathing, shaking, capture fill or day glow); their colour changes only when a capture or neutralisation completes. The capture progress bar stays. Local only.");
+            SimpleFireflies = cfg.Bind("Performance", "SimpleFireflies", true, "Fireflies without their particles and trail (about 16 particles each, dozens of fireflies at every home crystal); the glowing ball stays. Local only.");
+            CrystalLights = cfg.Bind("Performance", "CrystalLights", false, "The light that crystals cast on the ground around them. Off = crystals still glow themselves, fewer lights to draw. Local only.");
+            ShortShadows = cfg.Bind("Performance", "ShortShadows", true, "Sun and moon shadows drawn up to 120 m from the camera instead of 400 m: far fewer shadow renders, sharper shadows nearby. Local only.");
+            NoAmbientOcclusion = cfg.Bind("Performance", "NoAmbientOcclusion", true, "Turn off ambient occlusion (soft contact shadows) whatever the game graphics option says. Local only.");
+            NoBloom = cfg.Bind("Performance", "NoBloom", true, "Turn off bloom (glow around bright things) whatever the game graphics option says. Local only.");
+            NoSunShadows = cfg.Bind("Performance", "NoSunShadows", true, "No shadows from the sun and moon at all, whatever the game graphics option says (maximum performance: a day then costs as much as a night). Local only.");
             StatsEnabled = cfg.Bind("Stats", "Enabled", true, "Match statistics: collecting, bar and panel. Off = nothing is collected, sent or recorded (players see only their own stats; spectators and replays see everyone).");
             StatsBar = cfg.Bind("Stats", "ShowBar", true, "Show the thin match statistics bar.");
             StatsBarBottom = cfg.Bind("Stats", "BarAtBottom", false, "Bar at the bottom of the screen instead of the top.");

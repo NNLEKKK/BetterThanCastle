@@ -1,0 +1,14 @@
+# spectator mini map: client1 picks the spectator slot in the lobby, a second spectator hot-joins the running game; everyone dumps the mini map state (mmdump) + lobby flags (flagdump).
+host default conquest
+waitclients 1 200
+wait 3
+flagdump
+gameplay gen.maxp=8
+wait 3
+startmatch 120
+waitgame 240
+mark ingame
+wait 15
+mmdump
+wait 170
+quit

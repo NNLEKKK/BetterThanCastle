@@ -1,0 +1,2 @@
+# smooth movement v2: internet-like link to the client (40 ms lag, bursts = jitter, 2% loss, out of order)
+at host:ingame+0 net clients 0 --lag on --lag-time 40 --throttle on --throttle-frame 60 --throttle-chance 15 --drop on --drop-chance 2.0 --ood on --ood-chance 2.0

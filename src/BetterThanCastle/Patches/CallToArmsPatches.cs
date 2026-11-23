@@ -23,6 +23,7 @@ namespace BetterThanCastle.Patches
     {
         private static bool Prefix(CallbackArguments args, ref DynValue __result)
         {
+            bool acted = false;
             try
             {
                 GameObject go = null;
@@ -42,6 +43,9 @@ namespace BetterThanCastle.Patches
                     BtcLog.Warn("CallToArms", "no own crystal found; faction=" + (lf != null ? lf.name : "null") + "; vanilla path (Lua error)");
                     return true; // vanilla throws the same way as before: no regression
                 }
+                // from the sound on, vanilla must not run: it would play it again and re-send every order to the Lua crystal
+                acted = true;
+                __result = DynValue.Void;
                 SoundEngine.Play("Call_To_Arm");
                 int total = 0, builders = 0, owned = 0;
                 foreach (Labor labor in UIGameObserver.bricktrons.CheckCreation())
@@ -50,25 +54,28 @@ namespace BetterThanCastle.Patches
                     if (labor.Profession.OccupationType == Occupation.Type.Builder)
                     {
                         builders++;
-                        if (lu != null && Affiliation.IsOwnedBy(labor.gameObject, lu)) owned++;
+                        try { if (lu != null && Affiliation.IsOwnedBy(labor.gameObject, lu)) owned++; } catch (Exception) { }   // diagnostics only
                         DirectOrderProject.AddCallToArmsGoal(labor, go);
                     }
                 }
-                AffiliationComponent ac = go.GetComponent<AffiliationComponent>();
-                BtcLog.Info("CallToArms", "crystal=" + src + " crystalFaction=" + (ac != null && ac.faction != null ? ac.faction.name : "null")
-                    + " localFaction=" + (lf != null ? lf.name : "null") + " bricktrons=" + total + " builders=" + builders
-                    + " ownedByMe(server check proxy)=" + owned + " pos=" + go.transform.position);
-                __result = DynValue.Void;
+                try
+                {
+                    AffiliationComponent ac = go.GetComponent<AffiliationComponent>();
+                    BtcLog.Info("CallToArms", "crystal=" + src + " crystalFaction=" + (ac != null && ac.faction != null ? ac.faction.name : "null")
+                        + " localFaction=" + (lf != null ? lf.name : "null") + " bricktrons=" + total + " builders=" + builders
+                        + " ownedByMe(server check proxy)=" + owned + " pos=" + go.transform.position);
+                }
+                catch (Exception) { }
                 return false;
             }
             catch (Exception e)
             {
                 BtcLog.Error("Hook", "UIGameObserver.lua_CallToArms: " + e);
-                return true;
+                return !acted;
             }
         }
 
-        private static GameObject FindOwnCrystal()
+        internal static GameObject FindOwnCrystal()
         {
             User u = User.LocalUser;
             if (u == null) return null;

@@ -1,0 +1,27 @@
+# client of anim-mp: 20 s vanilla (measure only) / 20 s fix, three times
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 120
+ready 420
+waitgame 300
+wait 8
+animnet observe 1
+wait 20
+animnet dump v1
+animnet observe 0
+wait 20
+animnet dump f1
+animnet observe 1
+wait 20
+animnet dump v2
+animnet observe 0
+wait 20
+animnet dump f2
+animnet observe 1
+wait 20
+animnet dump v3
+animnet observe 0
+wait 20
+animnet dump f3
+wait 5
+quit

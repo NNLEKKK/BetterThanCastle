@@ -69,12 +69,7 @@ public static class BtcBlockMarks
 			bool result;
 			try
 			{
-				bool flag = BtcBlockMarks.masterField == null;
-				if (flag)
-				{
-					BtcBlockMarks.masterField = typeof(BtcOverlays).GetField("master", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-				}
-				result = (BtcBlockMarks.masterField == null || (bool)BtcBlockMarks.masterField.GetValue(null));
+				result = BtcOverlays.Master;   // was reflection + a boxed bool every frame
 			}
 			catch (Exception)
 			{

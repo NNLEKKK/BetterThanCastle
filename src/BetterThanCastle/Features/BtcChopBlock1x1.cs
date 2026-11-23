@@ -32,7 +32,7 @@ namespace BetterThanCastle
 
 		public static void AddRows()
 		{
-			BtcGameplay.Add("build.chop1x1", "build", "Chopping block blueprint is 1x1", "Чертёж пенька 1x1", 1f, 0f, 1f, 1f, true, "The chopping block blueprint takes the same single block as the built chopping block: it snaps to the cursor block and rotation does not shift it. It stays a plain blueprint (does not block paths or dig terrain).", "Чертёж пенька занимает тот же один блок, что и построенный пенёк: встаёт в блок под курсором, поворот его не смещает. Это по-прежнему обычный чертёж (не блочит проход и не ломает землю).");
+			BtcGameplay.Add("build.chop1x1", "build", "Chopping block 1x1, stations block only themselves", "Пенёк 1x1, станки занимают только себя", 1f, 0f, 1f, 1f, true, "The chopping block blueprint takes the same single block as the built chopping block: it snaps to the cursor block and rotation does not shift it. It stays a plain blueprint (does not block paths or dig terrain). Built crafting stations (workbench, forge, loom, lab, machine shop, altar) no longer forbid building on the 2 cells in front of them: only the station's own blocks are taken.", "Чертёж пенька занимает тот же один блок, что и построенный пенёк: встаёт в блок под курсором, поворот его не смещает. Это по-прежнему обычный чертёж (не блочит проход и не ломает землю). Построенные крафтильни (верстак, кузня, ткацкий станок, лаборатория, мастерская, алтарь) больше не запрещают строить на 2 клетках перед собой: заняты только блоки самого станка.");
 		}
 
 		public static bool Enabled
@@ -52,6 +52,66 @@ namespace BetterThanCastle
 		public static bool Applies(Factory.AssetKey key)
 		{
 			return key == Blueprints.ChoppingBlock && Enabled;
+		}
+
+		// Built crafting stations (station-dump): the two cells in front where the crafter stands are access|occupy(|operation).
+		// `occupy` is a blueprint obstruction (BlueprintValidator.Obstructions), so nothing can be planned there. Under the same
+		// rule those cells keep access/operation and lose occupy; the station's own cells (obstacle/debloc) stay untouched.
+		private static readonly Factory.AssetKey[] StationKeys = { ObjetsDynamiques.Workbench, ObjetsDynamiques.Forge, ObjetsDynamiques.Loom,
+			ObjetsDynamiques.Lab, ObjetsDynamiques.MachineShop, ObjetsDynamiques.Altar };
+		private const long SolidBits = (long)(VPropertyMask.obstacle | VPropertyMask.debloc);
+		private static readonly Dictionary<string, Entry> StationCache = new Dictionary<string, Entry>();
+
+		public static bool AppliesStation(Factory.AssetKey key)
+		{
+			for (int i = 0; i < StationKeys.Length; i++) if (key == StationKeys[i]) return Enabled;
+			return false;
+		}
+
+		private static Entry Station(Factory.AssetKey key, int rot, int config, Dictionary<XYZ, VPropertyMask> vanilla)
+		{
+			string k = key + "|" + rot + "|" + config;
+			Entry e;
+			if (StationCache.TryGetValue(k, out e)) return e;
+			if (vanilla == null) return null;
+			Dictionary<XYZ, VPropertyMask> res = new Dictionary<XYZ, VPropertyMask>();
+			foreach (KeyValuePair<XYZ, VPropertyMask> kv in vanilla)
+			{
+				long m = (long)kv.Value;
+				if ((m & SolidBits) == 0) m &= ~(long)VPropertyMask.occupy;
+				if (m != 0) res[kv.Key] = (VPropertyMask)m;
+			}
+			List<XYZ>[] ix = new List<XYZ>[64];
+			foreach (KeyValuePair<XYZ, VPropertyMask> kv in res)
+				for (int i = 0; i < 64; i++)
+					if (((long)kv.Value & (1L << i)) != 0)
+					{
+						if (ix[i] == null) ix[i] = new List<XYZ>();
+						ix[i].Add(kv.Key);
+					}
+			for (int i = 0; i < 64; i++) if (ix[i] != null) ix[i].Sort();
+			e = new Entry { Settings = res, Indices = ix };
+			StationCache[k] = e;
+			BtcLog.Info("ChopBlock", "station volume " + key + " rot=" + rot + " cfg=" + config + " cells=" + res.Count);
+			return e;
+		}
+
+		public static Dictionary<XYZ, VPropertyMask> FilterStationSettings(Factory.AssetKey key, Dictionary<XYZ, VPropertyMask> vanilla, int rot, int config)
+		{
+			Entry e = Station(key, rot, config, vanilla);
+			return e != null ? e.Settings : vanilla;
+		}
+
+		public static List<XYZ>[] FilterStationIndices(Factory.AssetKey key, List<XYZ>[] vanilla, int rot, int config)
+		{
+			if (vanilla == null) return null;
+			Entry e = Station(key, rot, config, null);
+			if (e == null)
+			{
+				VolumePreprocessor.GetIndexedVSettings(key, rot, config); // fills the cache through the settings postfix
+				e = Station(key, rot, config, null);
+			}
+			return e != null ? e.Indices : vanilla;
 		}
 
 		private static Entry Get(int rot, int config)

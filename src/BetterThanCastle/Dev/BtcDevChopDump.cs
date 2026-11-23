@@ -119,6 +119,32 @@ namespace BetterThanCastle.Dev
             }
         }
 
+        /// <summary>DEV: "stationdump" -> BTClogs/station-dump.txt: built volume cells (rot 0 and 1, cfg 0) of every crafting station.</summary>
+        internal static void Stations()
+        {
+            StringBuilder sb = new StringBuilder(32768);
+            Factory.AssetKey[] keys = { ObjetsDynamiques.Workbench, ObjetsDynamiques.Forge, ObjetsDynamiques.Loom, ObjetsDynamiques.Furnace, ObjetsDynamiques.Lab,
+                ObjetsDynamiques.MachineShop, ObjetsDynamiques.Altar, ObjetsDynamiques.CookingPot, ObjetsDynamiques.ChoppingBlock, Blueprints.Workbench };
+            foreach (Factory.AssetKey key in keys)
+            {
+                for (int rot = 0; rot < 2; rot++)
+                {
+                    try
+                    {
+                        Dictionary<XYZ, VPropertyMask> d = VolumePreprocessor.GetIndexedVSettings(key, rot, 0);
+                        sb.Append("##### ").Append(key).Append(" rot ").Append(rot).Append(" cells=").Append(d != null ? d.Count : -1).Append('\n');
+                        if (d == null) continue;
+                        List<KeyValuePair<XYZ, VPropertyMask>> l = new List<KeyValuePair<XYZ, VPropertyMask>>(d);
+                        l.Sort(delegate(KeyValuePair<XYZ, VPropertyMask> a, KeyValuePair<XYZ, VPropertyMask> b) { int c = a.Key.y.CompareTo(b.Key.y); if (c == 0) c = a.Key.x.CompareTo(b.Key.x); if (c == 0) c = a.Key.z.CompareTo(b.Key.z); return c; });
+                        foreach (KeyValuePair<XYZ, VPropertyMask> kv in l) sb.Append("  ").Append(kv.Key.x).Append(',').Append(kv.Key.y).Append(',').Append(kv.Key.z).Append(' ').Append(Decode((long)kv.Value)).Append('\n');
+                    }
+                    catch (Exception e) { sb.Append("##### ").Append(key).Append(" EXC ").Append(e.GetType().Name).Append('\n'); }
+                }
+            }
+            File.WriteAllText(System.IO.Path.Combine(BtcDevPaths.LogDir, "station-dump.txt"), sb.ToString());
+            BtcLog.Info("Dev", "stationdump written");
+        }
+
         private static void Prefab(StringBuilder sb, Factory.AssetKey key)
         {
             GameObject go = Factory.Peek(key);

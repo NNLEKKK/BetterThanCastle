@@ -1,0 +1,45 @@
+# detour: 16 units run across the arena; 1.5 s later a stone wall (x 60-61, z 2-18, 3 high) appears across their route,
+# open at both ends. "where past=N" = units past x 75. Compare with detour0 (rule mov.lookahead off).
+duelunits 3 8 0
+duelunits 4 8 0
+duelunits 2 0 2
+duelskip 1
+duelheal 1
+duelplayerbot -1
+duelnobot 1
+duelnorules 1
+duel
+waitduel 240
+wait 3
+duelplace 1 all 97 10 270
+duelplace 0 0 12 8 90
+duelplace 0 1 12 9 90
+duelplace 0 2 12 10 90
+duelplace 0 3 12 11 90
+duelplace 0 4 13 8 90
+duelplace 0 5 13 9 90
+duelplace 0 6 13 10 90
+duelplace 0 7 13 11 90
+duelplace 0 8 14 8 90
+duelplace 0 9 14 9 90
+duelplace 0 10 14 10 90
+duelplace 0 11 14 11 90
+duelplace 0 12 15 8 90
+duelplace 0 13 15 9 90
+duelplace 0 14 15 10 90
+duelplace 0 15 15 11 90
+wait 2
+duellog DT-GO
+duelo 0 all move 88 10
+wait 1.5
+duelwall 60 2 61 18 3
+duellog DT-WALL
+wait 3
+duelwhere 0 all 75
+wait 3
+duelwhere 0 all 75
+wait 3
+duelwhere 0 all 75
+wait 4
+duelwhere 0 all 75
+quit

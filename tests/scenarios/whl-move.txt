@@ -1,0 +1,20 @@
+# hunt for the vanilla move marker (arrow ico_MoveTo + blue dot over the target block, host only): SP conquest, own workers get a
+# move order through the Command body, scene probed for renderers/images named like "move" before and after.
+newgame
+waitgame 240
+wait 5
+whl probe pre
+whl move 1
+wait 0.3
+whl probe s1a
+wait 1
+whl probe s1b
+wait 4
+whl move 0
+wait 0.3
+whl probe p0a
+wait 1
+whl probe p0b
+wait 6
+whl probe end
+quit

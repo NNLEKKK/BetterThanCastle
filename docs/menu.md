@@ -128,3 +128,9 @@ Flat dark panels, 1 px `Line` separators, `Accent` for the active/selected thing
 
 ## Gameplay tab: Base shields page (PShield = 8, 2026-11-11)
 - `UI/Gameplay/BtcShieldPage.cs`: summary card (Summary() turns the shield.* values into 3 plain lines, critical-orange stripe), live barrier list during a match (BtcShieldFx.Rows/Dots, same as the HUD chip), a small clickable link line (opens Visuals > World overlays with the fold "vis:world:shield" open, via BtcChangelog.Go("tab:1:1")), then `PageRules(..., "shield")` (group excluded from the main Rules page like "timer"). Personal look/sound = Visuals tab, World overlays page, section "shield" (ResourcePackManager.Visual.cs: sh.alpha opacity 10-150 %, sh.vol volume 0-100 %, sh.sndUp/sndHit/sndTick, sh.notes, sh.hud; menu-state keys shield:alpha, shield:vol, ...). Row dependencies in BtcShieldPage.Vis. All shield.* rows are critical (Crit list "shield."). Icon BtcReplayIcons.Shield (66). Also fixed: the "Game timer" section (timer.ms) of Visuals > Plates was never drawn.
+
+## Performance tab (id 14, 2026-11-21)
+UI/Perf/BtcPerfTab.cs: one scroll page, folds perf:frame / perf:ui / perf:load (BtcUi.Fold), rows = config switches with undo scope "perf". Rail after Practice (TabOrder), bolt icon (IconOf[14]), names in BtcChangelog.TabNameEn/Ru + C02 tabNames, global search ids/icons. No master switch (not one feature), no favourites yet.
+
+## Lobby defaults (Gameplay > Map, 2026-11-23, USER-VERIFIED)
+- Features/BtcLobbyDefaults.cs + Patches/LobbyMenuPatches.cs (LobbyMenu.OpenSelf postfix, host only, local, no net, works with BC OFF). BtcMenuState keys lobby:map (map codename, default Pioneer Pass viper_pass_b7ef299e-...) and lobby:mode (default conquest); empty = vanilla pick (best-rated official map). Fold gp:map:lobby in BtcMapPage.cs.

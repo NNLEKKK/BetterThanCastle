@@ -59,16 +59,6 @@ namespace BetterThanCastle.Patches
         }
     }
 
-    [HarmonyPatch(typeof(Profession), "CanPassThrough")]
-    internal static class ProfessionCanPassThroughPatch
-    {
-        private static void Postfix(ref bool __result)
-        {
-            try { if (!__result && BtcQol.AlliesPass) __result = true; }
-            catch (Exception e) { BtcLog.Error("Hook", "Profession.CanPassThrough: " + e); }
-        }
-    }
-
     [HarmonyPatch(typeof(Profession), "SetHpBonus")]
     internal static class ProfessionSetHpBonusPatch
     {

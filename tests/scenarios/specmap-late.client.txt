@@ -1,0 +1,7 @@
+# hot-join spectator of specmap
+join 127.0.0.1
+wait 100
+mmdump
+wait 20
+mmdump
+quit

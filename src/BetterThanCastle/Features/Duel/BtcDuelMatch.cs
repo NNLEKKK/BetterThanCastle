@@ -508,6 +508,7 @@ namespace BetterThanCastle
 
         private void OnGUI()
         {
+        	if (useGUILayout) useGUILayout = false; // no GUILayout here: skip Unity's per-event layout pass (garbage)
             if (!BtcDuel.Active || State == BtcDuelState.Idle) return;
             if (_big == null)
             {

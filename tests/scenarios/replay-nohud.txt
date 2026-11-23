@@ -1,0 +1,10 @@
+# Replay playback without the game HUD (Replay/NoGameHud): own mini map, heap, GC pause, frame times.
+prof start
+replay 2026-11-05_17-32-04_Komorebi
+waitreplay 300
+wait 15
+gcprobe replay
+prof reset
+wait 30
+dump replay-nohud2
+quit

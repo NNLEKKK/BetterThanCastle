@@ -127,15 +127,17 @@ namespace BetterThanCastle
         private static bool Prefix(KinematicProjectile __instance)
         {
             if (!BtcShield.Any) return true;
+            bool gone = false;   // once unspawned, vanilla Update must not run on the dead arrow
             try
             {
                 if (!BtcShield.StopArrow(__instance, __instance.Attacker)) return true;
                 GameObject go = __instance.gameObject;
+                gone = true;
                 NetworkServer.UnSpawn(go);
                 ObjectPoolSingleton.Release(go);
                 return false;
             }
-            catch (Exception e) { BtcLog.Error("Hook", "ShieldArrow: " + e.Message); return true; }
+            catch (Exception e) { BtcLog.Error("Hook", "ShieldArrow: " + e.Message); return !gone; }
         }
     }
 }

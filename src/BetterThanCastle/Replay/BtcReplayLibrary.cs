@@ -31,6 +31,7 @@ namespace BetterThanCastle
         private static int _viewMode;          // 0 cards, 1 list, 2 compact
         private static int _mode;              // 0 all, 1 MP, 2 SP
         private static string _q = "", _newFolder = "";
+        internal static void ClearSearch() { _q = ""; _viewKey = ""; }
         private static bool _addingFolder;
         private static string _selected, _confirmDelete;
         private static float _confirmUntil;

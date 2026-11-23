@@ -1,0 +1,24 @@
+# C# game menu left bar + build sidebars (cfg Display/CsGameMenu must be true): blocks/structures/new task like a player, dumps.
+newgame
+waitgame 240
+wait 10
+uidump Menu:_Taskbar_(Lua) ghleft0
+gh blocks
+wait 3
+uidump Menu:_Taskbar_(Lua) ghblocks
+gh structures
+wait 3
+uidump Menu:_Taskbar_(Lua) ghstruct
+gh bp
+wait 3
+uidump Menu:_Taskbar_(Lua) ghbp
+gh open None
+wait 2
+gh newtask
+wait 3
+uidump Menu:_Taskbar_(Lua) ghnewtask
+gh settings
+wait 2
+uidump Menu:_Taskbar_(Lua) ghsettings
+gcprobe ghleft
+quit

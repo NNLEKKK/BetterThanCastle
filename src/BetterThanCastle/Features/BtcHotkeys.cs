@@ -198,7 +198,29 @@ public static class BtcHotkeys
 
 	public static KeyCode[] GetJobKeys(Occupation.Job job, KeyCode[] fallback)
 	{
-		return BtcHotkeys.GetKeys("job_" + job.ToString(), fallback);
+		// Asked for every job every frame: the bind name is built once per job (Enum.ToString + concat made garbage per frame).
+		string name;
+		if (!JobKeyNames.TryGetValue((int)job, out name)) { name = "job_" + job.ToString(); JobKeyNames[(int)job] = name; }
+		return BtcHotkeys.GetKeys(name, fallback);
+	}
+
+	private static readonly Dictionary<int, string> JobKeyNames = new Dictionary<int, string>();
+	private static readonly Dictionary<int, string> JobNames = new Dictionary<int, string>();
+
+	/// job.ToString() cached (Enum.ToString boxes and searches the names every call).
+	internal static string JobName(Occupation.Job job)
+	{
+		string name;
+		if (!JobNames.TryGetValue((int)job, out name)) { name = job.ToString(); JobNames[(int)job] = name; }
+		return name;
+	}
+
+	/// Enum keys box in Mono's default comparer; this one does not.
+	internal sealed class JobComparer : IEqualityComparer<Occupation.Job>
+	{
+		internal static readonly JobComparer Inst = new JobComparer();
+		public bool Equals(Occupation.Job a, Occupation.Job b) { return a == b; }
+		public int GetHashCode(Occupation.Job j) { return (int)j; }
 	}
 
 	public static float GetFloat(string name, float fallback)
@@ -1531,7 +1553,7 @@ public static class BtcHotkeys
 					string item;
 					if (dictionary.TryGetValue(text, out item))
 					{
-						if (item != def.id)
+						if (item != def.id && !(item.StartsWith("job_") && def.id.StartsWith("job_")))
 						{
 							BtcHotkeys._conflicts.Add(item);
 							BtcHotkeys._conflicts.Add(def.id);
@@ -1716,6 +1738,10 @@ public static class BtcHotkeys
 		BtcHotkeys.AddKey(group, "break_object", "Break object under the cursor (selected units)", 0, string.Empty, false);
 		BtcHotkeys.AddKey(group, "focus_mark", "Artificer focus mark: mark the enemy under the cursor for Sentinel Wards (selected Artificer)", 0, string.Empty, false);
 		BtcHotkeys.AddKey(group, "team_ping", "Ping allies: mark the point under the cursor (or on the mini map) for your team (needs BetterConnection)", 0, string.Empty, false);
+		BtcHotkeys.AddKey(group, "station_radius", "Chopping block radius: hold and turn the mouse wheel over a selected chopping block (how far its workers go for logs, Shift = 5 blocks per notch)", 0, "LeftControl", false);
+		BtcHotkeys.AddFloat(group, "chop_block_radius", "Chopping block: default log pickup radius of your blocks (blocks, 0 = no limit; needs BetterConnection)", "15", 0f, 100f, 1f, "0", string.Empty);
+		BtcHotkeys.AddBool(group, "trap_auto_rearm", "Traps: your workers re-arm fired traps by themselves at the match start (switch it for all your traps in a trap's pie menu; needs BetterConnection)", true);
+		BtcHotkeys.AddBool(group, "chop_keep_logs", "Tree cutting: your workers only fell trees, logs and stumps stay on the ground (needs BetterConnection)", false);
 		BtcHotkeys.AddKey(group, "shoot_at","Shoot at the block or object under the cursor (selected archers, not Artificers)", 0, string.Empty, false);
 		BtcHotkeys.AddKey(group, "drop_luggage", "Drop the carried object (barrel etc.) at the cursor (selected units)", 0, string.Empty, false);
 		BtcHotkeys.AddKey(group, "go_detonate", "Go detonate the barrel under the cursor (selected units)", 0, string.Empty, false);
@@ -1766,6 +1792,10 @@ public static class BtcHotkeys
 
 	internal static void AddKey(string group, string id, string label, int num, string def, bool any)
 	{
+		if (id != "menu_toggle")
+		{
+			def = string.Empty;
+		}
 		BtcHotkeys.Def def2 = BtcHotkeys.NewDef(group, id, label, BtcHotkeys.Kind.Key, def);
 		def2.num = num;
 		def2.any = any;

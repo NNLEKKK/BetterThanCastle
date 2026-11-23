@@ -49,11 +49,12 @@ namespace BetterThanCastle.Dev
         {
             List<BtcDuelUnitRef> r = new List<BtcDuelUnitRef>();
             if (BtcDuel.Match == null) return r;
-            int k = 0, want = slot == "all" ? -1 : (int)F(new[] { slot }, 0, 0f);
+            int k = 0, want = slot == "all" || slot.IndexOf(',') >= 0 ? -1 : (int)F(new[] { slot }, 0, 0f);
+            string[] list = slot.IndexOf(',') >= 0 ? slot.Split(',') : null;
             foreach (BtcDuelUnitRef u in BtcDuel.Match.Units)
             {
                 if (u.Side != side) continue;
-                if ((want < 0 || k == want) && !u.Dead) r.Add(u);
+                if ((list != null ? Array.IndexOf(list, k.ToString()) >= 0 : (want < 0 || k == want)) && !u.Dead && u.Go != null && u.Labor != null) r.Add(u);
                 k++;
             }
             return r;
@@ -80,7 +81,18 @@ namespace BetterThanCastle.Dev
                     Lab("cancel K=" + CancelK + " mode=" + CancelMode);
                     return true;
                 case "dueldump": Dump(); return true;
+                case "sendmap":
+                    {
+                        // sendmap: host sends the current map download to every client (map transfer speed lab)
+                        Brix.Network.UNetManager m = Brix.Network.UNetManager.instance;
+                        if (m == null || !UnityEngine.Networking.NetworkServer.active) { Lab("sendmap: not host"); return true; }
+                        foreach (UnityEngine.Networking.NetworkConnection nc in UnityEngine.Networking.NetworkServer.connections)
+                            if (nc != null && nc.connectionId != 0) { m.SendFiles(nc); Lab("sendmap conn " + nc.connectionId); }
+                        return true;
+                    }
                 case "phantom": return BtcDevPhantom.Cmd(p);
+                case "animnet": return BtcDevAnimNet.Cmd(p);
+                case "sndnet": return BtcDevSndNet.Cmd(p);
                 case "wormward": return BtcDevWormWard.Cmd(p);
                 case "shieldbar":
                     {
@@ -140,6 +152,43 @@ namespace BetterThanCastle.Dev
                             u.PrevPos = u.Tf.position;
                             Lab("place u" + u.Id + " to=" + F(p, 3, 50f).ToString("0.00") + "," + F(p, 4, 10f).ToString("0.00") + " now=" + Loc(u) + " y=" + u.Tf.position.y.ToString("0.000"));
                         }
+                        return true;
+                    }
+                case "duelwhere":
+                    {
+                        // duelwhere <side> <slots> [minX]: positions; with minX also how many units are past x = minX
+                        List<BtcDuelUnitRef> us = Pick((int)F(p, 1, 0f), p.Length > 2 ? p[2] : "all");
+                        float minX = F(p, 3, -1f);
+                        int past = 0;
+                        StringBuilder sb = new StringBuilder();
+                        foreach (BtcDuelUnitRef u in us)
+                        {
+                            sb.Append(" ").Append(Loc(u)).Append("y").Append(u.Tf.position.y.ToString("0.0"));
+                            if (u.Tf.position.x - BtcDuelMap.X0 >= minX) past++;
+                        }
+                        Lab("where past=" + past + "/" + us.Count + sb + " detour checks=" + BtcEarlyDetour.Checks + " found=" + BtcEarlyDetour.Found + " ok=" + BtcEarlyDetour.Detoured + " fail=" + BtcEarlyDetour.Failed);
+                        return true;
+                    }
+                case "duelwall":
+                    {
+                        // duelwall x0 z0 x1 z1 [height=2] [0 = remove]: stone cells on the arena floor (arena coordinates)
+                        int x0 = Mathf.RoundToInt(BtcDuelMap.X0 + F(p, 1, 0f)), z0 = Mathf.RoundToInt(BtcDuelMap.Z0 + F(p, 2, 0f));
+                        int x1 = Mathf.RoundToInt(BtcDuelMap.X0 + F(p, 3, 0f)), z1 = Mathf.RoundToInt(BtcDuelMap.Z0 + F(p, 4, 0f));
+                        int h = (int)F(p, 5, 2f), y0 = Mathf.RoundToInt(BtcDuelMap.Floor);
+                        List<Brix.Engine.XYZ> cells = new List<Brix.Engine.XYZ>();
+                        for (int x = Mathf.Min(x0, x1); x <= Mathf.Max(x0, x1); x++)
+                            for (int z = Mathf.Min(z0, z1); z <= Mathf.Max(z0, z1); z++)
+                            {
+                                int g = y0 + 2;
+                                while (g > y0 - 8 && !Brix.Engine.Voxel.IsFull(new Brix.Engine.XYZ(x, g, z))) g--;
+                                for (int y = g + 1; y <= g + h; y++) cells.Add(new Brix.Engine.XYZ(x, y, z));
+                            }
+                        BtcCarve.SetCells(cells, F(p, 6, 1f) > 0.5f ? (int)Brix.Engine.VoxelTerrainType.Stone : 0);
+                        foreach (Brix.Engine.XYZ wc in cells) Brix.Engine.GameSignals.Invoke<Brix.Engine.XYZ>(Brix.Engine.GameSignals.TerrainChanged, wc);
+                        int full = 0; foreach (Brix.Engine.XYZ wc in cells) if (Brix.Engine.Voxel.IsFull(wc)) full++;
+                        Brix.Engine.XYZ pa = new Brix.Engine.XYZ(Mathf.Min(x0, x1) - 1, y0 - 1, (z0 + z1) / 2), pb = new Brix.Engine.XYZ(Mathf.Min(x0, x1), y0 - 1, (z0 + z1) / 2);
+                        string col = ""; for (int yy = y0 - 4; yy <= y0 + 3; yy++) col += Brix.Engine.Voxel.IsFull(new Brix.Engine.XYZ(pa.x, yy, pa.z)) ? "#" : "."; Lab("col " + (y0 - 4) + ":" + col + " floor=" + BtcDuelMap.Floor.ToString("0.00"));
+                        Lab("wall " + cells.Count + " cells y0=" + y0 + " full=" + full + " link=" + Brix.Game.AI.Pathfinding.PathNodeRegistry.PermissionVers(pa, pb) + " below=" + Brix.Engine.Voxel.IsFull(new Brix.Engine.XYZ(pa.x, pa.y - 1, pa.z)) + " at=" + Brix.Engine.Voxel.IsFull(pa));
                         return true;
                     }
                 case "duelo":

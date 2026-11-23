@@ -565,7 +565,7 @@ public static class BtcGameplayUI
 				bool flag16 = flag15;
 				if (flag16)
 				{
-					BtcGameplay.SetAll(BtcGameplay.Decode(preset.Data));
+					BtcGameplay.SetAll(BtcGameplay.Decode(preset.Data)); BtcRecipes.ApplyPreset(preset.Recipes, true);
 				}
 			}
 			else if (session)

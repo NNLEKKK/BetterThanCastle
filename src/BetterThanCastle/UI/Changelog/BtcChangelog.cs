@@ -104,8 +104,8 @@ namespace BetterThanCastle
         internal static readonly string[] AreaRu = { "Реплеи", "Хоткеи", "Визуал", "Геймплей", "Терраформинг", "Редактор карт", "Щиты баз", "Зрители и пинги", "Статистика и HUD", "Профиль", "Производительность и загрузка", "Мультиплеер", "Дуэль", "Паки", "Меню / UI", "Другое" };
 
         // ---- link targets
-        internal static readonly string[] TabNameEn = { "Resource Packs", "Visuals", "BetterConnection", "Advanced Hotkeys", "Gameplay", "Share", "Profile", "Replay", "Practice", "Report a bug", "Changelog", "Statistics", "UI editor", "Notifications" };
-        internal static readonly string[] TabNameRu = { "Ресурс-паки", "Визуал", "BetterConnection", "Advanced Hotkeys", "Геймплей", "Share", "Профиль", "Реплеи", "Практика", "Сообщить о баге", "Что нового", "Статистика", "UI редактор", "Уведомления" };
+        internal static readonly string[] TabNameEn = { "Resource Packs", "Visuals", "BetterConnection", "Advanced Hotkeys", "Gameplay", "Share", "Profile", "Replay", "Practice", "Report a bug", "Changelog", "Statistics", "UI editor", "Notifications", "Performance" };
+        internal static readonly string[] TabNameRu = { "Ресурс-паки", "Визуал", "BetterConnection", "Advanced Hotkeys", "Геймплей", "Share", "Профиль", "Реплеи", "Практика", "Сообщить о баге", "Что нового", "Статистика", "UI редактор", "Уведомления", "Производительность" };
 
         /// <summary>Where a target leads, for the tooltip / chip ("Replay", "Advanced Hotkeys", "web").</summary>
         internal static string TargetName(string target)
@@ -138,6 +138,8 @@ namespace BetterThanCastle
                 int id;
                 if (!ParseTab(target, out id, arg)) return false;
                 if (!ResourcePackManager.GoTab(id)) return false;
+                // the target tab opens unfiltered: its own search could hide the row the link points at
+                BtcMenu.ClearSearch(id);
                 string a = arg[0];
                 if (a != null)
                 {
@@ -149,7 +151,13 @@ namespace BetterThanCastle
                         if (num) BtcVisualTab.Instance.SetPage(pg);
                         else { BtcVisualSetting s = BtcVisualData.Find(a); if (s != null) BtcVisualTab.Instance.JumpSetting(s); }
                     }
-                    else if (id == 4) { int ri = BtcGameplay.Idx(a); if (ri >= 0) BtcGameplayTab.JumpRule(ri); }
+                    else if (id == 4)
+                    {
+                        if (num) BtcGameplayTab.Page = pg;
+                        else { int ri = BtcGameplay.Idx(a); if (ri >= 0) BtcGameplayTab.JumpRule(ri); else BtcLog.Warn("Changelog", "unknown rule " + a); }
+                    }
+                    else if (id == 2) BtcBcTab.Instance.Jump(a);
+                    else if (id == 14) BtcPerfTab.Instance.Jump(a);
                     else if (id == 6 && num) BtcProfileTab.Instance.SetPage(pg);
                 }
                 return true;

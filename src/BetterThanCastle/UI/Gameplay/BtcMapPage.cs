@@ -76,6 +76,15 @@ namespace BetterThanCastle
             else if (!can) BtcUi.Note(ref y, w, fs, Tt("Only the host can change these settings in the lobby.", "Менять эти настройки в лобби может только хост."));
             y += fs * 0.3f;
 
+            // ---- map and mode of a new lobby (local host choice, works without BetterConnection)
+            string kLd = "gp:map:lobby";
+            _keys.Add(kLd);
+            if (BtcVisualRows.Fold(ref y, w, fs, kLd, BtcReplayIcons.Map, Tt("New lobby defaults", "Новое лобби по умолчанию"), LobbySummary()))
+            {
+                LobbySection(ref y, w, fs);
+                y += fs * 0.3f;
+            }
+
             // ---- symmetry
             string kSym = "gp:map:sym";
             _keys.Add(kSym);
@@ -93,6 +102,106 @@ namespace BetterThanCastle
                 ScaleSection(ref y, w, fs, can);
                 y += fs * 0.3f;
             }
+        }
+
+        private List<Brix.Assets.Asset_Map> _ldMaps;
+        private float _ldMapsAt = -100f;
+
+        private static string _ldSum, _ldSumKey;
+        private static float _ldSumAt = -100f;
+
+        private static string LobbySummary()
+        {
+            string key = BtcLobbyDefaults.Map + "|" + BtcLobbyDefaults.Mode + "|" + BtcReplayUI.T("en", "ru");
+            if (_ldSum != null && key == _ldSumKey && Time.unscaledTime - _ldSumAt < 2f) return _ldSum;
+            _ldSumKey = key; _ldSumAt = Time.unscaledTime;
+            Brix.Assets.Asset_Map m = BtcLobbyDefaults.FindMap(BtcLobbyDefaults.Map);
+            if (m == null) return _ldSum = Tt("like vanilla", "как в ванилле");
+            Brix.Assets.Asset_Gamemode g = BtcLobbyDefaults.FindMode(m, BtcLobbyDefaults.Mode);
+            return _ldSum = BtcLobbyDefaults.Name(m) + (g != null ? ", " + BtcLobbyDefaults.Name(g) : "");
+        }
+
+        private void LobbySection(ref float y, float w, int fs)
+        {
+            if (_ldMaps == null || Time.unscaledTime - _ldMapsAt > 5f) { _ldMaps = BtcLobbyDefaults.Maps(); _ldMapsAt = Time.unscaledTime; }
+            BtcUi.Note(ref y, w, fs, Tt("The map and game mode your lobby starts with when you create it. Only your own lobby; the players see it the usual way.", "Карта и режим, с которых начинается ваше лобби при создании. Только ваше лобби; игроки видят выбор как обычно."));
+            string oldMap = BtcLobbyDefaults.Map, oldMode = BtcLobbyDefaults.Mode;
+            Brix.Assets.Asset_Map map = BtcLobbyDefaults.FindMap(oldMap);
+            int mi = -1;
+            for (int i = 0; i < _ldMaps.Count; i++) if (_ldMaps[i].codename == oldMap) { mi = i; break; }
+            int d = LobbyCycler(ref y, w, fs, Tt("Map", "Карта"), map != null ? BtcLobbyDefaults.Name(map) : Tt("Like vanilla (best rated)", "Как в ванилле (лучший рейтинг)"));
+            if (d != 0 && _ldMaps.Count > 0)
+            {
+                // index -1 = like vanilla
+                int n = _ldMaps.Count + 1;
+                int ni = ((mi + 1 + d) % n + n) % n - 1;
+                BtcLobbyDefaults.Map = ni < 0 ? "" : _ldMaps[ni].codename;
+                Brix.Assets.Asset_Map nm = ni < 0 ? null : _ldMaps[ni];
+                if (nm != null && BtcLobbyDefaults.FindMode(nm, oldMode) == null)
+                {
+                    Brix.Assets.Asset_Gamemode c = BtcLobbyDefaults.FindMode(nm, BtcLobbyDefaults.DefMode);
+                    BtcLobbyDefaults.Mode = c != null ? c.codename : "";
+                }
+                LobbyUndo(oldMap, oldMode);
+                map = nm;
+            }
+            if (map != null)
+            {
+                List<Brix.Assets.Asset_Gamemode> modes = BtcLobbyDefaults.Modes(map);
+                string curMode = BtcLobbyDefaults.Mode;
+                int gi = -1;
+                for (int i = 0; i < modes.Count; i++) if (modes[i] != null && modes[i].codename == curMode) { gi = i; break; }
+                d = LobbyCycler(ref y, w, fs, Tt("Game mode", "Режим"), gi >= 0 ? BtcLobbyDefaults.Name(modes[gi]) : Tt("Map default", "По умолчанию карты"));
+                if (d != 0 && modes.Count > 0)
+                {
+                    int n = modes.Count + 1;
+                    int ni = ((gi + 1 + d) % n + n) % n - 1;
+                    string om = BtcLobbyDefaults.Map, oo = BtcLobbyDefaults.Mode;
+                    BtcLobbyDefaults.Mode = ni < 0 ? "" : modes[ni].codename;
+                    LobbyUndo(om, oo);
+                }
+            }
+            bool inLobby = Brix.UI.Builder.Menu.LobbyMenu.IsHost && GameParam.Map != null;
+            if (inLobby && BtcUi.Action(ref y, w, fs, BtcReplayIcons.Import, Tt("Use the current lobby map and mode", "Взять карту и режим текущего лобби"), null))
+            {
+                string om = BtcLobbyDefaults.Map, oo = BtcLobbyDefaults.Mode;
+                BtcLobbyDefaults.Map = GameParam.Map.codename;
+                BtcLobbyDefaults.Mode = GameParam.Gamemode != null ? GameParam.Gamemode.codename : "";
+                LobbyUndo(om, oo); BtcSfx.Ok();
+            }
+            if ((oldMap != BtcLobbyDefaults.DefMap || oldMode != BtcLobbyDefaults.DefMode)
+                && BtcUi.Action(ref y, w, fs, BtcReplayIcons.Undo, Tt("Reset: Pioneer Pass, Conquest", "Сбросить: Pioneer Pass, Завоевание"), null))
+            {
+                string om = BtcLobbyDefaults.Map, oo = BtcLobbyDefaults.Mode;
+                BtcLobbyDefaults.Map = BtcLobbyDefaults.DefMap;
+                BtcLobbyDefaults.Mode = BtcLobbyDefaults.DefMode;
+                LobbyUndo(om, oo); BtcSfx.Ok();
+            }
+        }
+
+        private static void LobbyUndo(string map, string mode)
+        {
+            BtcUndo.Push(Scope, Tt("New lobby defaults", "Новое лобби по умолчанию"), delegate { BtcLobbyDefaults.Map = map; BtcLobbyDefaults.Mode = mode; });
+        }
+
+        /// <summary>Label + "&lt; value &gt;" row with a wide value box. Returns -1, 0 or +1.</summary>
+        private int LobbyCycler(ref float y, float w, int fs, string label, string value)
+        {
+            Styles(fs);
+            float pad = fs, h = fs * 2.1f;
+            Rect row = new Rect(pad, y, w - pad * 2f, h);
+            BtcReplayUI.Fill(row, new Color(1f, 1f, 1f, 0.03f));
+            BtcVisualRows.Txt(new Rect(row.x + fs * 0.6f, row.y, fs * 8f, h), label, BtcVisualRows.Lbl, new Color(1f, 1f, 1f, 0.85f));
+            float b = h * 0.8f, by = row.y + h * 0.1f;
+            Rect nx = new Rect(row.xMax - fs * 0.5f - b, by, b, b);
+            Rect pv = new Rect(row.x + fs * 9f, by, b, b);
+            int dir = 0;
+            if (IcoBtn(pv, BtcReplayIcons.Prev, false, BtcMenu.Accent, Tt("Previous", "Предыдущий"))) dir = -1;
+            if (IcoBtn(nx, BtcReplayIcons.Next, false, BtcMenu.Accent, Tt("Next", "Следующий"))) dir = 1;
+            GUIStyle c = _chip;
+            BtcVisualRows.Txt(new Rect(pv.xMax + 4f, row.y, nx.x - pv.xMax - 8f, h), value, c, Color.white);
+            y += h + 3f;
+            return dir;
         }
 
         private static string SymSummary()

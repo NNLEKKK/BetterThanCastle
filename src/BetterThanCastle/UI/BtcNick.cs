@@ -901,11 +901,20 @@ public static partial class BtcNick
 		}
 	}
 
+	// called per frame for the same few names (spectator slots, Discord): parsed once per distinct text
+	private static readonly Dictionary<string, string> PlainCache = new Dictionary<string, string>();
+
 	public static string Plain(string v)
 	{
 		string result;
+		if (v != null && BtcNick.PlainCache.TryGetValue(v, out result)) return result;
 		int[] array;
 		BtcNick.Parse(v, out result, out array);
+		if (v != null)
+		{
+			if (BtcNick.PlainCache.Count > 256) BtcNick.PlainCache.Clear();
+			BtcNick.PlainCache[v] = result;
+		}
 		return result;
 	}
 

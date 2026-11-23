@@ -916,6 +916,7 @@ namespace BetterThanCastle
 
         private void OnGUI()
         {
+        	if (useGUILayout) useGUILayout = false; // no GUILayout here: skip Unity's per-event layout pass (garbage)
             if (!Active || State == BtcAimState.Idle) return;
             try { BtcAimHud.Draw(this); }
             catch (Exception e) { BtcLog.Error("Aim", "OnGUI", e); }

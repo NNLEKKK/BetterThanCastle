@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Brix.Game;
 using Brix.Game.AI;
 using Brix.Game.Components;
 using Brix.Game.Semantique;
@@ -41,6 +42,15 @@ namespace BetterThanCastle
             for (int i = l.Count - 1; i >= 0; i--) if (l[i] == null) l.RemoveAt(i);
         }
 
+        // true once per loaded scene (the scene handle changes on every load)
+        private static bool FirstWalk(ref int scene)
+        {
+            int s = UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetHashCode();
+            if (s == scene) return false;
+            scene = s;
+            return true;
+        }
+
         /// <summary>Live units (destroyed ones are dropped, inactive ones skipped).</summary>
         internal static void CollectLabors(List<Labor> into)
         {
@@ -66,12 +76,90 @@ namespace BetterThanCastle
             for (int i = 0; i < Fireflies.Count; i++) if (Fireflies[i].gameObject.activeInHierarchy) into.Add(Fireflies[i]);
         }
 
+        // Capturables (crystals, shrines): registered while requested from the pool (IsCapturable.OnRequested / ResetComponent).
+        private static readonly List<IsCapturable> Capturables = new List<IsCapturable>();
+        private static readonly HashSet<int> CapturableIds = new HashSet<int>();
+        private static int _walkSceneC = -1;   // fallback walk once per scene: an empty list is normal (sandbox, no units), a walk every 30 s was a 16-39 ms hitch
+
+        internal static void AddCapturable(IsCapturable c) { if (c != null && CapturableIds.Add(c.GetInstanceID())) Capturables.Add(c); }
+
+        internal static void RemoveCapturable(IsCapturable c)
+        {
+            if (c == null || !CapturableIds.Remove(c.GetInstanceID())) return;
+            Capturables.Remove(c);
+        }
+
+        /// What FindObjectsOfType&lt;IsCapturable&gt;() gave (active ones), without walking the scene (that took ~33 ms in a base).
+        internal static IsCapturable[] CapturablesArray()
+        {
+            Prune(Capturables);
+            if (Capturables.Count == 0 && FirstWalk(ref _walkSceneC))
+            {
+                IsCapturable[] all = UnityEngine.Object.FindObjectsOfType<IsCapturable>();
+                for (int i = 0; i < all.Length; i++) AddCapturable(all[i]);
+                return all;
+            }
+            List<IsCapturable> live = new List<IsCapturable>(Capturables.Count);
+            for (int i = 0; i < Capturables.Count; i++) if (Capturables[i].gameObject.activeInHierarchy) live.Add(Capturables[i]);
+            return live.ToArray();
+        }
+
+        // Selection circles (HP rings): same pattern, registered while requested from the pool.
+        private static readonly List<SelectionCircle> Circles = new List<SelectionCircle>();
+        private static readonly HashSet<int> CircleIds = new HashSet<int>();
+        private static int _walkSceneS = -1;
+
+        internal static void AddCircle(SelectionCircle c) { if (c != null && CircleIds.Add(c.GetInstanceID())) Circles.Add(c); }
+
+        internal static void RemoveCircle(SelectionCircle c)
+        {
+            if (c == null || !CircleIds.Remove(c.GetInstanceID())) return;
+            Circles.Remove(c);
+        }
+
+        /// The circles in use, instead of Resources.FindObjectsOfTypeAll (every object and asset of the game: ~38 ms in a base).
+        internal static SelectionCircle[] CirclesArray()
+        {
+            Prune(Circles);
+            if (Circles.Count == 0 && FirstWalk(ref _walkSceneS))
+            {
+                SelectionCircle[] all = Resources.FindObjectsOfTypeAll<SelectionCircle>();
+                for (int i = 0; i < all.Length; i++) if (all[i] != null && all[i].gameObject.scene.IsValid()) AddCircle(all[i]);
+                return all;
+            }
+            return Circles.ToArray();
+        }
+
+        // Users (one per player connection): registered at User.Start, destroyed ones dropped when read.
+        private static readonly List<User> Users = new List<User>();
+        private static readonly HashSet<int> UserIds = new HashSet<int>();
+        private static float _nextWalkU;
+
+        internal static void AddUser(User u) { if (u != null && UserIds.Add(u.GetInstanceID())) Users.Add(u); }
+
+        /// What FindObjectsOfType&lt;User&gt;() gave, without the scene walk (it ran every second for the match stats: ~40 ms).
+        internal static User[] UsersArray()
+        {
+            for (int i = Users.Count - 1; i >= 0; i--) if (Users[i] == null) { Users.RemoveAt(i); }
+            if (Users.Count == 0 && Time.unscaledTime >= _nextWalkU)
+            {
+                _nextWalkU = Time.unscaledTime + 10f;
+                User[] all = UnityEngine.Object.FindObjectsOfType<User>();
+                for (int i = 0; i < all.Length; i++) AddUser(all[i]);
+                return all;
+            }
+            if (Users.Count != UserIds.Count) { UserIds.Clear(); for (int i = 0; i < Users.Count; i++) UserIds.Add(Users[i].GetInstanceID()); }
+            List<User> live = new List<User>(Users.Count);
+            for (int i = 0; i < Users.Count; i++) if (Users[i].gameObject.activeInHierarchy) live.Add(Users[i]);
+            return live.ToArray();
+        }
+
         internal static void CollectPallets(List<Recepteur> into)
         {
             Prune(Pallets);
             if (Pallets.Count == 0 && Time.unscaledTime >= _nextWalkP)
             {
-                _nextWalkP = Time.unscaledTime + 30f;
+                _nextWalkP = Time.unscaledTime + 300f; // a pallet with content registers itself on its first store; empty ones count 0 (walk ~34 ms)
                 Recepteur[] all = UnityEngine.Object.FindObjectsOfType<Recepteur>();
                 for (int i = 0; i < all.Length; i++) AddPallet(all[i]);
             }
@@ -86,6 +174,56 @@ namespace BetterThanCastle
         {
             try { BtcRegistry.Add(__instance); }
             catch (Exception e) { BtcLog.Error("Hook", "RegistryLabor: " + e.Message); }
+        }
+    }
+
+    [HarmonyPatch(typeof(IsCapturable), "OnRequested")]
+    internal static class RegistryCapturableAddPatch
+    {
+        private static void Postfix(IsCapturable __instance)
+        {
+            try { BtcRegistry.AddCapturable(__instance); }
+            catch (Exception e) { BtcLog.Error("Hook", "RegistryCapturable: " + e.Message); }
+        }
+    }
+
+    [HarmonyPatch(typeof(IsCapturable), "ResetComponent")]
+    internal static class RegistryCapturableRemovePatch
+    {
+        private static void Postfix(IsCapturable __instance)
+        {
+            try { BtcRegistry.RemoveCapturable(__instance); }
+            catch (Exception e) { BtcLog.Error("Hook", "RegistryCapturable: " + e.Message); }
+        }
+    }
+
+    [HarmonyPatch(typeof(SelectionCircle), "OnRequested")]
+    internal static class RegistryCircleAddPatch
+    {
+        private static void Postfix(SelectionCircle __instance)
+        {
+            try { BtcRegistry.AddCircle(__instance); }
+            catch (Exception e) { BtcLog.Error("Hook", "RegistryCircle: " + e.Message); }
+        }
+    }
+
+    [HarmonyPatch(typeof(SelectionCircle), "ResetComponent")]
+    internal static class RegistryCircleRemovePatch
+    {
+        private static void Postfix(SelectionCircle __instance)
+        {
+            try { BtcRegistry.RemoveCircle(__instance); }
+            catch (Exception e) { BtcLog.Error("Hook", "RegistryCircle: " + e.Message); }
+        }
+    }
+
+    [HarmonyPatch(typeof(User), "Start")]
+    internal static class RegistryUserPatch
+    {
+        private static void Postfix(User __instance)
+        {
+            try { BtcRegistry.AddUser(__instance); }
+            catch (Exception e) { BtcLog.Error("Hook", "RegistryUser: " + e.Message); }
         }
     }
 

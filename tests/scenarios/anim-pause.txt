@@ -1,0 +1,31 @@
+# A/B of Performance > Visuals "Pause hidden animations" (BtcAnimCut). Results: BTClogs/engine.txt, vfx-pause0.txt / vfx-pause1.txt
+engine counters off
+vfx pause 0
+vfx tags 0
+newgame
+waitgame 240
+daytime 12
+wait 5
+spawn bricktron 60
+spawn stockpile 20
+spawn workbench 10
+waitspawn 120
+order build 150
+wait 30
+vfxdump pause0
+measure pause-off 20
+vfx pause 1
+wait 3
+vfxdump pause1
+measure pause-on 20
+engine animothers off
+wait 3
+measure no-other-animators 20
+engine animothers on
+vfx pause 0
+wait 3
+measure pause-off2 20
+vfx pause 1
+wait 3
+measure pause-on2 20
+quit

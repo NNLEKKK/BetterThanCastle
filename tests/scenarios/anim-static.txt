@@ -1,0 +1,22 @@
+# Static crystals + spawn handles off. Results: agent.log crystalread lines, BTClogs/vfx-static*.txt
+engine counters off
+vfx pause 1
+vfx static 1
+newgame
+waitgame 240
+wait 5
+vfxdump static0
+crystalcolors
+crystalflip
+wait 1
+crystalcolors
+wait 4
+vfxdump static1
+crystalcolors
+crystalflip neutral
+wait 4
+crystalcolors
+vfx static 0
+wait 2
+vfxdump static2
+quit

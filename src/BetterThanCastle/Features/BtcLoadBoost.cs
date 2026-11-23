@@ -13,6 +13,7 @@ public static class BtcLoadBoost
 {
 	public static WaitForSeconds Poll()
 	{
+		if (BtcLoadBoost.Enabled && BtcJsonWarm.On) return null; // Performance/FastLoad: check the wait again next frame (ready flags arrive one frame later)
 		return new WaitForSeconds(BtcLoadBoost.Enabled ? BtcLoadBoost.PollSeconds : 1f);
 	}
 
@@ -27,6 +28,12 @@ public static class BtcLoadBoost
 		BtcLoadBoost._last = BtcLoadBoost._t0;
 		BtcLoadBoost._started = true;
 		BtcGc.Pause("load begin");
+#if DEV
+		BetterThanCastle.Dev.BtcDevLoadLine.Mark("GameLoader.Load begin");
+		BetterThanCastle.Dev.BtcDevLoadLine.Hook();
+#endif
+		BtcJsonWarm.OnLoadBegin();
+		BtcVfxCut.OnLoadBegin();
 #if DEV
 #endif
 		BtcLoadBoost.Write(string.Concat(new string[]
@@ -62,6 +69,9 @@ public static class BtcLoadBoost
 		double num = (double)(timestamp - BtcLoadBoost._t0) / (double)Stopwatch.Frequency;
 		double num2 = (double)(timestamp - BtcLoadBoost._last) / (double)Stopwatch.Frequency;
 		BtcLoadBoost._last = timestamp;
+#if DEV
+		BetterThanCastle.Dev.BtcDevLoadLine.Mark("boost " + phase);
+#endif
 		BtcLoadBoost.Write(string.Format("{0,8:F2}s  +{1,7:F2}s  {2}{3}", new object[]
 		{
 			num,

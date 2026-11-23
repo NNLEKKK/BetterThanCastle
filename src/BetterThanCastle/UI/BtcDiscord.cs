@@ -668,7 +668,7 @@ public static class BtcDiscord
 					{
 						BtcDiscord.stateStartId = null;
 					}
-					activity.largeImage = ((text11 != "menu" && !string.IsNullOrEmpty(text3)) ? BtcDiscord.MapKey(text3, mapPath) : BtcDiscord.largeImage);
+					activity.largeImage = ((text11 != "menu" && !string.IsNullOrEmpty(text3)) ? BtcDiscord.MapKeyCached(text3, mapPath) : BtcDiscord.largeImage);
 					activity.largeText = ((text11 != "menu" && !string.IsNullOrEmpty(text2)) ? text2 : BtcDiscord.largeText);
 					bool flag199 = text11 == "lobby" && !string.IsNullOrEmpty(text2) && !string.IsNullOrEmpty(text4);
 					bool flag200 = flag199;
@@ -753,6 +753,7 @@ public static class BtcDiscord
 			while (BtcDiscord.running)
 			{
 				bool flag = intPtr == BtcDiscord.INVALID;
+				BtcDiscord.pipeUp = intPtr != BtcDiscord.INVALID;
 				bool flag2 = flag;
 				bool flag3 = flag2;
 				bool flag4 = flag3;
@@ -1077,9 +1078,11 @@ public static class BtcDiscord
 		return BtcDiscord.WriteFile(h, array, (uint)array.Length, out num, IntPtr.Zero) && num == (uint)array.Length;
 	}
 
+	private static readonly byte[] drainBuf = new byte[4096];
+
 	private static bool Drain(IntPtr h)
 	{
-		byte[] array = new byte[4096];
+		byte[] array = BtcDiscord.drainBuf;   // worker thread only: one buffer instead of 4 KB per poll (8 KB/s)
 		int i = 0;
 		while (i < 32)
 		{
@@ -1342,6 +1345,17 @@ public static class BtcDiscord
 		return flag6;
 	}
 
+	// MapKey reads discord_maps.txt, the url cache and the map folder: once a map has its final image key, reuse it (no file IO every 2 s)
+	private static string mkFor, mkVal;
+	private static string MapKeyCached(string codename, string mapPath)
+	{
+		string k = codename + "|" + mapPath;
+		if (k == BtcDiscord.mkFor) return BtcDiscord.mkVal;
+		string v = BtcDiscord.MapKey(codename, mapPath);
+		if (v != BtcDiscord.largeImage && BtcDiscord.uploadWww == null && !BtcDiscord.cropBusy) { BtcDiscord.mkFor = k; BtcDiscord.mkVal = v; }
+		return v;
+	}
+
 	private static string MapKey(string codename, string mapPath)
 	{
 		bool flag = string.IsNullOrEmpty(codename);
@@ -1510,7 +1524,30 @@ public static class BtcDiscord
 			{
 				try
 				{
-					byte[] contents = BtcDiscord.CropMapImage(File.ReadAllBytes(file));
+					// read + crop on a worker thread (decode/encode of the map PNG froze a frame ~16 ms); the next Poll picks the result up
+					byte[] contents;
+					if (!BtcDiscord.pipeUp) return;   // Discord not running: no upload (the crop decodes the whole map PNG, MBs of garbage per try)
+					if (BtcDiscord.lastCropFor == id) { BtcDiscord.cropFor = id; BtcDiscord.cropData = BtcDiscord.lastCropData; }   // a retry reuses the crop
+					if (BtcDiscord.cropFor != id)
+					{
+						if (BtcDiscord.cropBusy) return;
+						BtcDiscord.cropBusy = true;
+						string cid = id, cfile = file;
+						System.Threading.ThreadPool.QueueUserWorkItem(delegate
+						{
+							byte[] r;
+							try { r = BtcDiscord.CropMapImagePure(File.ReadAllBytes(cfile)); }
+							catch (Exception) { r = null; }
+							BtcDiscord.cropData = r;
+							BtcDiscord.cropFor = cid;
+							BtcDiscord.cropBusy = false;
+						});
+						return;
+					}
+					contents = BtcDiscord.cropData;
+					BtcDiscord.lastCropFor = id; BtcDiscord.lastCropData = contents;
+					BtcDiscord.cropFor = null; BtcDiscord.cropData = null;
+					if (contents == null) contents = File.ReadAllBytes(file);
 					WWWForm wwwform = new WWWForm();
 					wwwform.AddField("reqtype", "fileupload");
 					bool flag11 = num < 2;
@@ -1870,6 +1907,41 @@ public static class BtcDiscord
 		return text;
 	}
 
+	private static volatile string cropFor;
+	private static volatile byte[] cropData;
+	private static volatile bool cropBusy;
+	private static volatile bool pipeUp;
+	private static string lastCropFor;
+	private static byte[] lastCropData;
+
+	// same crop as CropMapImage (opaque bounds + 2 px, centred on a square) without Unity textures, so it can run off the main thread
+	private static byte[] CropMapImagePure(byte[] png)
+	{
+		int width, height;
+		byte[] px;
+		if (!BtcPng.Decode(png, out width, out height, out px) || px == null) return png;
+		int x0 = width, y0 = height, x1 = -1, y1 = -1;
+		for (int i = 0; i < height; i++)
+			for (int j = 0; j < width; j++)
+				if (px[(i * width + j) * 4 + 3] > 12)
+				{
+					if (j < x0) x0 = j;
+					if (j > x1) x1 = j;
+					if (i < y0) y0 = i;
+					if (i > y1) y1 = i;
+				}
+		if (x1 < x0 || y1 < y0) return png;
+		x0 = Math.Max(0, x0 - 2); y0 = Math.Max(0, y0 - 2); x1 = Math.Min(width - 1, x1 + 2); y1 = Math.Min(height - 1, y1 + 2);
+		int cw = x1 - x0 + 1, ch = y1 - y0 + 1;
+		if (cw >= width - 4 && ch >= height - 4) return png;
+		int s = Math.Max(cw, ch);
+		byte[] o = new byte[s * s * 4];
+		int ox = (s - cw) / 2, oy = (s - ch) / 2;
+		for (int k = 0; k < ch; k++) Array.Copy(px, ((y0 + k) * width + x0) * 4, o, ((oy + k) * s + ox) * 4, cw * 4);
+		byte[] enc = BtcPng.Encode(s, s, o, true);
+		return enc != null && enc.Length > 0 ? enc : png;
+	}
+
 	private static byte[] CropMapImage(byte[] png)
 	{
 		Texture2D texture2D = null;
@@ -2110,7 +2182,7 @@ public static class BtcDiscord
 			List<BtcDiscord.PlayerInfo> list2 = new List<BtcDiscord.PlayerInfo>();
 			try
 			{
-				foreach (User user in UnityEngine.Object.FindObjectsOfType<User>())
+				foreach (User user in BtcRegistry.UsersArray())
 				{
 					bool flag5 = user == null || BtcDiscord.IsRecorder(user);
 					bool flag6 = !flag5;
@@ -2236,7 +2308,7 @@ public static class BtcDiscord
 				try
 				{
 					Dictionary<Faction, int> dictionary = new Dictionary<Faction, int>();
-					User[] array = UnityEngine.Object.FindObjectsOfType<User>();
+					User[] array = BtcRegistry.UsersArray();
 					for (int i = 0; i < array.Length; i++)
 					{
 						Faction faction = (array[i] != null) ? array[i].faction : null;
@@ -2254,7 +2326,7 @@ public static class BtcDiscord
 					{
 						dictionary2[order[j]] = 0;
 					}
-					IsCapturable[] array2 = UnityEngine.Object.FindObjectsOfType<IsCapturable>();
+					IsCapturable[] array2 = BtcRegistry.CapturablesArray();
 					for (int k = 0; k < array2.Length; k++)
 					{
 						bool flag13 = array2[k] == null || !array2[k].gameObject.activeInHierarchy;
@@ -2322,7 +2394,7 @@ public static class BtcDiscord
 				{
 					int num = 0;
 					int num2 = 0;
-					IsCapturable[] array = UnityEngine.Object.FindObjectsOfType<IsCapturable>();
+					IsCapturable[] array = BtcRegistry.CapturablesArray();
 					for (int i = 0; i < array.Length; i++)
 					{
 						bool flag11 = !(array[i] == null) && array[i].gameObject.activeInHierarchy;

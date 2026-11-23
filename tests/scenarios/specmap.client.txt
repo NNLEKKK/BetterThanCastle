@@ -1,0 +1,13 @@
+# client of specmap: spectator slot in the lobby (no home crystal: waitgame would never finish)
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 90
+wait 3
+hostfaction spec
+wait 2
+ready 120
+wait 70
+mmdump
+wait 30
+mmdump
+quit

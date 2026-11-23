@@ -1,0 +1,5 @@
+# 10% loss at ingame+20 for 30 s, cut 30 s at ingame+60, cut 120 s at ingame+130
+at host:ingame+0 net clients 0 --lag on --lag-time 40
+at host:ingame+20 net clients 30 --drop on --drop-chance 10.0
+at host:ingame+60 cut client1 30
+at host:ingame+130 cut client1 120

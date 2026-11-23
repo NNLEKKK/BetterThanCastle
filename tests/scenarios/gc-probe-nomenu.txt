@@ -1,0 +1,20 @@
+# GC pause probe (memory fixes A/B): full-collect time + live heap on menu, after a match load, under load, after leaving.
+prof start
+wait 5
+gcprobe menu
+skipmenu 1
+newgame
+waitgame 240
+wait 10
+gcprobe match
+spawn bricktron 60
+spawn stockpile 20
+spawn workbench 10
+waitspawn 120
+order build 150
+wait 60
+gcprobe loaded
+prof reset
+wait 45
+dump loaded
+quit

@@ -25,10 +25,10 @@ public static class BtcQol
 
 	public static void AddRows()
 	{
-		BtcGameplay.Add("mov.items", "mov", "Ignore items blocking paths", "Игнорировать блокировку пути предметами", 0f, 0f, 1f, 1f, true, "Bricktrons walk through free blocks (logs, bricks, planks, ingots): no pushing, no blocking.", "Бриктроны ходят сквозь свободные блоки (брёвна, кирпичи, доски, слитки): не толкают их и не блочатся.");
-		BtcGameplay.Add("mov.allies", "mov", "Pass through allies", "Проходить через своих", 0f, 0f, 1f, 1f, true, "Units walk through allied units in every path search (including attack-move orders). Fixes units standing AFK when several share a block.", "Юниты проходят через союзников во всех поисках пути (включая приказы атаки). Лечит афк-стояние, когда несколько юнитов в одном блоке.");
-		BtcGameplay.Add("mov.retry", "mov", "Retry orders after path failure", "Повторять приказ после сбоя пути", 0f, 0f, 1f, 1f, true, "If the path to a player's order is not found or gets blocked, the order is re-sent instead of silently dropped. Stops when the player gives a new order.", "Если путь к приказу игрока не найден или заблокирован, приказ отправляется заново, а не молча сбрасывается. Прекращается, когда игрок даёт новый приказ.");
-		BtcGameplay.Add("mov.cancel", "mov", "Cancel animation on run order", "Отменять анимацию приказом бега", 0f, 0f, 1f, 1f, true, "A run order resets every action animation (shooting, fighting, working, taking...) and starts running at once. Falling, ladders, traps and stun are not touched.", "Приказ бега сбрасывает любую анимацию действия (стрельба, бой, работа, подбор...) и сразу начинает бег. Падение, лестницы, ловушки и стан не трогаются.");
+		BtcGameplay.Add("mov.items", "mov", "Ignore items blocking paths", "Игнорировать блокировку пути предметами", 1f, 0f, 1f, 1f, true, "Bricktrons walk through free blocks (logs, bricks, planks, ingots): no pushing, no blocking.", "Бриктроны ходят сквозь свободные блоки (брёвна, кирпичи, доски, слитки): не толкают их и не блочатся.");
+		BtcGameplay.Add("mov.allies", "mov", "Pass through allies", "Проходить через своих", 1f, 0f, 1f, 1f, true, "Units walk through allied units in every path search (including attack-move orders). Fixes units standing AFK when several share a block.", "Юниты проходят через союзников во всех поисках пути (включая приказы атаки). Лечит афк-стояние, когда несколько юнитов в одном блоке.");
+		BtcGameplay.Add("mov.retry", "mov", "Retry orders after path failure", "Повторять приказ после сбоя пути", 1f, 0f, 1f, 1f, true, "If the path to a player's order is not found or gets blocked, the order is re-sent instead of silently dropped. Stops when the player gives a new order.", "Если путь к приказу игрока не найден или заблокирован, приказ отправляется заново, а не молча сбрасывается. Прекращается, когда игрок даёт новый приказ.");
+		BtcGameplay.Add("mov.cancel", "mov", "Cancel animation on run order", "Отменять анимацию приказом бега", 1f, 0f, 1f, 1f, true, "A run order resets every action animation (shooting, fighting, working, taking...) and starts running at once. Falling, ladders, traps and stun are not touched.", "Приказ бега сбрасывает любую анимацию действия (стрельба, бой, работа, подбор...) и сразу начинает бег. Падение, лестницы, ловушки и стан не трогаются.");
 		BtcGameplay.Add("mov.repath", "mov", "Smart detour around obstacles", "Умный обход препятствий", 1f, 0f, 1f, 1f, true, "A blocked unit tries farther points of its path (not only 3 steps ahead) and searches deeper, so big obstacles are bypassed without stopping and a full path recalculation.", "Заблокированный юнит пробует более дальние точки своего пути (а не только на 3 шага вперёд) и ищет глубже, поэтому большие препятствия обходятся без остановки и полного пересчёта пути.");
 		BtcGameplay.Add("mov.adv", "mov", "Advanced (retry settings)", "Расширенно (настройки повтора)", 0f, 0f, 1f, 1f, true, "Shows the retry sliders.", "Показывает слайдеры повтора.");
 		BtcGameplay.Add("mov.retryMax", "mov", "Retry: max attempts (0 = unlimited)", "Повтор: макс. попыток (0 = без лимита)", 0f, 0f, 1000f, 1f, false, "0 = retry until the player gives a new order.", "0 = повторять, пока игрок не даст новый приказ.");
@@ -40,9 +40,19 @@ public static class BtcQol
 		BtcSimplePhys.AddRows();
 		BtcJumpLine.AddRows();
 		BtcAutoPick.AddRows();
+		BtcChopRules.AddRows();
+		BtcHealRules.AddRows();
+		BtcShootRules.AddRows();
+		BtcFogFair.AddRows();
 		BtcChopBlock1x1.AddRows();
 		BtcTimer.AddRows();
+		BtcRecovery.AddRows();
 		BtcNoSkip.AddRows();
+		BtcInstantOrders.AddRows();
+		BtcBetterPaths.AddRows();
+		BtcStraightPaths.AddRows();
+		BtcEarlyDetour.AddRows();
+		BtcLegsRecovery.AddRows();
 		BtcCraftQueue.AddRows();
 		BtcShootDown.AddRows();
 		BtcShield.AddRows();

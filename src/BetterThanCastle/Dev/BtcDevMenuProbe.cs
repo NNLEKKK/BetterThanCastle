@@ -40,7 +40,7 @@ namespace BetterThanCastle.Dev
         private static void Pre(ref long st)
         {
             st = 0;
-            if (!BtcLoadBoost.Loading) return;
+            if (!BtcDevLoadLine.Window) return;
             if (_child == null) _child = new double[256];
             if (_d >= 250) return;
             _d++; _child[_d] = 0; st = Stopwatch.GetTimestamp();

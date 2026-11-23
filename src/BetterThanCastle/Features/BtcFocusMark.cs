@@ -32,6 +32,26 @@ public static class BtcFocusMark
 	public static void AddRows()
 	{
 		BtcGameplay.Add("sent.mark", "rng", "Artificer focus mark (hotkey)", "Метка мага (бинд)", 0f, 0f, 1f, 1f, true, "With an Artificer selected, the 'Artificer focus mark' hotkey marks an enemy under the cursor: all your Sentinel Wards that can shoot it fire at it first. If it leaves a ward's reach, that ward targets as usual. Hotkey is unassigned by default (Hotkeys > Orders).", "При выделенном маге бинд «метка мага» ставит метку на врага под курсором: все ваши Sentinel Ward, которые могут по нему стрелять, бьют сначала по нему. Если цель вышла из зоны варда, тот целится как обычно. Бинд по умолчанию не назначен (Бинды > Приказы).");
+		BtcGameplay.Add("sent.markAuto", "rng", "Artificer focus mark: also on a focus order", "Метка мага: ещё и по приказу фокуса", 1f, 0f, 1f, 1f, true, "With the Artificer focus mark on, ordering an Artificer to attack an enemy (right click) marks that enemy too, without the hotkey.", "При включённой метке мага приказ магу атаковать врага (ПКМ) тоже ставит на него метку, без бинда.");
+	}
+
+	// N19: host side of a batched order on an object (UNetContextualCmd.CmdBatchedContextualActionGameObject prefix). An Artificer of the
+	// sending player ordered onto an enemy marks it for that faction's Sentinel Wards.
+	private static int iAuto = -2;
+
+	internal static void OnHostOrder(GameObject player, GameObject[] units, GameObject target)
+	{
+		if (!On || units == null || target == null || player == null || target.GetComponent<DamageReceiver>() == null) return;
+		if (iAuto == -2) iAuto = BtcGameplay.Idx("sent.markAuto");
+		float[] a = BtcGameplay.Active;
+		if (iAuto < 0 || a == null || iAuto >= a.Length || a[iAuto] < 0.5f) return;
+		for (int i = 0; i < units.Length; i++)
+		{
+			Labor l = units[i] == null ? null : units[i].GetComponent<Labor>();
+			if (!IsMage(l) || l.faction == null || !Affiliation.IsOwnedBy(l.gameObject, player) || !l.faction.IsEnemyTo(target)) continue;
+			Apply(l.faction, target);
+			return;
+		}
 	}
 
 	public static bool On

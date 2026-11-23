@@ -421,6 +421,9 @@ namespace BetterThanCastle.Patches
         {
             try
             {
+#if DEV
+                Dev.BtcDevLoadLine.Mark("title " + text);
+#endif
                 if (!BtcLoadBoost.Loading || text == _last) return;
                 _last = text;
                 BtcLoadBoost.Note("loading title " + text);

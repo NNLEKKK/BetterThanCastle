@@ -1,0 +1,17 @@
+# Comparable frame benchmark (A/B with scenario.ps1 -Savers 0/1): same map, noon with the day cycle frozen,
+# 60 workers building, 60 s measured after the base settled. Results: BTClogs/prof.txt (+ alloc.txt with -Alloc).
+prof start
+newgame
+waitgame 240
+daytime 12
+wait 5
+spawn bricktron 60
+spawn stockpile 20
+spawn workbench 10
+waitspawn 120
+order build 150
+wait 40
+prof reset
+wait 60
+dump bench
+quit

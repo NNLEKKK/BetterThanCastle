@@ -199,6 +199,26 @@ namespace BetterThanCastle.Dev
             return true;
         }
 
+        /// <summary>Spawns n entities for faction f around a point at once (animnet lab: both sides in one spot).</summary>
+        internal static int SpawnNow(string what, int n, Faction f, Vector3 at)
+        {
+            Factory.AssetKey key; bool unit;
+            if (!Resolve(what, out key, out unit)) return 0;
+            int done = 0;
+            for (int i = 0; i < n; i++)
+            {
+                try
+                {
+                    XYZ p = Architecte.PigerUneCase(at, 8f, 30);
+                    Vector3 pos = p.Equals(XYZ.zero) ? at + Vector3.up : p.ToVector3() + Vector3.up * 0.5f;
+                    LuaFactory.InstantiateFromCLR(key, f, pos, Quaternion.Euler(0f, UnityEngine.Random.Range(0f, 360f), 0f));
+                    done++;
+                }
+                catch (Exception e) { BtcLog.Error("Match", "spawn now " + what + ": " + e.Message); break; }
+            }
+            return done;
+        }
+
         internal static void QueueSpawn(string what, int n)
         {
             Factory.AssetKey key; bool unit;

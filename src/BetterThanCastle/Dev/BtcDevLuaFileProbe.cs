@@ -31,7 +31,7 @@ namespace BetterThanCastle.Dev
         private static void Pre(CallbackFunction __instance, IList<DynValue> args, ref bool __state)
         {
             __state = false;
-            if (!BtcLoadBoost.Loading) return;
+            if (!BtcDevLoadLine.Window) return;
             string n = __instance.Name;
             if (n != "dofile" && n != "require" && n != "loadfile") return;
             string a = "?";

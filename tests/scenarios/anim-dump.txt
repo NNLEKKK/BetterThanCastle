@@ -1,0 +1,16 @@
+# Who are the animators (bench setup: 60 workers building). Results: BTClogs/vfx-anim.txt, vfx-anim2.txt
+engine counters off
+newgame
+waitgame 240
+daytime 12
+wait 5
+spawn bricktron 60
+spawn stockpile 20
+spawn workbench 10
+waitspawn 120
+order build 150
+wait 30
+vfxdump anim
+wait 20
+vfxdump anim2
+quit

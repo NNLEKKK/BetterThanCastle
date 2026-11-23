@@ -1,0 +1,26 @@
+# Cost of the animators that are not on units (name tags, firefly overhead, beacon handles, crystal shards, UI buttons, sky). Results: BTClogs/engine.txt
+engine counters off
+newgame
+waitgame 240
+daytime 12
+wait 5
+spawn bricktron 60
+spawn stockpile 20
+spawn workbench 10
+waitspawn 120
+order build 150
+wait 30
+vfxdump others
+measure base 20
+engine animothers off
+wait 3
+measure no-other-animators 20
+engine animothers on
+wait 3
+engine animators off
+wait 3
+measure no-animators 20
+engine animators on
+wait 3
+measure base2 20
+quit

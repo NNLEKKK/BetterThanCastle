@@ -1,0 +1,6 @@
+# Map transfer speed lab, client side: join and stay in the lobby.
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 90
+wait 120
+quit

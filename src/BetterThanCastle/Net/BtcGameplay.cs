@@ -184,7 +184,7 @@ public static class BtcGameplay
 		get
 		{
 			UNetManager unetManager = NetworkManager.singleton as UNetManager;
-			return unetManager != null && SceneManager.GetActiveScene().name == unetManager.lobbyScene;
+			return unetManager != null && BtcScene.Name == unetManager.lobbyScene;
 		}
 	}
 
@@ -617,12 +617,7 @@ public static class BtcGameplay
 		{
 			Name = "Vanilla",
 			Data = string.Empty,
-			BuiltIn = true
-		});
-		BtcGameplay.Presets.Add(new BtcGameplay.Preset
-		{
-			Name = "Competitive",
-			Data = "eco.stable=1;eco.penFixed=30;rng.max.j4#m=1;rng.min.j3=0;rng.min.j4=0.5;rng.min.j5#m=1;rng.min.j5#n=0;rng.min.j6#m=1;gen.maxp=8;gcol.0.0=90;sent.range#m=1;mov.items=1;mov.retry=1;mov.cancel=1;bai.delayOn=1;bai.wait=1;bai.build=1;bai.hold=5;timer.peace=5;timer.limit=40;craft.max=40;",   // the user's own config of 2026-11-10 (spec.ask left out: client UX, not a rule)
+			Recipes = string.Empty,
 			BuiltIn = true
 		});
 		try
@@ -653,10 +648,13 @@ public static class BtcGameplay
 					bool flag18 = flag17;
 					if (flag18)
 					{
+						string rest = array[i].Substring(num + 1);
+						int tab = rest.IndexOf('	');
 						BtcGameplay.Presets.Add(new BtcGameplay.Preset
 						{
 							Name = array[i].Substring(0, num),
-							Data = array[i].Substring(num + 1)
+							Data = tab >= 0 ? rest.Substring(0, tab) : rest,
+							Recipes = tab >= 0 ? rest.Substring(tab + 1) : null
 						});
 					}
 				}
@@ -685,7 +683,7 @@ public static class BtcGameplay
 				bool flag8 = flag7;
 				if (flag8)
 				{
-					list.Add(BtcGameplay.Presets[i].Name + "\t" + BtcGameplay.Presets[i].Data);
+					list.Add(BtcGameplay.Presets[i].Name + "\t" + BtcGameplay.Presets[i].Data + (BtcGameplay.Presets[i].Recipes != null ? "\t" + BtcGameplay.Presets[i].Recipes : string.Empty));
 				}
 			}
 			File.WriteAllLines(BtcGameplay.PresetPath, list.ToArray());
@@ -734,6 +732,7 @@ public static class BtcGameplay
 						return;
 					}
 					BtcGameplay.Presets[i].Data = BtcGameplay.Encode(a);
+					BtcGameplay.Presets[i].Recipes = BtcRecipes.EncodeCur();
 					BtcGameplay.SavePresets();
 					return;
 				}
@@ -745,7 +744,8 @@ public static class BtcGameplay
 			BtcGameplay.Presets.Add(new BtcGameplay.Preset
 			{
 				Name = name,
-				Data = BtcGameplay.Encode(a)
+				Data = BtcGameplay.Encode(a),
+				Recipes = BtcRecipes.EncodeCur()
 			});
 			BtcGameplay.SavePresets();
 		}
@@ -785,7 +785,10 @@ public static class BtcGameplay
 		BtcTimer.RegisterHandlers(clientOverride);
 		BtcCraftQueue.RegisterHandlers(clientOverride);
 		BtcFocusMark.RegisterHandlers(clientOverride);
+		BtcStationRadius.RegisterHandlers(clientOverride);
+		BtcPlayerPrefs.RegisterHandlers(clientOverride);
 		BtcPing.RegisterHandlers(clientOverride);
+		BtcRecovery.RegisterHandlers(clientOverride);
 		BtcFocusHold.RegisterHandlers(clientOverride);
 		BtcShield.RegisterHandlers(clientOverride);
 		BtcPhantom.RegisterHandlers(clientOverride);
@@ -2424,6 +2427,9 @@ public static class BtcGameplay
 		public string Name;
 
 		public string Data;
+
+		// recipe overrides (BtcRecipes text); null = the preset does not touch recipes, "" = vanilla recipes
+		public string Recipes;
 
 		public bool BuiltIn;
 	}

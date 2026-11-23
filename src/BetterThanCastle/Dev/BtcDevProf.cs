@@ -99,6 +99,7 @@ namespace BetterThanCastle.Dev
         {
             BtcDevLuaProf.Reset();
             BtcDevEngine.ResetProf();
+            BtcDevAlloc.Reset();
             for (int i = 0; i < MaxIds; i++) { Calls[i] = 0; Total[i] = 0; Max[i] = 0; FrameTicks[i] = 0; FrameFlag[i] = 0; }
             _touchedCount = 0;
             Array.Clear(Frames, 0, Ring);
@@ -302,9 +303,22 @@ namespace BetterThanCastle.Dev
         }
 
         // ================= per frame (called from behaviour.Update) =================
+        /// Frames to leave out: the profiler's own scene walks (counters, idle detector) cost ~200 ms; the walk's frame and the
+        /// next (its time lands in the next delta) are not frame stats of the game.
+        internal static int SkipFrames;
+
         internal static void OnFrame(float dtSec, float now)
         {
             if (!Running) return;
+            if (SkipFrames > 0)
+            {
+                SkipFrames--;
+                int tc = _touchedCount; if (tc > MaxIds) tc = MaxIds;
+                for (int i = 0; i < tc; i++) { FrameTicks[Touched[i]] = 0; FrameFlag[Touched[i]] = 0; }
+                _touchedCount = 0;
+                _memPrev = GC.GetTotalMemory(false);
+                return;
+            }
             float ms = dtSec * 1000f;
             Frames[_frameIdx] = ms;
             _frameIdx = (_frameIdx + 1) % Ring;
@@ -441,6 +455,7 @@ namespace BetterThanCastle.Dev
         // ================= dump =================
         internal static void Dump(string tag)
         {
+            BtcDevAlloc.Dump(tag);
             try
             {
                 float now = Time.realtimeSinceStartup;
@@ -552,7 +567,7 @@ namespace BetterThanCastle.Dev
             BtcDevProf.OnFrame(Time.unscaledDeltaTime, now);
             if (!BtcDevProf.Running) return;
             float el = now - BtcDevProf.StartReal;
-            if (now >= _nextSlow) { _nextSlow = now + 5f; BtcDevProf.SlowTick(now); }
+            if (now >= _nextSlow) { _nextSlow = now + 5f; BtcDevProf.SlowTick(now); BtcDevProf.SkipFrames = 2; } // scene walks: that frame is left out of the stats
             if (_dumpAt >= 0f)
             {
                 if (_nextDump < 0f) _nextDump = _dumpAt;

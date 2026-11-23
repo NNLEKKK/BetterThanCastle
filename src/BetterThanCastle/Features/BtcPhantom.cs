@@ -527,7 +527,7 @@ namespace BetterThanCastle
                 BtcPhantomLook.Remove(m.Go);
             }
             Marks.Clear();
-            Slots.Clear();
+            Slots.Clear(); _waveDone = false; _spawnedNow = false;
             Homes.Clear();
             NestPos.Clear(); NestFac.Clear();
             HostIds.Clear();
@@ -579,12 +579,14 @@ namespace BetterThanCastle
             }
         }
 
+        private static bool _waveDone, _spawnedNow;
+
         private static void HostStep(float now)
         {
             if (_restore != null && !TryRestore(now)) return;   // a loaded save: re-mark its phantoms before anything spawns
             if (now >= _nextNest || Homes.Count == 0) { _nextNest = now + 1f; RefreshNests(); }
             bool started = Started();
-            int n = Count, budget = 64;   // the first wave appears at once
+            int n = Count, budget = _waveDone ? 1 : 64;   // the first wave appears at once, respawns one per frame (a batch of 10 cost ~24 ms in one frame)
             foreach (KeyValuePair<int, FireflyNest> kv in Homes)
             {
                 FireflyNest home = kv.Value;
@@ -607,9 +609,11 @@ namespace BetterThanCastle
                     if (s.Owes && !PayRespawn(s, kv.Key, home)) continue;
                     budget--;
                     s.Go = Spawn(home);
+                    if (s.Go != null) _spawnedNow = true;
                     if (s.Go == null) s.RespawnAt = now + 2f;
                 }
             }
+            if (_spawnedNow) _waveDone = true;
         }
 
         // ------------------------------------------------------------------ spawn point: the nearest free walkable cell next to the home crystal

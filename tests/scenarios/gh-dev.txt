@@ -1,0 +1,34 @@
+# Dev sidebars (Editor / movie) of the C# game menu: build, buttons run their Lua. Results: agent.log GhProto/DevPanel, BTClogs/uidump-ghdev*.txt
+engine counters off
+newgame
+waitgame 240
+wait 3
+gh devcount
+gh editor
+wait 1
+gh allowdebug 1
+wait 1
+gh editor
+wait 2
+uidump Menu:_Taskbar_(Lua) ghdev-editor
+gh devrun __btcSpawn(fy_Bricktron)
+gh devrun __btcSpawn(fy_Bricktron, {fy_SwordProp, fy_ShieldProp, fy_KnightHelmetProp})
+gh devrun __btcSpawn(fy_Corruptron)
+gh devrun __btcRaid({fy_Minitron, fy_Minitron, fy_Corruptron})
+wait 3
+gh devcount
+gh movie
+wait 2
+uidump Menu:_Taskbar_(Lua) ghdev-movie
+gh deveval GetRounded(MainCamera:GetOrbitSpeed(), 3)
+gh deveval GetRounded(select(1, MainCamera:GetTravelSpeed()), 3)
+gh deveval GetRounded(Skybox.dayTime, 1)
+gh deveval GetFogStartDistance()
+gh deveval MainCamera.timelapseZoom
+gh devrun Skybox.dayTime = 20
+gh devrun ToggleHalfSpeed()
+wait 2
+gh devrun ToggleHalfSpeed()
+gh allowdebug 0
+wait 1
+quit

@@ -489,6 +489,25 @@ public static class BtcLang
 			"Пинг союзникам: метка в точке под курсором (или на миникарте) для своей команды (нужен BetterConnection)"
 		},
 		{
+			"Chopping block radius: hold and turn the mouse wheel over a selected chopping block (how far its workers go for logs, Shift = 5 blocks per notch)",
+			"Радиус пенька для колки: зажать и крутить колесо при выделенном пеньке (как далеко его рабочие ходят за брёвнами, Shift = 5 блоков за щелчок)"
+		},
+		{
+			"Chopping block: default log pickup radius of your blocks (blocks, 0 = no limit; needs BetterConnection)",
+			"Пенёк для колки: радиус сбора брёвен ваших пеньков по умолчанию (в блоках, 0 = без лимита; нужен BetterConnection)"
+		},
+		{
+			"Traps: your workers re-arm fired traps by themselves at the match start (switch it for all your traps in a trap's pie menu; needs BetterConnection)",
+			"Трапы: ваши рабочие сами перезаряжают сработавшие трапы в начале матча (переключается для всех ваших трапов в пай-меню трапа; нужен BetterConnection)"
+		},
+		{
+			"Tree cutting: your workers only fell trees, logs and stumps stay on the ground (needs BetterConnection)",
+			"Рубка леса: ваши рабочие только валят деревья, брёвна и пни остаются на земле (нужен BetterConnection)"
+		},
+		{ "Log pickup radius", "Радиус сбора брёвен" },
+		{ "no limit", "без лимита" },
+		{ "default", "по умолчанию" },
+		{
 			"Shoot at the block or object under the cursor (selected archers, not Artificers)",
 			"Стрелять по блоку или объекту под курсором (выделенные лучники, кроме артефакторов)"
 		},

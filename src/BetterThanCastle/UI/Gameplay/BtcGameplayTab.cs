@@ -18,6 +18,7 @@ namespace BetterThanCastle
         internal override int Id { get { return 4; } }
         internal override bool IsActive { get { return BtcMenu.CurrentId == 4 && !UseLegacy; } }
         internal override string UndoScope { get { return Scope; } }
+        internal override void ClearSearch() { Query = ""; }
 
         internal const string Scope = "gameplay";
         /// <summary>True while one of the old pages (handicap, recipes, map, timer) is shown instead of this tab.</summary>
@@ -794,7 +795,7 @@ namespace BetterThanCastle
                     }
                 }
                 Rect ar = new Rect(bx - del, row.y + h * 0.1f, bw, h * 0.8f);
-                if (IcoBtn(ar, BtcReplayIcons.Check, false, BtcMenu.Accent, Tt("Apply this preset", "Применить пресет")) && interact) ApplyArr(arr, pr.Name, shown);
+                if (IcoBtn(ar, BtcReplayIcons.Check, false, BtcMenu.Accent, Tt("Apply this preset", "Применить пресет")) && interact) ApplyArr(arr, pr.Name, shown, pr.Recipes);
                 Rect cr = new Rect(ar.x - bw - 4f, ar.y, bw, ar.height);
                 if (IcoBtn(cr, BtcReplayIcons.Eye, _cmp == p, BtcMenu.Accent, Tt("Compare with the current rules", "Сравнить с текущими правилами"))) _cmp = _cmp == p ? -1 : pi;
                 y += h + 2f;
@@ -844,11 +845,19 @@ namespace BetterThanCastle
 
         private void ApplyArr(float[] arr, string name, float[] shown)
         {
+            ApplyArr(arr, name, shown, null);
+        }
+
+        // recipes: the preset's recipe set (null = recipes stay as they are)
+        private void ApplyArr(float[] arr, string name, float[] shown, string recipes)
+        {
             float[] old = (float[])shown.Clone();
+            string oldRec = recipes != null ? BtcRecipes.EncodeCur() : null;
             BtcGameplay.SetAll(arr);
+            BtcRecipes.ApplyPreset(recipes, true);
             BtcSfx.Ok();
             BtcMenu.Toast(Tt("Applied: ", "Применено: ") + name, BtcReplayIcons.Check);
-            BtcUndo.Push(Scope, Tt("Preset: ", "Пресет: ") + name, delegate { BtcGameplay.SetAll(old); });
+            BtcUndo.Push(Scope, Tt("Preset: ", "Пресет: ") + name, delegate { BtcGameplay.SetAll(old); BtcRecipes.ApplyPreset(oldRec, true); });
         }
 
         // ------------------------------------------------------------------ requests page

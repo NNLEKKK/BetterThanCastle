@@ -41,6 +41,13 @@ namespace BetterThanCastle
             new Elem { Id = "clientpause", En = "Client pause plate", Ru = "Плашка паузы клиентов", HintEn = "Whether clients may pause", HintRu = "Могут ли клиенты ставить паузу", Icon = BtcReplayIcons.Lock, Anchor = 3, Row = 1, W = 17f, H = 1.9f, DefScale = 0.4f, DefNx = -0.0133f, DefNy = -0.0016f },
             new Elem { Id = "ping", En = "Ping chip", Ru = "Чип пинга", HintEn = "Worst ping, hover for the list", HintRu = "Худший пинг, по наведению список", Icon = BtcReplayIcons.Wave, Anchor = 3, Row = 2, W = 7f, H = 1.9f, DefScale = 0.4523f, DefNx = -0.0128f, DefNy = 0.0217f },
             new Elem { Id = "ready", En = "Players Ready panel", Ru = "Панель готовности игроков", HintEn = "Advanced timer: waiting for players to press Ready", HintRu = "Продвинутый таймер: ждём, пока игроки нажмут Готов", Icon = BtcReplayIcons.Group, Anchor = 1, W = 36f, H = 7f },
+            // C# game menu regions (Display/CsGameMenu, UI/GameHud): uGUI roots moved/scaled by BtcHudSlots
+            new Elem { Id = "gh.left", En = "Game menu: left bar", Ru = "Игровое меню: левая панель", HintEn = "Score, blueprints, new task, structures, blocks", HintRu = "Счёт, чертежи, новая задача, строения, блоки", Icon = BtcReplayIcons.List, Anchor = 0, W = 2.6f, H = 19f },
+            new Elem { Id = "gh.leftContent", En = "Game menu: build/task sidebar", Ru = "Игровое меню: боковое меню стройки и задач", HintEn = "Blocks, structures, new task lists", HintRu = "Списки блоков, строений, новых задач", Icon = BtcReplayIcons.Grid, Anchor = 0, W = 14.5f, H = 11f },
+            new Elem { Id = "gh.tasks", En = "Game menu: task list", Ru = "Игровое меню: лента задач", HintEn = "Tasks, crews, fighters at the bottom", HintRu = "Задачи, бригады и бойцы внизу", Icon = BtcReplayIcons.List, Anchor = 1, W = 34f, H = 4f },
+            new Elem { Id = "gh.popup", En = "Game menu: task options", Ru = "Игровое меню: варианты задачи", HintEn = "Options of the selected task above the task list", HintRu = "Варианты выбранной задачи над лентой задач", Icon = BtcReplayIcons.Gear, Anchor = 1, W = 20f, H = 4f },
+            new Elem { Id = "gh.rightContent", En = "Game menu: settings sidebar", Ru = "Игровое меню: боковое меню настроек", HintEn = "Settings and help lists", HintRu = "Списки настроек и справки", Icon = BtcReplayIcons.Gear, Anchor = 2, W = 14.5f, H = 11f },
+            new Elem { Id = "gh.right", En = "Game menu: right bar", Ru = "Игровое меню: правая панель", HintEn = "Home, settings, back to work, call to arms", HintRu = "Домой, настройки, за работу, к оружию", Icon = BtcReplayIcons.Gear, Anchor = 2, W = 2.6f, H = 19f },
         };
 
         internal static Elem ElemOf(string id) { for (int i = 0; i < Elems.Length; i++) if (Elems[i].Id == id) return Elems[i]; return null; }
@@ -138,6 +145,7 @@ namespace BetterThanCastle
                     E e = _on ? Get(Elems[i].Id) : DefaultOf(Elems[i].Id);
                     s.Enabled = e.En; s.Scale = e.Scale; s.Alpha = e.Alpha; s.Norm = new Vector2(e.Nx, e.Ny);
                 }
+                BtcHudSlots.ApplyAll();
                 Color na = _on ? _accent : DefaultAccent;
                 bool accChanged = na != BtcMenu.Accent;
                 BtcMenu.Accent = na;

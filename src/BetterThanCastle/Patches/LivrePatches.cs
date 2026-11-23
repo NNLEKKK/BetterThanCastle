@@ -40,8 +40,8 @@ namespace BetterThanCastle.Patches
             {
                 string p = path != null ? path.Replace((char)92, '/') : string.Empty;
                 bool crlf = text.IndexOf((char)13) >= 0;
-                if (p.EndsWith("/PieMenu_Buttons.txt")) return Back(text.Replace("\r\n", "\n") + RackButtons() + WormButtons(), crlf);
-                if (p.EndsWith("/PieMenu_Menus.txt")) return Back(PatchWormMenus(PatchMenus(text.Replace("\r\n", "\n"))), crlf);
+                if (p.EndsWith("/PieMenu_Buttons.txt")) return Back(text.Replace("\r\n", "\n") + RackButtons() + WormButtons() + TrapButtons(), crlf);
+                if (p.EndsWith("/PieMenu_Menus.txt")) return Back(PatchTrapMenus(PatchWormMenus(PatchMenus(text.Replace("\r\n", "\n")))), crlf);
             }
             catch (Exception e) { BtcLog.Error("Livre", "inject failed: " + e); }
             return text;
@@ -94,6 +94,35 @@ namespace BetterThanCastle.Patches
             Btn(b, "WormNestOn", T("Teleport: on", "Включить телепорт"), "Event_Worm_Nest_Toggle", "Condition_Worm_Nest_Off", "UI_Check",
                 T("Phantoms may use this crystal as a wormhole again", "Фантомы снова могут использовать этот кристалл как портал"));
             return b.ToString();
+        }
+
+        // ------------------------------------------------------------------ trap auto re-arm switch (BtcTrapRearm, per player, all own traps)
+        private static string TrapButtons()
+        {
+            StringBuilder b = new StringBuilder(1024);
+            Btn(b, "BtcTrapAutoOn", T("Auto re-arm: ON", "Автоперезарядка: ВКЛ"), "Event_Btc_Trap_Auto_Toggle", "Condition_Btc_Trap_Auto_On", "UI_Check",
+                T("Now ON: your workers re-arm all your fired traps by themselves. Click to switch it OFF for all your traps (re-arm by hand with the secondary order)",
+                  "Сейчас ВКЛ: ваши рабочие сами перезаряжают все ваши сработавшие трапы. Нажмите, чтобы выключить для всех ваших трапов (перезарядка вручную вторичным приказом)"));
+            Btn(b, "BtcTrapAutoOff", T("Auto re-arm: OFF", "Автоперезарядка: ВЫКЛ"), "Event_Btc_Trap_Auto_Toggle", "Condition_Btc_Trap_Auto_Off", "UI_X",
+                T("Now OFF: your workers do not re-arm your traps by themselves. Click to switch it ON for all your traps",
+                  "Сейчас ВЫКЛ: ваши рабочие сами не перезаряжают ваши трапы. Нажмите, чтобы включить для всех ваших трапов"));
+            return b.ToString();
+        }
+
+        private static string PatchTrapMenus(string text)
+        {
+            string slot = Slot("Condition_Btc_Trap_Auto_On", "BtcTrapAutoOn", "Condition_Btc_Trap_Auto_Off", "BtcTrapAutoOff", "\t");
+            text = ReplaceHole(text, "BuilderBearTrap", "Arm Bear Trap", slot, "trap auto re-arm switch");
+            // nothing selected, hovering an own trap: a pie with only the switch (vanilla shows no pie there)
+            string hover = "\t\t\tElse: ToolRack\n";
+            int h = text.IndexOf(hover, StringComparison.Ordinal);
+            if (h < 0)
+            {
+                BtcLog.Error("Livre", "MENU Game hover anchor not found, trap switch on hover not injected");
+                return text;
+            }
+            string add = "\t\t\tElse: BearTrap\n\t\t\t\tIf: Condition_TargetIsMine\n\t\t\t\t\tMenu: BtcTrapHover\n\t\t\t\tEnd\n";
+            return text.Substring(0, h) + add + text.Substring(h) + "\nMENU BtcTrapHover\n" + slot + "\tHole\n\tHole\n\tHole\n\tHole\n\tHole\n\tHole\n\tHole\n";
         }
 
         /// <summary>One pie slot that shows the "off" button while the point is on, the "on" button while it is off, else a hole.</summary>

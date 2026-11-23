@@ -1,0 +1,47 @@
+# grouplag: (1) 8 archers shooting at an enemy get a retreat order; (2) 8 halberdiers packed together run through their own crowd.
+# OrderLag "moved u.. dt=" per unit (STUCK = not moved in 6 s), was=<task before the order>(noint = could not be interrupted)
+duelunits 3 8 0
+duelunits 4 8 0
+duelunits 2 0 2
+duelskip 1
+duelheal 1
+duelplayerbot -1
+duelnobot 1
+duelnorules 1
+duel
+waitduel 240
+wait 3
+rule mov.cancel 1
+rule mov.allies 1
+duelplace 1 all 44 10 270
+duelplace 0 0 30 8 90
+duelplace 0 1 30 9 90
+duelplace 0 2 30 10 90
+duelplace 0 3 30 11 90
+duelplace 0 4 31 8 90
+duelplace 0 5 31 9 90
+duelplace 0 6 31 10 90
+duelplace 0 7 31 11 90
+duelplace 0 8 22 8 90
+duelplace 0 9 22 9 90
+duelplace 0 10 22 10 90
+duelplace 0 11 22 11 90
+duelplace 0 12 23 8 90
+duelplace 0 13 23 9 90
+duelplace 0 14 23 10 90
+duelplace 0 15 23 11 90
+wait 2
+duelo 0 0,1,2,3,4,5,6,7 attack 1 0
+wait 5
+dueltrace 1
+duellog GL-RETREAT
+duelo 0 0,1,2,3,4,5,6,7 move 8 10
+wait 7
+duellog GL-CROWD
+duelo 0 8,9,10,11,12,13,14,15 move 45 10
+wait 7
+duellog GL-BACK
+duelo 0 all move 15 10
+wait 7
+dueltrace 0
+quit

@@ -11,18 +11,19 @@ namespace Brix.Input
 	{
 		private void Update()
 		{
+			int mask = 0;
 			for (int i = 0; i < JobSelectHotkeys.AllJobs.Length; i++)
 			{
 				Occupation.Job job = JobSelectHotkeys.AllJobs[i];
 				KeyCode[] jobKeys = BtcHotkeys.GetJobKeys(job, JobSelectHotkeys.Defaults[job]);
-				bool flag = !BtcHotkeys.IsSuppressed(jobKeys) && JobSelectHotkeys.IsComboPressed(jobKeys);
-				bool flag2 = flag;
-				bool flag3 = flag2;
-				bool flag4 = flag3;
-				if (flag4)
+				if (!BtcHotkeys.IsSuppressed(jobKeys) && JobSelectHotkeys.IsComboPressed(jobKeys))
 				{
-					JobSelectHotkeys.SelectAllOfJob(job);
+					mask |= 1 << i;
 				}
+			}
+			if (mask != 0)
+			{
+				JobSelectHotkeys.SelectAllOfJobs(mask);
 			}
 		}
 
@@ -55,12 +56,24 @@ namespace Brix.Input
 			return result;
 		}
 
-		private static void SelectAllOfJob(Occupation.Job job)
+		private static bool InMask(int mask, Occupation.Job job)
+		{
+			for (int i = 0; i < JobSelectHotkeys.AllJobs.Length; i++)
+			{
+				if ((mask & (1 << i)) != 0 && JobSelectHotkeys.AllJobs[i] == job)
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+
+		private static void SelectAllOfJobs(int mask)
 		{
 			List<GameObject> list = new List<GameObject>();
 			foreach (Labor labor in UIGameObserver.bricktrons.CheckCreation())
 			{
-				bool flag = labor != null && labor.Occupation != null && labor.Occupation.CurrentJob == job;
+				bool flag = labor != null && labor.Occupation != null && JobSelectHotkeys.InMask(mask, labor.Occupation.CurrentJob);
 				bool flag2 = flag;
 				bool flag3 = flag2;
 				bool flag4 = flag3;
@@ -90,7 +103,7 @@ namespace Brix.Input
 			Occupation.Job.Artificer
 		};
 
-		private static readonly Dictionary<Occupation.Job, KeyCode[]> Defaults = new Dictionary<Occupation.Job, KeyCode[]>
+		private static readonly Dictionary<Occupation.Job, KeyCode[]> Defaults = new Dictionary<Occupation.Job, KeyCode[]>(BtcHotkeys.JobComparer.Inst)
 		{
 			{
 				Occupation.Job.Builder,

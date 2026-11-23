@@ -1,0 +1,1 @@
+at host:ingame+10 launch spec1 specmap-late.client.txt BtcSpec1

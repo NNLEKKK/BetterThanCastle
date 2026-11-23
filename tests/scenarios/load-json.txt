@@ -1,0 +1,9 @@
+# Load timeline + cold/warm cost of the game-object JSON (replay snapshot / save): loadline.txt, agent.log LoadLine lines.
+newgame
+waitgame 240
+wait 2
+jsontime
+wait 1
+jsontime
+wait 1
+quit

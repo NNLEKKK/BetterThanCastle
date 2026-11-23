@@ -1,0 +1,15 @@
+# C# game menu task list (cfg Display/CsGameMenu must be true): place tasks, select them, dump.
+newgame
+waitgame 240
+wait 10
+uidump Menu:_Taskbar_(Lua) ghtasks0
+gh blocks
+wait 3
+uidump Menu:_Taskbar_(Lua) ghtasks1
+gh open None
+wait 2
+gh newtask
+wait 3
+uidump Menu:_Taskbar_(Lua) ghtasks2
+gcprobe ghtasks
+quit

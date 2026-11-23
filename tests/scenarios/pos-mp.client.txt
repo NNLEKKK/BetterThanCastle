@@ -1,0 +1,8 @@
+# client of pos-mp: just watches (PosNet client 30 s lines)
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 120
+ready 420
+waitgame 300
+wait 75
+quit

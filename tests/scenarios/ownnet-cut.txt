@@ -1,0 +1,13 @@
+# own transport (BtcOwnTransport, run with BTC_OWNNET=1): host + 1 client; 10% loss 30 s, then a 30 s cut and a 120 s cut.
+# Expect: no full rejoin, the game freezes during a cut and continues; client orders work after each cut.
+host default conquest
+waitclients 1 300
+wait 3
+startmatch 180
+waitgame 300
+mark ingame
+wait 8
+timerstart 90
+wait 330
+netstat
+quit

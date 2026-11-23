@@ -356,7 +356,14 @@ namespace BetterThanCastle.Patches
         /// every few seconds, stood still and blocked it for everybody (lab terraform-stuck 2026-11-15).</summary>
         internal static void MarkFailed(Labor labor, Goal g)
         {
-            if (Failed.Count > 512) Failed.Clear();
+            if (Failed.Count > 512)
+            {
+                // drop only expired marks: clearing all of them made every stuck worker pick his blocked cell again at once
+                List<long> old = new List<long>();
+                foreach (KeyValuePair<long, float> kv in Failed) if (Time.time - kv.Value >= FailedFor) old.Add(kv.Key);
+                for (int i = 0; i < old.Count; i++) Failed.Remove(old[i]);
+                if (Failed.Count > 4096) Failed.Clear();   // hard cap, unreachable in practice
+            }
             Failed[Key(labor, g.voxel.position)] = Time.time;
         }
 
@@ -478,6 +485,7 @@ namespace BetterThanCastle.Patches
 
         internal static TerraformDigSetting Get(DigGoal g)
         {
+            if (g == null) return null;
             TerraformDigSetting t = g.ResourceSetting as TerraformDigSetting;
             return t != null && t._parent != null && g.transform.parent == t._parent ? t : null;
         }
@@ -646,6 +654,9 @@ namespace BetterThanCastle.Patches
                 if (!labor.Occupation.Profession.CanBreakVoxels()) { errorDestination.AddDecisionError(SharedWorkException<Exceptions.CharacterCantDig>.Get.Problem, labor); return false; }
                 // a full bag does not stop the dig (user 2026-11-15): with a fill to do the worker goes filling (priority),
                 // without one he keeps digging; what does not fit stays on the ground for the fill
+                BtcTerraform.Shape sh = t.S;
+                if (sh.StoreFull && !TerraformHarvest.Overkill(sh, pos) && labor.recepteur.CanFitUpTo(RawResources.RawStone) < TerraformHarvest.InGround(pos))
+                { errorDestination.AddDecisionError(SharedWorkException<Exceptions.BagTooFullToDig>.Get.Problem, labor); return false; }
                 time += 0.15f;
                 __result = true;
                 return false;
@@ -680,17 +691,19 @@ namespace BetterThanCastle.Patches
         {
             BtcTerraform.Shape s = TerraformDigSetting.Of(__instance);
             if (s == null) return true;
+            bool hit = false;   // once the damage is applied vanilla must not run (it would hit the cell a second time)
             try
             {
                 XYZ pos = __instance.voxel.position;
                 DamageReaction expected = TerraformHarvest.Overkill(s, pos) ? DamageReaction.ForceOverkill : DamageReaction.Ignored;
                 float value = Voxel.GetBlockInfo(pos).Type == BlockType.Terrain ? labor.Occupation.Profession.TerrainDamage : labor.Occupation.Profession.BlockBreaking;
                 DamageReaction r = __instance.damageReceiver.ReceiveAttack(value, DamageType.Siege, expected, Vector3.zero, Vector3.zero, 0f, labor.gameObject);
+                hit = true;
                 // the voxel is gone: re-walk the task at once so the cells it opened get their goals before the worker picks again
                 if (r == DamageReaction.Die || r == DamageReaction.ForceOverkill) BtcTerraform.Kick(s, pos);
                 return false;
             }
-            catch (Exception e) { BtcLog.Error("Hook", "Terraform.DigDamage: " + e.Message); return true; }
+            catch (Exception e) { BtcLog.Error("Hook", "Terraform.DigDamage: " + e.Message); return !hit; }
         }
     }
 
@@ -768,7 +781,9 @@ namespace BetterThanCastle.Patches
             try
             {
                 if (s.Ladders.Count > 0 && TerraformGoals.Has(__instance.goalProvider, 2, labor, false)) { __result = true; return false; }
-                bool room = true;   // a full bag keeps digging (see TerraformDigMatchPatch)
+                // a full bag keeps digging (see TerraformDigMatchPatch) unless the task hauls to a stockpile: then the worker leaves
+                // (vanilla stores the stone) and comes back
+                bool room = !(s.StoreFull && s.Harvest != 0 && labor.recepteur.CanFitUpTo(RawResources.RawStone) < 10);
                 int digLeft, allLeft;
                 BtcTerraform.Pending(s, out digLeft, out allLeft);
                 // cells still to dig keep the crew even while no goal is spawned yet (a crust is being removed, the next layer

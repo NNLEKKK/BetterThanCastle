@@ -17,7 +17,7 @@ namespace BetterThanCastle
     /// </summary>
     internal static class BtcReplayGif
     {
-        private const float MaxSec = 30f;
+        private const float MaxSec = 120f;
         private enum St { Off, Select, Rec, Enc }
         private static St _st;
 

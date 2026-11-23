@@ -46,6 +46,7 @@ namespace BetterThanCastle.Patches
             {
                 string s = __result as string;
                 if (s == null || file == null) return;
+                s = BtcSpecScoreboard.PatchLua(file, s);
                 __result = BtcWormWardCraft.PatchLua(file, s, globalContext);
             }
             catch (Exception e) { BtcLog.Error("Hook", "WormWard LoadFile: " + e.Message); }

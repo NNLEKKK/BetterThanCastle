@@ -14,16 +14,28 @@ namespace BetterThanCastle.Patches
     [HarmonyPatch(typeof(LuaMenuComponent), "Load")]
     internal static class LuaMenuComponentLoadPatch
     {
+#if DEV
+        internal static bool DevSkipGameMenu; // DEV: measure a match without the game HUD (cmd skipmenu)
+#endif
+        /// replay playback without the game HUD (Replay/NoGameHud): the mini map comes from BtcReplayMinimap
+        private static bool ReplaySkip { get { return BtcReplay.IsPlayback && BtcConfig.ReplayNoGameHud != null && BtcConfig.ReplayNoGameHud.Value; } }
         [HarmonyPrefix]
         private static bool Prefix(LuaMenuComponent __instance, ref bool __result)
         {
             // aim trainer: the game HUD (GameMenu.lua: taskbar, task panels, mini map...) is not loaded at all; clicks use their own ray
-            if (!BtcAim.Active) return true;
+#if DEV
+            if (!BtcAim.Active && !ReplaySkip && !DevSkipGameMenu && !BtcGameHud.Enabled) return true;
+#else
+            if (!BtcAim.Active && !ReplaySkip && !BtcGameHud.Enabled) return true;
+#endif
             try
             {
                 string p = __instance.Path ?? "";
                 if (!p.Replace('\\', '/').EndsWith("LUI/Menus/GameMenu.lua", StringComparison.OrdinalIgnoreCase)) return true;
-                BtcLog.Info("Aim", "game HUD skipped: " + p);
+                BtcLog.Info(BtcAim.Active ? "Aim" : "Hud", "game HUD skipped: " + p);
+                if (!BtcAim.Active) BtcReplayMinimap.GameHudSkipped = true;
+                // C# game menu (Display/CsGameMenu) in normal games: built into the same object the Lua menu would fill
+                if (!BtcAim.Active && !ReplaySkip && BtcGameHud.Enabled) BtcGameHud.Build(__instance.transform);
                 __result = true;
                 return false;
             }

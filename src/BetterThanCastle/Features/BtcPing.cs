@@ -526,6 +526,7 @@ namespace BetterThanCastle
         // "!" icons (on screen above the mark; clamped to the edge with an arrow when off screen)
         private void OnGUI()
         {
+        	if (useGUILayout) useGUILayout = false; // no GUILayout here: skip Unity's per-event layout pass (garbage)
             if (Active.Count == 0 || Event.current.type != EventType.Repaint) return;
             Camera cam = Camera.main;
             if (cam == null) return;

@@ -1,0 +1,12 @@
+# client of snd-mp: dumps right after the host dumps (waits for the host files)
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 120
+ready 420
+waitgame 300
+waitfile BTClogs/host/snd-pre.txt 300
+sndnet dump pre
+waitfile BTClogs/host/snd-fight.txt 300
+sndnet dump fight
+wait 5
+quit

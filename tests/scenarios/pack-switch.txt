@@ -1,0 +1,22 @@
+# Resource pack switch cost in the main menu and in a world: agent.log / btc log "[ResourcePacks] Pack: ... ms (find, backup, read, decode, revert, signature)".
+wait 6
+pack NotNonlokill_1.0_(Gray)
+wait 3
+pack NotNonlokill_1.0_(Purple)
+wait 3
+pack none
+wait 3
+pack NotNonlokill_1.0_(Gray)
+wait 3
+pack none
+wait 2
+newgame
+waitgame 240
+wait 5
+pack NotNonlokill_1.0_(Gray)
+wait 3
+pack NotNonlokill_1.0_(Purple)
+wait 3
+pack none
+wait 3
+quit

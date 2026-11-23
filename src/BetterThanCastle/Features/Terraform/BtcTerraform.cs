@@ -183,6 +183,7 @@ namespace BetterThanCastle
         {
             internal readonly List<Op> Ops = new List<Op>();
             internal int Harvest;       // GroundResource flags: Stone 1, Brimstone 2, Iron 4 (off = destroyed with the voxel)
+            internal bool StoreFull;    // a worker whose bag cannot take the next kept voxel leaves the task and carries the stone to a stockpile (bit 16 on the wire)
             internal bool NoStore;      // never use stockpiles: no storage check, a full bag is dropped next to the task (bit 8 on the wire)
             internal readonly HashSet<XYZ> Dig = new HashSet<XYZ>();
             internal readonly HashSet<XYZ> Fill = new HashSet<XYZ>();
@@ -283,6 +284,7 @@ namespace BetterThanCastle
                 Shape s = new Shape();
                 s.Harvest = Harvest;
                 s.NoStore = NoStore;
+                s.StoreFull = StoreFull;
                 s.Ops.AddRange(Ops);
                 s.Rebuild();
                 return s;
@@ -292,7 +294,7 @@ namespace BetterThanCastle
         internal static string Encode(Shape s)
         {
             StringBuilder sb = new StringBuilder(16 + s.Ops.Count * 28);
-            sb.Append('1').Append(';').Append(s.Harvest | (s.NoStore ? 8 : 0));
+            sb.Append('1').Append(';').Append(s.Harvest | (s.NoStore ? 8 : 0) | (s.StoreFull ? 16 : 0));
             for (int i = 0; i < s.Ops.Count; i++)
             {
                 Op o = s.Ops[i];
@@ -312,6 +314,7 @@ namespace BetterThanCastle
             if (!int.TryParse(parts[1], NumberStyles.Integer, Inv, out h)) return null;
             s.Harvest = h & 7;
             s.NoStore = (h & 8) != 0;
+            s.StoreFull = (h & 16) != 0;
             if (parts.Length - 2 > MaxOps) return null;
             for (int i = 2; i < parts.Length; i++)
             {

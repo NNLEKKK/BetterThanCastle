@@ -1,0 +1,6 @@
+# Reference dump of the vanilla Lua game HUD (for 1:1 checks of the C# game menu): BTClogs/uidump-vanilla.txt
+newgame
+waitgame 240
+wait 15
+uidump Menu: vanilla
+quit

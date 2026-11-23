@@ -172,6 +172,7 @@ namespace BetterThanCastle.Dev
                 case "duelfps": { int tf = (int)F(p, 1, 0f); QualitySettings.vSyncCount = 0; Application.targetFrameRate = tf > 0 ? tf : -1; } break;
                 case "duelskipdelay": BtcDuelBot.SkipDelayMs = F(p, 1, 350f); break;
                 case "duelrematch": if (BtcDuel.Match != null) BtcDuel.Match.Rematch(); break;
+                case "pack": ResourcePackManager.PackSet(p.Length > 1 && p[1] != "none" ? p[1].Replace('_', ' ') : null); break; // pack <folder, '_' = space>|none
                 case "visualtest": ResourcePackManager.DevVisual((int)F(p, 1, 0f), F(p, 2, 0f) > 0.5f); break;
                 case "profiletest": ResourcePackManager.DevProfile((int)F(p, 1, 0f)); break;
                 case "uitest": BtcMenuState.SetInt("uiedit:page", (int)F(p, 1, 0f)); ResourcePackManager.GoTab(12); break;
@@ -269,7 +270,23 @@ namespace BetterThanCastle.Dev
                         }
                         break;
                     }
+                case "skipmenu": Patches.LuaMenuComponentLoadPatch.DevSkipGameMenu = F(p, 1, 1f) > 0.5f; break;
+                case "uidump": BtcDevUiDump.Run(p.Length > 1 ? p[1].Replace('_', ' ') : "Menu:", p.Length > 2 ? p[2] : "x"); break;
+                case "ghproto": BtcDevGhProto.Run(); break;
+                case "gh": BtcDevGhProto.Cmd(p); break;
+                case "gcprobe": { long m0 = System.GC.GetTotalMemory(false); var sw = System.Diagnostics.Stopwatch.StartNew(); System.GC.Collect(); double a = sw.Elapsed.TotalMilliseconds; sw.Reset(); sw.Start(); System.GC.Collect(); double b = sw.Elapsed.TotalMilliseconds; BtcLog.Info("Cmd", "gcprobe " + (p.Length > 1 ? p[1] : "") + " memfix=" + BtcMemFix.On + " luaSlots=" + BtcMemFix.LuaHeapSlots() + " heapMB=" + (m0 >> 20) + "->" + (System.GC.GetTotalMemory(false) >> 20) + " gc1=" + a.ToString("0") + "ms gc2=" + b.ToString("0") + "ms"); break; }
                 case "ts":BtcLog.Info("Cmd", "ts timeScale=" + Time.timeScale + " speed=" + BtcReplay.PlaySpeed + " t=" + BtcReplay.PlayClock.ToString("0.0")); break;
+                case "jsontime": // serialize the game objects like a save does (timed by BtcDevLoadLine): cold vs warm cost
+                    {
+                        Brix.IO.Serialization.GameObjectSerializer gos = UnityEngine.Object.FindObjectOfType<Brix.IO.Serialization.GameObjectSerializer>();
+                        if (gos != null) { string js = gos.GetJsonGameState(p.Length > 1 ? p[1] : "save"); BtcLog.Info("Cmd", "jsontime " + js.Length + " chars"); }
+                    }
+                    break;
+                case "daytime": // daytime <hour> [run]: fixed time of day for comparable perf runs (day cycle frozen unless "run")
+                    Journee.CurrentTime = F(p, 1, 12f);
+                    Journee.CurrentPaused = !(p.Length > 2 && p[2] == "run");
+                    BtcLog.Info("Cmd", "daytime " + Journee.CurrentTime + " paused=" + Journee.CurrentPaused);
+                    break;
                 case "clock": // SP game clock like the player uses it: clock pause|default|fast|veryfast|double
                     {
                         string ck = p.Length > 1 ? p[1] : "default";
@@ -292,6 +309,9 @@ namespace BetterThanCastle.Dev
                         break;
                     }
                 case "engine": BtcDevEngine.Command(p); break;
+                case "vfxdump": BtcDevEngine.VfxDump(p.Length > 1 ? p[1] : "now"); break;
+                case "vfx": { bool v = F(p, 2, 1f) > 0.5f; string w = p.Length > 1 ? p[1] : ""; if (w == "unit") BtcConfig.UnitNightLights.Value = v; else if (w == "fly") BtcConfig.FireflyLights.Value = v; else if (w == "shadow") BtcConfig.CrystalShadows.Value = v; else if (w == "pause") BtcConfig.PauseHiddenAnims.Value = v; else if (w == "tags") BtcConfig.HideNameTags.Value = v; else if (w == "static") BtcConfig.StaticCrystals.Value = v; else if (w == "max") BtcDevStress.Max(v); else if (w == "sunshadows") BtcDevStress.SunShadows(v); else if (w == "simple") BtcConfig.SimpleFireflies.Value = v; BtcLog.Info("Cmd", "vfx " + w + " " + v); break; }
+                case "warmshaders": { var sw = System.Diagnostics.Stopwatch.StartNew(); Shader.WarmupAllShaders(); BtcLog.Info("Cmd", "WarmupAllShaders " + sw.ElapsedMilliseconds + " ms"); break; }
                 case "walk": BtcDevMatch.Walk(p.Length > 1 ? p[1] : "go", p.Length > 2 ? p[2] : "w", (int)F(p, 2, 8f)); break;
                 case "measure": BtcDevEngine.BeginMeasure(p.Length > 1 ? p[1] : "m", F(p, 2, 10f)); _wait = "measure"; _waitUntil = now + F(p, 2, 10f); break;
                 case "ecodump": BtcDevEcoDump.Run(p); break;
@@ -304,6 +324,7 @@ namespace BetterThanCastle.Dev
                 case "waitecoplay": _wait = "eco"; _waitUntil = now + F(p, 1, 600f); break;
                 case "crystaldump": BtcDevCrystal.Dump(); break;
                 case "chopdump": BtcDevChopDump.Dump(p); break;
+                case "stationdump": BtcDevChopDump.Stations(); break;
                 case "rackinfo": BtcDevRack.Info(); break;
                 case "rackhostset": BtcDevRack.HostSet(p.Length > 1 ? p[1] : "Any"); break;
                 case "rackgate": BtcConfig.BetterConnection.Value = p.Length < 2 || p[1] != "off"; break;
@@ -319,8 +340,12 @@ namespace BetterThanCastle.Dev
                 case "jumpreset": BtcDevJump.Reset(); break;
                 case "crystaltint": BtcDevCrystal.Tint(p); break;
                 case "crystalread": BtcDevCrystal.Read(); break;
-                case "hostfaction": BtcDevFirefly.HostFaction((int)F(p, 1, 0f)); break;
+                case "crystalflip": BtcDevCrystal.Flip(p); break;
+                case "stressitems": BtcDevStress.Items(p.Length > 1 ? p[1] : "Blocks.Wood_DoubleLog_AA", (int)F(p, 2, 50f), F(p, 3, 20f)); break;
+                case "crystalcolors": BtcDevCrystal.Colors(); break;
+                case "hostfaction": BtcDevFirefly.HostFaction(p.Length > 1 && p[1] == "spec" && GameParam.CurrentFactionInfos != null ? GameParam.CurrentFactionInfos.Length - 1 : (int)F(p, 1, 0f)); break;
                 case "gameplay": BtcDevFirefly.Gameplay(p.Length > 1 ? p[1] : string.Empty); break;
+                case "rule": BtcDevFirefly.Rule(p.Length > 1 ? p[1] : "", F(p, 2, 1f)); break;
                 case "ffdump": BtcDevFirefly.Dump(p.Length > 1 ? p[1] : "cmd"); break;
                 case "pov": BtcPov.Cycle(1); break;
                 case "dots": BtcConfig.ReplayUnitDots.Value = (int)F(p, 1, 2f); break;
@@ -334,6 +359,7 @@ namespace BetterThanCastle.Dev
                         default: BtcDevItemLab.Report(p.Length > 2 ? p[2] : "x"); break;
                     }
                     break;
+                case "whl": BtcDevWorkHl.Cmd(p); break;
                 case "tfspawn": BtcDevTerraform.Spawn((int)F(p, 1, 7f)); break;
                 case "tfrows": BtcDevTerraform.Rows((int)F(p, 1, 0f), (int)F(p, 2, 12f)); break;
                 case "tfhire": BtcDevTerraform.Hire(); break;
@@ -371,6 +397,8 @@ namespace BetterThanCastle.Dev
                 case "mark": File.WriteAllText(Path.Combine(BtcDevPaths.LogDir, "mark-" + (p.Length > 1 ? p[1] : "x") + ".txt"), DateTime.Now.ToString("o")); break; // scenario.ps1 net plan triggers on these
                 case "netcap": BtcLog.Info("Cmd", "netcap " + BtcDevNet.CapText() + " | " + BtcNetManager.StatusText()); break;
                 case "netstat": BtcLog.Info("Cmd", "netstat " + BtcNetManager.StatusText()); break;
+                case "mmdump": BtcDevSpecMap.MiniMapDump(); break;
+                case "flagdump": BtcDevSpecMap.FlagDump(); break;
                 // client: leave the game/lobby on purpose (menu "Quit to menu" path); host: list users + lobby slots
                 case "leave": { Brix.Network.UNetManager lm = UnityEngine.Networking.NetworkManager.singleton as Brix.Network.UNetManager; BtcLog.Info("Cmd", "leave (manager " + (lm != null) + ")"); if (lm != null) lm.Disconnect(); break; }
                 case "users": BtcLog.Info("Cmd", "users " + BtcDevNet.UsersText()); break;

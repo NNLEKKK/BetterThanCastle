@@ -16,6 +16,16 @@ namespace BetterThanCastle.Patches
         }
     }
 
+    // Focus hit sound + marker (BtcFocusFx): only orders vanilla really accepts (it drops repeats of the same order within 2 s).
+    [HarmonyPatch(typeof(PickerOrderGiver), "AcceptNewOrder")]
+    internal static class FocusFxAcceptNewOrderPatch
+    {
+        private static void Postfix(bool __result, List<GameObject> actors, GameObject targetObject)
+        {
+            if (__result) BtcFocusFx.OnOrder(actors, targetObject);
+        }
+    }
+
     // Vanilla mouse binds (LMB/RMB/... with an optional modifier) edited in Advanced Hotkeys: vanilla only maps keyboard entries into Rewired.
     [HarmonyPatch(typeof(BindingsProvider), "Reload")]
     internal static class VanillaMouseBindsReloadPatch

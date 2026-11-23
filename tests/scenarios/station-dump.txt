@@ -1,0 +1,7 @@
+# Dump built volume cells of every crafting station (BTClogs/station-dump.txt).
+newgame
+waitgame 240
+wait 3
+stationdump
+wait 1
+quit

@@ -121,6 +121,7 @@ namespace BetterThanCastle
 
 		private static void Issue(List<Labor> units, GameObject target)
 		{
+			BtcFocusFx.OnOrder(units, target);
 			if (NetworkServer.active)
 			{
 				for (int i = 0; i < units.Count; i++) ApplyOne(units[i], target);

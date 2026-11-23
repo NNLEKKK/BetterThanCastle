@@ -330,6 +330,10 @@ namespace BetterThanCastle
             s.hardText = null;
             ReleaseHard(s);
             BtcNetCheck.OnServerStarted(m);
+            BtcAnimNet.OnServerStarted(m);
+            BtcPosNet.OnServerStarted(m);
+            BtcSoundNet.OnServerStarted(m);
+            BtcOwnTransport.OnServerStarted(m);
             BtcLog.Info("Net", "BetterConnection v2 server session started (handlers 64,70-74,111 registered)");
         }
 
@@ -371,6 +375,11 @@ namespace BetterThanCastle
             if (rejoin) SendRejoin(m, s);
             ApplyClientPause(m, s);
             BtcNetCheck.OnClientConnected(m);
+            BtcAnimNet.OnClientConnected(m);
+            BtcPosNet.OnClientConnected(m);
+            BtcSoundNet.OnClientConnected(m);
+            BtcWorkHighlight.OnClientConnected(m);
+            BtcOwnTransport.OnClientConnected(m);
             BtcLog.Info("Net", "BetterConnection v2 client connected" + (rejoin ? " (reconnect)" : "") + " (handlers 64,70-77,110 registered)");
         }
 
@@ -1091,6 +1100,9 @@ namespace BetterThanCastle
 
         // ------------------------------------------------------------------ transport
         private static bool _disconnectTimeoutCaptured;
+        private static bool _sendDelayCaptured;
+        private static uint _origSendDelay;
+        private static float _origMaxDelay;
         private static uint _origDisconnectTimeout;
         private static FieldInfo _maxBufferedPacketsField;
         private static bool _origBufCaptured;
@@ -1117,6 +1129,10 @@ namespace BetterThanCastle
                     cfg.AcksType = ConnectionAcksType.Acks64;
                     cfg.MaxSentMessageQueueSize = 2048;
                     cfg.DisconnectTimeout = BcDisconnectTimeout;
+                    // no batching delay: LLAPI SendDelay (10 ms) and the HLAPI channel buffer flush (maxDelay 10 ms) added up to 20 ms per hop
+                    if (!_sendDelayCaptured) { _origSendDelay = cfg.SendDelay; _origMaxDelay = m.maxDelay; _sendDelayCaptured = true; }
+                    cfg.SendDelay = 0;
+                    m.maxDelay = 0f;
 #if DEV
                     // lab A/B of the transport window (BTC_ACKS = 32/64/96/128, BTC_QUEUE = MaxSentMessageQueueSize)
                     string ea = System.Environment.GetEnvironmentVariable("BTC_ACKS"), eq = System.Environment.GetEnvironmentVariable("BTC_QUEUE");
@@ -1130,6 +1146,7 @@ namespace BetterThanCastle
                 {
                     cfg.DisconnectTimeout = _origDisconnectTimeout;
                 }
+                if (!BtcNetworkGate.Enabled && _sendDelayCaptured) { cfg.SendDelay = _origSendDelay; m.maxDelay = _origMaxDelay; }
             }
             catch (Exception e) { BtcLog.Error("Net", "ApplyTransportConfig: " + e.Message); }
         }
@@ -1257,7 +1274,22 @@ namespace BetterThanCastle
             public bool ShowAwaitingRecoveryBadge;
         }
 
+        // OnGUI asked for the rows several times a frame (new list, strings, predicates each time): refreshed twice a second now
+        private static List<PingRowInfo> _rows;
+        private static float _rowsNext;
+        private static UNetManager _rowsFor;
+
         private static List<PingRowInfo> BuildPingRows(UNetManager m, State s)
+        {
+            float now = Time.unscaledTime;
+            if (_rows != null && now < _rowsNext && _rowsFor == m) return _rows;
+            _rows = BuildPingRowsNow(m, s);
+            _rowsNext = now + 0.5f;
+            _rowsFor = m;
+            return _rows;
+        }
+
+        private static List<PingRowInfo> BuildPingRowsNow(UNetManager m, State s)
         {
             List<PingRowInfo> list = new List<PingRowInfo>();
             if (NetworkServer.active)
@@ -1446,21 +1478,32 @@ namespace BetterThanCastle
             {
                 List<PingRowInfo> rows = BuildPingRows(m, s);
                 if (rows.Count == 0) return;
-                string[] labels = new string[rows.Count];
-                Color[] dots = new Color[rows.Count];
-                float worst = -1f;
-                for (int i = 0; i < rows.Count; i++)
+                if (!ReferenceEquals(rows, _chipFor))
                 {
-                    labels[i] = rows[i].Label;
-                    dots[i] = rows[i].ShowVoluntaryPauseBadge ? BtcHud.Ok : (rows[i].ShowAwaitingRecoveryBadge ? BtcHud.Danger : new Color(0f, 0f, 0f, 0f));
-                    if (rows[i].Ms > worst) worst = rows[i].Ms;
+                    _chipFor = rows;
+                    _chipLabels = new string[rows.Count];
+                    _chipDots = new Color[rows.Count];
+                    _chipWorst = -1f;
+                    for (int i = 0; i < rows.Count; i++)
+                    {
+                        _chipLabels[i] = rows[i].Label;
+                        _chipDots[i] = rows[i].ShowVoluntaryPauseBadge ? BtcHud.Ok : (rows[i].ShowAwaitingRecoveryBadge ? BtcHud.Danger : new Color(0f, 0f, 0f, 0f));
+                        if (rows[i].Ms > _chipWorst) _chipWorst = rows[i].Ms;
+                    }
+                    _chipValue = _chipWorst < 0f ? "..." : string.Format("{0:0} ms", _chipWorst);
                 }
+                float worst = _chipWorst;
                 Color pc = worst < 0f ? new Color(1f, 1f, 1f, 0.6f) : (worst < 90f ? BtcHud.Ok : (worst < 170f ? BtcHud.Warn : BtcHud.Danger));
-                BtcHud.Chip("ping", BtcReplayIcons.Wave, pc, worst < 0f ? "..." : string.Format("{0:0} ms", worst), labels, dots);
+                BtcHud.Chip("ping", BtcReplayIcons.Wave, pc, _chipValue, _chipLabels, _chipDots);
             }
         }
 
         private static int _noticeState = -1;
+        private static List<PingRowInfo> _chipFor;
+        private static string[] _chipLabels;
+        private static Color[] _chipDots;
+        private static float _chipWorst;
+        private static string _chipValue;
 
         private static void EnsureConnectionOverlayTexture(State s)
         {

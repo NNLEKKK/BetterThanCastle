@@ -11,6 +11,7 @@ namespace BetterThanCastle
         internal override int Id { get { return 7; } }
         internal override bool IsActive { get { return BtcReplayUI.TabActive; } }
         internal override string UndoScope { get { return "replay"; } }
+        internal override void ClearSearch() { BtcReplayLibrary.ClearSearch(); }
 
         internal override void Draw(Rect area, int fs)
         {

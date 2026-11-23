@@ -204,6 +204,7 @@ namespace BetterThanCastle
 
 		private void OnGUI()
 		{
+			if (useGUILayout) useGUILayout = false; // no GUILayout here: skip Unity's per-event layout pass (garbage)
 			if (_phase == Phase.Wait || _phase == Phase.Checking || _phase == Phase.Hidden) return;
 			int fs = Mathf.Max(14, Screen.height / 38);
 			BtcReplayUI.Ensure(fs);
@@ -339,11 +340,17 @@ namespace BetterThanCastle
 		private static string PendingFile { get { return BtcPaths.Config("open-changelog.txt"); } }
 
 		/// <summary>Called every frame by ResourcePackManager.Update: after an automatic update restart, opens the changelog once the game is up.</summary>
+		private static bool _postChecked;
+
 		internal static void PollPostUpdate()
 		{
 			try
 			{
-				if (Time.realtimeSinceStartup < 12f || !File.Exists(PendingFile)) return;
+				// The file is written just before the restart after an update: one look per session is enough (was a disk
+				// check and a path build every frame).
+				if (_postChecked || Time.realtimeSinceStartup < 12f) return;
+				_postChecked = true;
+				if (!File.Exists(PendingFile)) return;
 				File.Delete(PendingFile);
 				ResourcePackManager.GoTab(10);
 			}

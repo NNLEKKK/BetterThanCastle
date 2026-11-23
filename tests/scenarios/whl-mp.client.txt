@@ -1,0 +1,16 @@
+# client of whl-mp: dumps counters after the host's dig rounds; orders its own workers to move twice (move marker relay)
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 120
+ready 420
+waitgame 300
+wait 12
+whl move 1
+wait 10
+whl move 0
+wait 15
+whl dump mid
+wait 30
+whl dump after
+wait 5
+quit

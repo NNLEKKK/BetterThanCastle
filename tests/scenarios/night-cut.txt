@@ -1,0 +1,36 @@
+# Night visual switches (Performance > Visuals): night with all on, then each cut. Shader warm-up runs in the menu (cfg WarmShaders). Results: BTClogs/engine.txt, agent.log VfxCut.
+prof start
+engine counters off
+newgame
+waitgame 240
+daytime 12
+wait 5
+spawn bricktron 60
+spawn stockpile 20
+spawn workbench 10
+waitspawn 120
+order build 150
+wait 30
+measure day 20
+daytime 19.5 run
+wait 90
+prof reset
+measure night 20
+vfx unit 0
+wait 3
+measure night-no-unitlights 15
+vfx fly 0
+wait 3
+measure night-no-unit-fly 15
+vfx shadow 0
+wait 3
+measure night-all-cut 15
+vfxdump nightcut
+vfx unit 1
+vfx fly 1
+vfx shadow 1
+wait 3
+measure night-restored 15
+vfxdump nightrestored
+dump nightcut
+quit

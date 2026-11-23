@@ -17,13 +17,21 @@ namespace BetterThanCastle.Patches
     {
         internal static void Settings(Factory.AssetKey key, int rot, int config, ref Dictionary<XYZ, VPropertyMask> result)
         {
-            try { if (BtcChopBlock1x1.Applies(key)) result = BtcChopBlock1x1.FilterSettings(result, rot, config); }
+            try
+            {
+                if (BtcChopBlock1x1.Applies(key)) result = BtcChopBlock1x1.FilterSettings(result, rot, config);
+                else if (BtcChopBlock1x1.AppliesStation(key)) result = BtcChopBlock1x1.FilterStationSettings(key, result, rot, config);
+            }
             catch (Exception ex) { BtcLog.Error("Hook", "ChopBlock1x1: " + ex); }
         }
 
         internal static void Indices(Factory.AssetKey key, int rot, int config, ref List<XYZ>[] result)
         {
-            try { if (BtcChopBlock1x1.Applies(key)) result = BtcChopBlock1x1.FilterIndices(result, rot, config); }
+            try
+            {
+                if (BtcChopBlock1x1.Applies(key)) result = BtcChopBlock1x1.FilterIndices(result, rot, config);
+                else if (BtcChopBlock1x1.AppliesStation(key)) result = BtcChopBlock1x1.FilterStationIndices(key, result, rot, config);
+            }
             catch (Exception ex) { BtcLog.Error("Hook", "ChopBlock1x1: " + ex); }
         }
     }

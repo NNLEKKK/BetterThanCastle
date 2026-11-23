@@ -34,7 +34,12 @@ namespace BetterThanCastle
                 if (_mm == null || _panel == null || _menu == null || !_panel.gameObject.activeInHierarchy || _panel.GetComponentInParent<Canvas>() == null)
                 {
                     Unbind();
-                    if (!Bind()) { _next = t + 1f; return; }
+                    if (!Bind())
+                    {
+                        // game HUD not loaded (Replay/NoGameHud): the mini map gets its own menu, then binds like the Lua one
+                        if (BtcConfig.ReplayNoGameHud != null && BtcConfig.ReplayNoGameHud.Value && BtcReplay.FeedGo && Spawn()) Bind();
+                        if (_mm == null) { _next = t + 1f; return; }
+                    }
                 }
                 if (_cg == null) { _cg = _panel.GetComponent<CanvasGroup>(); if (_cg == null) _cg = _panel.gameObject.AddComponent<CanvasGroup>(); }
                 bool hide = BtcConfig.ReplayHideMinimap != null && BtcConfig.ReplayHideMinimap.Value;
@@ -63,6 +68,54 @@ namespace BetterThanCastle
                 }
             }
             catch (System.Exception e) { BtcLog.Error("ReplayMinimap", e.Message); _next = t + 5f; }
+        }
+
+        /// Set by the GameMenu load skip (diagnostics only).
+        internal static bool GameHudSkipped;
+        private static GameObject _own;
+
+        /// <summary>Own "Menu: BtcMinimap" with the game mini map prefab (what the scoreboard panel holds), 256x256 at the top left of the
+        /// game UI canvas. The holder is sized BEFORE the prefab is made: MiniMap reads its size once when it starts.</summary>
+        private static bool Spawn()
+        {
+            if (_own != null) return false;
+            Canvas root = null;
+            Canvas[] all = UnityEngine.Object.FindObjectsOfType<Canvas>();
+            for (int i = 0; i < all.Length && root == null; i++)
+            {
+                Canvas c = all[i];
+                if (c == null || !c.isRootCanvas || c.renderMode != RenderMode.ScreenSpaceOverlay) continue;
+                for (int k = 0; k < c.transform.childCount; k++)
+                    if (c.transform.GetChild(k).name.StartsWith("Menu:")) { root = c; break; }
+            }
+            Transform parent;
+            if (root != null) parent = root.transform;
+            else
+            {
+                GameObject cgo = new GameObject("BtcMinimapCanvas", typeof(RectTransform));
+                Canvas cv = cgo.AddComponent<Canvas>();
+                cv.renderMode = RenderMode.ScreenSpaceOverlay;
+                cgo.AddComponent<CanvasScaler>();
+                cgo.AddComponent<GraphicRaycaster>();
+                parent = cgo.transform;
+            }
+            GameObject menu = new GameObject("Menu: BtcMinimap", typeof(RectTransform));
+            RectTransform mrt = (RectTransform)menu.transform;
+            mrt.SetParent(parent, false);
+            mrt.anchorMin = Vector2.zero; mrt.anchorMax = Vector2.one; mrt.offsetMin = Vector2.zero; mrt.offsetMax = Vector2.zero;
+            GameObject holder = new GameObject("Minimap", typeof(RectTransform));
+            RectTransform h = (RectTransform)holder.transform;
+            h.SetParent(mrt, false);
+            h.anchorMin = new Vector2(0f, 1f); h.anchorMax = new Vector2(0f, 1f); h.pivot = new Vector2(0f, 1f);
+            h.sizeDelta = new Vector2(256f, 256f); h.anchoredPosition = Vector2.zero;
+            GameObject mm = Brix.External.Factories.Factory.Instantiate(Brix.External.Factories.Images.MiniMap);
+            if (mm == null) { UnityEngine.Object.Destroy(menu); BtcLog.Error("ReplayMinimap", "no mini map prefab"); return false; }
+            mm.transform.SetParent(h, false);
+            RectTransform r = mm.transform as RectTransform;
+            if (r != null) { r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one; r.offsetMin = Vector2.zero; r.offsetMax = Vector2.zero; r.pivot = new Vector2(0.5f, 0.5f); }
+            _own = menu;
+            BtcLog.Info("ReplayMinimap", "own mini map spawned under " + parent.name);
+            return true;
         }
 
         private static void Unbind()
@@ -127,6 +180,7 @@ namespace BetterThanCastle
         /// <summary>Playback ended: show everything again.</summary>
         internal static void Reset()
         {
+            if (_own != null) { UnityEngine.Object.Destroy(_own); _own = null; }
             if (!_touched) return;
             _touched = false;
             try

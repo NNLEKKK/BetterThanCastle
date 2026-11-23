@@ -8,6 +8,18 @@ namespace BetterThanCastle
     /// <summary>Facade over the private pack/hat/dump state of ResourcePackManager for the Packs tab (UI/Packs/BtcPacksTab.cs).</summary>
     public partial class ResourcePackManager
     {
+        /// <summary>Cost of one pack switch by phase (ms, ticks of PackSw), logged by SetPack.</summary>
+        private static readonly System.Diagnostics.Stopwatch PackSw = System.Diagnostics.Stopwatch.StartNew();
+        private static long _tFind, _tSnap, _tRead, _tLoad, _tRevert, _tSig;
+        private static int _nSnap, _nLoad, _nRevert, _nSig;
+        private static void PackTimesReset() { _tFind = _tSnap = _tRead = _tLoad = _tRevert = _tSig = 0; _nSnap = _nLoad = _nRevert = _nSig = 0; }
+        private static string Ms(long ticks) { return (ticks * 1000 / System.Diagnostics.Stopwatch.Frequency).ToString(); }
+        private static string PackTimes()
+        {
+            return "find " + Ms(_tFind) + ", backup " + Ms(_tSnap) + "/" + _nSnap + ", read " + Ms(_tRead) + ", decode " + Ms(_tLoad) + "/" + _nLoad
+                + ", revert " + Ms(_tRevert) + "/" + _nRevert + ", signature " + Ms(_tSig) + "/" + _nSig;
+        }
+
         internal static bool PacksReady { get { return instance != null; } }
         internal static string PackRoot { get { return RootDir; } }
         internal static string PackCurrent() { return instance == null ? null : instance.currentPack; }

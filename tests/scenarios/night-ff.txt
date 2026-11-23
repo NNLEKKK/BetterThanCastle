@@ -1,0 +1,34 @@
+# Real night: day cycle running from dusk, fireflies out. Day baseline first, then night A/B. Results: BTClogs/engine.txt, vfx-*.txt, prof-nightff.txt.
+prof start
+engine counters off
+newgame
+waitgame 240
+warmshaders
+daytime 12
+wait 5
+spawn bricktron 60
+spawn stockpile 20
+spawn workbench 10
+waitspawn 120
+order build 150
+wait 30
+measure day 20
+daytime 19.5 run
+wait 90
+vfxdump nightff
+prof reset
+measure night 20
+engine particles off
+wait 2
+measure night-no-particles 15
+engine particles on
+wait 2
+engine lights off
+wait 2
+measure night-no-lights 15
+engine lights on
+wait 2
+measure night2 15
+vfxdump nightff2
+dump nightff
+quit

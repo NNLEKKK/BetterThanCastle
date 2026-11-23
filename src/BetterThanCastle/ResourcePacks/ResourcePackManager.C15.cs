@@ -747,6 +747,7 @@ public partial class ResourcePackManager : MonoBehaviour
 	private Light[] dirLights;
 
 	private float dirLightsNext;
+	private int dirLightsScene = -1;
 
 	private bool lightApplied;
 

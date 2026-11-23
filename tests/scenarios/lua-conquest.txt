@@ -1,0 +1,9 @@
+# Lua cost in an original conquest match (serverside/clientside SlowUpdate, menus) + load timeline: prof-lua-conq.txt LUA section, loadline.txt.
+prof start
+newgame default conquest
+waitgame 240
+wait 5
+prof reset
+wait 45
+dump lua-conq
+quit

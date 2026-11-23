@@ -1,0 +1,48 @@
+# Current frame state: day/night, all visuals vs Maximum performance (vfx unit/fly/shadow off, pause/static/tags on). Results: BTClogs/engine.txt, prof-perfnow.txt (SPIKES), vfx-pn-*.txt
+prof start
+engine counters off
+vfx pause 0
+vfx static 0
+vfx tags 0
+vfx unit 1
+vfx fly 1
+vfx shadow 1
+newgame
+waitgame 240
+daytime 12
+wait 5
+spawn bricktron 60
+spawn stockpile 20
+spawn workbench 10
+waitspawn 120
+order build 150
+wait 30
+prof reset
+measure day-full 30
+vfx pause 1
+vfx static 1
+vfx tags 1
+vfx unit 0
+vfx fly 0
+vfx shadow 0
+wait 3
+measure day-max 30
+daytime 19.5 run
+wait 90
+measure night-max 30
+vfxdump pn-nightmax
+vfx pause 0
+vfx static 0
+vfx tags 0
+vfx unit 1
+vfx fly 1
+vfx shadow 1
+wait 3
+measure night-full 30
+vfxdump pn-nightfull
+dump perfnow
+vfx pause 1
+vfx unit 1
+vfx fly 1
+vfx shadow 1
+quit

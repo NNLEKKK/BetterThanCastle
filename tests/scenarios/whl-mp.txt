@@ -1,0 +1,18 @@
+# work highlights (BtcWorkHighlight): host + 1 client in conquest; the first worker of every faction digs a voxel; both dump counters.
+# expect: host shown = own digs only, hidden = the client's; host sent > 0 (to the client's faction only); client got > 0.
+host default conquest
+waitclients 1 300
+wait 3
+startmatch 180
+waitgame 300
+wait 10
+whl dump pre
+whl dig
+whl move 1
+wait 25
+whl dig
+whl move 1
+wait 25
+whl dump after
+wait 20
+quit

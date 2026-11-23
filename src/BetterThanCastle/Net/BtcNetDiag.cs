@@ -386,7 +386,12 @@ public static class BtcNetDiag
 	private static readonly System.Threading.AutoResetEvent wake = new System.Threading.AutoResetEvent(false);
 
 	private static readonly object fileGate = new object();
-	public static bool Enabled = true;
+	// status lines twice a second (37 KB/s of garbage + disk writes): only with Network/DiagLog2 on, always in DEV builds
+#if DEV
+	public static bool Enabled { get { return true; } }
+#else
+	public static bool Enabled { get { return BtcConfig.DiagLog != null && BtcConfig.DiagLog.Value; } }
+#endif
 
 	private const int MaxFileBytes = 524288;
 

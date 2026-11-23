@@ -1,0 +1,76 @@
+# Mod per-frame work inside ResourcePackManager.Update / OnGUI (2026-11-21 perf pass)
+BtcHotkeys:Tick  # hotkey poll
+BtcOverlays:Tick  # overlays
+BtcTerraform:Tick  # terraform tasks
+BtcTerraformTool:Tick  # terraform tool
+BtcVisualCompare:Tick  # visual compare
+BtcUnitPlates:Tick  # unit plates
+BtcInterface:Tick  # interface
+BtcMatchStats:Tick  # match stats
+BtcTimer:Tick  # timer
+BtcMatchStatsUI:Tick  # stats UI
+BtcReplay:Tick  # replay recorder
+BtcReplayKeys:Tick  # replay keys
+BtcNetDiag:Tick  # net diag
+BtcSimplePhys:Tick  # simple physics
+BtcKick:Tick  # kick
+ResourcePackManager:UpdateMenuGameLock  # input lock
+ResourcePackManager:ForceShowHp  # hp bars
+ResourcePackManager:ApplyStaminaRules  # stamina
+ResourcePackManager:UpdateAmmoUnits  # ammo
+ResourcePackManager:UpdateStatUnits  # stats
+ResourcePackManager:UpdateBuildingUnits  # buildings
+ResourcePackManager:PollClientOrders  # orders
+ResourcePackManager:ProcessPredictions  # predictions
+ResourcePackManager:UpdateHitCounters  # hit counters
+ResourcePackManager:UpdateCenters  # centers
+ResourcePackManager:UpdateExplosionDist  # explosions
+ResourcePackManager:UpdatePathUnits  # paths
+CameraBookmarkHotkey:Update  # camera binds
+CameraBookmarkHotkey:OnGUI  # groups overlay
+JobSelectHotkeys:Update  # job binds
+BtcNetManager:DrawOverlay  # net overlay
+BtcHud:Frame  # hud frame
+BtcMatchStats:RefreshFactions  # stats poll part
+BtcMatchStats:PollUnits  # stats poll part
+BtcMatchStats:PollNests  # stats poll part
+BtcMatchStats:PollTracked  # stats poll part
+BtcMatchStats:ResolveTrades  # stats poll part
+BtcMatchStats:PollStockpiles  # stats poll part
+BtcMatchStats:Finish  # stats poll part
+BtcMatchStats:Sample  # stats sample
+BtcMatchStats:BeginMatch  # stats start
+BtcReplayNames:Tick  # replay names
+BtcMatchStatsNet:Tick  # stats net
+BtcNetDiag:Tick  # net diag
+BtcMatchStatsNet:RecTick  # stats to replay
+BtcMatchStatsNet:Build  # stats msg build
+BtcMatchStatsNet:SendDetails  # stats details
+BtcMatchStatsNet:BuildSample  # stats sample msg
+BtcReplay:OnPacket  # replay packet record
+BtcReplay:FlushBuf  # replay buffer flush
+ResourcePackManager:ApplyAll  # resource pack rescan (every 10 s with a pack)
+ResourcePackManager:UpdateAlwaysRings  # rings
+ResourcePackManager:UpdateBombMap  # bomb map
+ResourcePackManager:UpdateCrystalTimers  # crystal timers
+ResourcePackManager:UpdateEnemyTextures  # enemy textures
+ResourcePackManager:UpdateLightCache  # light cache
+ResourcePackManager:ApplyHats  # hats
+ResourcePackManager:SaveOptions  # options save
+BtcUpdater:PollPostUpdate  # updater
+BtcDiscord:Poll  # discord
+BtcAutoMarks:Tick  # timer child
+BtcRecovery:Tick  # timer child
+BtcCraftQueue:Tick  # timer child
+BtcInfHeal:Tick  # timer child
+BtcHeldWards:Tick  # timer child
+BtcCleanFilter:Tick  # timer child
+BtcStationRadius:LoadTick  # timer child
+BtcShield:Tick  # timer child
+BtcPhantom:Tick  # timer child
+BtcPovRec:Tick  # timer child
+BtcPovRec:PlayTick  # timer child
+ResourcePackManager:ScanHpRings  # hp rings scan (LateUpdate)
+ResourcePackManager:ReloadHpConfig  # hp config reload
+BtcDiscord:UpdateUpload  # discord map upload
+BtcDiscord:EnsureHooks  # discord hooks

@@ -69,7 +69,7 @@ namespace BetterThanCastle.Dev
         private static void Pre(MethodBase __originalMethod, ref long __state)
         {
             __state = 0;
-            if (!BtcLoadBoost.Loading) return;
+            if (!BtcDevLoadLine.Window) return;
             if (_child == null) _child = new long[512];
             if (_d >= 500) return;
             _d++;

@@ -69,6 +69,7 @@ namespace Brix.Input
 				this.HandleShootAt();
 				this.HandleFocusMark();
 				this.HandlePing();
+				BtcStationRadius.Tick(instance);
 				this.HandleFocusHold();
 				this.HandleDropLuggage();
 				this.HandleOverlayToggle();
@@ -252,7 +253,7 @@ namespace Brix.Input
 		{
 			for (int i = 0; i < 5; i++)
 			{
-				KeyCode[] keys = BtcHotkeys.GetKeys("camera_slot_save_" + (i + 1), CameraBookmarkHotkey.StableSaveDefaults[i]);
+				KeyCode[] keys = BtcHotkeys.GetKeys(BtcStr.Key("camera_slot_save_", i + 1), CameraBookmarkHotkey.StableSaveDefaults[i]);
 				bool flag = CameraBookmarkHotkey.IsComboPressed(keys);
 				bool flag2 = flag;
 				bool flag3 = flag2;
@@ -274,7 +275,7 @@ namespace Brix.Input
 				}
 				else
 				{
-					KeyCode[] keys2 = BtcHotkeys.GetKeys("camera_slot_goto_" + (i + 1), CameraBookmarkHotkey.StableGotoDefaults[i]);
+					KeyCode[] keys2 = BtcHotkeys.GetKeys(BtcStr.Key("camera_slot_goto_", i + 1), CameraBookmarkHotkey.StableGotoDefaults[i]);
 					bool flag11 = CameraBookmarkHotkey.IsComboPressed(keys2) && this._stableSlotSet[i];
 					bool flag12 = flag11;
 					bool flag13 = flag12;
@@ -406,7 +407,7 @@ namespace Brix.Input
 			for (int i = 0; i < 3; i++)
 			{
 				int num4 = i + 1;
-				KeyCode[] keys = BtcHotkeys.GetKeys("camera_fast_move_" + num4, CameraBookmarkHotkey.FastModeKeyDefaults[i]);
+				KeyCode[] keys = BtcHotkeys.GetKeys(BtcStr.Key("camera_fast_move_", num4), CameraBookmarkHotkey.FastModeKeyDefaults[i]);
 				bool flag6 = keys == null || keys.Length == 0;
 				bool flag7 = !flag6;
 				bool flag8 = flag7;
@@ -414,7 +415,7 @@ namespace Brix.Input
 				bool flag10 = flag9;
 				if (flag10)
 				{
-					string @string = BtcHotkeys.GetString("camera_fast_move_" + num4 + "_mode", "hold");
+					string @string = BtcHotkeys.GetString(BtcStr.Key("camera_fast_move_", num4, "_mode"), "hold");
 					bool flag11 = @string.Equals("toggle", StringComparison.OrdinalIgnoreCase);
 					bool flag12 = flag11;
 					bool flag13 = flag12;
@@ -445,9 +446,9 @@ namespace Brix.Input
 					bool flag26 = flag25;
 					if (flag26)
 					{
-						num *= BtcHotkeys.GetFloat("camera_fast_move_" + num4 + "_translation_multiplier", 2.5f);
-						num2 *= BtcHotkeys.GetFloat("camera_fast_move_" + num4 + "_zoom_multiplier", 2.5f);
-						num3 *= BtcHotkeys.GetFloat("camera_fast_move_" + num4 + "_orbit_multiplier", 2.5f);
+						num *= BtcHotkeys.GetFloat(BtcStr.Key("camera_fast_move_", num4, "_translation_multiplier"), 2.5f);
+						num2 *= BtcHotkeys.GetFloat(BtcStr.Key("camera_fast_move_", num4, "_zoom_multiplier"), 2.5f);
+						num3 *= BtcHotkeys.GetFloat(BtcStr.Key("camera_fast_move_", num4, "_orbit_multiplier"), 2.5f);
 					}
 				}
 			}
@@ -474,7 +475,7 @@ namespace Brix.Input
 		{
 			for (int i = 0; i < 5; i++)
 			{
-				KeyCode[] keys = BtcHotkeys.GetKeys("group_save_" + (i + 1), CameraBookmarkHotkey.GroupSaveDefaults[i]);
+				KeyCode[] keys = BtcHotkeys.GetKeys(BtcStr.Key("group_save_", i + 1), CameraBookmarkHotkey.GroupSaveDefaults[i]);
 				bool flag = CameraBookmarkHotkey.IsComboPressed(keys);
 				bool flag2 = flag;
 				bool flag3 = flag2;
@@ -497,7 +498,7 @@ namespace Brix.Input
 				}
 				else if (!this.HandleGroupAdd(i))
 				{
-					KeyCode[] keys2 = BtcHotkeys.GetKeys("group_select_" + (i + 1), CameraBookmarkHotkey.GroupSelectDefaults[i]);
+					KeyCode[] keys2 = BtcHotkeys.GetKeys(BtcStr.Key("group_select_", i + 1), CameraBookmarkHotkey.GroupSelectDefaults[i]);
 					bool flag11 = CameraBookmarkHotkey.IsComboPressed(keys2) && this._groups[i].Count > 0;
 					bool flag12 = flag11;
 					bool flag13 = flag12;
@@ -555,7 +556,7 @@ namespace Brix.Input
 			{
 				return false;
 			}
-			KeyCode[] sel = BtcHotkeys.GetKeys("group_select_" + (i + 1), CameraBookmarkHotkey.GroupSelectDefaults[i]);
+			KeyCode[] sel = BtcHotkeys.GetKeys(BtcStr.Key("group_select_", i + 1), CameraBookmarkHotkey.GroupSelectDefaults[i]);
 			if (sel == null || sel.Length == 0)
 			{
 				return false;
@@ -983,6 +984,7 @@ namespace Brix.Input
 
 		private void OnGUI()
 		{
+			if (useGUILayout) useGUILayout = false; // no GUILayout here: skip Unity's per-event layout pass (garbage)
 			this.EnsureOverlayStyles();
 			bool flag = BtcHotkeys.Enabled && this._overlayVisible && BtcReplay.Mode != BtcReplay.State.Playing;
 			bool flag2 = flag;
@@ -993,6 +995,8 @@ namespace Brix.Input
 			this.DrawAttribution();
 			this.DrawQuickTurnArrow();
 			BtcFocusMark.DrawIcon();
+			BtcFocusFx.Draw();
+			BtcStationRadius.Draw();
 		}
 
 		private void EnsureOverlayStyles()
@@ -1051,21 +1055,20 @@ namespace Brix.Input
 			Rect trigger = new Rect((float)Screen.width - 45f - wCol + sl.Offset.x, panel.y, wCol, panel.height);
 			Color pc = BtcHud.Panel;
 			BtcReplayUI.Fill(panel, new Color(pc.r, pc.g, pc.b, pc.a * a));
-			List<GameObject> source = new List<GameObject>();
-			UIGameSelector.GetSelectedEverything(ref source);
-			List<GameObject> list = CameraBookmarkHotkey.FilterToUnits(source);
+			RefreshOverlayGroups();
+			List<GameObject> list = _ovSel;
 			GUIStyle num = BtcReplayUI.sVal;
 			Color oc = GUI.contentColor;
 			float y = panel.y + pad;
 			for (int i = 0; i < 5; i++)
 			{
-				List<GameObject> list2 = CameraBookmarkHotkey.FilterToUnits(this._groups[i]);
+				List<GameObject> list2 = _ovGroups[i];
 				Color color = (list2.Count > 0 && this._groupCycleCursor == i && list.Count == list2.Count) ? CameraBookmarkHotkey.ColorActive : ((list2.Count > 0) ? CameraBookmarkHotkey.ColorOccupied : CameraBookmarkHotkey.ColorEmpty);
 				Rect rect = _grpOpen ? new Rect(panel.x + pad, y, panel.width - pad * 2f, rowH) : new Rect(panel.x + pad + (float)i * (cell + gap), y, cell, cell);
 				BtcReplayUI.Fill(rect, new Color(color.r, color.g, color.b, (list2.Count > 0 ? 0.22f : 0.07f) * a));
 				BtcReplayUI.Fill(new Rect(rect.x, rect.y, 3f, rect.height), new Color(color.r, color.g, color.b, (list2.Count > 0 ? 1f : 0.35f) * a));
 				GUI.contentColor = new Color(1f, 1f, 1f, (list2.Count > 0 ? 0.95f : 0.4f) * a);
-				GUI.Label(_grpOpen ? new Rect(rect.x + (float)fs * 0.2f, rect.y, (float)fs * 1.4f, rect.height) : rect, (i + 1).ToString(), num);
+				GUI.Label(_grpOpen ? new Rect(rect.x + (float)fs * 0.2f, rect.y, (float)fs * 1.4f, rect.height) : rect, BtcStr.Key("", i + 1), num);
 				GUI.contentColor = oc;
 				if (_grpOpen)
 				{
@@ -1091,9 +1094,9 @@ namespace Brix.Input
 				BtcReplayUI.Fill(rect2, new Color(color2.r, color2.g, color2.b, (set ? 0.22f : 0.07f) * a));
 				BtcReplayUI.Fill(new Rect(rect2.x, rect2.yMax - 2f, rect2.width, 2f), new Color(color2.r, color2.g, color2.b, (set ? 1f : 0.35f) * a));
 				GUI.contentColor = new Color(1f, 1f, 1f, (set ? 0.95f : 0.4f) * a);
-				GUI.Label(rect2, (j + 1).ToString(), num);
+				GUI.Label(rect2, BtcStr.Key("", j + 1), num);
 				GUI.contentColor = oc;
-				BtcReplayIcons.Hint(rect2, BtcReplayUI.T("Camera slot ", "Слот камеры ") + (j + 1));
+				BtcReplayIcons.Hint(rect2, BtcStr.Key(BtcReplayUI.T("Camera slot ", "Слот камеры "), j + 1));
 			}
 		}
 
@@ -1441,7 +1444,7 @@ namespace Brix.Input
 			float fast = cam.ZoomSpeedMod / Mathf.Max(0.0001f, this._fastBaseZoomMod);
 			cam.ZoomSpeedMod = 0f;
 			float w = UnityEngine.Input.mouseScrollDelta.y;
-			if (w == 0f || UnityEngine.Input.GetKey(KeyCode.LeftShift) || UnityEngine.Input.GetKey(KeyCode.RightShift)
+			if (w == 0f || BtcStationRadius.WheelTaken || UnityEngine.Input.GetKey(KeyCode.LeftShift) || UnityEngine.Input.GetKey(KeyCode.RightShift)
 				|| (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()))
 			{
 				return;
@@ -2054,6 +2057,34 @@ namespace Brix.Input
 			return list;
 		}
 
+		// The groups overlay is drawn on every OnGUI event (layout, repaint, input): its selection and group lists are worked
+		// out once per frame into reused lists (was 6 new lists + a selection query per event).
+		private int _ovFrame = -1;
+		private List<GameObject> _ovSource = new List<GameObject>();
+		private readonly List<GameObject> _ovSel = new List<GameObject>();
+		private readonly List<GameObject>[] _ovGroups = { new List<GameObject>(), new List<GameObject>(), new List<GameObject>(), new List<GameObject>(), new List<GameObject>() };
+
+		private void RefreshOverlayGroups()
+		{
+			if (_ovFrame == Time.frameCount) return;
+			_ovFrame = Time.frameCount;
+			_ovSource.Clear();
+			UIGameSelector.GetSelectedEverything(ref _ovSource);
+			FilterInto(_ovSource, _ovSel);
+			for (int i = 0; i < 5; i++) FilterInto(this._groups[i], _ovGroups[i]);
+		}
+
+		private static void FilterInto(List<GameObject> source, List<GameObject> dest)
+		{
+			dest.Clear();
+			if (source == null) return;
+			for (int i = 0; i < source.Count; i++)
+			{
+				GameObject go = source[i];
+				if (go != null && go.GetComponent<Labor>() != null) dest.Add(go);
+			}
+		}
+
 		private static List<GameObject> FilterToUnits(List<GameObject> source)
 		{
 			List<GameObject> list = new List<GameObject>();
@@ -2461,7 +2492,7 @@ namespace Brix.Input
 				if (McPressed("multicam_sync")) BtcMultiCam.SyncAll();
 				for (int i = 1; i <= 8; i++)
 				{
-					if (McPressed("multicam_focus_" + i)) BtcMultiCam.Focus(i - 1);
+					if (McPressed(BtcStr.Key("multicam_focus_", i))) BtcMultiCam.Focus(i - 1);
 				}
 			}
 			catch (Exception e) { BtcLog.Error("MultiCam", "binds: " + e.Message); }

@@ -8,7 +8,7 @@
     <Nullable>disable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <Version>0.5.4</Version>
+    <Version>0.6.0</Version>
     <DebugType>portable</DebugType>
     <ImplicitUsings>disable</ImplicitUsings>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
@@ -73,6 +73,19 @@
       <Compile Include="$(BtcDevPathsFile)" />
       <FileWrites Include="$(BtcDevPathsFile)" />
     </ItemGroup>
+  </Target>
+
+  <!-- The version is written in three places (Version above, Plugin.Version, Plugin.BepVersion; scripts/release.ps1 bumps all three).
+       Fail the build if they drift: BepVersion == Version, Plugin.Version == BepVersion + an optional letter. -->
+  <Target Name="BtcCheckVersion" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <BtcPluginText>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)Plugin.cs'))</BtcPluginText>
+      <BtcPluginVersion>$([System.Text.RegularExpressions.Regex]::Match($(BtcPluginText), '(?&lt;=const string Version = &quot;)[^&quot;]+').Value)</BtcPluginVersion>
+      <BtcBepVersion>$([System.Text.RegularExpressions.Regex]::Match($(BtcPluginText), '(?&lt;=const string BepVersion = &quot;)[^&quot;]+').Value)</BtcBepVersion>
+      <BtcVersionOk>$([System.Text.RegularExpressions.Regex]::IsMatch('$(BtcPluginVersion)', '^$(BtcBepVersion)[a-z]?$'))</BtcVersionOk>
+    </PropertyGroup>
+    <Error Condition="'$(BtcBepVersion)' != '$(Version)' Or '$(BtcVersionOk)' != 'True'"
+      Text="Version mismatch: csproj Version=$(Version), Plugin.BepVersion=$(BtcBepVersion), Plugin.Version=$(BtcPluginVersion). Run scripts/release.ps1 or fix them by hand." />
   </Target>
 
 </Project>

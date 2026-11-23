@@ -26,13 +26,18 @@ namespace BetterThanCastle
 		private static readonly FieldInfo StateField = AccessTools.Field(typeof(CraftingLabor), "state");
 		private static float _nextResend;
 
+		// Temporarily disabled (user 2026-11-23, 0.6.0: broken): rule not registered, limit stays 8.
 		public static void AddRows()
 		{
+			return;
+			#pragma warning disable 0162
 			BtcGameplay.Add("craft.max", "eco", "Workbench/forge: max queued orders", "Верстаки/печки: макс. число заказов в очереди", 8f, 8f, 40f, 1f, false, "Vanilla is 8. Orders above 8 are synced by an extra mod message.", "В ваниле 8. Заказы сверх 8 синхронизируются дополнительным сообщением мода.");
 		}
 
 		public static int Max()
 		{
+			return Vanilla; // disabled with the rule (see AddRows)
+			#pragma warning disable 0162
 			if (!BtcNetworkGate.Enabled) return Vanilla;
 			if (_idx == -2) _idx = BtcGameplay.Idx("craft.max");
 			float[] e = BtcGameplay.E;

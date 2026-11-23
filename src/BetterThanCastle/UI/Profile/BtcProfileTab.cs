@@ -17,6 +17,7 @@ namespace BetterThanCastle
         internal override int Id { get { return 6; } }
         internal override bool IsActive { get { return BtcMenu.CurrentId == 6; } }
         internal override string UndoScope { get { return Scope; } }
+        internal override void ClearSearch() { _gq = ""; }
         internal const string Scope = "profile";
 
         private const int PNick = 0, PStyle = 1, PAnim = 2, PAvatar = 3, PPlate = 4, PSets = 5;

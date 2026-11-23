@@ -1,0 +1,25 @@
+# orderlag: running unit gets a reversed order; OrderLag lines show do -> search -> path -> follow timing
+duelunits 1 1 1
+duelskip 1
+duelheal 0
+duelplayerbot -1
+duelnobot 1
+duelnorules 1
+duel
+waitduel 240
+wait 3
+duelplace 0 0 20 10 90
+wait 1.5
+dueltrace 1
+duellog OL-IDLE
+duelo 0 0 move 60 10
+wait 1.5
+duellog OL-REVERSE
+duelo 0 0 move 20 10
+wait 1.5
+duellog OL-SIDE
+duelo 0 0 move 40 18
+wait 1.5
+dueltrace 0
+wait 1
+quit

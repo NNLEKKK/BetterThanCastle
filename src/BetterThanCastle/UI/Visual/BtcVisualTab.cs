@@ -21,6 +21,7 @@ namespace BetterThanCastle
         internal override int Id { get { return 1; } }
         internal override bool IsActive { get { return ResourcePackManager.VisualActive; } }
         internal override string UndoScope { get { return BtcVisualRows.Scope; } }
+        internal override void ClearSearch() { _q = ""; }
 
         private static string Tt(string en, string ru) { return BtcReplayUI.T(en, ru); }
 
@@ -308,6 +309,7 @@ namespace BetterThanCastle
                 case "gametimer": return Tt("Game timer", "Игровой таймер");
                 case "shield": return Tt("Base shields (barriers)", "Защита базы (барьеры)");
                 case "ping": return Tt("Team pings", "Пинги союзникам");
+                case "focus": return Tt("Focus (hit sound, marker)", "Фокус (хитсаунд, метка)");
                 case "menu": return Tt("Menu behaviour", "Поведение меню");
                 default: return Tt("Brightness", "Яркость");
             }
@@ -331,6 +333,7 @@ namespace BetterThanCastle
                 case "crystal": return BtcReplayIcons.Diamond;
                 case "shield": return BtcReplayIcons.Shield;
                 case "ping": return BtcReplayIcons.Target;
+                case "focus": return BtcReplayIcons.Swords;
                 case "menu": return BtcReplayIcons.Lock;
                 default: return BtcReplayIcons.Sun;
             }
@@ -496,6 +499,7 @@ namespace BetterThanCastle
             if (Sec(ref y, w, fs, "world", "bomb")) Settings(ref y, w, fs, "world", "bomb");
             if (Sec(ref y, w, fs, "world", "shield")) Settings(ref y, w, fs, "world", "shield");
             if (Sec(ref y, w, fs, "world", "ping")) Settings(ref y, w, fs, "world", "ping");
+            if (Sec(ref y, w, fs, "world", "focus")) Settings(ref y, w, fs, "world", "focus");
         }
 
         private void PagePlates(ref float y, float w, int fs)

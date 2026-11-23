@@ -108,13 +108,21 @@ namespace BetterThanCastle.Patches
     [HarmonyPatch(typeof(UNetManager), "Update")]
     internal static class UNetManagerUpdatePatch
     {
-        private static bool _failed;
+        // a failing tick is only logged less often, never switched off: one transient error (scene change, disconnect race)
+        // used to kill heartbeat / silence monitor / pings for the rest of the process
+        private static float _nextLog;
+        private static int _errors;
 
         private static void Postfix(UNetManager __instance)
         {
-            if (_failed) return;
             try { BtcNetManager.Tick(__instance); }
-            catch (Exception e) { _failed = true; BtcLog.Error("Hook", "UNetManager.Update (tick disabled): " + e); }
+            catch (Exception e)
+            {
+                _errors++;
+                if (UnityEngine.Time.realtimeSinceStartup < _nextLog) return;
+                _nextLog = UnityEngine.Time.realtimeSinceStartup + 10f;
+                BtcLog.Error("Hook", "UNetManager.Update (" + _errors + " errors so far, next log in 10 s): " + e);
+            }
         }
     }
 

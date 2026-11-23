@@ -86,6 +86,7 @@ public static class BtcGc
 					BtcGc._timer.Dispose();
 					BtcGc._timer = null;
 				}
+				int gcBefore = GC.CollectionCount(0);
 				try
 				{
 					BtcGc._enable();
@@ -102,7 +103,9 @@ public static class BtcGc
 					BtcGc.DontGc(),
 					BtcLoadBoost.GcInfo()
 				}));
-				bool collect = why != null && why.StartsWith("StartStep");
+				// enabling Boehm collects at once when the heap grew while paused: a second full collect right after it found nothing and cost ~0.4 s
+				bool collect = why != null && why.StartsWith("StartStep") && GC.CollectionCount(0) == gcBefore;
+				if (!collect && why != null && why.StartsWith("StartStep")) BtcLoadBoost.Note("BtcGc: post-load collect skipped (enable collected)");
 				if (collect)
 				{
 					// The heap ballooned while GC was paused; collect once now (loading screen still up) instead of mid-match.

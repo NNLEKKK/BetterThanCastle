@@ -401,8 +401,10 @@ public partial class ResourcePackManager : MonoBehaviour
 
 	private void SetPack(string packName, bool showMessage)
 	{
+		long sw0 = ResourcePackManager.PackSw.ElapsedTicks;
+		ResourcePackManager.PackTimesReset();
 		this.currentPack = packName;
-		this.index = ((packName == null) ? new Dictionary<string, ResourcePackManager.IndexItem>(StringComparer.OrdinalIgnoreCase) : ResourcePackManager.BuildIndex(System.IO.Path.Combine(ResourcePackManager.RootDir, packName)));
+		this.index =((packName == null) ? new Dictionary<string, ResourcePackManager.IndexItem>(StringComparer.OrdinalIgnoreCase) : ResourcePackManager.BuildIndex(System.IO.Path.Combine(ResourcePackManager.RootDir, packName)));
 		this.noMatch.Clear();
 		this.matchedFiles.Clear();
 		this.ApplyAll();
@@ -450,7 +452,12 @@ public partial class ResourcePackManager : MonoBehaviour
 			", textures replaced: ",
 			num,
 			", files without matching texture: ",
-			list2.Count
+			list2.Count,
+			"; ",
+			ResourcePackManager.Ms(ResourcePackManager.PackSw.ElapsedTicks - sw0),
+			" ms (",
+			ResourcePackManager.PackTimes(),
+			")"
 		}));
 		bool flag16 = list2.Count > 0;
 		bool flag17 = flag16;
@@ -538,7 +545,9 @@ public partial class ResourcePackManager : MonoBehaviour
 
 	private void ApplyAll()
 	{
+		long f0 = ResourcePackManager.PackSw.ElapsedTicks;
 		Texture2D[] array = Resources.FindObjectsOfTypeAll<Texture2D>();
+		ResourcePackManager._tFind += ResourcePackManager.PackSw.ElapsedTicks - f0;
 		for (int i = 0; i < array.Length; i++)
 		{
 			this.ProcessTexture(array[i]);
@@ -736,9 +745,11 @@ public partial class ResourcePackManager : MonoBehaviour
 							{
 								string sig;
 								byte[] original;
+								long s0 = ResourcePackManager.PackSw.ElapsedTicks;
 								try
 								{
 									original = ResourcePackManager.Snapshot(tex, out sig);
+									ResourcePackManager._tSnap += ResourcePackManager.PackSw.ElapsedTicks - s0; ResourcePackManager._nSnap++;
 								}
 								catch (Exception ex)
 								{
@@ -755,7 +766,11 @@ public partial class ResourcePackManager : MonoBehaviour
 							bool flag82 = false;
 							try
 							{
-								flag82 = ResourcePackManager.LoadInto(tex, File.ReadAllBytes(text));
+								long r0 = ResourcePackManager.PackSw.ElapsedTicks;
+								byte[] png = File.ReadAllBytes(text);
+								long r1 = ResourcePackManager.PackSw.ElapsedTicks;
+								flag82 = ResourcePackManager.LoadInto(tex, png);
+								ResourcePackManager._tRead += r1 - r0; ResourcePackManager._tLoad += ResourcePackManager.PackSw.ElapsedTicks - r1; ResourcePackManager._nLoad++;
 							}
 							catch (Exception ex2)
 							{
@@ -845,6 +860,7 @@ public partial class ResourcePackManager : MonoBehaviour
 
 	private void OnGUI()
 	{
+		if (useGUILayout) useGUILayout = false; // no GUILayout here: skip Unity's per-event layout pass (garbage)
 		BtcOverlays.OnGUI();
 		BtcTerraformTool.OnGUI();
 		BtcMatchStatsUI.OnGUI();

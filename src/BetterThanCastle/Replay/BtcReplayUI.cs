@@ -52,6 +52,17 @@ public static class BtcReplayUI
 		bool flag16 = flag15;
 		if (flag16)
 		{
+			// Callers draw with several font sizes in one frame (menu launcher, bookmarks overlay, HUD chips): one style set
+			// per size is kept and swapped in, instead of building 8 GUIStyles on every switch (~400 KB/s of garbage).
+			Color accent = BtcMenu.AccentA(0.95f);
+			GUIStyle[] set;
+			if (StyleSets.TryGetValue(fs, out set) && set[8] != null && set[8].normal.textColor == accent)
+			{
+				BtcReplayUI.styleFs = fs;
+				BtcReplayUI.sRow = set[0]; BtcReplayUI.sLabel = set[1]; BtcReplayUI.sNote = set[2]; BtcReplayUI.sHead = set[3];
+				BtcReplayUI.sBtn = set[4]; BtcReplayUI.sVal = set[5]; BtcReplayUI.sBarLabel = set[6]; BtcReplayUI.sBarVal = set[7];
+				return;
+			}
 			BtcReplayUI.styleFs = fs;
 			BtcReplayUI.sRow = new GUIStyle(GUI.skin.button);
 			BtcReplayUI.sRow.alignment = TextAnchor.MiddleLeft;
@@ -78,8 +89,11 @@ public static class BtcReplayUI
 			BtcReplayUI.sVal = new GUIStyle(BtcReplayUI.sLabel);
 			BtcReplayUI.sVal.alignment = TextAnchor.MiddleCenter;
 			BtcReplayUI.MakeBarStyles(fs);
+			StyleSets[fs] = new GUIStyle[] { BtcReplayUI.sRow, BtcReplayUI.sLabel, BtcReplayUI.sNote, BtcReplayUI.sHead, BtcReplayUI.sBtn, BtcReplayUI.sVal, BtcReplayUI.sBarLabel, BtcReplayUI.sBarVal, BtcReplayUI.sHead };
 		}
 	}
+
+	private static readonly System.Collections.Generic.Dictionary<int, GUIStyle[]> StyleSets = new System.Collections.Generic.Dictionary<int, GUIStyle[]>();
 
 	private static void SetColors(GUIStyle st, Color normal, Color hover)
 	{

@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$Name, [int]$MaxSeconds = 420, [switch]$KillRunning, [switch]$NoBuild, [int]$Clients = 0, [int]$Bc = 1, [switch]$VisibleClient)
+param([Parameter(Mandatory=$true)][string]$Name, [int]$MaxSeconds = 420, [switch]$KillRunning, [switch]$NoBuild, [int]$Clients = 0, [int]$Bc = 1, [switch]$VisibleClient, [switch]$Alloc, [int]$Savers = -1)
 # Runs tests/scenarios/<Name>.txt in a hidden game with the DEV profiler; prints a short result. Details: BTClogs/prof.txt, digest.txt, agent.log.
 # -Clients N (multiplayer): host runs <Name>.txt (BTC_ROLE=host, BTClogs/host), client i runs <Name>.client<i>.txt or <Name>.client.txt (BTC_ROLE=client, BTClogs/client<i>).
 $root = Split-Path -Parent $PSScriptRoot
@@ -18,6 +18,8 @@ Get-ChildItem $logs -Filter 'btc-*.log' -ErrorAction SilentlyContinue | Sort-Obj
 $exe = Join-Path $g 'Castle Story.exe'
 $args0 = @('-screen-fullscreen','0','-screen-width','640','-screen-height','360')
 $env:BTC_PROF = '1'; $env:BTC_HIDDEN = '1'; if ($Bc -eq 0) { $env:BTC_BC = '0' } else { Remove-Item Env:BTC_BC -ErrorAction SilentlyContinue }
+if ($Alloc) { $env:BTC_ALLOC = '1' } else { Remove-Item Env:BTC_ALLOC -ErrorAction SilentlyContinue }
+if ($Savers -ge 0) { $env:BTC_FRAMESAVERS = "$Savers" } else { Remove-Item Env:BTC_FRAMESAVERS -ErrorAction SilentlyContinue }
 
 if ($Clients -le 0) {
     Remove-Item (Join-Path $logs 'done.txt'), (Join-Path $logs 'cmd.txt'), (Join-Path $logs 'prof.txt') -ErrorAction SilentlyContinue

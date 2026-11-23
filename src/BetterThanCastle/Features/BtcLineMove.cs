@@ -13,6 +13,7 @@ namespace BetterThanCastle
 {
 public static class BtcLineMove
 {
+	private static readonly string[] Ids = { "line_move", "line_move_diagonal" };
 	public static void Tick()
 	{
 		BtcBlockMarks.Tick();
@@ -34,11 +35,7 @@ public static class BtcLineMove
 			bool flag6 = flag5;
 			if (flag6)
 			{
-				string[] array = new string[]
-				{
-					"line_move",
-					"line_move_diagonal"
-				};
+				string[] array = BtcLineMove.Ids;
 				for (int i = 0; i < array.Length; i++)
 				{
 					KeyCode[] keys = BtcHotkeys.GetKeys(array[i], null);

@@ -1,0 +1,574 @@
+# climb-break: 2 units walk up a stair of FULL blocks (x 40-49, heights 1..10, platform x 50-56), mid-climb the player orders
+# them back to x 25. Before the fix the units kept jumping up the old route. Compare with climb-break0 (rule mov.instant off).
+duelunits 3 2 0
+duelunits 2 0 1
+duelskip 1
+duelheal 1
+duelplayerbot -1
+duelnobot 1
+duelnorules 1
+duel
+waitduel 240
+wait 3
+duelplace 1 all 97 10 270
+duelplace 0 0 32 9 90
+duelplace 0 1 32 11 90
+duelwall 40 8 40 12 1
+duelwall 41 8 41 12 2
+duelwall 42 8 42 12 3
+duelwall 43 8 43 12 4
+duelwall 44 8 44 12 5
+duelwall 45 8 45 12 6
+duelwall 46 8 46 12 7
+duelwall 47 8 47 12 8
+duelwall 48 8 48 12 9
+duelwall 49 8 49 12 10
+duelwall 50 8 56 12 10
+wait 2
+duellog CB-GO
+duelo 0 all move 53 10
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+duelo 0 0,1 move 25 10
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+duelo 0 0,1 move 53 10
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+duelo 0 0,1 move 25 10
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+duelo 0 0,1 move 53 10
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+duelo 0 0,1 move 25 10
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+duelo 0 0,1 move 53 10
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+duelo 0 0,1 move 25 10
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+duelo 0 0,1 move 53 10
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+duelo 0 0,1 move 53 10
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+duellog CB-DOWN
+duelo 0 0,1 move 25 10
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+duelo 0 0,1 move 53 10
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+duelo 0 0,1 move 25 10
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+duelo 0 0,1 move 53 10
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+duelo 0 0,1 move 25 10
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+duelo 0 0,1 move 53 10
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+duelo 0 0,1 move 25 10
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+duelo 0 0,1 move 25 10
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+wait 0.1
+duelwhere 0 0,1 0
+quit

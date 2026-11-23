@@ -31,6 +31,8 @@ namespace BetterThanCastle
         // 30 s (was 75): after >= ~10 s without network UNET kills the transport link on the host side (BadMessage, WrongConnection);
         // no disconnect packet reaches the client, which then only sees silence. Labs: no link silent > 10 s ever came back.
         private const float LinkDeadAfter = 30f;
+        // own transport (BtcOwnTransport): the link never gives up by itself, a silent peer is only dropped after this long
+        private const float OwnTransportDeadAfter = 900f;
         private const float LinkDeadWhileHostLoads = 120f;
         private const float PeerDropAfter = 60f;
         private const float PeerDropWhileLoading = 120f;
@@ -251,7 +253,7 @@ namespace BetterThanCastle
                 NetworkConnection c = NetworkServer.connections[i];
                 Peer dp;
                 if (NotAPeer(c) || selfLoading || !s.peers.TryGetValue(c.connectionId, out dp) || !dp.seen) continue;
-                if (dp.silence > (PeerLoading(c, dp, rt) ? PeerDropWhileLoading : PeerDropAfter)) _tmpConns.Add(c);
+                if (dp.silence > (BtcOwnTransport.ActiveFor(c) ? OwnTransportDeadAfter : PeerLoading(c, dp, rt) ? PeerDropWhileLoading : PeerDropAfter)) _tmpConns.Add(c);
             }
             for (int i = 0; i < _tmpConns.Count; i++) { DropStale(_tmpConns[i]); s.peers.Remove(_tmpConns[i].connectionId); }
 
@@ -477,7 +479,7 @@ namespace BetterThanCastle
             // (its heartbeat flag may never arrive: the block starts right at the scene switch, so also use the vanilla HostLoaded state)
             bool hostLoads = h.loading;
             try { hostLoads |= GameParam.instance != null && !GameParam.instance.NetworkHostLoaded; } catch (Exception) { }
-            float dead = hostLoads ? LinkDeadWhileHostLoads : LinkDeadAfter;
+            float dead = BtcOwnTransport.ActiveFor(m.LocalNetworkClient != null ? m.LocalNetworkClient.connection : null) ? OwnTransportDeadAfter : hostLoads ? LinkDeadWhileHostLoads : LinkDeadAfter;
             // the host quit on purpose (msg 110) but its closing packet never came: leave to the menu, do not rejoin
             if (s.hostEnded && h.seen && h.silence > 5f && !InLobby(m) && !m.calledDisconnect)
             {

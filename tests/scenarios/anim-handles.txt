@@ -1,0 +1,9 @@
+# Who owns the beacon handle animators. Result: BTClogs/vfx-handles.txt (CLIPS comps)
+engine counters off
+newgame
+waitgame 240
+spawn bricktron 10
+waitspawn 60
+wait 5
+vfxdump handles
+quit

@@ -1,0 +1,21 @@
+# unit sound sync (BtcSoundNet): host + 1 client; mixed units fight, half switch kits mid-fight; both dump sound counts
+host default conquest
+waitclients 1 300
+wait 3
+startmatch 180
+waitgame 300
+wait 10
+sndnet dump pre
+sndnet spawn 7
+wait 3
+animnet meet
+wait 30
+animnet walk
+wait 8
+sndnet swap
+wait 4
+animnet meet
+wait 30
+sndnet dump fight
+wait 25
+quit

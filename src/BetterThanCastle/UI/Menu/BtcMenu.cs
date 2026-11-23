@@ -19,6 +19,8 @@ namespace BetterThanCastle
         internal virtual string UndoScope { get { return null; } }
         /// <summary>area = the content rectangle under the header (the shell drew the background); fs = base font size.</summary>
         internal abstract void Draw(Rect area, int fs);
+        /// <summary>Empties the tab's own search field (a changelog link opens the tab with nothing filtered out). Tabs with a search override it.</summary>
+        internal virtual void ClearSearch() { }
     }
 
     /// <summary>The menu shell: tab registry, icon rail, header and the shared look (colours below). Draw calls come from ResourcePackManager.DrawMenu.</summary>
@@ -52,10 +54,19 @@ namespace BetterThanCastle
             Tabs.Add(BtcGameplayTab.Instance);
             Tabs.Add(BtcUiEditorTab.Instance);
             Tabs.Add(BtcNoticesTab.Instance);
+            Tabs.Add(BtcPerfTab.Instance);
         }
 
         /// <summary>Id of the tab that is open (kept by ResourcePackManager.SelectTab).</summary>
         internal static int CurrentId;
+
+        /// <summary>Empties the own search field of tab <paramref name="id"/> (and the header search).</summary>
+        internal static void ClearSearch(int id)
+        {
+            EnsureRegistered();
+            BtcGlobalSearch.Clear();
+            for (int i = 0; i < Tabs.Count; i++) if (Tabs[i].Id == id) Tabs[i].ClearSearch();
+        }
 
         /// <summary>The migrated tab that is open now, or null (a legacy tab or none).</summary>
         internal static BtcMenuTab ActiveTab()
@@ -70,7 +81,7 @@ namespace BetterThanCastle
         {
             BtcReplayIcons.Blueprint, BtcReplayIcons.Eye, BtcReplayIcons.Wave, BtcReplayIcons.Keys, BtcReplayIcons.Gear,
             BtcReplayIcons.Share, BtcReplayIcons.Group, BtcReplayIcons.Play, BtcReplayIcons.Swords,
-            BtcReplayIcons.Bug, BtcReplayIcons.News, BtcReplayIcons.Chart, BtcReplayIcons.Layout, BtcReplayIcons.Chat
+            BtcReplayIcons.Bug, BtcReplayIcons.News, BtcReplayIcons.Chart, BtcReplayIcons.Layout, BtcReplayIcons.Chat, BtcReplayIcons.Bolt
         };
 
         private static int Fs { get { return BtcUiEdit.MenuFs; } }

@@ -1285,6 +1285,9 @@ public partial class ResourcePackManager : MonoBehaviour
 		if (flag8)
 		{
 			float unscaledTime = Time.unscaledTime;
+			// FindObjectsOfType<Light> walks the whole scene (~10 ms in a base): rescan on a scene change, a lost light, or every 30 s
+			int lightScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetHashCode();
+			if (lightScene != this.dirLightsScene || (this.dirLights != null && this.dirLights.Length > 0 && this.dirLights[0] == null)) { this.dirLightsScene = lightScene; this.dirLightsNext = 0f; }
 			bool flag9 = unscaledTime < this.dirLightsNext;
 			bool flag10 = !flag9;
 			bool flag11 = flag10;
@@ -1295,7 +1298,7 @@ public partial class ResourcePackManager : MonoBehaviour
 			bool flag16 = flag15;
 			if (flag16)
 			{
-				this.dirLightsNext = unscaledTime + 3f;
+				this.dirLightsNext = unscaledTime + 30f;
 				Light[] array = UnityEngine.Object.FindObjectsOfType<Light>();
 				List<Light> list = new List<Light>();
 				for (int i = 0; i < array.Length; i++)

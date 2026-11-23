@@ -185,5 +185,87 @@ namespace BetterThanCastle
 			BtcLog.Info("CleanFilter", "cleanup filter buttons injected into GameMenu.lua");
 			return r;
 		}
+
+		// ---- C9: filters survive save/load (btc-cleanfilter.txt in the save folder, "x y z mask" per Cleanup project; host only, BC ON) ----
+		internal const string FileName = "btc-cleanfilter.txt";
+		private static List<Vector4> _pending;
+		private static float _applyAt, _deadline;
+
+		internal static void OnSave(string folder)
+		{
+			if (!NetworkServer.active || !BtcNetworkGate.Enabled || string.IsNullOrEmpty(folder)) return;
+			string file = System.IO.Path.Combine(folder, FileName);
+			System.Text.StringBuilder sb = new System.Text.StringBuilder();
+			CleanupProject[] all = UnityEngine.Object.FindObjectsOfType<CleanupProject>();
+			System.Globalization.CultureInfo c = System.Globalization.CultureInfo.InvariantCulture;
+			int n = 0;
+			for (int i = 0; i < all.Length; i++)
+			{
+				int m = Mask(all[i]);
+				if (m == All) continue;
+				Vector3 p = all[i].transform.position;
+				sb.Append(p.x.ToString("F2", c)).Append(' ').Append(p.y.ToString("F2", c)).Append(' ').Append(p.z.ToString("F2", c)).Append(' ').Append(m).Append('\n');
+				n++;
+			}
+			if (n == 0) { if (System.IO.File.Exists(file)) System.IO.File.Delete(file); return; }
+			System.IO.File.WriteAllText(file, sb.ToString());
+			BtcLog.Info("CleanFilter", "saved " + n + " cleanup filter(s)");
+		}
+
+		internal static void OnLoad(string folder)
+		{
+			_pending = null;
+			if (!NetworkServer.active || !BtcNetworkGate.Enabled || string.IsNullOrEmpty(folder)) return;
+			string file = System.IO.Path.Combine(folder, FileName);
+			if (!System.IO.File.Exists(file)) return;
+			System.Globalization.CultureInfo c = System.Globalization.CultureInfo.InvariantCulture;
+			System.Globalization.NumberStyles st = System.Globalization.NumberStyles.Float;
+			List<Vector4> list = new List<Vector4>();
+			string[] lines = System.IO.File.ReadAllLines(file);
+			for (int i = 0; i < lines.Length; i++)
+			{
+				string[] t = lines[i].Split(' ');
+				float x, y, z; int m;
+				if (t.Length == 4 && float.TryParse(t[0], st, c, out x) && float.TryParse(t[1], st, c, out y) && float.TryParse(t[2], st, c, out z) && int.TryParse(t[3], out m))
+					list.Add(new Vector4(x, y, z, m & All));
+			}
+			if (list.Count == 0) return;
+			_pending = list;
+			_applyAt = Time.unscaledTime + 2f;
+			_deadline = Time.unscaledTime + 30f;
+			BtcLog.Info("CleanFilter", "save has " + list.Count + " cleanup filter(s), restoring after the load");
+		}
+
+		// every frame (BtcTimer.Tick): match saved filters to the nearest Cleanup project (within 2 blocks), retry for 30 s
+		internal static void Tick()
+		{
+			if (_pending == null || Time.unscaledTime < _applyAt) return;
+			if (!NetworkServer.active) { _pending = null; return; }
+			try
+			{
+				_applyAt = Time.unscaledTime + 1f;
+				CleanupProject[] all = UnityEngine.Object.FindObjectsOfType<CleanupProject>();
+				List<Vector4> left = new List<Vector4>();
+				int done = 0;
+				for (int k = 0; k < _pending.Count; k++)
+				{
+					CleanupProject best = null;
+					float bestD = 2f * 2f;
+					for (int i = 0; i < all.Length; i++)
+					{
+						if (all[i] == null) continue;
+						float d = (all[i].transform.position - (Vector3)_pending[k]).sqrMagnitude;
+						if (d < bestD) { bestD = d; best = all[i]; }
+					}
+					if (best == null) { left.Add(_pending[k]); continue; }
+					Map[KeyOf(best)] = Mathf.RoundToInt(_pending[k].w) & All;
+					done++;
+				}
+				if (done > 0) BtcCleanFilterNet.Broadcast();
+				_pending = left.Count > 0 && Time.unscaledTime < _deadline ? left : null;
+				if (_pending == null) BtcLog.Info("CleanFilter", "restore finished, " + done + " this pass, " + left.Count + " not found");
+			}
+			catch (Exception e) { _pending = null; BtcLog.Error("CleanFilter", "Tick: " + e); }
+		}
 	}
 }

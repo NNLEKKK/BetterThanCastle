@@ -339,8 +339,10 @@ public partial class ResourcePackManager : MonoBehaviour
 		bool flag8 = flag7;
 		if (flag8)
 		{
+			long v0 = ResourcePackManager.PackSw.ElapsedTicks;
 			ResourcePackManager.LoadInto(e.tex, e.original);
-			bool flag9 = string.Equals(e.tex.name, "Curseurs", StringComparison.OrdinalIgnoreCase);
+			ResourcePackManager._tRevert += ResourcePackManager.PackSw.ElapsedTicks - v0; ResourcePackManager._nRevert++;
+			bool flag9 =string.Equals(e.tex.name, "Curseurs", StringComparison.OrdinalIgnoreCase);
 			bool flag10 = flag9;
 			bool flag11 = flag10;
 			bool flag12 = flag11;
@@ -480,10 +482,12 @@ public partial class ResourcePackManager : MonoBehaviour
 			{
 				try
 				{
+					long g0 = ResourcePackManager.PackSw.ElapsedTicks;
 					Texture2D texture2D = ResourcePackManager.ReadBack(tex);
 					try
 					{
 						text = ResourcePackManager.Signature(texture2D);
+						ResourcePackManager._tSig += ResourcePackManager.PackSw.ElapsedTicks - g0; ResourcePackManager._nSig++;
 					}
 					finally
 					{
@@ -628,7 +632,7 @@ public partial class ResourcePackManager : MonoBehaviour
 		}
 	}
 
-	internal static readonly int[] TabOrder = { 0, 1, 2, 3, 4, 11, 5, 6, 7, 8, 9, 10, 12, 13 };
+	internal static readonly int[] TabOrder = { 0, 1, 2, 3, 4, 11, 5, 6, 7, 8, 14, 9, 10, 12, 13 };
 
 	private int[] tabIds = new int[0];
 
@@ -654,7 +658,8 @@ public partial class ResourcePackManager : MonoBehaviour
 			BtcGameplay.T("What's new", "Что нового"),
 			BtcReplayUI.T("Statistics", "Статистика"),
 				BtcReplayUI.T("UI editor", "UI редактор"),
-				BtcReplayUI.T("Notifications", "Уведомления")
+				BtcReplayUI.T("Notifications", "Уведомления"),
+				BtcReplayUI.T("Performance", "Производительность")
 		};
 		int num = BtcReplay.FeatureOn ? this.tabNames.Length : (this.tabNames.Length - 1);
 		this.tabIds = new int[num];
@@ -734,7 +739,7 @@ public partial class ResourcePackManager : MonoBehaviour
 			this.pickNum = false;
 			this.pickExtra = 0;
 			int lastTab = BtcMenuState.Int("tab", 0);   // reopen where the menu was closed
-			if (lastTab > 0 && lastTab <= 12 && ResourcePackManager.TabEnabledFn(lastTab)) this.SelectTab(lastTab);
+			if (lastTab > 0 && lastTab <= 14 && ResourcePackManager.TabEnabledFn(lastTab)) this.SelectTab(lastTab);
 		}
 	}
 

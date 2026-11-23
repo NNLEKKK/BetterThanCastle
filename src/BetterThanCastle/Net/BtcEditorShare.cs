@@ -40,6 +40,7 @@ namespace BetterThanCastle
         /// <summary>Once per frame (RPM OnGUI repaint).</summary>
         internal static void Tick()
         {
+            BtcGhDev.Poll();
             bool on = Active;
             if (on != _was)
             {
@@ -69,6 +70,7 @@ namespace BetterThanCastle
                 if (Brix.Engine.Architecte._allowDebugMenu == v) return;
                 Brix.Engine.Architecte._allowDebugMenu = v;
                 LuaHookBase.InvokeFromCLR(UIGameObserver.lua_OnSetAllowDebugMode);
+                try { BtcGhRightBar.CheckDev(); BtcGameHud.RefreshAll(); } catch { }
                 BtcLog.Info("Editor", "allowDebugMenu=" + v);
             }
             catch (Exception e) { BtcLog.Error("Editor", "SetAllow: " + e); }

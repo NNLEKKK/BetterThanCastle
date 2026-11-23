@@ -1,0 +1,18 @@
+# Single player: the editor panel rule alone shows the dev sidebars; compact Editor; slider prefab. Results: agent.log GhProto, uidump-ghdev2-*.txt
+engine counters off
+newgame
+waitgame 240
+wait 3
+gh rule gen.editor 1
+wait 1
+gh editor
+wait 2
+uidump Menu:_Taskbar_(Lua) ghdev2-editor
+gh devrun __btcSpawn(fy_Bricktron)
+gh movie
+wait 2
+uidump Menu:_Taskbar_(Lua) ghdev2-movie
+gh rule gen.editor 0
+wait 1
+gh devcount
+quit

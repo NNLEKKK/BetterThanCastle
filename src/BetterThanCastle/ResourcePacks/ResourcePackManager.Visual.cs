@@ -323,6 +323,14 @@ namespace BetterThanCastle
             Add(new BtcVisualSetting { Key = "ping.vol", Page = "world", Section = "ping", En = "Ping sound volume (0 = off)", Ru = "Громкость звука пинга (0 = выкл)", Kind = VKind.Float, Min = 0f, Max = 100f, Step = 5f, Fmt = "0", Suf = "%",
                 GetF = () => BtcPing.Volume, SetF = v => { BtcMenuState.SetInt("ping:vol", Mathf.RoundToInt(v)); BtcPing.PreviewSound(); } });
 
+            // focus feedback (local only)
+            B("focus.snd", "world", "focus", 0, false, "Hit sound when your focus on an enemy unit goes through (as in aim training)", "Хитсаунд, когда фокус на вражеского юнита прошёл (как в аим-тренировке)", null, () => BtcFocusFx.Sound, v => { BtcMenuState.SetBool("focus:snd", v); if (v) BtcFocusFx.PreviewSound(); });
+            Add(new BtcVisualSetting { Key = "focus.vol", Page = "world", Section = "focus", Indent = 1, En = "Hit sound volume", Ru = "Громкость хитсаунда", Kind = VKind.Float, Min = 0f, Max = 100f, Step = 5f, Fmt = "0", Suf = "%",
+                Vis = () => BtcFocusFx.Sound, GetF = () => BtcFocusFx.Volume, SetF = v => { BtcMenuState.SetInt("focus:vol", Mathf.RoundToInt(v)); BtcFocusFx.PreviewSound(); } });
+            B("focus.mark", "world", "focus", 0, false, "Marker above the enemy unit you focus (until it dies or those units get another order)", "Метка над вражеским юнитом, которого фокусишь (пока он жив и эти юниты не получили другой приказ)", null, () => BtcFocusFx.Mark, v => BtcMenuState.SetBool("focus:mark", v));
+            Add(new BtcVisualSetting { Key = "focus.size", Page = "world", Section = "focus", Indent = 1, En = "Marker size", Ru = "Размер метки", Kind = VKind.Float, Min = 50f, Max = 250f, Step = 5f, Fmt = "0", Suf = "%",
+                Vis = () => BtcFocusFx.Mark, GetF = () => BtcFocusFx.Size * 100f, SetF = v => BtcMenuState.SetInt("focus:size", Mathf.RoundToInt(v)) });
+
             // ============================================================ SCREEN
             const string S = "screen";
             Bd("s.pause", S, "menu", 0, false, "Pause the game while this menu is open", "Ставить игру на паузу, пока открыто меню", null, () => VC.menuPause, v => VC.menuPause = v);

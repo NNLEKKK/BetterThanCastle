@@ -1040,6 +1040,9 @@ public partial class ResourcePackManager : MonoBehaviour
 
 	private void LateUpdate()
 	{
+		BtcVfxCut.Tick();
+		BtcAnimCut.Tick();
+		if (BtcFrameSave.On) FrameSaveOverheadShow.Tick();
 		bool flag = this.hpCfg == null || (!this.coloredHp && !this.AlwaysOwnNow(this.hpCfg) && !this.AlwaysEnemyNow(this.hpCfg) && this.hpForcedCount <= 0);
 		bool flag2 = !flag;
 		bool flag3 = flag2;
@@ -1206,7 +1209,7 @@ public partial class ResourcePackManager : MonoBehaviour
 		bool flag8 = flag7;
 		if (flag8)
 		{
-			SelectionCircle[] array = Resources.FindObjectsOfTypeAll<SelectionCircle>();
+			SelectionCircle[] array = BtcRegistry.CirclesArray(); // was Resources.FindObjectsOfTypeAll: ~38 ms walk of every object
 			int num = 0;
 			foreach (SelectionCircle selectionCircle in array)
 			{

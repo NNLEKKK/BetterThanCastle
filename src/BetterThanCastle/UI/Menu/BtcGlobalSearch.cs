@@ -54,8 +54,8 @@ namespace BetterThanCastle
         {
             _built = true;
             Index.Clear();
-            int[] ids = { 0, 1, 2, 3, 4, 11, 5, 6, 7, 8, 9, 10, 12, 13 };
-            int[] icons = { BtcReplayIcons.Blueprint, BtcReplayIcons.Eye, BtcReplayIcons.Wave, BtcReplayIcons.Keys, BtcReplayIcons.Gear, BtcReplayIcons.Chart, BtcReplayIcons.Share, BtcReplayIcons.Group, BtcReplayIcons.Play, BtcReplayIcons.Swords, BtcReplayIcons.Bug, BtcReplayIcons.News, BtcReplayIcons.Layout, BtcReplayIcons.Chat };
+            int[] ids = { 0, 1, 2, 3, 4, 11, 5, 6, 7, 8, 14, 9, 10, 12, 13 };
+            int[] icons = { BtcReplayIcons.Blueprint, BtcReplayIcons.Eye, BtcReplayIcons.Wave, BtcReplayIcons.Keys, BtcReplayIcons.Gear, BtcReplayIcons.Chart, BtcReplayIcons.Share, BtcReplayIcons.Group, BtcReplayIcons.Play, BtcReplayIcons.Swords, BtcReplayIcons.Bolt, BtcReplayIcons.Bug, BtcReplayIcons.News, BtcReplayIcons.Layout, BtcReplayIcons.Chat };
             for (int i = 0; i < ids.Length; i++)
             {
                 int id = ids[i];

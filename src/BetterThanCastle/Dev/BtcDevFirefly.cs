@@ -26,6 +26,21 @@ namespace BetterThanCastle.Dev
         }
 
         /// <summary>"gameplay k=v;k=v": overwrite the live gameplay values in memory only (no MarkDirty, nothing saved to the user's file).</summary>
+        /// <summary>DEV cmd "rule <id> <value>": sets one gameplay rule on this machine (host labs).</summary>
+        internal static void Rule(string id, float value)
+        {
+            try
+            {
+                float[] v = Traverse.Create(typeof(BtcGameplay)).Field("V").GetValue<float[]>();
+                int i = BtcGameplay.Idx(id);
+                if (v == null || i < 0 || i >= v.Length) { BtcLog.Warn("Dev", "rule: unknown " + id); return; }
+                v[i] = value;
+                BtcGameplay.Refresh();
+                BtcLog.Info("Dev", "rule " + id + " = " + value);
+            }
+            catch (Exception e) { BtcLog.Error("Dev", "rule: " + e); }
+        }
+
         internal static void Gameplay(string data)
         {
             try

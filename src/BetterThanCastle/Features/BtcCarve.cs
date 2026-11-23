@@ -171,6 +171,14 @@ namespace BetterThanCastle
             return res;
         }
 
+        /// <summary>Fills (type != 0) or empties (type 0) the given cells as whole voxels.</summary>
+        internal static void SetCells(List<XYZ> cells, int type)
+        {
+            List<Cell> target = new List<Cell>(cells.Count);
+            for (int i = 0; i < cells.Count; i++) target.Add(new Cell { P = cells[i], Type = type, Vol = 255 });
+            SetCells(target);
+        }
+
         // Makes every cell match (Type 0 = empty). Proven sequence from the replay seek: remove, ApplyChanges, SetVoxelData, ApplyChanges.
         private static void SetCells(List<Cell> target)
         {

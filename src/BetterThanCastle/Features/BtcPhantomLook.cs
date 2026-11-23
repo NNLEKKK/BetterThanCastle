@@ -146,7 +146,7 @@ namespace BetterThanCastle
             }
             if (now >= _nextCheck)
             {
-                _nextCheck = now + 0.5f;
+                _nextCheck = now + 2f;   // was 0.5 s: material arrays + names every check (garbage)
                 Color nc;
                 bool redo = _myVersion != _texVersion || ColorKey(gameObject, out nc) != _colKey;   // faction known late on a client, pack changed
                 for (int i = 0; i < _parts.Count && !redo; i++)
@@ -154,7 +154,9 @@ namespace BetterThanCastle
                     Part p = _parts[i];
                     if (p.Src == null) continue;
                     Material[] cur = p.Src.sharedMaterials;
-                    for (int k = 0; k < cur.Length; k++) if (cur[k] != null && !Ours(cur[k])) { redo = true; break; }   // level up, face, pack swap replaced a material
+                    // level up, face, pack swap replaced a material: our array is no longer the one on the renderer
+                    if (p.Mine == null || cur.Length != p.Mine.Length) { redo = true; break; }
+                    for (int k = 0; k < cur.Length; k++) if (!ReferenceEquals(cur[k], p.Mine[k])) { redo = true; break; }
                 }
                 if (!redo) redo = FindNewRenderers();
                 if (redo) { Restore(); Apply(); }
@@ -169,11 +171,14 @@ namespace BetterThanCastle
 
         private static bool Ours(Material m) { return m != null && m.name.IndexOf(Tag, StringComparison.Ordinal) >= 0; }
 
+        private static readonly List<SkinnedMeshRenderer> RendTmp = new List<SkinnedMeshRenderer>();
+
         private bool FindNewRenderers()
         {
-            SkinnedMeshRenderer[] all = GetComponentsInChildren<SkinnedMeshRenderer>(false);
-            int n = 0;
-            for (int i = 0; i < all.Length; i++) if (!all[i].name.StartsWith(Tag, StringComparison.Ordinal)) n++;
+            GetComponentsInChildren(false, RendTmp);
+            int n = RendTmp.Count;
+            RendTmp.Clear();
+            for (int i = 0; i < _parts.Count; i++) { if (_parts[i].Depth != null) n--; if (_parts[i].Hull != null) n--; }   // our own children (named Tag...)
             return n != _parts.Count;
         }
 

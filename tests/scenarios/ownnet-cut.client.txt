@@ -1,0 +1,21 @@
+# client of ownnet-cut
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 120
+ready 420
+waitgame 300
+mark ingame
+timerstart 90
+wait 2
+walk init 4
+walk go a
+wait 60
+walk go b
+wait 50
+walk go a
+wait 160
+walk go b
+wait 30
+netstat
+wait 10
+quit

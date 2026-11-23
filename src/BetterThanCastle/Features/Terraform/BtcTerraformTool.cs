@@ -40,6 +40,7 @@ namespace BetterThanCastle
         private static int H { get { return Mathf.Clamp(BtcMenuState.Int("terraform:h", 3), 1, 32); } set { BtcMenuState.SetInt("terraform:h", Mathf.Clamp(value, 1, 32)); } }
         // kept resources: all off by default (nothing drops, no stockpile needed)
         private static int Harvest { get { return BtcMenuState.Int("terraform:keep", 0) & 7; } set { BtcMenuState.SetInt("terraform:keep", value & 7); } }
+        private static bool StoreFull { get { return BtcMenuState.Int("terraform:storefull", 0) != 0; } set { BtcMenuState.SetInt("terraform:storefull", value ? 1 : 0); } }
         private static bool AutoDig { get { return BtcMenuState.Int("terraform:autodig", 1) != 0; } set { BtcMenuState.SetInt("terraform:autodig", value ? 1 : 0); } }
 
         // stroke state
@@ -340,6 +341,7 @@ namespace BetterThanCastle
             _draft = s.Clone();
             _strokes.Clear();
             Harvest = s.Harvest;
+            StoreFull = s.StoreFull;
             Note(BtcLang.Tr("Editing the task: change it, then Save changes"));
             BtcSfx.Click();
         }
@@ -789,6 +791,8 @@ namespace BetterThanCastle
             int t = MultiChips(ref y, w, fs, hv, BtcLang.Tr("Stone"), BtcLang.Tr("Brimstone"), BtcLang.Tr("Iron"));
             if (t != hv) Harvest = t;
             BtcUi.Note(ref y, w, fs, Harvest == 0 ? BtcLang.Tr("Nothing drops: no stockpile needed") : BtcLang.Tr("Kept stone goes straight into the fill; a full bag with nothing to fill leaves the task"));
+            if (Harvest != 0 && BtcUi.Toggle(ref y, w, fs, BtcLang.Tr("Haul to stockpile when the bag is full"), StoreFull, BtcLang.Tr("A worker whose bag is full carries the stone to a stockpile at once, then returns to the task")))
+                StoreFull = !StoreFull;
 
             y += fs * 0.3f;
             BtcUi.Section(ref y, w, fs, BtcLang.Tr("Task"));
@@ -804,8 +808,8 @@ namespace BetterThanCastle
             int act;
             if (_editNid != 0) act = Buttons(ref y, w, fs, BtcLang.Tr("Stop editing"), BtcLang.Tr("Clear all marks"));
             else act = Buttons(ref y, w, fs, BtcLang.Tr("Clear all marks")) == 0 ? 1 : -1;
-            if (act == 0) StopEditing();
-            else if (act == 1) ClearDraft();
+            if (act == 0) { StopEditing(); Close(); }
+            else if (act == 1) { ClearDraft(); Close(); }
             y += fs * 0.2f;
             BtcUi.Note(ref y, w, fs, BtcLang.Tr("LMB hold and drag: a straight line along the face, Alt: into the blocks; ladders: drag up or down the slope. Ctrl+LMB deletes a mark, RMB rotates a ladder, Ctrl+Z undo, Shift / Ctrl+wheel height / width, Esc close. Edit a task: select it in the task list"));
             return y + fs * 0.4f;
@@ -900,6 +904,7 @@ namespace BetterThanCastle
         {
             BtcTerraform.Shape s = _draft.Clone();
             s.Harvest = Harvest;
+            s.StoreFull = StoreFull;
             bool edit = _editNid != 0;
             if (edit) BtcTerraform.RequestEdit(_editNid, s); else BtcTerraform.RequestCreate(s);
             _editNid = 0;
@@ -907,6 +912,7 @@ namespace BetterThanCastle
             _strokes.Clear();
             Note(edit ? BtcLang.Tr("Task changed") : BtcLang.Tr("Terraforming task created"));
             BtcSfx.Click();
+            Close();
         }
     }
 }

@@ -1,0 +1,11 @@
+# Map transfer speed lab: host sends the map download to the client 3 times (BC ON fast upload). ~3 min.
+host default conquest
+waitclients 1 300
+wait 5
+sendmap
+wait 25
+sendmap
+wait 25
+sendmap
+wait 25
+quit

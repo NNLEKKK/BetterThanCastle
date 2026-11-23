@@ -1,0 +1,9 @@
+# C# game menu kit vs vanilla: build the first 3 left rail buttons in C#, dump both (BTClogs/uidump-ghlua.txt, uidump-ghproto.txt).
+newgame
+waitgame 240
+wait 15
+ghproto
+wait 2
+uidump Menu:_Taskbar_(Lua) ghlua
+uidump Menu:_BtcTaskbar ghproto
+quit

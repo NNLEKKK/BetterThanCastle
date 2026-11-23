@@ -1,0 +1,44 @@
+# Stress base: 60 workers, stockpiles, racks, workbenches, 400 loose items, projects, blueprints; sun shadows on. Day/night x full/max.
+# Results: BTClogs/engine.txt, prof-stress.txt (SPIKES, TOP), vfx-st-*.txt
+prof start
+engine counters off
+vfx max 0
+vfx pause 1
+newgame
+waitgame 240
+vfx sunshadows 1
+daytime 12
+wait 5
+spawn bricktron 60
+spawn stockpile 30
+spawn rack 12
+spawn workbench 12
+spawn furnace 4
+waitspawn 150
+stressitems Blocks.Wood_DoubleLog_AA 150 22
+stressitems Blocks.Stone_Brick 150 22
+stressitems RawResources.RawStone 60 22
+stressitems RawResources.RawIron 40 22
+rackfill Knight
+taskspawn
+bpspawn 8
+order build 150
+wait 40
+prof reset
+measure day-full 30
+vfxdump st-dayfull
+vfx max 1
+wait 3
+measure day-max 30
+daytime 19.5 run
+wait 90
+measure night-max 30
+vfx max 0
+vfx pause 1
+wait 3
+measure night-full 30
+vfxdump st-nightfull
+dump stress
+vfx max 0
+vfx pause 1
+quit

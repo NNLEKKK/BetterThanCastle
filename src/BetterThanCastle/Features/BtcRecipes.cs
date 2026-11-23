@@ -1162,6 +1162,19 @@ public static class BtcRecipes
 	internal static void ResolvePending(int i, bool approve) { BtcRecipes.Resolve(BtcRecipes._pending[i], approve); }
 	internal static void SendMine() { BtcRecipes.SendRequest(); }
 
+	/// <summary>Presets: the current (host) recipe set as text, and applying a preset's set (null = the preset does not touch recipes).</summary>
+	internal static string EncodeCur() { BtcRecipes.Ensure(); return BtcRecipes.Encode(BtcRecipes._cur); }
+
+	internal static void ApplyPreset(string enc, bool isHost)
+	{
+		if (enc == null) return;
+		BtcRecipes.Ensure();
+		int[] dst = isHost ? BtcRecipes._cur : BtcRecipes._prop;
+		if (dst == null) return;
+		BtcRecipes.Decode(enc, dst);
+		BtcRecipes.Edited(isHost);
+	}
+
 	/// <summary>A recipe was edited: the host applies, saves and broadcasts; a client marks the draft as unsent.</summary>
 	internal static void Edited(bool isHost)
 	{

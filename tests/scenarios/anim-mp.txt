@@ -1,0 +1,29 @@
+# smooth unit animations (BtcAnimNet): host + 1 client; host keeps units walking and fighting, client alternates vanilla (observe) and fix
+host default conquest
+waitclients 1 300
+wait 3
+startmatch 180
+waitgame 300
+wait 4
+animnet spawn 12
+wait 3
+animnet meet
+wait 1
+wait 40
+animnet walk
+wait 12
+animnet meet
+wait 1
+wait 30
+animnet walk
+wait 12
+animnet meet
+wait 1
+wait 30
+animnet walk
+wait 12
+animnet meet
+wait 1
+wait 30
+animnet dump host
+quit

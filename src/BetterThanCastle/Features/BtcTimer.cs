@@ -103,9 +103,13 @@ namespace BetterThanCastle
         internal static void Tick()
         {
             BtcAutoMarks.Tick();
+            BtcRecovery.Tick();
             BtcCraftQueue.Tick();
             BtcInfHeal.Tick();
             BtcHeldWards.Tick();
+            BtcCleanFilter.Tick();
+            BtcStationRadius.LoadTick();
+            BtcPlayerPrefs.Tick();
             BtcShield.Tick();
             BtcPhantom.Tick();
             BtcPovRec.Tick();
@@ -529,6 +533,7 @@ namespace BetterThanCastle
                 {
                     MouseOver = false;
                     if (Cur == Phase.Counting) DrawCount(sc);
+                    BtcRecovery.Draw();
                 }
             }
             catch (Exception e) { BtcLog.Error("Timer", "OnGUI: " + e); }

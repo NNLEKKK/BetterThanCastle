@@ -552,6 +552,7 @@ public static class BtcReplay
 					BtcTimer.OnRecordStart();
 					BtcReplay.wThread = new Thread(new ThreadStart(BtcReplay.WriterLoop));
 					BtcReplay.wThread.IsBackground = true;
+					BtcReplay.wThread.Name = "BtcReplayWriter";
 					BtcReplay.wThread.Start();
 					BtcReplay.StartSnapshot();
 					BtcReplay.mainConn = BtcReplay.AddRecConn(0);
@@ -785,7 +786,7 @@ public static class BtcReplay
 		BtcReplay.nextKf = float.MaxValue;
 		BtcReplay.buf = new byte[524288];
 		BtcReplay.qLock = new object();
-		BtcReplay.q = new Queue<byte[]>();
+		BtcReplay.q = new Queue<ArraySegment<byte>>();
 		BtcReplay.playSceneOk = -1f;
 		BtcReplay.playLeftAt = -1f;
 		BtcReplay.playSpeed = 1f;
@@ -1325,8 +1326,12 @@ public static class BtcReplay
 		bool flag7 = flag6;
 		if (flag7)
 		{
-			byte[] array = new byte[BtcReplay.bufLen];
+			// pooled chunk (was a new array every 0.5 s): the writer thread gives it back after writing
+			byte[] array = null;
+			lock (BtcReplay.qLock) { if (BtcReplay.qFree.Count > 0 && BtcReplay.qFree.Peek().Length >= BtcReplay.bufLen) array = BtcReplay.qFree.Pop(); }
+			if (array == null) array = new byte[Math.Max(BtcReplay.bufLen, 65536)];
 			Buffer.BlockCopy(BtcReplay.buf, 0, array, 0, BtcReplay.bufLen);
+			ArraySegment<byte> seg = new ArraySegment<byte>(array, 0, BtcReplay.bufLen);
 			BtcReplay.bufLen = 0;
 			object obj = BtcReplay.qLock;
 			object obj2 = obj;
@@ -1337,7 +1342,7 @@ public static class BtcReplay
 			object obj7 = obj6;
 			lock (obj7)
 			{
-				BtcReplay.q.Enqueue(array);
+				BtcReplay.q.Enqueue(seg);
 				Monitor.Pulse(BtcReplay.qLock);
 			}
 		}
@@ -1347,7 +1352,7 @@ public static class BtcReplay
 	{
 		for (;;)
 		{
-			byte[] array = null;
+			ArraySegment<byte> array = default(ArraySegment<byte>);
 			object obj = BtcReplay.qLock;
 			object obj2 = obj;
 			object obj3 = obj2;
@@ -1385,7 +1390,8 @@ public static class BtcReplay
 			{
 				try
 				{
-					BtcReplay.ds.Write(array, 0, array.Length);
+					BtcReplay.ds.Write(array.Array, array.Offset, array.Count);
+					lock (BtcReplay.qLock) { if (BtcReplay.qFree.Count < 8) BtcReplay.qFree.Push(array.Array); }
 					BtcReplay.outBytes = BtcReplay.fs.Position;
 				}
 				catch (Exception)
@@ -2040,6 +2046,7 @@ public static class BtcReplay
 				BtcReplay.snapDone = true;
 			});
 			BtcReplay.snapThread.IsBackground = true;
+			BtcReplay.snapThread.Name = "BtcReplaySnap";
 			BtcReplay.snapThread.Start();
 		}
 		catch (Exception arg)
@@ -4047,6 +4054,7 @@ public static class BtcReplay
 		return true;
 	}
 	internal static bool FeedGo { get { return BtcReplay.mode == BtcReplay.State.Playing && BtcReplay.playGo && BtcReplay.playStage == 3; } }
+	internal static bool IsPlayback { get { return BtcReplay.mode == BtcReplay.State.Playing; } }
 	internal static bool FeedRewinding { get { return BtcReplay.rwActive; } }
 	internal static bool FeedEnded { get { return BtcReplay.playEnded; } }
 	internal static string FeedFile { get { return (BtcReplay.playData != null) ? BtcReplay.playData.FilePath : null; } }
@@ -5665,7 +5673,8 @@ public static class BtcReplay
 
 	private static readonly object qLock;
 
-	private static readonly Queue<byte[]> q;
+	private static readonly Queue<ArraySegment<byte>> q;
+	private static readonly Stack<byte[]> qFree = new Stack<byte[]>();
 
 	private static bool wClosing;
 

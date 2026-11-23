@@ -191,7 +191,8 @@ namespace BetterThanCastle
 
         private static void DrawHost(UNetManager m, float now)
         {
-            List<string> diff = new List<string>(), vanilla = new List<string>();
+            if (NetworkServer.connections.Count <= 1) return;   // nobody but the host (single player): no lists every frame
+            List<string> diff = null, vanilla = null;   // made only when there is something to show
             for (int i = 0; i < NetworkServer.connections.Count; i++)
             {
                 NetworkConnection c = NetworkServer.connections[i];
@@ -200,17 +201,17 @@ namespace BetterThanCastle
                 if (!SrvSeen.ContainsKey(id)) SrvSeen[id] = now;
                 string name = BtcNetManager.LobbyPlayerNameFromConnection(m, c);
                 string v;
-                if (SrvVersion.TryGetValue(id, out v)) { if (v != Mine) diff.Add(name + ": " + v); }
+                if (SrvVersion.TryGetValue(id, out v)) { if (v != Mine) (diff ?? (diff = new List<string>())).Add(name + ": " + v); }
                 else if (now - SrvSeen[id] > 25f)
                 {
-                    if (SrvHeartbeat.Contains(id)) diff.Add(name + ": " + Tt("older version", "старая версия"));
-                    else vanilla.Add(name);
+                    if (SrvHeartbeat.Contains(id)) (diff ?? (diff = new List<string>())).Add(name + ": " + Tt("older version", "старая версия"));
+                    else (vanilla ?? (vanilla = new List<string>())).Add(name);
                 }
             }
-            if (diff.Count > 0)
+            if (diff != null)
                 Show("netver", BtcReplayIcons.Bug, BtcHud.Warn, Tt("Mod versions differ", "Версии мода не совпадают"),
                     Tt("Your version is " + Mine + ". These players have another one; BetterConnection features may not work for them.", "У вас версия " + Mine + ". У этих игроков другая; функции BetterConnection могут у них не работать."), diff);
-            if (vanilla.Count > 0)
+            if (vanilla != null)
                 Show("netvanilla", BtcReplayIcons.Wave, BtcHud.Warn, Tt("A player has no BetterConnection", "У игрока нет BetterConnection"),
                     Tt("These players do not answer like BetterConnection players (vanilla or BetterConnection off). Their spawn data and pauses may break.", "Эти игроки не отвечают как игроки с BetterConnection (ваниль или BetterConnection выключен). Их стартовые данные и паузы могут ломаться."), vanilla);
         }

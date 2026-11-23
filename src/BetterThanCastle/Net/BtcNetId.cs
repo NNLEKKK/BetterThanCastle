@@ -80,8 +80,7 @@ public static class BtcNetId
 
 	private static string GetSceneKey()
 	{
-		Scene activeScene = SceneManager.GetActiveScene();
-		return activeScene.buildIndex + ":" + activeScene.name;
+		return BtcScene.Key;
 	}
 
 	private static void Raise(string why)
@@ -299,7 +298,7 @@ public static class BtcNetId
 		BtcNetId.cfgLoaded = true;
 		BtcPaths.Init();
 		BtcNetId.Enabled = (BtcPaths.ReadKey("netid.txt", "Enabled", "1") != "0");
-		BtcNetId.Diag = (BtcPaths.ReadKey("netid.txt", "Diag", "1") != "0");
+		BtcNetId.Diag = (BtcPaths.ReadKey("netid.txt", "Diag", "0") == "1"); // off by default: the scan walks every NetworkIdentity of the scene (~40 ms hitch every 30 s on the host)
 		int b;
 		bool flag = !int.TryParse(BtcPaths.ReadKey("netid.txt", "DiagSec", "30"), out b);
 		if (flag)

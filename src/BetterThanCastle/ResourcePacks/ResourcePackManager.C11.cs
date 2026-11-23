@@ -222,7 +222,7 @@ public partial class ResourcePackManager : MonoBehaviour
 						bool flag32 = flag31;
 						if (flag32)
 						{
-							string victimKey = (labor.Occupation != null) ? labor.Occupation.CurrentJob.ToString() : "?";
+							string victimKey = (labor.Occupation != null) ? BtcHotkeys.JobName(labor.Occupation.CurrentJob) : "?";
 							ResourcePackManager.HitTrack hitTrack = this.GetHitTrack(labor.transform, bricktronDamageReceiver, false, victimKey);
 							hitTrack.enemy = enemy;
 							hitTrack.lastSeen = now;
@@ -421,7 +421,7 @@ public partial class ResourcePackManager : MonoBehaviour
 		float now = Time.unscaledTime;
 		if (this.scanCache == null || now >= this.crystalFindNext)
 		{
-			this.scanCache = UnityEngine.Object.FindObjectsOfType<IsCapturable>();
+			this.scanCache = BtcRegistry.CapturablesArray(); // was FindObjectsOfType: a ~33 ms scene walk every 30 s
 			this.crystalFindNext = now + 30f;
 		}
 		if (this.scanList == null)

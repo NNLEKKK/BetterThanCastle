@@ -81,6 +81,46 @@ namespace BetterThanCastle.Dev
         }
 
         /// <summary>"crystalread": log animated PB colours of the first driver crystal (sources + one copy target) and tint stats.</summary>
+        // flip the first capture crystal to the faction of the first home crystal (or back to neutral with "neutral"): tests repaint paths
+        internal static void Flip(string[] p)
+        {
+            Brix.Game.Components.AffiliationComponent home = null, target = null;
+            foreach (Brix.Game.Components.FireflyNest n in UnityEngine.Object.FindObjectsOfType<Brix.Game.Components.FireflyNest>())
+            {
+                Brix.Game.Components.AffiliationComponent a = n.GetComponent<Brix.Game.Components.AffiliationComponent>();
+                if (a == null) continue;
+                if (n.isHome) { if (home == null) home = a; }
+                else if (target == null) target = a;
+            }
+            if (home == null || target == null) { BtcLog.Info("Cmd", "crystalflip: no crystals"); return; }
+            Brix.Game.Faction f = p.Length > 1 && p[1] == "neutral" ? Brix.Game.Faction.FindByName("Neutral") : home.faction;
+            target.faction = f;
+            BtcLog.Info("Cmd", "crystalflip " + target.name + " -> " + (f != null ? f.name : "null"));
+        }
+
+        // every crystal: faction, animator on/off, glow colour actually drawn (static crystals test)
+        internal static void Colors()
+        {
+            MaterialPropertyBlock pb = new MaterialPropertyBlock();
+            foreach (CrystalVisuals cv in UnityEngine.Object.FindObjectsOfType<CrystalVisuals>())
+            {
+                if (cv.DriverGameObject == null) continue;
+                Brix.Game.Components.AffiliationComponent af = cv.GetComponentInParent<Brix.Game.Components.AffiliationComponent>();
+                Animator an = cv.GetComponent<Animator>();
+                StringBuilder sb = new StringBuilder("crystalcolor ").Append(cv.transform.parent != null ? cv.transform.parent.name : cv.name).Append('/').Append(cv.name)
+                    .Append(" faction=").Append(af != null && af.faction != null ? af.faction.name : "-").Append(" anim=").Append(an != null && an.enabled);
+                foreach (Renderer r in cv.GetComponentsInChildren<Renderer>(true))
+                {
+                    r.GetPropertyBlock(pb);
+                    sb.Append(" | ").Append(r.name);
+                    for (int i = 0; i < Props.Length; i++) { Vector4 v = pb.GetVector(Props[i]); if (v != Vector4.zero) sb.Append(' ').Append(Props[i]).Append('=').Append(v.ToString("F2")); }
+                    if (r.sharedMaterial != null && r.sharedMaterial.HasProperty("_Color")) sb.Append(" mat_Color=").Append(r.sharedMaterial.color.ToString("F2"));
+                    break;
+                }
+                BtcLog.Info("Dev", sb.ToString());
+            }
+        }
+
         internal static void Read()
         {
             foreach (CrystalVisuals cv in UnityEngine.Object.FindObjectsOfType<CrystalVisuals>())

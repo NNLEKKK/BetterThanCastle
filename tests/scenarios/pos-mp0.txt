@@ -1,0 +1,21 @@
+# smooth movement baseline: same as pos-mp, no clumsy (LAN on one PC)
+host default conquest
+waitclients 1 300
+wait 3
+startmatch 180
+waitgame 300
+wait 4
+mark ingame
+animnet spawn 12
+wait 3
+animnet walk
+wait 10
+animnet walk
+wait 10
+animnet meet
+wait 25
+animnet walk
+wait 10
+animnet walk
+wait 10
+quit

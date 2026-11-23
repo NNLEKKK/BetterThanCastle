@@ -93,6 +93,7 @@ namespace BetterThanCastle
 
             Rect view = new Rect(area.x, y, area.width, area.yMax - y);
             float vw = view.width - (_h > view.height ? 14f : 0f);
+            BtcJump.Scroll(ref _scroll, view.height);
             _scroll = GUI.BeginScrollView(view, _scroll, new Rect(0f, 0f, vw, _h));
             float cy = fs * 0.2f;
             _keys.Clear();
@@ -137,6 +138,30 @@ namespace BetterThanCastle
             }
             BtcUi.Note(ref y, w, fs, Tt("On: improved connection (heartbeat, auto-reconnect, pings, voluntary pause). Everyone in the game needs BetterConnection.", "Вкл: улучшенное соединение (heartbeat, автопереподключение, пинги, добровольная пауза). BetterConnection нужен у всех в игре."));
 
+            if (BtcUi.Fold(ref y, w, fs, KeyAdd("bc:sync"), Tt("Synchronisation", "Синхронизация"), 0))
+            {
+                SyncRow(ref y, w, fs, "anim", Tt("Smooth unit animations", "Плавные анимации юнитов"), BtcBc.BcAnimSync,
+                    Tt("Clients see strikes, hits and steps like the host, without lost or late animations; no extra delay. Works when the host has it on too; applies from the next connection.",
+                       "Клиенты видят удары, попадания и шаги как у хоста, без пропавших и запоздалых анимаций; задержка не добавляется. Работает, если у хоста тоже включено; действует со следующего подключения."),
+                    BtcBc.BcSetAnimSync);
+                SyncRow(ref y, w, fs, "pos", Tt("Smooth unit movement", "Плавное движение юнитов"), BtcBc.BcPosSync,
+                    Tt("Clients see units move 20 times a second, smoothly and right behind the host (vanilla: 6 times a second, ~0.2-0.3 s late, units could stay off their real spot). Works when the host has it on too; applies from the next connection.",
+                       "Клиенты видят движение юнитов 20 раз в секунду, плавно и почти без отставания от хоста (ваниль: 6 раз в секунду, ~0,2-0,3 с отставания, юнит мог остаться не на своём месте). Работает, если у хоста тоже включено; действует со следующего подключения."),
+                    BtcBc.BcSetPosSync);
+                SyncRow(ref y, w, fs, "sound", Tt("Unit sounds like the host", "Звуки юнитов как у хоста"), BtcBc.BcSoundSync,
+                    Tt("Clients hear the same unit sounds as the host: the right voice after a kit change (no more workers sounding like knights), and the sounds vanilla plays only on the host (aiming, spotting an enemy, arrow hits, kills, racks). Works when the host has it on too; applies from the next connection.",
+                       "Клиенты слышат те же звуки юнитов, что и хост: правильный голос после смены кита (рабочие больше не звучат как рыцари) и звуки, которые ваниль играет только у хоста (прицеливание, замеченный враг, попадания стрел, добивания, стойки). Работает, если у хоста тоже включено; действует со следующего подключения."),
+                    BtcBc.BcSetSoundSync);
+                SyncRow(ref y, w, fs, "fog", Tt("No sounds from the fog", "Без звуков из тумана"), BtcBc.BcFogSounds,
+                    Tt("You do not hear what your side cannot see through the fog of war (in vanilla the host hears every unit on the map). Only on your side; at once.",
+                       "Вы не слышите то, чего ваша сторона не видит сквозь туман войны (в ванили хост слышит всех юнитов на карте). Только у вас; сразу."),
+                    BtcBc.BcSetFogSounds);
+                SyncRow(ref y, w, fs, "own", Tt("Own transport (experimental)", "Свой транспорт (эксперимент)"), BtcBc.BcOwnTransport,
+                    Tt("Reliable game data travels through the mod's own delivery instead of the UNET reliable channel: a dead link never drops the game (it freezes and catches up when the network is back), and terrain, files and chat no longer hold up units and damage. Only when both sides have it on; applies from the next connection.",
+                       "Надёжные игровые данные идут через собственную доставку мода вместо надёжного канала UNET: обрыв связи не выкидывает из игры (она замирает и догоняет, когда сеть вернётся), а ландшафт, файлы и чат больше не задерживают юнитов и урон. Только если включено у обоих; действует со следующего подключения."),
+                    BtcBc.BcSetOwnTransport);
+                y += fs * 0.4f;
+            }
             if (BtcUi.Fold(ref y, w, fs, KeyAdd("bc:screen"), Tt("On screen", "На экране"), 0))
             {
                 BtcUi.ToggleUndo(ref y, w, fs, Scope, Tt("Show ping", "Показывать пинг"), BtcBc.BcShowPing, Tt("Ping of the players in the corner during a game", "Пинг игроков в углу во время игры"), BtcBc.BcSetShowPing);
@@ -178,6 +203,21 @@ namespace BetterThanCastle
         }
 
         private string KeyAdd(string k) { _keys.Add(k); return k; }
+
+        // a Synchronisation switch that a changelog link can jump to (BtcJump scope "bc", key = anim / pos / sound / fog / own)
+        private static void SyncRow(ref float y, float w, int fs, string key, string label, bool value, string hint, Action<bool> set)
+        {
+            float y0 = y;
+            BtcUi.ToggleUndo(ref y, w, fs, Scope, label, value, hint, set);
+            BtcJump.Row(Scope, key, new Rect(fs * 0.5f, y0, w - fs, y - y0));
+        }
+
+        /// <summary>Changelog link jump: opens Synchronisation, scrolls to the switch and pulses it.</summary>
+        internal void Jump(string key)
+        {
+            BtcUi.SetOpen("bc:sync", true);
+            BtcJump.Target(Scope, key);
+        }
 
         private GUIStyle _subSt;
         private GUIStyle Sub()

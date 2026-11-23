@@ -162,3 +162,31 @@ Binds: Hotkeys tab > View > "Multi-camera" (all unassigned except the drag modif
 7. Close the game with a split, start a map: the same split comes back about 3 s after the load, every view on the start camera (option "Remember the split between games").
 8. Replay: same things work while watching a replay. FPS: 4 views cost roughly 40% more render time, 8 views about 2x (lab 640x360); "Lighter picture on the views you are not controlling" removes ambient occlusion there.
 Known limits: world labels drawn by scripts (HP bars, pings, unit plates) follow the view under the mouse only; the fog of war vision list is picked around the active camera; the mini map shows the active view.
+
+## PvP net pass (2026-11-22, BC ON on both PCs; tab BC > Synchronisation)
+1. Smooth movement v2 (BC ON both sides, BC tab "Smooth unit movement"): client watches walking groups and a fight; no jumps back/forward, no teleports, units stop where the host shows them. Log: `[PosNet] client 30 s` line (delay, jitter, underruns, jumps, snaps) from the client BepInEx log.
+2. Instant orders (host rule Movement > Instant orders, default ON): redirect running units many times fast: they react at once, no freezes; compare with the rule off.
+3. HP/stamina: hits show on HP bars at once on the client.
+4. Kits after rejoin / fog / replay seek: units keep their weapons, racks show their kits. Log: `[TrackFix] late holder links applied=N lost=M`.
+5. Own transport (OFF by default, turn ON on BOTH, reconnect): `[OwnNet] ... sends through the own transport` on both logs; pull the cable 30 s and 2 min: the game freezes and continues, no return to the menu; 5-20% loss (clumsy): no long stalls. Log line every 30 s: `[OwnNet] 30 s conn N: out=.. resent=.. rtt=.. queued=..`.
+
+## CSP 0.10 port (2026-11-23, e1410f7)
+1. Fight: a unit hit several times in a row (stuns) must take a move order within ~2 s; log `[LegsFix] ... put back on its feet` when it happens.
+2. Crowd at a 1-high step / 1-wide stair: no standing below the step; on a 1-wide stair units wait, do not turn back.
+3. Workers (rule work.baseArea): no auto-run to loose items in the middle of the map or near enemy units; a direct order still works.
+4. Quicksave + save menu: no freeze, log `[FastSave] ... saved`; load: phantoms / inf heal / wards / station radius restored.
+5. 2v2 BC ON: ally's blueprint deliveries hidden on your client; someone un-readies during start -> map still loads (`[LobbyStart]`); save with allies, load, rejoin -> same teams (`[SavedTeams]`). BC OFF: no `[LobbyStart]`/`[SavedTeams]` lines.
+
+## Unit sounds like the host (2026-11-23, BC ON on host + client; tab BC > Synchronisation "Unit sounds like the host", "No sounds from the fog")
+1. Client: give a worker a knight kit, then take it off (or let it re-equip as worker): its voice/hurt/death sounds must match the job after each change (was: worker sounding like a knight).
+2. Client near a fight with archers/arbalists: hears drawing bows, "spotted an enemy" cries, arrow hit/miss, kill cries (before: only the host heard them). No doubled sounds (equip, hurt, deaths, rack/workbench sounds once).
+3. Host: enemy units/bases hidden in the fog make NO sound (workbench, spawns, fights, cries); the same objects become audible as soon as they are seen. Same on a client.
+4. Turn "Unit sounds like the host" off on the client, reconnect: vanilla behaviour (no relayed sounds). Turn "No sounds from the fog" off: host hears everything again (at once).
+5. Log lines: host `[SoundNet] host 30 s: ... KB/s` (lab: 0.13-0.14 KB/s in a 30-unit fight), client `[SoundNet] client 30 s: played=.. doubles skipped=..`.
+
+## Personal work settings (2026-11-23, BC ON; Hotkeys > Orders)
+1. Trap pie: select a builder, open the pie on your trap: slot after "Arm Bear Trap" shows "Auto re-arm: ON" (check icon). Click -> OFF (X icon). Fire a trap: workers do not re-arm it; secondary order still re-arms. Hover your trap with nothing selected: pie with only the switch.
+2. Same as a client (host log `[Prefs] conn N (...): trap=0;...`); host's own traps unaffected by the client's switch.
+3. Checkbox "Traps: ... at the match start" off -> new match starts with OFF.
+4. "Tree cutting: ... logs stay" on: a cutting task leaves logs and stumps; off = vanilla. Client's choice applies only to the client's tasks.
+5. Chopping block: select it, hold Left Ctrl + wheel: ring + label "Log pickup radius: N (default)"; its worker fetches only logs inside the ring. Workbench/furnace/builders unchanged (vanilla). Client sets own block radius; save + load keeps it.

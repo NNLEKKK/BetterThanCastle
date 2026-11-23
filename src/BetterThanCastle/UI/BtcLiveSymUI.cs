@@ -42,6 +42,7 @@ namespace BetterThanCastle
 
         private void OnGUI()
         {
+        	if (useGUILayout) useGUILayout = false; // no GUILayout here: skip Unity's per-event layout pass (garbage)
             Over = false;
             if (!InEditor() || BtcConfig.LiveSymmetry == null) return;
             if (!_loaded) { BtcSymmetry.StateString(); _loaded = true; }   // loads the saved symmetry prefs once

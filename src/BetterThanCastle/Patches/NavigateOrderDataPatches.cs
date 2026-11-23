@@ -12,7 +12,14 @@ namespace BetterThanCastle.Patches
     {
         internal static int Budget(int original, Navigation.NavigateOrderData self)
         {
-            try { return BtcBalanceExtra.NavBudget(self.navigation.faction.isAI, original); }
+            try
+            {
+                int b = BtcBalanceExtra.NavBudget(self.navigation.faction.isAI, original);
+                // rule mov.instant: a player's order searches 600 nodes per update (only while that search runs), so a squad starts ticks earlier
+                Labor l = self.navigation.Labor;
+                if (b < 600 && !self.navigation.faction.isAI && BtcInstantOrders.On && l != null && l.CurrentTask != null && l.CurrentTask.InitialPackage != null && l.CurrentTask.InitialPackage.DecisionSource == Labor.DecisionSource.User) b = 600;
+                return b;
+            }
             catch (Exception e) { BtcLog.Error("Hook", "Navigation.InitSearch: " + e); return original; }
         }
 

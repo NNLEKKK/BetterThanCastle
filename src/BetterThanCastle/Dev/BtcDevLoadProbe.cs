@@ -54,7 +54,7 @@ namespace BetterThanCastle.Dev
 
         private static void PreRelease(Brix.UI.Builder.Panel.BasePanel __instance)
         {
-            if (!BtcLoadBoost.Loading) return;
+            if (!BtcDevLoadLine.Window) return;
             _rel++;
             if (__instance.HasInstance)
             {
@@ -67,7 +67,7 @@ namespace BetterThanCastle.Dev
 
         private static void PreCb()
         {
-            if (!BtcLoadBoost.Loading) return;
+            if (!BtcDevLoadLine.Window) return;
             if (_depth++ == 0) _t0 = Stopwatch.GetTimestamp();
         }
 
@@ -124,12 +124,12 @@ namespace BetterThanCastle.Dev
 
         private static void PreComp(MethodBase __originalMethod)
         {
-            if (BtcLoadBoost.Loading) _c0 = Stopwatch.GetTimestamp();
+            if (BtcDevLoadLine.Window) _c0 = Stopwatch.GetTimestamp();
         }
 
         private static void PostComp(MethodBase __originalMethod, object[] __args)
         {
-            if (!BtcLoadBoost.Loading || _c0 == 0) return;
+            if (!BtcDevLoadLine.Window || _c0 == 0) return;
             string n = "?";
             if (__args != null && __args.Length > 0 && __args[0] != null)
             {

@@ -133,8 +133,9 @@ namespace BetterThanCastle
 			bool def = IsDefault;
 			dead.Clear();
 			bool any = false;
-			foreach (KeyValuePair<int, State> kv in states)
+			for (Dictionary<int, State>.Enumerator en = states.GetEnumerator(); en.MoveNext(); )   // no foreach: old Mono boxes the enumerator
 			{
+				KeyValuePair<int, State> kv = en.Current;
 				State s = kv.Value;
 				if (s.tag == null) { dead.Add(kv.Key); continue; }
 				if (def && s.applied) Restore(s);

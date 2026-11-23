@@ -10,14 +10,15 @@ using UnityEngine;
 
 namespace BetterThanCastle.Patches
 {
-    // Legacy: LogWhy/LogBlocked at start of PathBlockedAt.
+    // Legacy: LogWhy/LogBlocked at start of PathBlockedAt; mov.allies closes the blocking ally voxel (BtcAllyPass).
     [HarmonyPatch(typeof(Locomotion4), "PathBlockedAt")]
     internal static class Locomotion4PathBlockedAtPatch
     {
-        private static void Prefix(Locomotion4 __instance)
+        private static void Prefix(Locomotion4 __instance, Vector3 position)
         {
             try
             {
+                BtcAllyPass.Blocked(__instance, position);
                 BtcQol.LogWhy(__instance);
                 BtcQol.LogBlocked(__instance.name, __instance.transform.position);
             }
@@ -49,19 +50,6 @@ namespace BetterThanCastle.Patches
                             walkNode.Reset(fresh);
                             if (hasOrientation) walkNode.Orientation = orientation;
                             BtcQol.LogNote("healed stale node " + self.name + " at " + walkNode.Position);
-                            __result = true;
-                            return false;
-                        }
-                    }
-                }
-                if (BtcQol.AlliesPass)
-                {
-                    XYZ entering = self.PositionEntering;
-                    if (entering != XYZ.zero)
-                    {
-                        VoxelPresence other = VoxelPresence.GetPresenceAt(entering).FirstOrDefault();
-                        if (other != null && other != self.presence && Affiliation.IsAllied(self.faction, other.faction))
-                        {
                             __result = true;
                             return false;
                         }

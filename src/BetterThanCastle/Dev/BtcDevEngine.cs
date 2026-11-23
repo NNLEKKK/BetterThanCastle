@@ -46,7 +46,7 @@ namespace BetterThanCastle.Dev
         private static float _nextCount;
 
         // toggle state
-        private static bool _partOff, _animOff, _lightOff;
+        private static bool _partOff, _animOff, _lightOff, _animOther;   // _animOther: only animators that are not on a unit
         private static readonly Dictionary<int, bool> PsPlaying = new Dictionary<int, bool>();
         private static readonly Dictionary<int, bool> AnEnabled = new Dictionary<int, bool>();
         private static readonly Dictionary<int, bool> LiEnabled = new Dictionary<int, bool>();
@@ -120,7 +120,7 @@ namespace BetterThanCastle.Dev
             float now = Time.realtimeSinceStartup;
             if (_measuring && now >= _mEnd) EndMeasure();
             if ((_partOff || _animOff || _lightOff) && now >= _nextSweep) { _nextSweep = now + 2f; Sweep(); }
-            if (!_measuring && !NoCounters && now >= _nextCount) { _nextCount = now + 5f; SampleCounters(); }
+            if (!_measuring && !NoCounters && now >= _nextCount) { _nextCount = now + 5f; SampleCounters(); BtcDevProf.SkipFrames = 2; } // scene walk: frame left out of the stats
         }
 
         // ---------- measure ----------
@@ -169,7 +169,7 @@ namespace BetterThanCastle.Dev
             sb.Append("eng: ").AppendLine(_counters);
         }
 
-        private static void SampleCounters()
+        internal static void SampleCounters()
         {
             try
             {
@@ -211,7 +211,8 @@ namespace BetterThanCastle.Dev
                 case "cullall": SetCulling(true, !off); break;
                 case "cullfull": SetCulling(false, !off, true); break;
                 case "particles": _partOff = off; if (!off) RestoreParticles(); else Sweep(); break;
-                case "animators": _animOff = off; if (!off) RestoreAnimators(); else Sweep(); break;
+                case "animators": _animOff = off; _animOther = false; if (!off) RestoreAnimators(); else Sweep(); break;
+                case "animothers": _animOff = off; _animOther = off; if (!off) RestoreAnimators(); else Sweep(); break;
                 case "lights": _lightOff = off; if (!off) RestoreLights(); else Sweep(); break;
                 case "render": SetRender(off); break;
                 case "physics": SetPhysics(off); break;
@@ -243,6 +244,117 @@ namespace BetterThanCastle.Dev
             BtcLog.Info("Engine", "culling " + (all ? "all" : "units") + " -> " + m + " animators=" + n);
         }
 
+
+        // vfxdump [tag]: what lights the scene and what emits particles, grouped by object name (night vs day cost hunt). BTClogs/vfx-<tag>.txt
+        internal static void VfxDump(string tag)
+        {
+            try
+            {
+                StringBuilder sb = new StringBuilder();
+                Dictionary<string, int[]> g = new Dictionary<string, int[]>();
+                Light[] li = UnityEngine.Object.FindObjectsOfType<Light>();
+                foreach (Light l in li)
+                {
+                    if (l == null) continue;
+                    Transform p = l.transform.parent;
+                    string k = l.type + " " + l.name + " < " + (p != null ? p.name : "-") + " shadows=" + l.shadows + " mode=" + l.renderMode + " range=" + l.range.ToString("F0");
+                    int[] v; if (!g.TryGetValue(k, out v)) g[k] = v = new int[2];
+                    v[0]++; if (l.enabled && l.gameObject.activeInHierarchy && l.intensity > 0f) v[1]++;
+                }
+                sb.AppendLine("LIGHTS total=" + li.Length + " pixelLightCount=" + QualitySettings.pixelLightCount + " shadows=" + QualitySettings.shadows + " shadowDist=" + QualitySettings.shadowDistance);
+                Emit(sb, g);
+                g.Clear();
+                ParticleSystem[] ps = UnityEngine.Object.FindObjectsOfType<ParticleSystem>();
+                foreach (ParticleSystem s in ps)
+                {
+                    if (s == null) continue;
+                    Transform p = s.transform.parent;
+                    string k = s.name + " < " + (p != null ? p.name : "-") + " max=" + s.main.maxParticles;
+                    int[] v; if (!g.TryGetValue(k, out v)) g[k] = v = new int[3];
+                    v[0]++; if (s.isPlaying) v[1]++; v[2] += s.particleCount;
+                }
+                sb.AppendLine("PARTICLES total=" + ps.Length + "  (count playing particles)");
+                Emit(sb, g);
+                g.Clear();
+                foreach (MonoBehaviour m in UnityEngine.Object.FindObjectsOfType<MonoBehaviour>())
+                {
+                    if (m == null || !m.isActiveAndEnabled) continue;
+                    string n = m.GetType().Name;
+                    if (n.IndexOf("Firefly", StringComparison.OrdinalIgnoreCase) < 0 && n.IndexOf("Light", StringComparison.OrdinalIgnoreCase) < 0
+                        && n.IndexOf("Flicker", StringComparison.OrdinalIgnoreCase) < 0 && n.IndexOf("Fx", StringComparison.Ordinal) < 0
+                        && n.IndexOf("Night", StringComparison.OrdinalIgnoreCase) < 0 && n.IndexOf("Glow", StringComparison.OrdinalIgnoreCase) < 0
+                        && n.IndexOf("Effect", StringComparison.OrdinalIgnoreCase) < 0 && n.IndexOf("Particle", StringComparison.OrdinalIgnoreCase) < 0) continue;
+                    int[] v; if (!g.TryGetValue(n, out v)) g[n] = v = new int[1];
+                    v[0]++;
+                }
+                Dictionary<string, int[]> ga = new Dictionary<string, int[]>();
+                Animator[] ans = UnityEngine.Object.FindObjectsOfType<Animator>();
+                foreach (Animator a in ans)
+                {
+                    if (a == null) continue;
+                    Transform p = a.transform.parent;
+                    string nm = a.name; int c = nm.IndexOf(" (", StringComparison.Ordinal); if (c > 0) nm = nm.Substring(0, c);
+                    string pn = p != null ? p.name : "-"; c = pn.IndexOf(" (", StringComparison.Ordinal); if (c > 0) pn = pn.Substring(0, c);
+                    bool unit = a.GetComponentInParent<Brix.Game.AI.Locomotion4>() != null;
+                    Renderer r = a.GetComponentInChildren<Renderer>();
+                    string k = (unit ? "UNIT " : "") + nm + " < " + pn + " ctrl=" + (a.runtimeAnimatorController != null ? a.runtimeAnimatorController.name : "-")
+                        + " cull=" + a.cullingMode + " rootMotion=" + a.applyRootMotion + " rend=" + (r == null ? "none" : r.GetType().Name);
+                    int[] v; if (!ga.TryGetValue(k, out v)) ga[k] = v = new int[3];
+                    v[0]++; if (a.isActiveAndEnabled) v[1]++; if (a.isActiveAndEnabled && r != null && r.isVisible) v[2]++;
+                }
+                sb.AppendLine("ANIMATORS total=" + ans.Length + "  (count on=active+enabled visible=)");
+                Emit(sb, ga);
+                sb.AppendLine(BetterThanCastle.BtcAnimCut.Stats());
+                sb.AppendLine("CLIPS (controller: clip/length, loop; shown = parent CanvasGroup alpha > 0)");
+                Dictionary<string, string> clips = new Dictionary<string, string>();
+                Dictionary<string, int[]> shown = new Dictionary<string, int[]>();
+                foreach (Animator a in ans)
+                {
+                    if (a == null || a.runtimeAnimatorController == null) continue;
+                    string cn = a.runtimeAnimatorController.name;
+                    if (!clips.ContainsKey(cn))
+                    {
+                        StringBuilder cs = new StringBuilder();
+                        foreach (AnimationClip ac in a.runtimeAnimatorController.animationClips)
+                            if (ac != null) cs.Append(' ').Append(ac.name).Append('/').Append(ac.length.ToString("0.##")).Append(ac.isLooping ? "L" : "");
+                        AnimatorControllerParameter[] aps = a.isActiveAndEnabled ? a.parameters : new AnimatorControllerParameter[0];
+                        cs.Append("  params:");
+                        foreach (AnimatorControllerParameter pp in aps) cs.Append(' ').Append(pp.name);
+                        cs.Append("  comps:");
+                        for (Transform ct = a.transform; ct != null && ct != a.transform.root; ct = ct.parent)
+                            foreach (MonoBehaviour mb in ct.GetComponents<MonoBehaviour>()) if (mb != null) cs.Append(' ').Append(ct.name).Append(':').Append(mb.GetType().Name);
+                        clips[cn] = cs.ToString();
+                    }
+                    CanvasGroup cg = a.GetComponentInParent<CanvasGroup>();
+                    int[] sv; if (!shown.TryGetValue(cn, out sv)) shown[cn] = sv = new int[2];
+                    sv[0]++; if (cg == null || cg.alpha > 0f) sv[1]++;
+                }
+                foreach (KeyValuePair<string, string> kv in clips) sb.AppendLine("  " + kv.Key + " n=" + shown[kv.Key][0] + " shown=" + shown[kv.Key][1] + " :" + kv.Value);
+                sb.AppendLine("SCRIPTS (light/firefly/fx-like, active)");
+                Emit(sb, g);
+                foreach (Camera c in Camera.allCameras)
+                {
+                    sb.Append("CAMERA ").Append(c.name).Append(" path=").Append(c.actualRenderingPath).Append(" hdr=").Append(c.allowHDR).Append(" far=").Append(c.farClipPlane.ToString("F0")).Append(" fx:");
+                    foreach (MonoBehaviour m in c.GetComponents<MonoBehaviour>()) if (m != null) sb.Append(' ').Append(m.GetType().Name).Append(m.enabled ? "" : "(off)");
+                    sb.AppendLine();
+                }
+                File.WriteAllText(Path.Combine(BtcDevPaths.LogDir, "vfx-" + tag + ".txt"), sb.ToString());
+                BtcLog.Info("Engine", "vfxdump " + tag + " lights=" + li.Length + " ps=" + ps.Length);
+            }
+            catch (Exception e) { BtcLog.Error("Engine", "vfxdump: " + e); }
+        }
+
+        private static void Emit(StringBuilder sb, Dictionary<string, int[]> g)
+        {
+            List<KeyValuePair<string, int[]>> l = new List<KeyValuePair<string, int[]>>(g);
+            l.Sort((a, b) => b.Value[b.Value.Length > 1 ? 1 : 0].CompareTo(a.Value[a.Value.Length > 1 ? 1 : 0]));
+            foreach (KeyValuePair<string, int[]> p in l)
+            {
+                sb.Append("  ");
+                for (int i = 0; i < p.Value.Length; i++) sb.Append(p.Value[i]).Append(i == 0 ? (p.Value.Length > 1 ? " on=" : "") : i == 1 && p.Value.Length > 2 ? " particles=" : "").Append(' ');
+                sb.Append(p.Key).AppendLine();
+            }
+        }
         private static void Sweep()
         {
             if (_partOff)
@@ -262,7 +374,7 @@ namespace BetterThanCastle.Dev
                 Animator[] an = UnityEngine.Object.FindObjectsOfType<Animator>();
                 for (int i = 0; i < an.Length; i++)
                 {
-                    if (an[i] == null) continue;
+                    if (an[i] == null || (_animOther && an[i].GetComponentInParent<Brix.Game.AI.Locomotion4>() != null)) continue;
                     int id = an[i].GetInstanceID();
                     if (!AnEnabled.ContainsKey(id)) AnEnabled[id] = an[i].enabled;
                     an[i].enabled = false;

@@ -563,6 +563,7 @@ public static class BtcWorld
 	{
 		try
 		{
+			if (!BtcNetDiag.Enabled) return;   // the census files are diagnostics (Network/DiagLog2): no file + strings every second otherwise
 			int cnt = BtcWorld._cnt;
 			bool flag = BtcWorld._sessId == 0 || cnt == 0;
 			if (!flag)

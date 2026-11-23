@@ -1,0 +1,5 @@
+# Alloc profiler smoke: main menu only.
+prof start
+wait 15
+dump menu
+quit

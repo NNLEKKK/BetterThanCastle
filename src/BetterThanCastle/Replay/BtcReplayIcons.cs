@@ -47,6 +47,8 @@ namespace BetterThanCastle
         }
 
 
+        private static readonly float[] WaveHs = { 5f, 2.5f, 4f, 1f, 3.5f, 6f, 3f };
+
         private static void Draw(int kind, Rect r, Color c)
         {
             float s = Mathf.Min(r.width, r.height) * 0.62f;
@@ -120,7 +122,7 @@ namespace BetterThanCastle
                     break;
                 case Wave:
                 {
-                    float[] hs = { 5f, 2.5f, 4f, 1f, 3.5f, 6f, 3f };
+                    float[] hs = WaveHs;
                     for (int i = 0; i < hs.Length; i++) R(x + i * 1.15f * p, y + (7f - hs[i]) * p, p * 0.9f, (hs[i] + 1f) * p, c);
                     break;
                 }
