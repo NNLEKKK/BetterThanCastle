@@ -10,6 +10,9 @@
 # Optional 5th field "exp" = experimental (not verified in real games), shown as a badge.
 # Do not use the pipe character inside texts. Keep every entry on ONE line.
 
+@ 0.6.0a | 2026-11-23 | | Hotfix
+= hud | - | Broken interface icons fixed: white squares instead of team flags, wrong pictures instead of the skull and the loading arrows after a player changed the purple colour | Исправлены сломанные иконки интерфейса: белые квадраты вместо флагов команд, чужие картинки вместо черепа и стрелок загрузки после смены фиолетового цвета игроком
+
 @ 0.6.0 | 2026-11-23 | | Major Performance Update
 + multiplayer | tab:4:5 | Choose the map and game mode your new lobby starts with (Gameplay > Map > New lobby defaults). By default it is Pioneer Pass and Conquest instead of the best-rated map. | Можно выбрать карту и режим, с которых начинается новое лобби (Геймплей > Карта > Новое лобби по умолчанию). По умолчанию это Pioneer Pass и Завоевание вместо карты с лучшим рейтингом.
 * gameplay | tab:4:build.chop1x1 | Built crafting stations (workbench, forge, loom, lab, machine shop, altar) no longer forbid building on the 2 cells in front of them: only the station itself takes space (same rule as the 1x1 chopping block). | Построенные крафтильни (верстак, кузня, ткацкий станок, лаборатория, мастерская, алтарь) больше не запрещают строить на 2 клетках перед собой: место занимает только сам станок (то же правило, что и пенёк 1x1).

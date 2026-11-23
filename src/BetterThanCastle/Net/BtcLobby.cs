@@ -597,7 +597,8 @@ public static class BtcLobby
 		}
 		else
 		{
-			bool flag2 = sprite != null;
+			// only destroy our own generated flags: FlagFor can return the vanilla purple sprite, whose texture is a shared game atlas
+			bool flag2 = sprite != null && sprite != IconKeys.FlagPurple.Get64();
 			if (flag2)
 			{
 				UnityEngine.Object.Destroy(sprite.texture);
