@@ -17,7 +17,8 @@ namespace BetterThanCastle
         internal static readonly Color RailBg = new Color32(30, 30, 30, 216);        // _bgColorDefault / Hover / AnySelected (0.12,0.12,0.12,0.85)
         internal static readonly Color Selected = new Color(0.1f, 0.1f, 0.1f, 1f);    // _bgColorSelected
         internal static readonly Color Yellow = new Color32(255, 197, 10, 255);       // CastleYellow
-        internal static readonly Color Red = new Color(1f, 0f, 100f / 255f, 1f);      // CastleRed
+        // Accent of the HUD panels: vanilla yellow (the custom CastleRed of the author's Lua panels leaked into 0.6.0). Destructive buttons use PureRed/DeleteRed.
+        internal static readonly Color Red = Yellow;
         internal static readonly Color Gray = new Color32(127, 127, 127, 255);
         internal static readonly Color Clear = new Color(0f, 0f, 0f, 0f);
         internal static readonly Color Divider = new Color32(127, 127, 127, 127);

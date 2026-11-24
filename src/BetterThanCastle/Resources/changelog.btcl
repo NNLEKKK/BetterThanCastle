@@ -10,6 +10,9 @@
 # Optional 5th field "exp" = experimental (not verified in real games), shown as a badge.
 # Do not use the pipe character inside texts. Keep every entry on ONE line.
 
+@ 0.6.0b | 2026-11-24 | | Hotfix
+= hud | - | In-game side panels, section headers and task popups are yellow again like in vanilla (a custom red leaked in 0.6.0); only delete and cancel buttons stay red | Боковые панели, заголовки секций и всплывашки задач снова жёлтые, как в ванили (в 0.6.0 просочился свой красный); красными остались только кнопки удаления и отмены
+
 @ 0.6.0a | 2026-11-23 | | Hotfix
 = hud | - | Broken interface icons fixed: white squares instead of team flags, wrong pictures instead of the skull and the loading arrows after a player changed the purple colour | Исправлены сломанные иконки интерфейса: белые квадраты вместо флагов команд, чужие картинки вместо черепа и стрелок загрузки после смены фиолетового цвета игроком
 
