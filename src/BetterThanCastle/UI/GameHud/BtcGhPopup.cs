@@ -187,12 +187,24 @@ namespace BetterThanCastle
         private static bool OfType(int t) { return Has() && _type == t; }
         private static bool NotIdle() { return Has() && _type != T_IDLE; }
         private static bool IsBuildSel() { return OfType(T_BUILD); }
-        private static bool IsLandSel() { return OfType(T_LAND); }
+        private static bool IsLandSel() { return OfType(T_LAND) && BtcTerraform.Of(_sel) == null; }
+        // BTC terraform task: a Flatten with a terraform shape, or a new one being placed by the tool (the idle task is selected then)
+        private static bool IsTerraSel() { return OfType(T_LAND) && BtcTerraform.Of(_sel) != null; }
+        private static bool TerraPlacing() { return BtcTerraformTool.Placing; }
+        private static bool TerraShown() { return TerraPlacing() || IsTerraSel(); }
+
+        /// <summary>The terraform tool changed (mode, size, kept resources, placing / editing): re-evaluate the popup.</summary>
+        internal static void RefreshTerraform()
+        {
+            if (_lyt == null) return;
+            Refresh(M_ALL);
+            if (_target != null) Track(_target);   // the width changed: keep it clamped next to its task panel
+        }
         private static bool IsQuarrySel() { return OfType(T_QUARRY); }
         private static bool IsTunnelSel() { return OfType(T_TUNNEL); }
         private static bool IsHarvestSel() { return OfType(T_HARVEST); }
         private static bool IsCleanSel() { return OfType(T_CLEAN); }
-        private static bool IsIdleNoOp() { return OfType(T_IDLE) && _op == null; }
+        private static bool IsIdleNoOp() { return OfType(T_IDLE) && _op == null && !TerraPlacing(); }
         private static bool IsNotBuildNotIdle() { return NotIdle() && _type != T_BUILD; }
         private static bool IsBuildNotIdle() { return NotIdle() && _type == T_BUILD; }
         private static bool Selecting() { return InputModeController.IsSelectingBlueprints(); }
@@ -279,7 +291,7 @@ namespace BetterThanCastle
                 Root = BtcGhKit.Box(Layouts.Horizontal, _lyt, "", 2, 2, 2, 2, 1f, TextAnchor.LowerLeft);
                 BtcGhKit.Le(Root, -1f, 72f, -1f, 72f, -1f, -1f, false);
                 _fill(this);
-                string text = _labelKey == null ? "" : BtcGameHud.Loc(_labelKey);
+                string text = _labelKey == null ? "" : _labelKey.StartsWith("##") ? BtcGameHud.Loc(_labelKey) : BtcLang.Tr(_labelKey);
                 if (!string.IsNullOrEmpty(text))
                 {
                     _label = BtcGhKit.Make(Texts.Default, Root, "");
@@ -341,6 +353,7 @@ namespace BetterThanCastle
             internal Color HoverColor = BtcGhButton.FgHover;
             internal Action OnAction;
             internal Func<int> Highlight;
+            internal Func<string> Tip;
 
             private BtcGhButton _b;
             private Image _fg;
@@ -400,7 +413,7 @@ namespace BetterThanCastle
                     _b.Silent = true;
                 }
                 _b.HoverBg = hoverBg; _b.HotkeyLabel = hotkey; _b.Icon = _fg; _b.HoverColor = HoverColor;
-                _b.HotkeyFn = Hotkey; _b.OnAction = OnAction; _b.Highlight = Highlight;
+                _b.HotkeyFn = Hotkey; _b.OnAction = OnAction; _b.Highlight = Highlight; _b.Tip = Tip;
                 if (IconColorFn != null) _b.IconColor = IconColorFn;
                 NoRaycast(p, btnRt);
             }

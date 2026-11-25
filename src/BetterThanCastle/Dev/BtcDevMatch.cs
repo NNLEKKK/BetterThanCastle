@@ -302,8 +302,44 @@ namespace BetterThanCastle.Dev
             _wkTag = tag + (_wkToD ? "->D" : "->S"); _wkToD = !_wkToD; _wkAct = true; _wkT0 = Time.time; _wkLimit = Time.time + 45f;
         }
 
+        // fposloop <sec> own|other|off: every <sec> s logs the positions of the 5 lowest-netId non-phantom units of the local faction (own) or
+        // of the others (other) as "FPos side netId@x,z ..." plus a moved flag against the previous line. netIds are equal on host and client,
+        // so a host and a client log of the same units can be compared (did an order after a link outage reach the host? did it show on the client?).
+        private static float _fpEvery, _fpNext; private static bool _fpOwn;
+        private static readonly Dictionary<uint, Vector3> FpLast = new Dictionary<uint, Vector3>();
+        internal static void FPosLoop(float sec, string side)
+        {
+            _fpEvery = side == "off" ? 0f : sec; _fpOwn = side == "own"; _fpNext = Time.realtimeSinceStartup + _fpEvery; FpLast.Clear();
+        }
+
+        private static void FPosTick()
+        {
+            if (_fpEvery <= 0f || Time.realtimeSinceStartup < _fpNext) return;
+            _fpNext = Time.realtimeSinceStartup + _fpEvery;
+            User u = User.LocalUser; if (u == null || u.faction == null) return;
+            List<KeyValuePair<uint, Vector3>> us = new List<KeyValuePair<uint, Vector3>>();
+            Labor[] ls = UnityEngine.Object.FindObjectsOfType<Labor>();
+            for (int i = 0; i < ls.Length; i++)
+            {
+                Labor l = ls[i]; if (l == null || l.GetComponent<Locomotion4>() == null || l.name.IndexOf("Phantom") >= 0) continue;
+                if (u.faction.IsSame(l.gameObject) != _fpOwn) continue;
+                NetworkIdentity ni = l.GetComponent<NetworkIdentity>(); if (ni == null) continue;
+                us.Add(new KeyValuePair<uint, Vector3>(ni.netId.Value, l.transform.position));
+            }
+            us.Sort(delegate (KeyValuePair<uint, Vector3> a, KeyValuePair<uint, Vector3> b) { return a.Key.CompareTo(b.Key); });
+            System.Text.StringBuilder sb = new System.Text.StringBuilder(); int moved = 0;
+            for (int i = 0; i < us.Count && i < 5; i++)
+            {
+                Vector3 last; if (FpLast.TryGetValue(us[i].Key, out last) && (last - us[i].Value).sqrMagnitude > 0.04f) moved++;
+                FpLast[us[i].Key] = us[i].Value;
+                sb.Append(' ').Append(us[i].Key).Append('@').Append(us[i].Value.x.ToString("0.0")).Append(',').Append(us[i].Value.z.ToString("0.0"));
+            }
+            BtcLog.Info("FPos", (_fpOwn ? "own" : "other") + " n=" + us.Count + " moved=" + moved + " |" + sb);
+        }
+
         private static void WalkTick()
         {
+            FPosTick();
             if (!_wkAct) return;
             int done = 0, cnt = WkL.Count;
             for (int i = 0; i < cnt; i++)

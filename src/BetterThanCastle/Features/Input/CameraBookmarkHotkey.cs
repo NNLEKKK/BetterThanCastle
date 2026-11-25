@@ -70,6 +70,7 @@ namespace Brix.Input
 				this.HandleFocusMark();
 				this.HandlePing();
 				BtcStationRadius.Tick(instance);
+				BtcTerraformTool.CamTick(instance);
 				this.HandleFocusHold();
 				this.HandleDropLuggage();
 				this.HandleOverlayToggle();
@@ -1444,7 +1445,7 @@ namespace Brix.Input
 			float fast = cam.ZoomSpeedMod / Mathf.Max(0.0001f, this._fastBaseZoomMod);
 			cam.ZoomSpeedMod = 0f;
 			float w = UnityEngine.Input.mouseScrollDelta.y;
-			if (w == 0f || BtcStationRadius.WheelTaken || UnityEngine.Input.GetKey(KeyCode.LeftShift) || UnityEngine.Input.GetKey(KeyCode.RightShift)
+			if (w == 0f || BtcStationRadius.WheelTaken || BtcTerraformTool.WheelHeld() || UnityEngine.Input.GetKey(KeyCode.LeftShift) || UnityEngine.Input.GetKey(KeyCode.RightShift)
 				|| (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()))
 			{
 				return;

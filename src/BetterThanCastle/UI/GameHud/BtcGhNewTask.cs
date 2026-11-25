@@ -18,7 +18,10 @@ namespace BetterThanCastle
             internal string Icon, Loc, Hotkey;
             internal bool FgLabel = true;
             internal LuaFn Run, Placing;
+            internal bool Terraform; // BTC task: own icon / label, started by BtcTerraformTool
         }
+
+        private static readonly Task Terra = new Task { Terraform = true, Loc = "Terraforming", Hotkey = BtcTerraformTool.HotkeyId };
 
         // BtcGhModes.NewTaskButtons order: Harvest(all), Wood, Boulder, Iron, Brimstone, Plants, Repair, Quarry, Cleaning, Landscape, Tunnel, Build
         private static readonly Task All = new Task { Icon = "_Harvest", Loc = "##gamemenu_taskbar_harvest", Hotkey = "project_CreateHarvestTask", Run = UIGameObserver.lua_NewHarvestTask_All, Placing = UIGameObserver.lua_IsPlacingNewHarvestTask_All };
@@ -39,6 +42,12 @@ namespace BetterThanCastle
         private static void Start(Task t)
         {
             if (BtcGhLeft.Paused || !BtcGhLeft.UnderCap()) return;
+            if (t.Terraform)
+            {
+                BtcGhLeft.SetOpen(BtcGhLeft.Side.None);
+                BtcTerraformTool.OpenNew();
+                return;
+            }
             t.Run(default(ScriptExecutionContext), default(CallbackArguments));
         }
 
@@ -58,7 +67,7 @@ namespace BetterThanCastle
             Alert(bar);
             Grid(bar, "##gamemenu_taskbar_maintenancetasks", Repair);
             Grid(bar, "##gamemenu_taskbar_harvesttasks", Wood, Plants, Clean, Iron, Brim, Boulder, All);
-            Grid(bar, "##gamemenu_taskbar_miningtasks", Tunnel, Land, Quarry);
+            Grid(bar, "##gamemenu_taskbar_miningtasks", Tunnel, Land, Quarry, Terra);
             Grid(bar, "##gamemenu_taskbar_constructiontasks", Build);
         }
 
@@ -68,6 +77,17 @@ namespace BetterThanCastle
             for (int i = 0; i < tasks.Length; i++)
             {
                 Task t = tasks[i];
+                if (t.Terraform)
+                {
+                    BtcGhButton tb = BtcGhKit.GridButton(grid, BtcTerraformIcon.Get(), Color.white, 48f, BtcLang.Tr(t.Loc), true, "", true);
+                    tb.HotkeyFn = delegate { return BtcHotkeys.GetKeys(t.Hotkey, null).Length > 0 ? BtcHotkeys.ComboText(t.Hotkey) : ""; };
+                    tb.IconColor = delegate { return BtcGhLeft.UnderCap() && BtcTerraform.On ? Color.white : BtcGhKit.Gray; };
+                    tb.OnAction = delegate { Start(t); };
+                    tb.Highlight = delegate { return BtcTerraformTool.Placing ? 1 : 0; };
+                    tb.Tip = delegate { return BtcTerraform.On ? BtcLang.Tr("Dig any shape, tunnel and quarry ladders, landings") : BtcLang.Tr("Terraforming needs BetterConnection (BC tab)"); };
+                    bar.Add(tb);
+                    continue;
+                }
                 BtcGhButton b = BtcGhKit.GridButton(grid, BtcGhKit.Icon(t.Icon), Color.white, 64f, BtcGameHud.Loc(t.Loc), t.FgLabel, "", true);
                 b.HotkeyFn = delegate { return BtcGameHud.Hotkey("Projects", t.Hotkey); };
                 b.IconColor = delegate { return BtcGhLeft.UnderCap() ? Color.white : BtcGhKit.Gray; };

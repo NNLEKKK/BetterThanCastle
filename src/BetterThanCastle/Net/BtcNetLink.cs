@@ -56,6 +56,8 @@ namespace BetterThanCastle
             internal float deafFor;      // seconds the peer's reports keep saying it does not hear us
             internal string why;         // "silent" / "deaf"
             internal float loadGraceUntil; // realtime until which the peer still counts as loading (its load just ended)
+            internal NetworkConnection conn; // host: the peer's connection object (kept after UNET forgets it, for a drop without a disconnect event)
+            internal User user;              // host: the peer's player (same reason)
         }
 
         // after a peer's load ends its first frames are still long (Lua UI, first physics), and its heartbeats lag behind
@@ -161,6 +163,7 @@ namespace BetterThanCastle
             SendHeartbeat(m, s);
             s.frameMax = 0f;
             HoldPause(m, s);
+            KeepPause(s);
             if (NetworkServer.active) HostPolicy(m, s, rt, step);
             else ClientWatch(m, s, rt);
         }
@@ -242,7 +245,20 @@ namespace BetterThanCastle
                 NetworkConnection c = ConnById(kv.Key);
                 if (c == null || !c.isConnected) _tmpIds.Add(kv.Key);
             }
-            for (int i = 0; i < _tmpIds.Count; i++) s.peers.Remove(_tmpIds[i]);
+            for (int i = 0; i < _tmpIds.Count; i++)
+            {
+                Peer gp;
+                // UNET dropped the connection without an OnServerDisconnect (seen after a 20 s outage: BadMessage, then the connection
+                // just vanished): nobody kept the player, nothing paused, and the client kept sending into the void. Treat it as a drop.
+                if (s.peers.TryGetValue(_tmpIds[i], out gp) && gp.seen && gp.conn != null && !ClosedByHost(gp.conn) && !selfLoading)
+                {
+                    BtcLog.Warn("Net", "Server: connection " + _tmpIds[i] + " vanished without a disconnect event, handling it as a drop");
+                    _dropUser = gp.user; _dropConnId = _tmpIds[i];
+                    try { TryKeepDroppedPlayer(m, gp.conn); } catch (Exception e) { BtcLog.Error("Net", "vanished peer: " + e.Message); }
+                    try { byte err; NetworkTransport.Disconnect(gp.conn.hostId, gp.conn.connectionId, out err); } catch (Exception) { }   // the client learns it and rejoins
+                }
+                s.peers.Remove(_tmpIds[i]);
+            }
 
             // a peer that died without a disconnect packet (crash, cable) stays "connected" for the 1 h transport timeout and
             // everything sent to it piles up until UNET runs out of its shared send events: then the host cannot send to anybody
@@ -263,6 +279,8 @@ namespace BetterThanCastle
                 if (NotAPeer(c) || BtcSpectate.IsSpec(c)) continue;
                 if (IsPendingRejoin(s, c.connectionId)) continue;
                 Peer p = PeerOf(s, c.connectionId);
+                p.conn = c;
+                if (p.user == null) p.user = SafeUser(m, c);
                 bool silent = p.silence > LinkPauseAfter;
                 // one stale report (sent before the peer processed our queued heartbeats after its own freeze) must not count:
                 // deaf only if the reports say so for a whole second
@@ -513,6 +531,17 @@ namespace BetterThanCastle
             s.pauseHeld = held;
             if (s.voluntaryPauseActive) BtcLog.Info("Net", "voluntary pause " + (held ? "held (loading)" : "applied (level live)"));
             RecomputeEffectivePause(s);
+        }
+
+        /// <summary>Several systems write Time.timeScale (spectator freeze/unfreeze, fast save, ...). If one of them restarted the game
+        /// while a pause is in force, the pause state said "paused" but time ran, and nothing ever set it again. Re-apply it.</summary>
+        private static void KeepPause(State s)
+        {
+            if (!s.effectivePauseApplied || Time.timeScale <= 0f) return;
+            if (BtcReplay.Mode == BtcReplay.State.Playing) return;
+            BtcLog.Warn("Net", "pause lost (timeScale " + Time.timeScale + " while paused): applying it again");
+            s.preHardPauseTimeScale = Time.timeScale;
+            Time.timeScale = 0f;
         }
 
         /// <summary>Client: the host's pause state, plus a local freeze only while our own transport is reconnecting.</summary>

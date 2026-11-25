@@ -32,6 +32,8 @@ namespace BetterThanCastle
             Items.Add(GoalsSec());
             Items.Add(new Div(M_SEL | M_INPUT, IsBuildSel, 8f)); Items.Add(BuildSec());
             Items.Add(new Div(M_SEL, IsLandSel, 8f)); Items.Add(LandSec());
+            Items.Add(new Div(M_SEL, TerraShown, 8f)); Items.Add(TerraModeSec()); // BTC terraform task
+            Items.Add(new Div(M_SEL, TerraShown, 8f)); Items.Add(TerraKeepSec());
             Items.Add(new Div(M_SEL | M_KEPT, IsQuarrySel, 8f)); Items.Add(QuarrySec());
             Items.Add(new Div(M_SEL | M_TUNNEL | M_KEPT, IsTunnelSel, 8f)); Items.Add(TunnelSec());
             Items.Add(new Div(M_SEL | M_INPUT, IsHarvestSel, 8f)); Items.Add(HarvestSec());
@@ -321,6 +323,7 @@ namespace BetterThanCastle
         {
             try
             {
+                if (TerraShown()) { TerraSlot(v); return; }
                 if (v == 1) { ActHarvest(NatureType.boulder); ActTunnelUp(); ActLandRaise(); ActQuarryStairs(); }
                 else if (v == 2) { ActHarvest(NatureType.iron); ActTunnelStraight(); ActLandDig(); ActQuarryKeepStone(); }
                 else if (v == 3) { ActHarvest(NatureType.pyrite); ActTunnelDown(); ActQuarryKeepIron(); }
@@ -427,7 +430,21 @@ namespace BetterThanCastle
         /// Panel_ProgressHorizontal.lua: 160 x 48, bar (bg 0.25 grey + fill in the allied faction colour), "Energy:" left, "cur/total" right.
         private sealed class EnergyCell : Cell
         {
+            private static Sprite _white;
+            private static Sprite WhiteSprite()
+            {
+                if (_white != null) return _white;
+                Texture2D t = new Texture2D(4, 4, TextureFormat.RGBA32, false);
+                Color32[] px = new Color32[16];
+                for (int i = 0; i < px.Length; i++) px[i] = new Color32(255, 255, 255, 255);
+                t.SetPixels32(px); t.Apply(); t.hideFlags = HideFlags.HideAndDontSave;
+                _white = Sprite.Create(t, new Rect(0f, 0f, 4f, 4f), new Vector2(0.5f, 0.5f));
+                _white.hideFlags = HideFlags.HideAndDontSave;
+                return _white;
+            }
+
             private Image _fill;
+            private RectTransform _fillRt;
             private Text _count;
             private BtcGhButton _b;
 
@@ -450,8 +467,7 @@ namespace BetterThanCastle
                 BtcGhKit.Le(bg, 64f, 64f, -1f, -1f, -1f, -1f, true);
                 RectTransform fg = BtcGhKit.Make(Images.Default, bar, "");
                 BtcGhKit.Rect(fg, new Vector2(0f, 0.5f), new Vector2(1f, 0.5f), BtcGhKit.Mid, new Vector2(0f, 2f), new Vector2(0f, 4f));
-                _fill = fg.GetComponent<Image>(); // keeps the prefab sprite (UI_ColorWhite): Filled needs one
-                _fill.type = Image.Type.Filled; _fill.fillMethod = Image.FillMethod.Horizontal; _fill.fillOrigin = 0; _fill.enabled = true;
+                _fill = fg.GetComponent<Image>(); _fill.sprite = null; _fill.type = Image.Type.Simple; _fill.enabled = true; _fillRt = fg; // fill = right anchor x (Filled mode rendered a full-width line)
                 BtcGhKit.Le(fg, 64f, 64f, -1f, -1f, -1f, -1f, true);
                 RectTransform title = BtcGhKit.Make(Texts.Default, p, "");
                 BtcGhKit.Rect(title, Vector2.zero, Vector2.one, BtcGhKit.Mid, Vector2.zero, Vector2.zero);
@@ -473,7 +489,8 @@ namespace BetterThanCastle
 
             internal override void Refresh()
             {
-                _fill.fillAmount = _fTot > 0f ? Mathf.Clamp01(_fCur / _fTot) : 1f;
+                float fr = _fTot > 0f ? Mathf.Clamp01(_fCur / _fTot) : 1f;
+                if (_fillRt.anchorMax.x != fr) _fillRt.anchorMax = new Vector2(fr, 0.5f);
                 try { User u = User.LocalUser; if (u != null && u.faction != null) _fill.color = u.faction.FactionColor; } catch { }
                 string t;
                 if (UIGameObserver.bricktrons.CheckCreation().Count >= GeneralRules.Main.bricktronCap) t = _maxText ?? (_maxText = BtcGameHud.Loc("##task_idle_maxenergy"));

@@ -34,10 +34,12 @@ namespace BetterThanCastle.Dev
         }
 
         private static readonly Dictionary<string, Sig> Saved = new Dictionary<string, Sig>();
+        private static int _badFlags, _detached, _staleTool;
 
         internal static void Run(string tag, string refTag)
         {
             Sig s = new Sig();
+            _badFlags = 0; _detached = 0; _staleTool = 0;
             foreach (KeyValuePair<NetworkInstanceId, NetworkIdentity> kv in ClientScene.objects)
             {
                 NetworkIdentity ni = kv.Value;
@@ -50,10 +52,49 @@ namespace BetterThanCastle.Dev
                 NetworkIdentity pi = p != null ? p.GetComponentInParent<NetworkIdentity>() : null;
                 s.Parent[kv.Key.Value] = (pi != null ? pi.netId.Value.ToString() : (p != null ? "t:" + p.name : "-")) + (ni.gameObject.activeSelf ? "" : "#off");
                 // what is visibly attached to a unit (kits, hats, carried things), network object or not
+                // a tool the synced link puts in a unit's hands that is not physically there (unit looks like a worker)
+                Brix.Game.Network.GenericParentTracker gpt = ni.GetComponent<Brix.Game.Network.GenericParentTracker>();
+                if (gpt != null && BtcTrackFix.LinkType(gpt) == Brix.Game.Network.TrackingTypes.grip)
+                {
+                    GameObject h = gpt.TrackingParent();
+                    if (h != null && !ni.transform.IsChildOf(h.transform)) { s.Renders.Add(kv.Key.Value + ":DETACHED from " + Kind(h.name)); _detached++; }
+                }
+                Brix.Game.AI.Toolbag tbag = ni.GetComponent<Brix.Game.AI.Toolbag>();
+                if (tbag != null)
+                    foreach (Slot sl in Enum.GetValues(typeof(Slot)))
+                    {
+                        Brix.Game.AI.Toolbag.ToolLimbPair lp = null;
+                        try { lp = tbag.GetToolLimbPair(sl); } catch (Exception) { }
+                        if (lp != null && lp.Tool != null && !lp.Tool.transform.IsChildOf(tbag.transform)) { s.Renders.Add(kv.Key.Value + ":STALETOOL " + sl); _staleTool++; }
+                    }
                 if (ni.GetComponent<Brix.Game.AI.Labor>() != null)
                 {
                     Renderer[] rs = ni.GetComponentsInChildren<Renderer>(false);
                     for (int i = 0; i < rs.Length; i++) if (rs[i].enabled) s.Renders.Add(kv.Key.Value + ":" + Kind(rs[i].gameObject.name));
+                    // animation the eye sees (stuck run after a seek): current state, or the next one while in a transition
+                    Animator an = ni.GetComponentInChildren<Animator>();
+                    if (an != null && an.isActiveAndEnabled)
+                    {
+                        bool tr = an.IsInTransition(0);
+                        AnimatorClipInfo[] ci = tr ? an.GetNextAnimatorClipInfo(0) : an.GetCurrentAnimatorClipInfo(0);
+                        string clip = ci.Length > 0 && ci[0].clip != null ? ci[0].clip.name : "?";
+                        s.Renders.Add(kv.Key.Value + ":anim " + clip);
+                        // invariant: animator bools = synced flag bits (the host's truth); a mismatch is a desync whatever the timing
+                        UNetAnimator ua = ni.GetComponent<UNetAnimator>();
+                        if (ua != null)
+                        {
+                            // the client's latest bits live in previous_state (the SyncVar hook never writes state)
+                            ulong cur = UNetAnimatorSpawnFlagsPatch.Prev(ua);
+                            string bad = "";
+                            for (int b = 0; b <= BoolParameter.HightestId; b++)
+                            {
+                                BoolParameter bp;
+                                if (!BoolParameter.boolParamForID.TryGetValue(b, out bp) || bp == null) continue;
+                                if (an.GetBool(bp.ParameterHash) != ua.GetFlagFromState(cur, b)) bad += bp.ParameterString + (an.GetBool(bp.ParameterHash) ? "=anim1" : "=anim0") + ",";
+                            }
+                            if (bad.Length > 0) { s.Renders.Add(kv.Key.Value + ":FLAGS " + bad); _badFlags++; }
+                        }
+                    }
                 }
             }
             try
@@ -99,7 +140,7 @@ namespace BetterThanCastle.Dev
             int act = 0, off = 0;
             foreach (KeyValuePair<string, int> kv in s.Kinds) { if (kv.Key.EndsWith("#off")) off += kv.Value; else act += kv.Value; }
             BtcLog.Info("WorldSig", tag + " t=" + BtcReplay.PlayClock.ToString("0.0") + " objs " + act + "+" + off + "off blocks " + s.Blocks.Count + " trees " + s.Trees.Count
-                + " terrain " + s.TerrainLen + "B #" + s.TerrainHash.ToString("x8") + " units " + s.Renders.Count + " wardvis " + s.Wards.Count + " crystals " + s.Crystals.Count);
+                + " terrain " + s.TerrainLen + "B #" + s.TerrainHash.ToString("x8") + " units " + s.Renders.Count + " wardvis " + s.Wards.Count + " crystals " + s.Crystals.Count + " animFlagMismatch " + _badFlags + " detachedTools " + _detached + " staleToolRefs " + _staleTool);
             BtcLog.Info("WorldSig", tag + " " + BtcDevDeblocProbe.Summary());
             Sig r;
             if (refTag == null) return;
@@ -243,6 +284,19 @@ namespace BetterThanCastle.Dev
                 string inv = "";
                 if (rp != null) foreach (Transform k in rp.GetComponentsInChildren<Transform>(false)) { NetworkIdentity ki = k.GetComponent<NetworkIdentity>(); if (ki != null && k != rp.transform) inv += Kind(k.name) + ","; }
                 s.Crystals.Add("station " + Kind(cs.gameObject.name) + "@" + P(cs.transform.position) + " first " + first + " pickup " + pick + " work " + work + " rec " + rec + " inv " + inv);
+            }
+            // rack/stockpile content display: which display elements are shown (what the eye sees of the content)
+            foreach (Brix.Game.Storage.RecepteurDisplay rd in UnityEngine.Object.FindObjectsOfType<Brix.Game.Storage.RecepteurDisplay>())
+            {
+                StringBuilder on = new StringBuilder();
+                for (int i = 0; i < rd.displayElements.Count; i++)
+                {
+                    UnityEngine.Object o = rd.displayElements[i].targetObject;
+                    bool v = o is GameObject ? ((GameObject)o).activeSelf : (o is Behaviour && ((Behaviour)o).enabled);
+                    on.Append(v ? '1' : '0');
+                }
+                int n = rd.targetRecepteur != null ? rd.targetRecepteur.StoredItems.Count : -1;
+                s.Crystals.Add("rdisp " + Kind(rd.gameObject.name) + "@" + P(rd.transform.position) + " items " + n + " show " + on);
             }
             foreach (CaptureClock cc in UnityEngine.Object.FindObjectsOfType<CaptureClock>())
             {

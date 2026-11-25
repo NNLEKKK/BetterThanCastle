@@ -35,6 +35,10 @@ namespace BetterThanCastle
         private const int ResendsPerTick = 64;
         private const int Reliable = 0, Unreliable = 1;
 
+#if DEV
+        /// <summary>Lab "blackhole N": every own-transport frame in and out is dropped until this time (a full cable cut, no clumsy needed).</summary>
+        internal static float DevBlackholeUntil;
+#endif
         internal static bool Wanted
         {
             get
@@ -380,6 +384,9 @@ namespace BetterThanCastle
 
         private static bool Put(Link l, int len)
         {
+#if DEV
+            if (Time.realtimeSinceStartup < DevBlackholeUntil) return true;   // lab: frame "sent" into the void
+#endif
             int size = len - 4;
             Frame[0] = (byte)size; Frame[1] = (byte)(size >> 8);
             Frame[2] = (byte)MsgFrame; Frame[3] = (byte)(MsgFrame >> 8);
@@ -407,6 +414,9 @@ namespace BetterThanCastle
         {
             try
             {
+#if DEV
+                if (Time.realtimeSinceStartup < DevBlackholeUntil) return;
+#endif
                 Link l;
                 if (nm.conn == null || !Links.TryGetValue(nm.conn, out l)) return;
                 NetworkReader r = nm.reader;

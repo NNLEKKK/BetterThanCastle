@@ -1,0 +1,14 @@
+# own transport (run with BTC_OWNNET=1): host + 1 visible client; four full cuts (25, 40, 10, 20 s) with the client ordering units every 20 s
+# Expect: no rejoin / no loading screen; after each link return the client's orders move the units on the host AND on the client (FPos lines).
+host default conquest
+waitclients 1 300
+wait 3
+startmatch 180
+waitgame 300
+mark ingame
+fposloop 5 other
+wait 8
+timerstart 90
+wait 260
+netstat
+quit

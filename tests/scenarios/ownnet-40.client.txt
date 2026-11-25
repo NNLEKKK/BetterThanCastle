@@ -1,0 +1,44 @@
+# client of ownnet-40: orders every 20 s through four outages; fposloop logs the client's own units (compare with the host's "other" log)
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 120
+ready 420
+waitgame 300
+mark ingame
+timerstart 90
+fposloop 5 own
+wait 2
+walk init 4
+walk go o1
+wait 20
+walk go o2
+wait 20
+walk go o3
+wait 20
+walk go o4
+wait 20
+walk go o5
+wait 20
+walk go o6
+wait 20
+walk go o7
+wait 20
+walk go o8
+wait 20
+walk go o9
+wait 20
+walk go o10
+wait 20
+walk go o11
+wait 20
+walk go o12
+wait 20
+walk go o13
+wait 20
+walk go o14
+wait 20
+walk go o15
+wait 20
+netstat
+wait 5
+quit

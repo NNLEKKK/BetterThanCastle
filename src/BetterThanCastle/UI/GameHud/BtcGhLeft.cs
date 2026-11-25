@@ -286,7 +286,8 @@ namespace BetterThanCastle
         {
             if (_score == null) return;
             _score.Refresh(); _bp.Refresh(); _newTask.Refresh(); _structures.Refresh(); _blocks.Refresh();
-            if (_spacerFlex2 != null) _spacerFlex2.color = _open == Side.NewTask ? BtcGhKit.Selected : BtcGhKit.RailBg;
+            // the flexible spacer below the buttons never changes colour (user rule 2026-11-25; the vanilla Lua darkens it while New task is open)
+            if (_spacerFlex2 != null) _spacerFlex2.color = BtcGhKit.RailBg;
             RefreshCount();
         }
 

@@ -1,0 +1,14 @@
+# Visual desync: normal viewing reference (x8, playto) on Komorebi (4 tool racks, 8 stockpiles) - rack/stockpile displays,
+# unit kits (renderers), unit animation states. Compare with desync-jump.
+pkpre 0
+pkjump 0
+replay 2026-11-05_17-32-04_Komorebi
+waitreplay 240
+speed 8
+playto 300 1200
+worldsig D300
+playto 600 1200
+worldsig D600
+playto 900 1200
+worldsig D900
+quit

@@ -170,6 +170,22 @@
     down on the wall plane. Top / bottom faces unchanged (Alt = depth).
   - Labs: terraform-tunnel (1x2x6) 26 s (with only the head-room rule it stalled 20 s on the stale goal); terraform-tunnel14
     (tftunnel 2 14).
+## State (2026-11-25, full task of the C# game menu; user-verified)
+- The IMGUI panel is gone; the tool (BtcTerraformTool) is Active while placing a new task (New task > Mining > Terraforming, or Ctrl+G;
+  the idle task stays selected, BtcGhPopup shows the terraform sections instead of the idle ones) or while an own terraform task is
+  selected. First stroke = RequestCreate; OnBound (BtcTerraform.Bind) adopts the echo with the same Encode text and selects the task;
+  then every stroke / Ctrl+click / toggle = RequestEdit at once. Empty shape = vanilla Project.SetDelete. Ctrl+Z: per-task history of
+  encoded shapes (first entry "" = delete). Esc: select idle. Works only with BtcGameHud.Open (C# game menu).
+- Popup (UI/GameHud/BtcGhPopupTerraform.cs): mode slots 1-4 (dig, tunnel ladder, quarry ladder, landing), dig room for ladders (ladder
+  modes), keep stone 5 / iron 6 / brimstone, haul when the bag is full, brush size counter; hover tips (BtcGhButton.Tip).
+- Brush size: binds terraform_width (Ctrl) / terraform_height (Shift) + wheel, one step per notch; BtcTerraformTool.CamTick (from
+  CameraBookmarkHotkey.Update) zeroes ZoomSpeedMod every frame while held (HandleFastModes rewrites it each frame), honest wheel skips.
+- Icon: BtcTerraformIcon (procedural, yellow). Beacon: per-task inactive BeaconMeta child (vanilla reads the shared prefab meta),
+  restored when the task is gone. Task list: BtcGhTaskList.Look + RefreshProject.
+- Host edit is IN PLACE (Shape.CopyFrom): live goals hold the shape (TerraformDigSetting.S). On a harvest change the task's DigGoals get
+  RebuildNode (vanilla decides EatGarnotteWhileWorking once in SetupBuilder).
+- OPEN: Flatten priority (a low Flatten wins over high tasks), see memory project-terraforming. Fill mode still hidden.
+
 ## HAND-OFF (2026-11-12 end of session) - user is testing the Debug build in game
 Deployed: Debug build (DEV) 2026-11-12 ~16:00, all commits up to fb3cf3e. User will report symptoms + time.
 Open questions asked to the user (my defaults in brackets, all without Lua, ~15-20% of the limit):

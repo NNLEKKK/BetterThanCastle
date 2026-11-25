@@ -1,0 +1,37 @@
+# Visual desync stress: many jumps with short playback between them on Komorebi (pool reuse of units and tools). worldsig
+# counters detachedTools (a unit's synced tool not on its body = looks like a worker) and staleToolRefs must stay 0.
+replay 2026-11-08_19-39-43_Komorebi
+waitreplay 240
+wait 40
+speed 4
+seek 900
+wait 3
+worldsig S1
+seek 300
+wait 3
+worldsig S2
+seek 1100
+wait 3
+worldsig S3
+seek 600
+wait 3
+worldsig S4
+seek 750
+wait 3
+worldsig S5
+seek 450
+wait 3
+worldsig S6
+seek 1000
+wait 3
+worldsig S7
+seek 900
+wait 3
+worldsig S8
+seek 200
+wait 3
+worldsig S9
+seek 650
+wait 3
+worldsig S10
+quit

@@ -933,7 +933,7 @@ public partial class ResourcePackManager : MonoBehaviour
 					GUI.color = color;
 				}
 				Rect rect2 = new Rect(rect.x + num4, rect.y + num9 + num4 * 0.5f, rect.width - num4 * 2f, num3);
-				int num11 = BtcMenu.CurrentId == 13 ? 13 : BtcMenu.CurrentId == 12 ? 12 : BtcMenu.CurrentId == 11 ? 11 : BtcChangelogTab.TabActive ? 10 : BtcReportTab.TabActive ? 9 : BtcDuelUI.TabActive ? 8 : BtcReplayUI.TabActive ? 7 : (BtcNick.TabActive ? 6 : (BtcShareUI.TabActive ? 5 : (BtcGameplayUI.TabActive ? 4 : (BtcHotkeysUI.TabActive ? 3 : (this.menuBc ? 2 : (this.menuHp ? 1 : 0))))));
+				int num11 = BtcMenu.CurrentId == 14 ? 14 : BtcMenu.CurrentId == 13 ? 13 : BtcMenu.CurrentId == 12 ? 12 : BtcMenu.CurrentId == 11 ? 11 : BtcChangelogTab.TabActive ? 10 : BtcReportTab.TabActive ? 9 : BtcDuelUI.TabActive ? 8 : BtcReplayUI.TabActive ? 7 : (BtcNick.TabActive ? 6 : (BtcShareUI.TabActive ? 5 : (BtcGameplayUI.TabActive ? 4 : (BtcHotkeysUI.TabActive ? 3 : (this.menuBc ? 2 : (this.menuHp ? 1 : 0))))));
 				BtcMenu.DrawHeader(rect, num, num11 >= 0 && num11 < this.tabNames.Length ? this.tabNames[num11] : "");
 				int railClick = BtcMenu.DrawRail(new Rect(0f, 0f, railW, (float)Screen.height), num, this.tabIds, this.tabNames, num11, ResourcePackManager.TabEnabledFn);
 				int cornerClick = BtcMenu.DrawCorner(rect, num, num11, this.tabNames);

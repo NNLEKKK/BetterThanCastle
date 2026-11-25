@@ -24,7 +24,7 @@ namespace BetterThanCastle
         internal static ConfigEntry<bool> FogSounds;
         internal static ConfigEntry<bool> OwnTransport;
         internal static ConfigEntry<bool> AnimatorCulling;
-        internal static ConfigEntry<bool> MemoryFixes, FrameSavers, FastSave, FastLoad, ReplayNoGameHud, CsGameMenu;
+        internal static ConfigEntry<bool> MemoryFixes, FrameSavers, FastSave, FastLoad, ThreadedTerrain, SkipModeIntro, ReplayNoGameHud, CsGameMenu;
         internal static ConfigEntry<bool> WarmShaders, UnitNightLights, FireflyLights, CrystalShadows, PauseHiddenAnims, HideNameTags, StaticCrystals, SimpleFireflies, CrystalLights, ShortShadows, NoAmbientOcclusion, NoBloom, NoSunShadows;
         internal static ConfigEntry<bool> LogMove;
         internal static ConfigEntry<bool> LogBuildAi;
@@ -111,7 +111,10 @@ namespace BetterThanCastle
             FrameSavers = cfg.Bind("Performance", "FrameSavers", true, "Less CPU per frame for the same game: work the game repeated for the same answer is done once (overhead icons, sound positions, input names, animator states, picking rays...; ported from Castle Story Plus). Local only, nothing changes on the wire or in the simulation. Applies after a restart.");
             FastSave = cfg.Bind("Performance", "FastSave", true, "Saving a running game no longer freezes it: quicksave and the save menu write the game objects a slice per frame, and the big data files are written by a background thread into a new folder that then replaces the old save (instead of copying the whole save back and forth). Ported from Castle Story Plus. Local only; applies at once.");
             FastLoad = cfg.Bind("Performance", "FastLoad", true, "Faster world load: the terrain is drawn in a few frames instead of one step per frame, loader waits are checked every frame, the loading curtain is faster, and the serializer is warmed up in the background so the replay snapshot at match start no longer freezes the game (~1.6 s). Ideas partly from Castle Story Plus. Local only, nothing changes on the wire. Applies after a restart.");
-            WarmShaders = cfg.Bind("Performance", "WarmShaders", true, "Compile the shaders once per game start (a short pause in the main menu, about 1 s in the first world load) instead of in the middle of a match: the first night, fireflies or effects then no longer freeze the game for up to half a second. Local only.");
+            ThreadedTerrain = cfg.Bind("Performance", "ThreadedTerrain", true, "Build the terrain on several CPU threads: the two heaviest terrain passes (levels/config and normals/UVs) are split over the cores, bit-identical result, ~0.7 s faster world load. Local only, nothing changes on the wire. Applies at once.");
+            SkipModeIntro = cfg.Bind("Performance", "SkipModeIntro", true, "Skip the intro window of sandbox, conquest and invasion: its button action runs at once (conquest/invasion single player timers start as after the click). The tutorial keeps it. Local only. Applies at the next match.");
+            // key renamed from WarmShaders (default was ON in 0.6.0): the new key starts OFF for everyone, the first world load is 1.6 s shorter
+            WarmShaders = cfg.Bind("Performance", "PrepareShaders", false, "Compile the shaders once per game start (about 2 s pause in the main menu, 1.6 s longer first world load) instead of in the middle of a match: the first night, fireflies or effects then no longer freeze the game for up to half a second. Local only.");
             UnitNightLights = cfg.Bind("Performance", "UnitNightLights", false, "Lanterns of your units at night (one point light per unit). Off = darker units at night, less GPU work. Local only.");
             FireflyLights = cfg.Bind("Performance", "FireflyLights", false, "Glow lights of the night fireflies around crystals (dozens of small point lights). Off = fireflies keep their particles, less GPU work. Local only.");
             CrystalShadows = cfg.Bind("Performance", "CrystalShadows", false, "Crystal lights cast shadows (point light shadows: six extra shadow renders per crystal). Off = crystals still glow, much less GPU work. Local only.");

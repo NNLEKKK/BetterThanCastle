@@ -18,6 +18,21 @@ namespace BetterThanCastle
         }
     }
 
+    /// Client spawn applies the bool flags with stateChanged(state), which only writes bits that differ from previous_state. That
+    /// field is never reset when the pool hands the unit out again (fog re-show, replay seek, rejoin), so bits equal to the OLD life
+    /// were skipped and the animator kept wrong bools (units stuck in the run cycle). Every bit counts as changed here. Local look only.
+    [HarmonyPatch(typeof(UNetAnimator), "OnStartPureClient")]
+    internal static class UNetAnimatorSpawnFlagsPatch
+    {
+        internal static readonly AccessTools.FieldRef<UNetAnimator, ulong> Prev = AccessTools.FieldRefAccess<UNetAnimator, ulong>("previous_state");
+
+        static void Prefix(UNetAnimator __instance)
+        {
+            try { Prev(__instance) = ~__instance.state; }
+            catch (Exception e) { BtcLog.Error("Hook", "UNetAnimator spawn flags: " + e.Message); }
+        }
+    }
+
     [HarmonyPatch(typeof(UNetAnimator), "stateChanged")]
     internal static class UNetAnimatorStateChangedPatch
     {
@@ -25,6 +40,14 @@ namespace BetterThanCastle
         {
             try { return !BtcAnimNet.Receiving || !BtcAnimNet.Owns(__instance); }
             catch (Exception e) { BtcLog.Error("AnimNet", "stateChanged: " + e.Message); return true; }
+        }
+
+        /// The vanilla hook never writes the SyncVar field, so on a client `state` keeps the spawn-time bits forever. Anything that
+        /// serialises the unit locally (replay keyframes: a unit respawned from one ran with its FIRST flags, e.g. stuck in the run
+        /// cycle) or reads it got stale data. Keep it equal to what the hook applied. Client-local field, nothing goes on the wire.
+        static void Postfix(UNetAnimator __instance, ulong __0)
+        {
+            if (!NetworkServer.active) __instance.state = __0;
         }
     }
 

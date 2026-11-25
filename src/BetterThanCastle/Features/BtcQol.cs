@@ -53,10 +53,12 @@ public static class BtcQol
 		BtcStraightPaths.AddRows();
 		BtcEarlyDetour.AddRows();
 		BtcLegsRecovery.AddRows();
+		BtcKitReserve.AddRows();
 		BtcCraftQueue.AddRows();
 		BtcShootDown.AddRows();
 		BtcShield.AddRows();
 		BtcPhantom.AddRows();
+		BtcFireflyRules.AddRows();
 	}
 
 	private static bool On(ref int idx, string id)

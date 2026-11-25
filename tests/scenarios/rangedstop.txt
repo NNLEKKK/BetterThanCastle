@@ -1,0 +1,27 @@
+# rangedstop: ranged units sent to focus a still enemy from far away must walk until they can shoot (user bug: they stop 1 block short and idle)
+# kinds: 3 archer, 5 arbalist, 6 alchemist; side 1 = one halberdier target
+duelunits 3 4 0
+duelunits 5 4 0
+duelunits 6 4 0
+duelunits 4 0 1
+duelskip 1
+duelheal 1
+duelplayerbot -1
+duelnobot 1
+duelnorules 1
+duel
+waitduel 240
+wait 3
+duelplace 1 all 80 10 270
+duelplace 0 all 20 10 90
+wait 2
+duelo 0 all attack 1 0
+dueltrace 1
+wait 4
+duellog RS-4s
+wait 8
+duellog RS-12s
+wait 10
+duellog RS-22s
+dueltrace 0
+quit

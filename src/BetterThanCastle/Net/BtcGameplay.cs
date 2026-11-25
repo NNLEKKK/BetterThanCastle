@@ -193,7 +193,32 @@ public static class BtcGameplay
 	{
 		get
 		{
-			return BtcGameplay.IsHost && (!BtcGameplay.InSession || BtcGameplay.InLobby || !Brix.Engine.Neo.multiplayer);   // G1: also outside a host lobby when no other player can be in the game
+			return BtcGameplay.IsHost && (!BtcGameplay.InSession || BtcGameplay.InLobby || !Brix.Engine.Neo.multiplayer || BtcGameplay.AloneInGame);   // G1: also outside a host lobby when no other player can be in the game; live edits while alone in a hosted game
+		}
+	}
+
+	/// <summary>Host in a running game with no other human connected (the replay recorder ghost and the host's own local link do not count; a replay playback is never "alone").</summary>
+	public static bool AloneInGame
+	{
+		get
+		{
+			try
+			{
+				if (BtcReplay.Active || !NetworkServer.active) return false;
+				for (int i = 0; i < NetworkServer.connections.Count; i++)
+				{
+					NetworkConnection c = NetworkServer.connections[i];
+					if (c == null || c is BtcReplay.RecConn || c.connectionId == 0) continue;
+					if (c.GetType().Name == "ULocalConnectionToClient") continue;
+					return false;
+				}
+				return true;
+			}
+			catch (System.Exception ex)
+			{
+				BtcLog.Error("Gameplay", "AloneInGame: " + ex.Message);
+				return false;
+			}
 		}
 	}
 

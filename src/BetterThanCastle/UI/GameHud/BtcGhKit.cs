@@ -320,10 +320,22 @@ namespace BetterThanCastle
         internal System.Func<int> Highlight;
         internal UnityEngine.GameObject Panel; // the _p root toggled by Visible (defaults to the parent of the button)
         internal bool Hovering, Pressing, Silent;
+        internal System.Func<string> Tip;   // BTC: hover tip (drawn by BtcTerraformTool.OnGUI next to the cursor)
         private int _hl = -1;
+        private static BtcGhButton _tipOwner;
 
-        public void OnPointerEnter(UnityEngine.EventSystems.PointerEventData e) { Hovering = true; if (!Silent) Play("Main_Menu_Rollover"); RefreshHover(); }
-        public void OnPointerExit(UnityEngine.EventSystems.PointerEventData e) { Hovering = false; Pressing = false; if (!Silent) Play("Main_Menu_Rollover"); RefreshHover(); }
+        /// <summary>Tip of the hovered button, or null.</summary>
+        internal static string HoverTip
+        {
+            get
+            {
+                if (_tipOwner == null || !_tipOwner.Hovering || !_tipOwner.isActiveAndEnabled || _tipOwner.Tip == null) return null;
+                return _tipOwner.Tip();
+            }
+        }
+
+        public void OnPointerEnter(UnityEngine.EventSystems.PointerEventData e) { Hovering = true; if (Tip != null) _tipOwner = this; if (!Silent) Play("Main_Menu_Rollover"); RefreshHover(); }
+        public void OnPointerExit(UnityEngine.EventSystems.PointerEventData e) { Hovering = false; Pressing = false; if (_tipOwner == this) _tipOwner = null; if (!Silent) Play("Main_Menu_Rollover"); RefreshHover(); }
         public void OnPointerDown(UnityEngine.EventSystems.PointerEventData e) { Pressing = true; RefreshBg(); }
         public void OnPointerUp(UnityEngine.EventSystems.PointerEventData e)
         {
@@ -337,7 +349,7 @@ namespace BetterThanCastle
             RefreshBg();
         }
 
-        private void OnDisable() { Hovering = false; Pressing = false; }
+        private void OnDisable() { Hovering = false; Pressing = false; if (_tipOwner == this) _tipOwner = null; }
 
         private void RefreshHover()
         {

@@ -675,6 +675,41 @@ public static class BtcLang
 		{ "Terraforming tool: fill mode", "Инструмент терраформинга: режим насыпи" },
 		{ "Terraforming tool: erase mode", "Инструмент терраформинга: режим стирания" },
 		{ "Terraforming tool: ladder mode", "Инструмент терраформинга: режим лестниц" },
+		{ "New terraforming task (dig any shape, ladders; needs BetterConnection)", "Новое задание терраформинга (копать любую форму, лестницы; нужен BetterConnection)" },
+		{ "Terraforming: dig mode", "Терраформинг: режим копки" },
+		{ "Terraforming: ladder mode", "Терраформинг: режим лестниц" },
+		{
+			"Terraforming: hold and turn the mouse wheel to change the brush width (the camera does not zoom meanwhile)",
+			"Терраформинг: зажать и крутить колесо мыши - ширина кисти (камера при этом не зумится)"
+		},
+		{
+			"Terraforming: hold and turn the mouse wheel to change the brush height (the camera does not zoom meanwhile)",
+			"Терраформинг: зажать и крутить колесо мыши - высота кисти (камера при этом не зумится)"
+		},
+		{ "The host did not create the task", "Хост не создал задание" },
+		{ "Kept resources", "Собираемые ресурсы" },
+		{ "Haul to stockpile", "Относ на склад" },
+		{ "Haul to stockpile when the bag is full", "Относить на склад, когда мешок полон" },
+		{ "A worker whose bag is full carries the stone to a stockpile at once, then returns to the task", "Рабочий с полным мешком сразу относит камень на склад и возвращается к заданию" },
+		{ "Ladders", "Лестницы" },
+		{ "Marks", "Метки" },
+		{ "Nothing to undo", "Откатывать нечего" },
+		{ "Undone", "Откат" },
+		{ "Undone: the task is deleted", "Откат: задание удалено" },
+		{ "Delete a mark", "Удаление метки" },
+		{
+			"Dig: hold LMB and drag a straight line (on a wall: level, along it or into the hill, Alt: up / down; on top: Alt digs down)",
+			"Копать: зажать ЛКМ и вести прямую линию (на стене: ровно вдоль неё или вглубь горы, Alt: вверх / вниз; сверху: Alt копает вниз)"
+		},
+		{
+			"Tunnel ladder: click a wall (it stands with its back to it), drag up or down the slope for a chain. RMB / R rotate",
+			"Туннельная лестница: клик по стене (встанет к ней спиной), вести вверх или вниз по склону - цепочка. ПКМ / R поворот"
+		},
+		{ "Quarry ladder: replaces a full block, drag for a staircase. RMB / R rotate", "Лестница карьера: заменяет полный блок, вести - лестничный пролёт. ПКМ / R поворот" },
+		{ "Landing: a flat block to stand on, drag for a row", "Площадка: ровный блок, на котором можно стоять, вести - ряд" },
+		{ "off: the block is destroyed, nothing drops", "выкл.: блок уничтожается, ничего не выпадает" },
+		{ "Brush {0} wide, {1} high. Hold {2} / {3} and turn the mouse wheel to change it", "Кисть: ширина {0}, высота {1}. Зажмите {2} / {3} и крутите колесо мыши" },
+		{ "Dig any shape, tunnel and quarry ladders, landings", "Копать любую форму, туннельные лестницы и лестницы карьера, площадки" },
 		{
 			"Double-click on a unit selects only that unit (vanilla selects all units of its kind)",
 			"Двойной клик по юниту выделяет только его (в ванили выделяются все юниты этого типа)"

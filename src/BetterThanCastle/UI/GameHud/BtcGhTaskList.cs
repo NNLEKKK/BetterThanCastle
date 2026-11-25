@@ -593,6 +593,14 @@ namespace BetterThanCastle
             RefreshArrows();
         }
 
+        /// A terraform shape got bound to its Flatten task (after the slot was built): new title and icon.
+        internal static void RefreshProject(Project p)
+        {
+            if (_list == null) return;
+            try { RefreshTask(Find(p)); }
+            catch (Exception e) { BtcLog.Error("GameHud", "task list refresh: " + e.Message); }
+        }
+
         /// Popup / tooltip visibility changed: re-evaluate the popup arrows.
         internal static void RefreshArrows()
         {
@@ -688,7 +696,9 @@ namespace BetterThanCastle
                 case PT.Quarry: key = "##task_quarry"; sp = Spr.Quarry; return;
                 case PT.Cleanup: key = "##task_cleanup"; sp = Spr.Cleanup; return;
                 case PT.Repair: key = "##task_repair"; sp = Spr.Repair; return;
-                case PT.Landscape: key = "##task_landscape"; sp = Spr.Landscape; return;
+                case PT.Landscape:
+                    if (BtcTerraform.Of(s.Proj) != null) { key = BtcLang.Tr("Terraforming"); sp = BtcTerraformIcon.Get(); return; }
+                    key = "##task_landscape"; sp = Spr.Landscape; return;
                 case PT.Tunnel: key = "##task_tunnel"; sp = Spr.Tunnel; return;
                 case PT.Harvest:
                     key = "##task_harvest"; sp = HarvestIcon(s.Proj as HarvestProject);

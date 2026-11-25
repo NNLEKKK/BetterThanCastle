@@ -896,8 +896,10 @@ namespace BetterThanCastle
                 WriteParams(an.animator, o.AnimParams);
                 an.animator.SetFloat("CarryMode", o.AnimCarry);
                 an.animator.Play(o.AnimState);
-                an.animator.Update(0f); // resolve condition transitions of the restored params now, not after the first frame
+                // every flag bit re-applied: previous_state is the old life's memory, equal bits would be skipped
+                UNetAnimatorSpawnFlagsPatch.Prev(an) = ~an.state;
                 if (StateChanged != null) StateChanged.Invoke(an, new object[] { an.state });
+                an.animator.Update(0f); // resolve condition transitions of the restored params now, not after the first frame
             }
             catch (Exception e) { LogOnce("anim restore: " + e.Message); }
         }
@@ -1111,7 +1113,7 @@ namespace BetterThanCastle
         // ---------------- disk cache (<BetterThanCastle>/cash/*.btcs) ----------------
 
         private const int CacheMagic = 0x53435442; // "BTCS"
-        private const int CacheVersion = 22;
+        private const int CacheVersion = 23;
 
         /// <summary>True when the keyframe cache of a replay file exists (replay list: "keyframes ready").</summary>
         internal static bool HasCacheFor(string f)

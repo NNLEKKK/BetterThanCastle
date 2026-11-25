@@ -229,6 +229,42 @@ namespace BetterThanCastle
             catch (Exception ex) { BtcLog.Warn("DevTf", "edit: " + ex); }
         }
 
+        /// <summary>tfui new | dig N (a 1x1 column N deep next to the workers, through the tool = create or edit) | keep F | haul |
+        /// mode M | undo | esc | state: the task tool as the C# popup drives it (no mouse).</summary>
+        internal static void Ui(string what, int n)
+        {
+            try
+            {
+                switch (what)
+                {
+                    case "new": BtcTerraformTool.OpenNew(); break;
+                    case "dig":
+                        {
+                            Occupation[] occ = UnityEngine.Object.FindObjectsOfType<Occupation>();
+                            if (occ.Length == 0) { BtcLog.Warn("DevTf", "ui dig: no workers"); return; }
+                            Vector3 b = occ[0].transform.position;
+                            XYZ g;
+                            if (!Ground(b.x + 5f + n, b.z + 3f, b.y, out g)) { BtcLog.Warn("DevTf", "ui dig: no ground"); return; }
+                            BtcTerraform.Op d; d.K = 'D'; d.A = new XYZ(g.x, g.y - Mathf.Max(0, n - 1), g.z); d.B = g;
+                            BtcTerraformTool.DevStroke(d);
+                            break;
+                        }
+                    case "keep": BtcTerraformTool.ToggleKeep(n); break;
+                    case "haul": BtcTerraformTool.ToggleStoreFull(); break;
+                    case "mode": BtcTerraformTool.SetMode(n); break;
+                    case "undo": BtcTerraformTool.DevUndo(); break;
+                    case "esc": BtcTerraformTool.DevLeave(); break;
+                }
+                uint nid; BtcTerraform.Shape s;
+                bool sel = BtcTerraform.SelectedOwn(out nid, out s);
+                BtcLog.Info("DevTf", "ui " + what + " " + n + ": active=" + BtcTerraformTool.Active + " placing=" + BtcTerraformTool.Placing
+                    + " edit=" + BtcTerraformTool.EditingTask + " sel=" + (sel ? nid + " dig=" + s.Dig.Count + " keep=" + s.Harvest + " haul=" + s.StoreFull : "-")
+                    + " mode=" + BtcTerraformTool.TfMode + " keepTool=" + BtcTerraformTool.Harvest + " size=" + BtcTerraformTool.W + "x" + BtcTerraformTool.H
+                    + " tasks=" + UnityEngine.Object.FindObjectsOfType<LandscapeProject>().Length + " popupShown=" + BtcGhPopup.Shown);
+            }
+            catch (Exception e) { BtcLog.Warn("DevTf", "ui: " + e); }
+        }
+
         internal static void Hire()
         {
             try

@@ -124,10 +124,11 @@ namespace BetterThanCastle
         /// per ladder (n &lt; 0 goes down), landings along 'flat'. Fills ops (with the room each needs when autoDig) and, for the
         /// preview, every chain cell with whether it can be placed (checked against the draft plus the ladders before it).</summary>
         internal static void LadderChain(Shape draft, XYZ p, char k, XYZ f, XYZ flat, int n, bool autoDig,
-                                         List<Op> outOps, List<XYZ> cells, List<bool> ok)
+                                         List<Op> outOps, List<XYZ> cells, List<bool> ok, bool row = false)
         {
             outOps.Clear(); cells.Clear(); ok.Clear();
-            XYZ step = k == 'B' ? flat : new XYZ(-f.x, 1, -f.z);
+            // row = a sideways row of ladders at one height (like landings), else one step up the climbing diagonal per ladder
+            XYZ step = k == 'B' || row ? flat : new XYZ(-f.x, 1, -f.z);
             int sgn = n < 0 ? -1 : 1, count = Math.Min(Math.Abs(n), 64);
             Shape tmp = count > 0 ? draft.Clone() : draft;
             List<Op> one = new List<Op>(3);
@@ -279,6 +280,18 @@ namespace BetterThanCastle
                 Max = new XYZ(Math.Max(Max.x, p.x), Math.Max(Max.y, p.y), Math.Max(Max.z, p.z));
             }
 
+            /// <summary>Takes over the operations and settings of another shape (host edit: the object stays the same).</summary>
+            internal void CopyFrom(Shape o)
+            {
+                Harvest = o.Harvest;
+                NoStore = o.NoStore;
+                StoreFull = o.StoreFull;
+                Ops.Clear();
+                Ops.AddRange(o.Ops);
+                Rebuild();
+                PendingAt = 0f;
+            }
+
             internal Shape Clone()
             {
                 Shape s = new Shape();
@@ -377,7 +390,65 @@ namespace BetterThanCastle
                 // (workers dug one block and stood): a terraform task re-walks twice a second with a bigger frame budget
                 if (p != null) { p.AutoRefreshDelay = 0.5f; p.AutoRefreshFrameBudget = 0.03f; }
                 s.Provider = p;
+                OnBound(go, netId, s);
             }
+        }
+
+        private const string MetaName = "BtcTerraformMeta";
+
+        /// <summary>Beacon icon / name: vanilla takes them from the SHARED LandscapeBeaconMeta prefab (Beacon.Meta, BeaconDriver.beaconMeta),
+        /// so the task gets its own inactive BeaconMeta child with our sprite; off = back to the prefab one (pooled task objects).</summary>
+        private static void BeaconLook(GameObject go, bool on)
+        {
+            try
+            {
+                Brix.Game.Beacons.BeaconDriver d = go.GetComponentInChildren<Brix.Game.Beacons.BeaconDriver>(true);
+                Brix.Legacy.Beacon b = d != null ? d.Beacon : go.GetComponentInChildren<Brix.Legacy.Beacon>(true);
+                if (b == null) return;
+                Brix.Game.Beacons.BeaconMeta m;
+                if (on)
+                {
+                    Transform t = b.transform.Find(MetaName);
+                    if (t == null)
+                    {
+                        GameObject h = new GameObject(MetaName);
+                        h.SetActive(false);   // no Awake: its icon key link is empty, the sprite override is used
+                        h.transform.SetParent(b.transform, false);
+                        m = h.AddComponent<Brix.Game.Beacons.BeaconMeta>();
+                        Brix.Game.Beacons.BeaconMeta src = b.Meta ?? (d != null ? d.beaconMeta : null);
+                        if (src != null) m.sound = src.sound;
+                        HarmonyLib.Traverse.Create(m).Field("spriteOverride").SetValue(BtcTerraformIcon.Get());
+                        m.displayName = BtcLang.Tr("Terraforming");
+                    }
+                    else m = t.GetComponent<Brix.Game.Beacons.BeaconMeta>();
+                }
+                else
+                {
+                    Transform t = b.transform.Find(MetaName);
+                    if (t == null) return;
+                    UnityEngine.Object.Destroy(t.gameObject);
+                    m = d != null && d.MetaAssetKey != null ? Brix.External.Factories.Factory.Peek(d.MetaAssetKey).GetComponent<Brix.Game.Beacons.BeaconMeta>() : null;
+                    if (m == null) return;
+                }
+                b.Meta = m;
+                if (d != null) d.beaconMeta = m;
+                BaliseOverheadDisplayDriver od = b.GetComponent<BaliseOverheadDisplayDriver>();
+                if (od != null && od.overheadDisplay != null) od.overheadDisplay.NameTag.Get.WithIcon(m.sprite, true);
+            }
+            catch (Exception e) { BtcLog.Error("Terraform", "beacon look: " + e.Message); }
+        }
+
+        /// <summary>A shape is attached to its task object: own name + icon (beacon, task list), the tool adopts / reloads it.</summary>
+        private static void OnBound(GameObject go, uint netId, Shape s)
+        {
+            try
+            {
+                BeaconLook(go, true);
+                Project pr = go.GetComponent<Project>();
+                if (pr != null) BtcGhTaskList.RefreshProject(pr);
+                BtcTerraformTool.OnBound(netId, pr, s);
+            }
+            catch (Exception e) { BtcLog.Error("Terraform", "OnBound: " + e.Message); }
         }
 
         internal static void ClearAll()
@@ -447,7 +518,7 @@ namespace BetterThanCastle
                     if (e.Go == null && !NetworkServer.active)
                     {
                         GameObject go = ClientScene.FindLocalObject(new NetworkInstanceId(kv.Key));
-                        if (go != null) { e.Go = go; ByObj[go.GetInstanceID()] = e.S; continue; }
+                        if (go != null) { e.Go = go; ByObj[go.GetInstanceID()] = e.S; OnBound(go, kv.Key, e.S); continue; }
                     }
                     bool dead = e.Go == null || !e.Go.activeInHierarchy;
                     if (!dead)
@@ -469,7 +540,7 @@ namespace BetterThanCastle
                 for (int i = 0; i < _tmp.Count; i++)
                 {
                     Entry e = ByNet[_tmp[i]];
-                    if (e.Go != null) ByObj.Remove(e.Go.GetInstanceID());
+                    if (e.Go != null) { ByObj.Remove(e.Go.GetInstanceID()); BeaconLook(e.Go, false); }
                     ByNet.Remove(_tmp[i]);
                     BtcLog.Info("Terraform", "task " + _tmp[i] + " gone");
                 }
@@ -538,6 +609,12 @@ namespace BetterThanCastle
                 return true;
             }
             return false;
+        }
+
+        internal static Project ProjectOf(uint nid)
+        {
+            Entry e;
+            return ByNet.TryGetValue(nid, out e) && e.Go != null ? e.Go.GetComponent<Project>() : null;
         }
 
         /// <summary>Cells still to do: dig cells not dug, fill cells not filled, ladders not built.</summary>
@@ -619,9 +696,18 @@ namespace BetterThanCastle
             if (!ByNet.TryGetValue(nid, out e) || e.Go == null) { BtcLog.Warn("Terraform", "edit: task " + nid + " not found"); return; }
             Project pr = e.Go.GetComponent<Project>();
             if (pr == null || pr.faction != u.faction) { BtcLog.Warn("Terraform", "edit: task " + nid + " is not of faction " + u.faction.ID); return; }
+            // in place: live goals keep a reference to the task's shape (TerraformDigSetting.S), so a new object would leave them on
+            // the old kept resources / haul setting until the task was made again
+            int oldHarvest = e.S.Harvest;
+            e.S.CopyFrom(s);
+            s = e.S;
+            // vanilla DigGoal decides "stones into the bag while digging" once, when its work node is built (SetupBuilder:
+            // EatGarnotteWhileWorking only if the voxel is not overkilled): rebuild the live goals so a kept resource is picked up at once
+            if (oldHarvest != s.Harvest)
+                foreach (DigGoal g in e.Go.GetComponentsInChildren<DigGoal>(false))
+                    if (BetterThanCastle.Patches.TerraformDigSetting.Get(g) != null) g.RebuildNode();
             s.AddCrust();
             ByObj[e.Go.GetInstanceID()] = s;   // before Set: the data change walks the new cells
-            e.S = s;
             e.Go.GetComponent<LandscapeData>().Set(s.Min.ToVector3(), s.Max.ToVector3(), s.Min.y);
             Bind(e.Go, nid, s);
             Broadcast(nid, s, null);

@@ -65,17 +65,27 @@ namespace BetterThanCastle.Patches
                 if (en == null) return false;
                 long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
                 long budget = (long)(BudgetMs * 0.001 * System.Diagnostics.Stopwatch.Frequency);
+                if (Frames == 0) _start = t0;
                 Frames++;
                 do
                 {
                     Steps++;
-                    if (!en.MoveNext()) { _en.SetValue(__instance, null); BtcLoadBoost.Note("quick draw done: " + Steps + " steps in " + Frames + " frames"); Steps = Frames = 0; return false; }
+                    if (!en.MoveNext())
+                    {
+                        _en.SetValue(__instance, null);
+                        long ms = (System.Diagnostics.Stopwatch.GetTimestamp() - _start) * 1000 / System.Diagnostics.Stopwatch.Frequency;
+                        BtcLoadBoost.Note("quick draw done: " + Steps + " steps in " + Frames + " frames, " + ms + " ms" + BtcTerrainThreads.Stats());
+                        Steps = Frames = 0;
+                        return false;
+                    }
                 }
                 while (System.Diagnostics.Stopwatch.GetTimestamp() - t0 < budget);
                 return false;
             }
             catch (Exception e) { BtcLog.Error("Hook", "FastLoadQuickDraw: " + e.Message); return true; }
         }
+
+        private static long _start;
     }
     /// <summary>
     /// The loading-screen curtain (LoadingScreenSlide) eases in with a long exponential tail: a single player start waits for it to close

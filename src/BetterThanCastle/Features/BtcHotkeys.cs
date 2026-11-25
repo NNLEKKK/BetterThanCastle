@@ -1754,9 +1754,11 @@ public static class BtcHotkeys
 		BtcHotkeys.AddFloat(group, "line_move_nearest", "Line-move: pick the nearest free unit for each block (0 = selection order, 1 = nearest)", "1", 0f, 1f, 1f, "0", string.Empty);
 		BtcHotkeys.AddKey(group, "line_move_diagonal", "Hold and sweep over blocks: like line-move, but units go only on diagonals (like a chess bishop)", 0, string.Empty, false);
 		group = "Terraforming";
-		BtcHotkeys.AddKey(group, "terraform_tool", "Open / close the terraforming tool (dig, fill, any shape; needs BetterConnection)", 0, "LeftControl+G", false);
-		BtcHotkeys.AddKey(group, "terraform_dig", "Terraforming tool: dig mode", 0, string.Empty, false);
-		BtcHotkeys.AddKey(group, "terraform_ladder", "Terraforming tool: ladder mode", 0, string.Empty, false);
+		BtcHotkeys.AddKey(group, "terraform_tool", "New terraforming task (dig any shape, ladders; needs BetterConnection)", 0, "LeftControl+G", false);
+		BtcHotkeys.AddKey(group, "terraform_dig", "Terraforming: dig mode", 0, string.Empty, false);
+		BtcHotkeys.AddKey(group, "terraform_ladder", "Terraforming: ladder mode", 0, string.Empty, false);
+		BtcHotkeys.AddKey(group, "terraform_width", "Terraforming: hold and turn the mouse wheel to change the brush width (the camera does not zoom meanwhile)", 0, "LeftControl", false);
+		BtcHotkeys.AddKey(group, "terraform_height", "Terraforming: hold and turn the mouse wheel to change the brush height (the camera does not zoom meanwhile)", 0, "LeftShift", false);
 		group = "Match statistics";
 		BtcHotkeys.AddKey(group, "match_stats_panel", "Open / close the match statistics panel (graphs and table; Esc closes)", 0, "LeftShift+F7", false);
 		group = "Select all units of a profession";

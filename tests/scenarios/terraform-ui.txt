@@ -1,0 +1,36 @@
+# terraform-ui: the task flow of the C# menu without the mouse: new -> first stroke creates + selects the task -> more strokes edit it
+# -> kept resource / haul toggles edit it -> undo steps back (the last undo deletes the task) -> Esc leaves. Check DevTf "ui" lines.
+newgame
+waitgame 240
+wait 5
+tfui new
+wait 1
+tfui dig 2
+wait 3
+tfui state
+tfui dig 3
+wait 2
+tfui keep 1
+wait 2
+tfui haul
+wait 2
+tfui mode 2
+tfui state
+tfdump a
+tfui undo
+wait 2
+tfui undo
+wait 2
+tfui undo
+wait 2
+tfui state
+tfui undo
+wait 3
+tfui state
+tfui new
+tfui dig 1
+wait 3
+tfui esc
+wait 1
+tfui state
+quit

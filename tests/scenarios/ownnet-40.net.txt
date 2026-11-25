@@ -1,0 +1,5 @@
+# four full cuts of 20 s on client1 (clumsy, needs admin): the length that dropped the link on the host without a disconnect event
+at host:ingame+30 cut client1 20
+at host:ingame+80 cut client1 20
+at host:ingame+130 cut client1 20
+at host:ingame+180 cut client1 20

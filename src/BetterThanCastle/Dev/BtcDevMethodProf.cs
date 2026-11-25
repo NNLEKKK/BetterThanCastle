@@ -38,11 +38,20 @@ namespace BetterThanCastle.Dev
                 HarmonyMethod fin = new HarmonyMethod(typeof(BtcDevMethodProf).GetMethod("Fin", BindingFlags.Static | BindingFlags.NonPublic));
                 BindingFlags all = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
                 int n = 0, fail = 0;
-                foreach (Type t in typeof(Brix.UI.Builder.Menu.BaseMenu).Assembly.GetTypes())
+                // "Ns*" = namespace prefix, "Type" = type + nested types, "Type!" = that type only; firstpass + engine (Brix.Core)
+                List<Type> types = new List<Type>(typeof(Brix.UI.Builder.Menu.BaseMenu).Assembly.GetTypes());
+                Type tw = AccessTools.TypeByName("Brix.Engine.FlatWorld.Layers.TestWorldConfig3");
+                if (tw != null && tw.Assembly != typeof(Brix.UI.Builder.Menu.BaseMenu).Assembly) types.AddRange(tw.Assembly.GetTypes());
+                foreach (Type t in types)
                 {
-                    if (t.Namespace == null || t.IsGenericTypeDefinition || t.ContainsGenericParameters) continue;
+                    if (t.IsGenericTypeDefinition || t.ContainsGenericParameters) continue;
                     bool ok = false;
-                    foreach (string p in prefixes) { if (p.EndsWith("*") ? t.Namespace.StartsWith(p.Substring(0, p.Length - 1)) : (t.FullName == p || (t.IsNested && t.FullName.StartsWith(p + "+")))) ok = true; }
+                    foreach (string p in prefixes)
+                    {
+                        if (p.EndsWith("*")) { if (t.Namespace != null && t.Namespace.StartsWith(p.Substring(0, p.Length - 1))) ok = true; }
+                        else if (p.EndsWith("!")) { if (t.FullName == p.Substring(0, p.Length - 1)) ok = true; }
+                        else if (t.FullName == p || (t.IsNested && t.FullName.StartsWith(p + "+"))) ok = true;
+                    }
                     if (!ok) continue;
                     foreach (MethodBase m in t.GetMethods(all))
                     {

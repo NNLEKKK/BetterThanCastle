@@ -313,6 +313,7 @@ namespace BetterThanCastle.Dev
                 case "vfx": { bool v = F(p, 2, 1f) > 0.5f; string w = p.Length > 1 ? p[1] : ""; if (w == "unit") BtcConfig.UnitNightLights.Value = v; else if (w == "fly") BtcConfig.FireflyLights.Value = v; else if (w == "shadow") BtcConfig.CrystalShadows.Value = v; else if (w == "pause") BtcConfig.PauseHiddenAnims.Value = v; else if (w == "tags") BtcConfig.HideNameTags.Value = v; else if (w == "static") BtcConfig.StaticCrystals.Value = v; else if (w == "max") BtcDevStress.Max(v); else if (w == "sunshadows") BtcDevStress.SunShadows(v); else if (w == "simple") BtcConfig.SimpleFireflies.Value = v; BtcLog.Info("Cmd", "vfx " + w + " " + v); break; }
                 case "warmshaders": { var sw = System.Diagnostics.Stopwatch.StartNew(); Shader.WarmupAllShaders(); BtcLog.Info("Cmd", "WarmupAllShaders " + sw.ElapsedMilliseconds + " ms"); break; }
                 case "walk": BtcDevMatch.Walk(p.Length > 1 ? p[1] : "go", p.Length > 2 ? p[2] : "w", (int)F(p, 2, 8f)); break;
+                case "fposloop": BtcDevMatch.FPosLoop(F(p, 1, 5f), p.Length > 2 ? p[2] : "own"); break;
                 case "measure": BtcDevEngine.BeginMeasure(p.Length > 1 ? p[1] : "m", F(p, 2, 10f)); _wait = "measure"; _waitUntil = now + F(p, 2, 10f); break;
                 case "ecodump": BtcDevEcoDump.Run(p); break;
                 case "ecotrace": BtcDevEcoTrace.Set(F(p, 1, 1f) > 0.5f); break;
@@ -367,6 +368,7 @@ namespace BetterThanCastle.Dev
                 case "tfladder": BtcDevTerraform.Ladders((int)F(p, 1, 7f)); break;
                 case "tfsteps": BtcDevTerraform.Steps(); break;
                 case "tfedit": BtcDevTerraform.Edit(); break;
+                case "tfui": BtcDevTerraform.Ui(p.Length > 1 ? p[1] : "state", (int)F(p, 2, 0f)); break;
                 case "tfpit": BtcDevTerraform.Pit(); break;
                 case "tftunnel": BtcDevTerraform.Tunnel((int)F(p, 1, 2f), (int)F(p, 2, 6f)); break;
                 case "tfclimb": BtcDevTerraform.Climb(); break;
@@ -381,6 +383,7 @@ namespace BetterThanCastle.Dev
                 case "hitch": System.Threading.Thread.Sleep((int)(F(p, 1, 3f) * 1000f)); BtcLog.Info("Cmd", "hitch done"); break;
                 case "hbmute": BtcNetManager.DevMuteUntil = Time.realtimeSinceStartup + F(p, 1, 6f); break;
                 case "netdrop": BtcDevNet.Drop(); break;
+                case "blackhole": BtcOwnTransport.DevBlackholeUntil = Time.realtimeSinceStartup + F(p, 1, 40f); BtcLog.Info("Cmd", "blackhole " + F(p, 1, 40f) + " s"); break;
                 // team ping at the camera target (+ x offset), then the live count
                 case "ping": BtcPing.PlaceAt(Brix.Input.CameraScript.Target + new Vector3(F(p, 1, 0f), 0f, 0f)); break;
                 case "allyall":

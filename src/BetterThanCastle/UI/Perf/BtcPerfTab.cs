@@ -39,7 +39,7 @@ namespace BetterThanCastle
             ConfigEntry<bool>[] vis = { BtcConfig.PauseHiddenAnims, BtcConfig.HideNameTags, BtcConfig.StaticCrystals, BtcConfig.SimpleFireflies, BtcConfig.CrystalLights, BtcConfig.ShortShadows,
                 BtcConfig.NoSunShadows, BtcConfig.NoAmbientOcclusion, BtcConfig.NoBloom, BtcConfig.WarmShaders, BtcConfig.UnitNightLights, BtcConfig.FireflyLights, BtcConfig.CrystalShadows };
             ConfigEntry<bool>[] ui = { BtcConfig.CsGameMenu, BtcConfig.ReplayNoGameHud };
-            ConfigEntry<bool>[] load = { BtcConfig.FastLoad, BtcConfig.LoadTimer, BtcConfig.LoadCancel, BtcConfig.ReuseMenuPanels, BtcConfig.EarlyClientUi };
+            ConfigEntry<bool>[] load = { BtcConfig.FastLoad, BtcConfig.ThreadedTerrain, BtcConfig.SkipModeIntro, BtcConfig.LoadTimer, BtcConfig.LoadCancel, BtcConfig.ReuseMenuPanels, BtcConfig.EarlyClientUi };
             if (Has(vis, key)) fold = "perf:visual";
             else if (Has(ui, key)) fold = "perf:ui";
             else if (Has(load, key)) fold = "perf:load";
@@ -128,8 +128,8 @@ namespace BetterThanCastle
                 Row(ref y, w, fs, BtcConfig.NoBloom, "No bloom", "Без свечения (bloom)",
                     "Glow around bright things off, whatever the game graphics option says.", "Свечение вокруг ярких мест выключено, что бы ни стояло в графике игры.");
                 Row(ref y, w, fs, BtcConfig.WarmShaders, "Prepare shaders at game start", "Готовить шейдеры при запуске игры",
-                    "Once per game start: a short pause in the main menu and about 1 s in the first world load; the first night or effects no longer freeze a match. " + after,
-                    "Один раз за запуск: короткая пауза в главном меню и около 1 с в первой загрузке мира; первая ночь и эффекты больше не фризят матч. " + afterRu);
+                    "Off by default. Once per game start: about 2 s pause in the main menu and 1.6 s longer first world load; in return the first night or effects no longer freeze a match for up to 0.5 s. " + after,
+                    "По умолчанию выключено. Один раз за запуск: пауза около 2 с в главном меню и первая загрузка мира дольше на 1.6 с; зато первая ночь и эффекты не фризят матч до 0.5 с. " + afterRu);
                 Row(ref y, w, fs, BtcConfig.UnitNightLights, "Unit lanterns at night", "Фонари юнитов ночью",
                     "One light per unit. Off: darker units at night, less load.", "Свет на каждом юните. Выкл.: юниты ночью темнее, нагрузка меньше.");
                 Row(ref y, w, fs, BtcConfig.FireflyLights, "Firefly glow lights", "Свет светлячков",
@@ -146,11 +146,17 @@ namespace BetterThanCastle
                     "Faster replay load, less memory; the mini map stays.", "Быстрее загрузка реплея, меньше памяти; миникарта остаётся.");
                 y += fs * 0.5f;
             }
-            if (BtcUi.Fold(ref y, w, fs, "perf:load", Tt("Loading", "Загрузка"), 5))
+            if (BtcUi.Fold(ref y, w, fs, "perf:load", Tt("Loading", "Загрузка"), 7))
             {
                 Row(ref y, w, fs, BtcConfig.FastLoad, "Faster world load", "Ускоренная загрузка мира",
                     "Terrain drawn in a few frames, no idle waits, faster curtain, no freeze at match start. " + after,
                     "Рельеф строится за несколько кадров, без пустых ожиданий, шторка быстрее, нет фриза в начале матча. " + afterRu);
+                Row(ref y, w, fs, BtcConfig.ThreadedTerrain, "Build the terrain on all CPU cores", "Строить рельеф на всех ядрах процессора",
+                    "The heaviest terrain passes run on several threads, same result. About 0.7 s faster load.",
+                    "Самые тяжёлые проходы рельефа идут в нескольких потоках, результат тот же. Загрузка быстрее примерно на 0.7 с.");
+                Row(ref y, w, fs, BtcConfig.SkipModeIntro, "Skip the game mode intro window", "Пропускать вступительное окно режима",
+                    "Sandbox, conquest and invasion start at once, as if its button was pressed (the tutorial keeps it).",
+                    "Песочница, завоевание и вторжение начинаются сразу, как будто нажата кнопка окна (в обучении окно остаётся).");
                 Row(ref y, w, fs, BtcConfig.LoadTimer, "Load timer", "Таймер загрузки", null, null);
                 Row(ref y, w, fs, BtcConfig.LoadCancel, "Cancel button while loading", "Кнопка отмены во время загрузки", null, null);
                 Row(ref y, w, fs, BtcConfig.ReuseMenuPanels, "Reuse menu panels while loading (experimental)", "Переиспользовать панели меню при загрузке (эксперимент)",

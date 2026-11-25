@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using Brix.Game.AI;
+using Brix.Utils.Locomotion;
 using HarmonyLib;
 using UnityEngine;
 
@@ -46,6 +47,27 @@ namespace BetterThanCastle.Patches
         private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> ins)
         {
             return ProjectileAimingHelpers.Redirect(ins, "IsInRangeToShoot", "InRange", "ProjectileAiming.CanReachWithProjectile");
+        }
+    }
+
+    [HarmonyPatch(typeof(ProjectileAiming), "CanReachWithProjectile")]
+    internal static class ProjectileAimingCanReachRealPatch
+    {
+        // vanilla approach check (not in stance yet) measures from the weapon, which moves when the unit raises it: at the stance the
+        // target was up to ~1.7 blocks beyond MaxRange and the attack died (lab rangedstop). Stop only with a 1 block margin.
+        private const float Margin = 1f;
+
+        private static void Postfix(ProjectileAiming __instance, bool roundPosition, ref bool __result)
+        {
+            try
+            {
+                if (!__result || !roundPosition || !BtcNetworkGate.Enabled) return;
+                ProjectileWeapon w = __instance.Weapon;
+                if (w == null || __instance.Target == null) return;
+                float flat = (w.transform.position - __instance.Target.Position).Flatten().magnitude;
+                if (flat > BtcWorld.Range(w.MaxRange, __instance._parent.gameObject, true) - Margin) __result = false;
+            }
+            catch (Exception e) { BtcLog.Error("Hook", "ProjectileAiming.CanReachReal: " + e.Message); }
         }
     }
 

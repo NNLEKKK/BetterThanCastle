@@ -190,3 +190,9 @@ Known limits: world labels drawn by scripts (HP bars, pings, unit plates) follow
 3. Checkbox "Traps: ... at the match start" off -> new match starts with OFF.
 4. "Tree cutting: ... logs stay" on: a cutting task leaves logs and stumps; off = vanilla. Client's choice applies only to the client's tasks.
 5. Chopping block: select it, hold Left Ctrl + wheel: ring + label "Log pickup radius: N (default)"; its worker fetches only logs inside the ring. Workbench/furnace/builders unchanged (vanilla). Client sets own block radius; save + load keeps it.
+
+## Visual desync fixes (2026-11-25, 0.6.1; replay + client, BC ON for fog parking)
+1. Replay with weapon racks/stockpiles: jump forward/back several times: racks show their kits, stockpiles their content, altars/stations their state; nothing empty that was full in normal viewing.
+2. Replay jumps: no unit keeps running on the spot; units that stand idle in normal viewing stand idle after a jump.
+3. MP client (BC ON): enemy armed units leave your vision and come back: they still carry their kit; your racks/stockpiles show content after a rejoin. Log line `[TrackFix] ... parked=N` shows parking happened; `[PoolRevive] reconnected N` after reuse.
+4. Lab method: scenarios desync-ref then desync-jump (Komorebi): J* vs D* show no rdisp Toolrack diffs, animFlagMismatch 0, J900 unit renderers same.

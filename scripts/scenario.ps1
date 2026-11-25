@@ -68,6 +68,7 @@ function Launch($r) {
         Add-Type -AssemblyName System.Windows.Forms
         $sb = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
         $va = @('-screen-fullscreen', '0', '-screen-width', "$([int]($sb.Width * 0.8))", '-screen-height', "$([int]($sb.Height * 0.8))")
+        if ($env:BTC_VISFULL -eq '1') { $pb = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $va = @('-screen-fullscreen', '1', '-screen-width', "$($pb.Width)", '-screen-height', "$($pb.Height)") }
         $r.P = Start-Process -FilePath $exe -WorkingDirectory $g -PassThru -ArgumentList $va
     }
     else { $r.P = Start-Process -FilePath $exe -WorkingDirectory $g -PassThru -WindowStyle Minimized -ArgumentList $args0 }
@@ -144,6 +145,10 @@ function NetTick {
                 # (new port) that a filter on its old ports would let through (the 30+ s outages "recovered" during the cut)
                 $ts = Targets $w[0]; $op = @(); foreach ($r in $roles) { if ($r.Role -eq 'client' -and $r.P -and -not $r.P.HasExited -and -not ($ts -contains $r)) { $op += Ports $r } }
                 $f = 'udp and outbound and loopback and (udp.SrcPort == 3000 or udp.DstPort == 3000)'
+                if ($env:BTC_OWNNET -eq '1') {   # own transport talks over other sockets: cut every port of the victims too
+                    $vp = @(); foreach ($r in $ts) { $vp += Ports $r }
+                    $f = 'udp and outbound and loopback and (udp.SrcPort == 3000 or udp.DstPort == 3000' + (($vp | ForEach-Object { " or udp.SrcPort == $_ or udp.DstPort == $_" }) -join '') + ')'
+                }
                 if ($op.Count -gt 0) { $f += ' and ' + (($op | ForEach-Object { "udp.SrcPort != $_ and udp.DstPort != $_" }) -join ' and ') }   # clumsy rejects 'not (...)'
                 StopBase
                 NetLog "cut filter: $f"

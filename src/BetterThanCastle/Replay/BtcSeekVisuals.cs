@@ -120,7 +120,7 @@ namespace BetterThanCastle
                 NetworkIdentity ni = kv.Value;
                 if (ni == null || BtcReplaySeek.IsGhost(kv.Key.Value, ni)) continue;
                 Brix.Game.Network.GenericParentTracker t = ni.GetComponent<Brix.Game.Network.GenericParentTracker>();
-                if (t == null || t.TrackingType() != Brix.Game.Network.TrackingTypes.ressource || !t.IsTracked()) continue;
+                if (t == null || BtcTrackFix.LinkType(t) != Brix.Game.Network.TrackingTypes.ressource || !t.IsTracked()) continue;
                 GameObject p = t.TrackingParent();
                 if (p == null) continue;
                 HashSet<GameObject> set;

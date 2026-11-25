@@ -63,8 +63,221 @@ namespace BetterThanCastle.Dev
                 MethodInfo sv = sct == null ? null : AccessTools.Method(sct, "Save");
                 if (sv != null) h.Patch(sv, new HarmonyMethod(typeof(BtcDevLoadLine).GetMethod("PreTime", BindingFlags.Static | BindingFlags.NonPublic)), new HarmonyMethod(typeof(BtcDevLoadLine).GetMethod("PostSave", BindingFlags.Static | BindingFlags.NonPublic)));
                 else BtcLog.Warn("LoadLine", "SerializationComponent.Save not found");
+                if (Environment.GetEnvironmentVariable("BTC_LOADPROF") == "1") HookCosts(h);
             }
             catch (Exception e) { BtcLog.Error("LoadLine", e.ToString()); }
+        }
+
+        // BTC_LOADPROF=1: every game-signal handler (GameSignals.SafeInvoke) and every Unity start-up message of the game's components,
+        // summed per timeline segment and listed under it (>= 5 ms). Nested calls are listed as "in ..." (already inside an outer one).
+        private sealed class Cost { public int N; public long T, Self; }
+        private static readonly Dictionary<string, Cost> Costs = new Dictionary<string, Cost>();
+        private static readonly Dictionary<MethodBase, string> CostKeys = new Dictionary<MethodBase, string>();
+        private static int _depth;
+
+        private static void HookCosts(Harmony h)
+        {
+            BindingFlags sf = BindingFlags.Static | BindingFlags.NonPublic;
+            MethodInfo si = AccessTools.Method(typeof(GameSignals), "SafeInvoke", new[] { typeof(Action), typeof(Action<Exception>) });
+            if (si != null) h.Patch(si, prefix: new HarmonyMethod(typeof(BtcDevLoadLine).GetMethod("PreCost", sf)), finalizer: new HarmonyMethod(typeof(BtcDevLoadLine).GetMethod("FinSig", sf)));
+            else BtcLog.Warn("LoadLine", "GameSignals.SafeInvoke not found");
+            // one-argument handlers (LateConnectOnce<T>(signal, f, self): factions, capturables): reference type instances share the code
+            foreach (MethodInfo g in typeof(GameSignals).GetMethods(BindingFlags.Static | BindingFlags.NonPublic))
+                if (g.Name == "SafeInvoke" && g.IsGenericMethodDefinition && g.GetGenericArguments().Length == 1)
+                {
+                    try { h.Patch(g.MakeGenericMethod(typeof(object)), prefix: new HarmonyMethod(typeof(BtcDevLoadLine).GetMethod("PreCost", sf)), finalizer: new HarmonyMethod(typeof(BtcDevLoadLine).GetMethod("FinSig1", sf))); }
+                    catch (Exception e) { BtcLog.Warn("LoadLine", "SafeInvoke<T1>: " + e.Message); }
+                }
+            // whole signal (all its handlers, also those connected straight to the Signal, e.g. from Lua)
+            Type sig = AccessTools.TypeByName("Brix.External.Signals.Signal");
+            MethodInfo inv = sig == null ? null : AccessTools.Method(sig, "Invoke", Type.EmptyTypes);
+            if (inv != null) h.Patch(inv, prefix: new HarmonyMethod(typeof(BtcDevLoadLine).GetMethod("PreCost", sf)), finalizer: new HarmonyMethod(typeof(BtcDevLoadLine).GetMethod("FinSignal", sf)));
+            // LevelLoaded / LevelReady: run the vanilla invoke list by hand (same enumerator) to time each handler, also the direct ones
+            if (inv != null)
+            {
+                Type bt = sig.BaseType;
+                Type et = bt == null ? null : bt.GetGenericTypeDefinition().GetNestedType("SignalInvokeListEnumerator");
+                if (et != null)
+                {
+                    _enumT = et.MakeGenericType(bt.GetGenericArguments());
+                    _enumCtor = _enumT.GetConstructors()[0];
+                    _enumNext = _enumT.GetMethod("MoveNext");
+                    _enumCur = _enumT.GetProperty("Current");
+                    _enumDispose = _enumT.GetMethod("Dispose");
+                    h.Patch(inv, prefix: new HarmonyMethod(typeof(BtcDevLoadLine).GetMethod("PreOwnInvoke", sf)) { priority = Priority.Last });
+                }
+            }
+            HarmonyMethod pre = new HarmonyMethod(typeof(BtcDevLoadLine).GetMethod("PreCost", sf));
+            HarmonyMethod fin = new HarmonyMethod(typeof(BtcDevLoadLine).GetMethod("FinCost", sf));
+            List<Type> types = new List<Type>(typeof(GameSignals).Assembly.GetTypes());
+            Type tw = AccessTools.TypeByName("Brix.Engine.FlatWorld.Layers.TestWorldConfig3");
+            if (tw != null && tw.Assembly != typeof(GameSignals).Assembly) types.AddRange(tw.Assembly.GetTypes());
+            string[] msgs = { "Awake", "Start", "OnEnable", "OnStartClient", "OnStartServer", "OnStartLocalPlayer", "OnStartAuthority" };
+            int n = 0, fail = 0;
+            foreach (Type t in types)
+            {
+                if (t.IsGenericTypeDefinition || t.ContainsGenericParameters || !typeof(MonoBehaviour).IsAssignableFrom(t)) continue;
+                foreach (string msg in msgs)
+                {
+                    MethodInfo m = t.GetMethod(msg, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly, null, Type.EmptyTypes, null);
+                    if (m == null || m.GetMethodBody() == null) continue;
+                    try { CostKeys[m] = msg + " " + t.Name; h.Patch(m, prefix: pre, finalizer: fin); n++; }
+                    catch (Exception) { fail++; }
+                }
+            }
+            BtcLog.Info("LoadLine", "cost probes: " + n + " start-up messages (" + fail + " failed) + signal handlers");
+        }
+
+        private static void PreCost(out long __state)
+        {
+            __state = 0;
+            if (!Window) return;
+            _depth++;
+            if (_depth < Child.Length) Child[_depth] = 0;
+            __state = Stopwatch.GetTimestamp();
+        }
+
+        private static Exception FinCost(MethodBase __originalMethod, long __state, Exception __exception)
+        {
+            if (__state != 0) { string k; CostKeys.TryGetValue(__originalMethod, out k); AddCost(k ?? __originalMethod.Name, __state); }
+            return __exception;
+        }
+
+        private static Exception FinSig(Action a, long __state, Exception __exception)
+        {
+            if (__state != 0) AddCost("sig " + DelName(a), __state);
+            return __exception;
+        }
+
+        private static Exception FinSig1(object[] __args, long __state, Exception __exception)
+        {
+            if (__state != 0) AddCost("sig1 " + DelName(__args != null && __args.Length > 1 ? __args[1] as Delegate : null), __state);
+            return __exception;
+        }
+
+        private static Type _enumT;
+        private static ConstructorInfo _enumCtor;
+        private static MethodInfo _enumNext, _enumDispose;
+        private static PropertyInfo _enumCur;
+
+        private static bool PreOwnInvoke(object __instance)
+        {
+            if (!Window || __instance == null) return true;
+            string n = SigName(__instance);
+            if (n != "LevelReady" && n != "LevelLoaded") return true;
+            object en = _enumCtor.Invoke(new[] { __instance });   // boxed: MoveNext mutates this copy
+            try
+            {
+                while ((bool)_enumNext.Invoke(en, null))
+                {
+                    object cur = _enumCur.GetValue(en, null);
+                    object act = Iface(cur, "IClosure`1").GetProperty("Delegate").GetValue(cur, null);
+                    MethodInfo call = Iface(act, "IAction").GetMethod("Invoke", Type.EmptyTypes);
+                    string k = "h " + Describe(cur, 0);
+                    long t0 = 0;
+                    PreCost(out t0);
+                    try { call.Invoke(act, null); }
+                    catch (TargetInvocationException e) { BtcLog.Warn("LoadLine", "handler " + k + ": " + (e.InnerException ?? e).Message); }
+                    finally { if (t0 != 0) AddCost(k, t0); }
+                }
+            }
+            finally { _enumDispose.Invoke(en, null); }
+            return false;
+        }
+
+        private static Type Iface(object o, string name)
+        {
+            foreach (Type i in o.GetType().GetInterfaces()) if (i.Name == name) return i;
+            throw new InvalidOperationException(o.GetType().Name + " has no " + name);
+        }
+
+        private static string Describe(object o, int depth)
+        {
+            if (o == null) return "null";
+            StringBuilder s = new StringBuilder();
+            foreach (FieldInfo fi in o.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            {
+                object v; try { v = fi.GetValue(o); } catch (Exception) { continue; }
+                if (v == null || v is string || v.GetType().IsPrimitive || v is System.Collections.IEnumerable) continue;
+                Delegate d = v as Delegate;
+                if (d != null)
+                {
+                    Type t = d.Method.DeclaringType;
+                    while (t != null && t.IsNested && t.Name.StartsWith("<", StringComparison.Ordinal)) t = t.DeclaringType;
+                    if (t == typeof(GameSignals) && d.Method.Name.Contains("SafeInvoke")) continue;
+                    s.Append(t == null ? "?" : t.Name).Append('.').Append(d.Method.Name).Append(' ');
+                    if (d.Target != null && !(d.Target is UnityEngine.Object) && depth < 5) s.Append(Describe(d.Target, depth + 1));
+                    else if (d.Target is UnityEngine.Object) s.Append('[').Append(d.Target.GetType().Name).Append("] ");
+                }
+                else if (v is UnityEngine.Object) s.Append('[').Append(v.GetType().Name).Append("] ");
+                else if (depth < 5 && !v.GetType().IsEnum) s.Append(Describe(v, depth + 1));   // closures are nested structs (Up, V, A)
+                if (s.Length > 140) break;
+            }
+            return s.ToString();
+        }
+
+        private static string SigName(object s)
+        {
+            if (_sigNames == null)
+            {
+                _sigNames = new Dictionary<object, string>();
+                foreach (FieldInfo fi in typeof(GameSignals).GetFields(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+                {
+                    try
+                    {
+                        object gs = fi.GetValue(null); if (gs == null) continue;
+                        FieldInfo sf = AccessTools.Field(gs.GetType(), "_signal"); object sv = sf == null ? null : sf.GetValue(gs);
+                        if (sv != null && !_sigNames.ContainsKey(sv)) _sigNames[sv] = fi.Name;
+                    }
+                    catch (Exception) { }
+                }
+            }
+            string n; return _sigNames.TryGetValue(s, out n) ? n : "other";
+        }
+
+        private static Dictionary<object, string> _sigNames;
+        private static Exception FinSignal(object __instance, long __state, Exception __exception)
+        {
+            if (__state == 0) return __exception;
+            string n = __instance == null ? "other" : SigName(__instance);
+            AddCost("SIGNAL " + n, __state);
+            return __exception;
+        }
+
+        private static string DelName(Delegate a)
+        {
+            if (a == null) return "?";
+            Type t = a.Method.DeclaringType;
+            while (t != null && t.IsNested && t.Name.StartsWith("<", StringComparison.Ordinal)) t = t.DeclaringType;
+            return (t == null ? "?" : t.Name) + "." + a.Method.Name;
+        }
+
+        private static readonly long[] Child = new long[256];
+
+        private static void AddCost(string k, long t0)
+        {
+            long el = Stopwatch.GetTimestamp() - t0;
+            long self = _depth < Child.Length ? el - Child[_depth] : el;
+            if (_depth < Child.Length) Child[_depth] = 0;
+            _depth--;
+            if (_depth > 0) { k = "in " + k; if (_depth < Child.Length) Child[_depth] += el; }
+            Cost c; if (!Costs.TryGetValue(k, out c)) Costs[k] = c = new Cost();
+            c.N++; c.T += el; c.Self += self;
+        }
+
+        private static void FlushCosts()
+        {
+            if (Costs.Count == 0) return;
+            List<KeyValuePair<string, Cost>> l = new List<KeyValuePair<string, Cost>>(Costs);
+            Costs.Clear();
+            l.Sort((a, b) => b.Value.T.CompareTo(a.Value.T));
+            double f = 1000.0 / Stopwatch.Frequency;
+            for (int i = 0; i < l.Count && i < 30; i++)
+            {
+                double ms = l[i].Value.T * f;
+                if (ms < 2.0) break;
+                Sb.AppendFormat("{0,26}{1,7:F0} ms self {2,5:F0} x{3,-5} {4}", "", ms, l[i].Value.Self * f, l[i].Value.N, l[i].Key).AppendLine();
+            }
         }
 
         private static void PreStart() { Begin("start click"); }
@@ -109,7 +322,7 @@ namespace BetterThanCastle.Dev
             _t0 = _segT0 = _lastFrame = Stopwatch.GetTimestamp();
             _frames = 0; _maxFrame = 0; _gc0 = GC.CollectionCount(0);
             _on = true; _animEnd = false; _endAt = 0f;
-            Sb.Length = 0; Seen.Clear();
+            Sb.Length = 0; Seen.Clear(); Costs.Clear();
             Sb.AppendLine("     t(s)    seg(s) frames  max(ms)  gc  mark");
             Line(what);
             Hook();
@@ -152,6 +365,7 @@ namespace BetterThanCastle.Dev
         {
             long now = Stopwatch.GetTimestamp();
             double f = Stopwatch.Frequency;
+            FlushCosts();   // costs of the segment that ends here, listed above its line
             Sb.AppendFormat("{0,9:F2} {1,9:F2} {2,6} {3,8:F0} {4,3}  {5}", (now - _t0) / f, (now - _segT0) / f, _frames, _maxFrame, GC.CollectionCount(0) - _gc0, name).AppendLine();
             _segT0 = now; _frames = 0; _maxFrame = 0;
         }

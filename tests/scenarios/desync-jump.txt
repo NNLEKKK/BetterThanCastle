@@ -1,0 +1,21 @@
+# Visual desync: instant jumps vs desync-ref (forward, backward, repeat) on Komorebi - rack/stockpile displays, unit kits, animations.
+replay 2026-11-05_17-32-04_Komorebi
+waitreplay 240
+wait 20
+rpause
+seek 900
+wait 2
+worldsig J900 D900
+seek 300
+wait 2
+worldsig J300 D300
+seek 600
+wait 2
+worldsig J600 D600
+seek 300
+wait 2
+worldsig J300b D300
+seek 900
+wait 2
+worldsig J900b D900
+quit

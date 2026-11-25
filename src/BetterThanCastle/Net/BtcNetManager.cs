@@ -821,6 +821,7 @@ namespace BetterThanCastle
             if (s.isLoadingLevel || InLobby(m))
             {
                 DiagLog("ServerHandleVoluntaryPauseToggle - rejected, lobby or level loading. requester=" + requesterName + " (conn " + requesterConnectionId + ", isHost=" + requesterIsHost + ")");
+                BtcLog.Warn("Net", "voluntary pause request from " + requesterName + " ignored: " + (InLobby(m) ? "lobby" : "level still marked as loading"));
                 return;
             }
             if (s.voluntaryPauseActive)

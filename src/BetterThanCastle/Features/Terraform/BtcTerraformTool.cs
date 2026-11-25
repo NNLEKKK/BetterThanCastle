@@ -4,27 +4,33 @@ using Brix.Engine;
 using Brix.Game;
 using Brix.Game.AI;
 using Brix.Game.Network;
+using Brix.UI.GameSelector;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
 namespace BetterThanCastle
 {
     /// <summary>
-    /// Client tool of the Terraforming task (docs/terraforming.md): paint a draft shape with brushes, then create the task
-    /// on the host (BtcTerraform.RequestCreate). Opened with the Advanced Hotkeys bind "terraform_tool" (Ctrl+G) or a bind per mode.
-    /// Modes: dig / fill / erase / ladder. Brushes: block (click), line (hold and drag), box (drag two corners). A drag runs along
-    /// the clicked face (top face: flat, Alt: down into the blocks; wall: level, sideways or into the hill, Alt: up / down). Marks act
-    /// like blocks for the cursor, so a shape can be continued from its own marks (even inside a hill). Dig and quarry ladders
-    /// aim at the full block under a crust; a tunnel ladder goes into the crust. Ladders: RMB / R rotates, a drag lays a chain
-    /// up the climbing diagonal. Ctrl+LMB deletes a mark, Ctrl+Z undoes the last stroke. All settings are remembered (BtcMenuState).
+    /// Mouse tool of the Terraforming task (docs/terraforming.md), a full task of the C# game menu: "Terraforming" in New task (or the
+    /// Advanced Hotkeys bind "terraform_tool", Ctrl+G) starts placing a new task, the first stroke creates it on the host and selects
+    /// it; while a terraform task of the own faction is selected every stroke changes it at once (no draft, no create / save button).
+    /// The task popup (BtcGhPopup terraform sections) holds the mode slots (dig, tunnel / quarry ladder, landing, dig room for
+    /// ladders), the kept resources, haul to stockpile and the brush size. A drag runs along the clicked face (top face: flat, Alt:
+    /// down into the blocks; wall: level, sideways or into the hill, Alt: up / down). Marks act like blocks for the cursor, so a shape
+    /// continues from its own marks (even inside a hill). Ladders: RMB / R rotates, a drag lays a chain up the climbing diagonal.
+    /// Ctrl+LMB deletes a mark, Ctrl+Z undoes the last change of the task (unlimited, per task), Esc leaves. Brush width / height:
+    /// hold the binds terraform_width / terraform_height and turn the wheel (the camera does not zoom meanwhile).
+    /// All settings are remembered (BtcMenuState).
     /// </summary>
     internal static class BtcTerraformTool
     {
         internal const string HotkeyId = "terraform_tool";
+        internal const string WidthKey = "terraform_width", HeightKey = "terraform_height";
         private static readonly string[] ModeKeys = { "terraform_dig", null, null, "terraform_ladder" };   // index = Mode (2 = old erase, gone)
         private static readonly KeyCode[] DefKeys = { KeyCode.LeftControl, KeyCode.G };
         private static readonly KeyCode[] NoKeys = new KeyCode[0];
 
+        /// <summary>The tool owns the mouse: placing a new task or editing the selected one.</summary>
         internal static bool Active;
         private static BtcTerraform.Shape _draft = new BtcTerraform.Shape();
         private static readonly List<int> _strokes = new List<int>();
@@ -36,18 +42,20 @@ namespace BetterThanCastle
         private static readonly XYZ[] Dirs = { new XYZ(0, 0, 1), new XYZ(1, 0, 0), new XYZ(0, 0, -1), new XYZ(-1, 0, 0) };
         private static XYZ _ladF;      // forward of the ladder under the cursor (low side; you climb towards -F)
         private static bool _ladOk;
-        private static int W { get { return Mathf.Clamp(BtcMenuState.Int("terraform:w", 2), 1, 16); } set { BtcMenuState.SetInt("terraform:w", Mathf.Clamp(value, 1, 16)); } }
-        private static int H { get { return Mathf.Clamp(BtcMenuState.Int("terraform:h", 3), 1, 32); } set { BtcMenuState.SetInt("terraform:h", Mathf.Clamp(value, 1, 32)); } }
-        // kept resources: all off by default (nothing drops, no stockpile needed)
-        private static int Harvest { get { return BtcMenuState.Int("terraform:keep", 0) & 7; } set { BtcMenuState.SetInt("terraform:keep", value & 7); } }
-        private static bool StoreFull { get { return BtcMenuState.Int("terraform:storefull", 0) != 0; } set { BtcMenuState.SetInt("terraform:storefull", value ? 1 : 0); } }
-        private static bool AutoDig { get { return BtcMenuState.Int("terraform:autodig", 1) != 0; } set { BtcMenuState.SetInt("terraform:autodig", value ? 1 : 0); } }
+        internal static int W { get { return Mathf.Clamp(BtcMenuState.Int("terraform:w", 2), 1, 16); } private set { BtcMenuState.SetInt("terraform:w", Mathf.Clamp(value, 1, 16)); } }
+        internal static int H { get { return Mathf.Clamp(BtcMenuState.Int("terraform:h", 3), 1, 32); } private set { BtcMenuState.SetInt("terraform:h", Mathf.Clamp(value, 1, 32)); } }
+        // defaults of a new task: kept resources all off (nothing drops, no stockpile needed), haul when the bag is full off
+        private static int DefHarvest { get { return BtcMenuState.Int("terraform:keep", 0) & 7; } set { BtcMenuState.SetInt("terraform:keep", value & 7); } }
+        private static bool DefStoreFull { get { return BtcMenuState.Int("terraform:storefull", 0) != 0; } set { BtcMenuState.SetInt("terraform:storefull", value ? 1 : 0); } }
+        internal static bool AutoDig { get { return BtcMenuState.Int("terraform:autodig", 1) != 0; } private set { BtcMenuState.SetInt("terraform:autodig", value ? 1 : 0); } }
+
+        /// <summary>Mode as the popup shows it: 0 dig, 1 tunnel ladder, 2 quarry ladder, 3 landing.</summary>
+        internal static int TfMode { get { return Mode == 3 ? 1 + Mathf.Clamp(LadKind, 0, 2) : 0; } }
 
         // stroke state
         private static bool _down, _depth;
         private static XYZ _anchor, _last, _cursor, _n, _axis;
         private static bool _hasCursor, _topFace;
-        private static Rect _panel;
         private static string _note;
         private static float _noteUntil;
 
@@ -58,10 +66,21 @@ namespace BetterThanCastle
         private static readonly List<XYZ> _chainCells = new List<XYZ>();
         private static readonly List<bool> _chainOk = new List<bool>();
 
+        // the task being edited (0 = placing a new one), the request waiting for the host, undo history per task
+        private static uint _editNid, _leaveNid;
+        private static string _sent, _await;
+        private static float _awaitAt;
+        private static bool _dirty;
+        private static readonly Dictionary<uint, List<string>> _hist = new Dictionary<uint, List<string>>();   // shape before each change ("" = created here: undo deletes it)
+
         private static bool InMatch
         {
-            get { return User.LocalUser != null && User.LocalUser.faction != null && Camera.main != null && !BtcReplay.Active; }
+            get { return User.LocalUser != null && User.LocalUser.faction != null && Camera.main != null && !BtcReplay.Active && BtcGameHud.Open; }
         }
+
+        /// <summary>Placing a new task (nothing selected yet).</summary>
+        internal static bool Placing { get { return Active && _editNid == 0; } }
+        internal static uint EditingTask { get { return Active ? _editNid : 0; } }
 
         // ------------------------------------------------------------------ input (Update)
         internal static void Tick()
@@ -69,12 +88,19 @@ namespace BetterThanCastle
             try
             {
                 if (!InMatch) { if (Active) Close(); return; }
+                // a terraform task of the own faction selected the vanilla way (task list, beacon) = edit it; deselected = leave
+                uint selNid; BtcTerraform.Shape selS;
+                bool sel = BtcTerraform.SelectedOwn(out selNid, out selS);
+                if (!sel) _leaveNid = 0;
+                else if (selNid == _leaveNid) sel = false;   // being deselected by OpenNew / Esc
+                if (sel) { if (!Active || _editNid != selNid) BeginEdit(selNid, selS); }
+                else if (Active && _editNid != 0) Close();
+                else if (Placing && !BtcGhLeft.IsIdle && _await == null) Close();   // another task was selected while placing
                 if (!BtcHotkeys.MenuOpen)
                 {
-                    // the binds always start a NEW task (an existing one is edited by selecting it in the vanilla task list)
                     if (BtcHotkeys.ComboPressed(BtcHotkeys.GetKeys(HotkeyId, DefKeys)))
                     {
-                        if (Active && _editNid == 0) Close(); else OpenNew();
+                        if (Placing) Close(); else OpenNew();
                         return;
                     }
                     for (int i = 0; i < ModeKeys.Length; i++)
@@ -82,37 +108,22 @@ namespace BetterThanCastle
                         if (ModeKeys[i] == null) continue;
                         KeyCode[] k = BtcHotkeys.GetKeys(ModeKeys[i], NoKeys);
                         if (k.Length == 0 || !BtcHotkeys.ComboPressed(k)) continue;
-                        if (Active && Mode == i && _editNid == 0) Close();
-                        else { if (!Active || _editNid != 0) OpenNew(); if (Mode != i) { Mode = i; BtcSfx.Click(); } }
+                        if (!Active) OpenNew();
+                        if (Mode != i) { Mode = i; BtcSfx.Click(); Changed(); }
                         return;
                     }
                 }
-                // selecting one of the own terraform tasks the vanilla way opens it here for editing
-                uint selNid; BtcTerraform.Shape selS;
-                bool sel = BtcTerraform.SelectedOwn(out selNid, out selS);
-                if (sel && selNid != _lastSel && selNid != _editNid)
-                {
-                    if (_draft.Empty || _editNid != 0) BeginEdit(selNid, selS);
-                    else { if (!Active) Open(); Note(BtcLang.Tr("Create or clear your marks first, then pick the task with Edit a task")); }
-                }
-                _lastSel = sel ? selNid : 0;
                 if (!Active) return;
-                if (Input.GetKeyDown(KeyCode.Escape)) { if (_down) Cancel(); else Close(); return; }
+                if (_await != null && Time.unscaledTime > _awaitAt + 10f) { _await = null; Note(BtcLang.Tr("The host did not create the task")); }
+                if (Input.GetKeyDown(KeyCode.Escape)) { if (_down) Cancel(); else Leave(); return; }
                 bool ctrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
                 bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
                 bool alt = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
                 if (ctrl && Input.GetKeyDown(KeyCode.Z)) { Undo(); return; }
-                if (Mode == 3 && !ctrl && Input.GetKeyDown(KeyCode.R)) Rotate(shift);
-                float wheel = Input.GetAxis("Mouse ScrollWheel");
-                if (wheel != 0f && (ctrl || shift))
-                {
-                    int d = wheel > 0f ? 1 : -1;
-                    if (shift) H = H + d; else W = W + d;
-                }
+                if (Mode == 3 && LadKind != 2 && !ctrl && Input.GetKeyDown(KeyCode.R)) Rotate(shift);
                 Camera cam = Camera.main;
                 Vector3 mouse = Input.mousePosition;
-                Vector2 gui = new Vector2(mouse.x, Screen.height - mouse.y);
-                bool overUi = _panel.Contains(gui) || BtcHotkeys.MenuOpen || (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject());
+                bool overUi = BtcHotkeys.MenuOpen || (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject());
                 if (_down)
                 {
                     if (Mode == 3) LadderDrag(cam, mouse, shift);
@@ -134,22 +145,16 @@ namespace BetterThanCastle
                     return;
                 }
                 _hasCursor = !overUi && Pick(cam, mouse, out _cursor, out _topFace);
-                if (_picking)
-                {
-                    if (!overUi && Input.GetMouseButtonDown(0)) PickTask(cam, mouse);
-                    if (Input.GetMouseButtonDown(1)) _picking = false;
-                    return;
-                }
                 if (overUi) return;
                 if (ctrl && Input.GetMouseButtonDown(0)) { DeleteAt(cam, mouse); return; }
                 if (Mode == 3)
                 {
                     if (_hasCursor) LadderAtCursor();
-                    if (Input.GetMouseButtonDown(1)) Rotate(shift);
+                    if (Input.GetMouseButtonDown(1) && LadKind != 2) Rotate(shift);
                     if (_hasCursor && Input.GetMouseButtonDown(0))
                     {
                         _anchor = _cursor; _down = true; _chainF = _ladF; _chainFlat = new XYZ(1, 0, 0);
-                        _chainN = int.MinValue;
+                        _chainRow = false; _chainN = int.MinValue;
                         SetChain(0);
                     }
                     return;
@@ -165,28 +170,114 @@ namespace BetterThanCastle
             catch (Exception e) { BtcLog.Error("Terraform", "Tool.Tick: " + e.Message); }
         }
 
+        /// <summary>Brush size: hold the width / height bind and turn the wheel (1 per notch). True while a bind is held: the
+        /// camera zoom skips the wheel then (CameraScript patch).</summary>
+        internal static bool WheelHeld()
+        {
+            if (!Active || BtcHotkeys.MenuOpen) return false;
+            bool w = Held(WidthKey, KeyCode.LeftControl), h = !w && Held(HeightKey, KeyCode.LeftShift);
+            return w || h;
+        }
+
+        private static bool Held(string id, KeyCode def)
+        {
+            KeyCode[] k = BtcHotkeys.GetKeys(id, new[] { def });
+            if (k == null || k.Length == 0) return false;
+            for (int i = 0; i < k.Length; i++) if (!Input.GetKey(k[i])) return false;
+            return true;
+        }
+
+        private static bool _muted;
+        private static float _savedZoom = 1f;
+
+        /// <summary>True while a brush size bind is held: the wheel belongs to the brush (honest wheel zoom skips it, vanilla zoom is muted).</summary>
+        internal static bool WheelTaken { get; private set; }
+
+        /// <summary>CameraBookmarkHotkey.Update (like BtcStationRadius.Tick): one size step per wheel notch while a bind is held.</summary>
+        internal static void CamTick(Brix.Input.CameraScript cam)
+        {
+            bool taken = false;
+            try
+            {
+                taken = WheelHeld();
+                float d = taken ? Input.mouseScrollDelta.y : 0f;
+                if (d != 0f && !(EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()))
+                {
+                    int step = d > 0f ? 1 : -1;
+                    if (Held(WidthKey, KeyCode.LeftControl)) W = W + step; else H = H + step;
+                    BtcSfx.Tick();
+                    Changed();
+                }
+            }
+            catch (Exception e) { BtcLog.Error("Terraform", "Tool.Wheel: " + e.Message); }
+            finally
+            {
+                WheelTaken = taken;
+                if (cam != null)
+                {
+                    // every frame: HandleFastModes (earlier in the same Update) rewrites ZoomSpeedMod each frame
+                    if (taken) { if (!_muted) _savedZoom = cam.ZoomSpeedMod; cam.ZoomSpeedMod = 0f; }
+                    else if (_muted && cam.ZoomSpeedMod == 0f) cam.ZoomSpeedMod = _savedZoom;
+                    _muted = taken;
+                }
+            }
+        }
+
         private static void Open()
         {
             Active = true;
             _down = false;
             if (!BtcTerraform.On) Note(BtcLang.Tr("Terraforming needs BetterConnection (BC tab)"));
+            Changed();
+        }
+
+        /// <summary>Starts placing a new task (New task grid, Ctrl+G): leaves a selected task first.</summary>
+        internal static void OpenNew()
+        {
+            if (!InMatch) return;
+            if (!BtcTerraform.On) { Note(BtcLang.Tr("Terraforming needs BetterConnection (BC tab)")); BtcSfx.Miss(); return; }
+            if (_editNid != 0) _leaveNid = _editNid;
+            if (!BtcGhLeft.IsIdle) SelectIdle();
+            _editNid = 0; _await = null; _dirty = false; _sent = null;
+            _draft = NewShape();
+            _strokes.Clear();
+            Open();
             BtcSfx.Click();
         }
 
-        // tool for a new task: leaves the editing of an existing task (its unsaved changes are dropped), keeps a new-task draft
-        private static void OpenNew()
+        private static BtcTerraform.Shape NewShape()
         {
-            if (_editNid != 0) StopEditing();
-            if (!Active) Open();
+            BtcTerraform.Shape s = new BtcTerraform.Shape();
+            s.Harvest = DefHarvest;
+            s.StoreFull = DefStoreFull;
+            return s;
         }
 
         internal static void Close()
         {
+            bool was = Active;
             Active = false;
             _down = false;
             _hasCursor = false;
-            _picking = false;
+            _editNid = 0;
+            _chainOps.Clear(); _chainCells.Clear(); _chainOk.Clear();
+            if (was) Changed();
         }
+
+        /// <summary>Esc: a selected task is deselected (vanilla idle selection), placing is cancelled.</summary>
+        private static void Leave()
+        {
+            if (_editNid != 0) { _leaveNid = _editNid; SelectIdle(); }
+            Close();
+        }
+
+        private static void SelectIdle()
+        {
+            try { IdleProject idle = IdleProject.GetAlliedProject(); if (idle != null) UIGameSelector.Select(idle.gameObject); }
+            catch (Exception e) { BtcLog.Error("Terraform", "select idle: " + e.Message); }
+        }
+
+        private static void Changed() { BtcGhPopup.RefreshTerraform(); }
 
         private static void Note(string text) { _note = text; _noteUntil = Time.unscaledTime + 4f; }
 
@@ -196,29 +287,72 @@ namespace BetterThanCastle
             BtcSfx.Click();
         }
 
+        // ------------------------------------------------------------------ popup actions
+        /// <summary>Mode slot of the popup: 0 dig, 1 tunnel ladder, 2 quarry ladder, 3 landing.</summary>
+        internal static void SetMode(int m)
+        {
+            if (m <= 0) Mode = 0; else { Mode = 3; LadKind = Mathf.Clamp(m - 1, 0, 2); }
+            Changed();
+        }
+
+        internal static void ToggleAutoDig() { AutoDig = !AutoDig; Changed(); }
+
+        /// <summary>Kept resources of the task (or of the next new task while placing).</summary>
+        internal static int Harvest { get { return Active ? _draft.Harvest : DefHarvest; } }
+        internal static bool StoreFull { get { return Active ? _draft.StoreFull : DefStoreFull; } }
+
+        internal static void ToggleKeep(int flag)
+        {
+            int h = Harvest ^ flag;
+            DefHarvest = h;
+            if (!Active) { Changed(); return; }
+            Remember(BtcLang.Tr("Kept resources"));
+            _draft.Harvest = h;
+            Commit();
+        }
+
+        internal static void ToggleStoreFull()
+        {
+            bool v = !StoreFull;
+            DefStoreFull = v;
+            if (!Active) { Changed(); return; }
+            Remember(BtcLang.Tr("Haul to stockpile"));
+            _draft.StoreFull = v;
+            Commit();
+        }
+
+        // ------------------------------------------------------------------ strokes -> task
         private static void EndStroke()
         {
+            _down = false;
             if (Mode == 3)
             {
-                _down = false;
                 if (_chainOps.Count == 0)
                 {
                     Note(LadChar == 'T' ? BtcLang.Tr("A tunnel ladder needs a full block under it and a wall behind it")
                                         : BtcLang.Tr("A quarry ladder replaces a full terrain block that stands on something"));
                     return;
                 }
+                string before = BtcTerraform.Encode(_draft);
                 _strokes.Add(_draft.Ops.Count);
                 for (int i = 0; i < _chainOps.Count; i++)
                 {
-                    int before = _draft.Ops.Count;
+                    int n = _draft.Ops.Count;
                     AddOp(_chainOps[i]);
-                    if (_draft.Ops.Count == before) break;   // too big
+                    if (_draft.Ops.Count == n) break;   // too big
                 }
                 _chainOps.Clear(); _chainCells.Clear(); _chainOk.Clear();
+                RememberText(before, BtcLang.Tr("Ladders"));
                 BtcSfx.Click();
+                Commit();
                 return;
             }
-            _down = false;
+            // the stroke is already in the draft (AddOp while dragging): its undo entry is the draft without it
+            int at = _strokes.Count > 0 ? _strokes[_strokes.Count - 1] : 0;
+            BtcTerraform.Shape prev = _draft.Clone();
+            if (at < prev.Ops.Count) { prev.Ops.RemoveRange(at, prev.Ops.Count - at); prev.Rebuild(); }
+            RememberText(BtcTerraform.Encode(prev), BtcLang.Tr("Marks"));
+            Commit();
         }
 
         // keeps only the biggest axis of b - a: lines run straight in one of the 4 (6 with Alt) directions
@@ -237,23 +371,6 @@ namespace BetterThanCastle
             _down = false;
             _chainOps.Clear(); _chainCells.Clear(); _chainOk.Clear();
             if (!ladder && _strokes.Count > 0) { Truncate(_strokes[_strokes.Count - 1]); _strokes.RemoveAt(_strokes.Count - 1); }
-        }
-
-        private static BtcTerraform.Shape _cleared;
-        private static List<int> _clearedStrokes;
-
-        private static void Undo()
-        {
-            if (_strokes.Count == 0)
-            {
-                if (_cleared == null || !_draft.Empty) return;
-                _draft = _cleared; _strokes.AddRange(_clearedStrokes); _cleared = null;
-                BtcSfx.Click();
-                return;
-            }
-            Truncate(_strokes[_strokes.Count - 1]);
-            _strokes.RemoveAt(_strokes.Count - 1);
-            BtcSfx.Click();
         }
 
         private static void Truncate(int count)
@@ -275,13 +392,108 @@ namespace BetterThanCastle
             }
         }
 
-        private static void ClearDraft()
+        /// <summary>Sends the draft: a new task (first stroke), or the new shape of the task being edited. An empty shape deletes it.</summary>
+        private static void Commit()
         {
-            if (_draft.Empty) return;
-            _cleared = _draft; _clearedStrokes = new List<int>(_strokes);
-            _strokes.Clear(); _draft = new BtcTerraform.Shape();
-            Note(BtcLang.Tr("Shape cleared (Ctrl+Z brings it back)"));
-            BtcSfx.Click();
+            if (!BtcTerraform.On) { Note(BtcLang.Tr("Terraforming needs BetterConnection (BC tab)")); return; }
+            if (_editNid != 0)
+            {
+                if (_draft.Empty) { DeleteTask(_editNid); return; }
+                _sent = BtcTerraform.Encode(_draft);
+                BtcTerraform.RequestEdit(_editNid, _draft.Clone());
+            }
+            else if (_await != null) _dirty = true;   // the task is not there yet: sent as an edit once the host made it
+            else if (!_draft.Empty)
+            {
+                _await = BtcTerraform.Encode(_draft);
+                _awaitAt = Time.unscaledTime;
+                _dirty = false;
+                BtcTerraform.RequestCreate(_draft.Clone());
+            }
+            Changed();
+        }
+
+        private static void DeleteTask(uint nid)
+        {
+            Project p = BtcTerraform.ProjectOf(nid);
+            if (p != null && Project.ShowDelete(p) && Project.HasDelete(p)) Project.SetDelete(p);
+            _hist.Remove(nid);
+            Close();
+        }
+
+        /// <summary>BtcTerraform: a shape got bound to its task (created, edited by anyone, late spawn on a client).</summary>
+        internal static void OnBound(uint nid, Project p, BtcTerraform.Shape s)
+        {
+            if (p == null || User.LocalUser == null || p.faction != User.LocalUser.faction) return;
+            string text = BtcTerraform.Encode(s);
+            if (_await != null && text == _await && _editNid == 0 && Active)
+            {
+                // our new task: select it (the vanilla way), later strokes edit it; undo of the first stroke deletes it
+                _await = null;
+                List<string> h = Hist(nid);
+                h.Add("");
+                _editNid = nid; _sent = text;
+                UIGameSelector.Select(p.gameObject);
+                if (_dirty) { _dirty = false; _sent = BtcTerraform.Encode(_draft); BtcTerraform.RequestEdit(nid, _draft.Clone()); }
+                Changed();
+                return;
+            }
+            // edited by someone else (an ally): reload, the strokes of this session no longer apply
+            if (Active && nid == _editNid && !_down && text != _sent && _sent != null)
+            {
+                _draft = s.Clone();
+                _strokes.Clear();
+                _sent = text;
+                Changed();
+            }
+        }
+
+        // ------------------------------------------------------------------ undo (per task, unlimited)
+        private static List<string> Hist(uint nid)
+        {
+            List<string> h;
+            if (!_hist.TryGetValue(nid, out h)) { h = new List<string>(); _hist[nid] = h; }
+            return h;
+        }
+
+        private static string _undoLabel;
+
+        private static void Remember(string label) { RememberText(BtcTerraform.Encode(_draft), label); }
+
+        private static void RememberText(string before, string label)
+        {
+            _undoLabel = label;
+            if (_editNid != 0) { List<string> h = Hist(_editNid); h.Add(before); if (h.Count > 300) h.RemoveAt(0); }
+        }
+
+        private static void Undo()
+        {
+            if (_down) return;
+            if (_editNid == 0)
+            {
+                // placing: only the strokes not sent yet
+                if (_strokes.Count == 0 || _await != null) { Note(BtcLang.Tr("Nothing to undo")); BtcSfx.Miss(); return; }
+                Truncate(_strokes[_strokes.Count - 1]);
+                _strokes.RemoveAt(_strokes.Count - 1);
+                BtcSfx.Jump();
+                Changed();
+                return;
+            }
+            List<string> h;
+            if (!_hist.TryGetValue(_editNid, out h) || h.Count == 0) { Note(BtcLang.Tr("Nothing to undo")); BtcSfx.Miss(); return; }
+            string prev = h[h.Count - 1];
+            h.RemoveAt(h.Count - 1);
+            BtcSfx.Jump();
+            if (prev.Length == 0) { Note(BtcLang.Tr("Undone: the task is deleted")); DeleteTask(_editNid); return; }
+            BtcTerraform.Shape s = BtcTerraform.Decode(prev);
+            if (s == null) return;
+            _draft = s;
+            _strokes.Clear();
+            Note(BtcLang.Tr("Undone") + (h.Count > 0 ? "   (" + h.Count + ")" : ""));
+            if (_draft.Empty) { DeleteTask(_editNid); return; }
+            _sent = prev;
+            BtcTerraform.RequestEdit(_editNid, _draft.Clone());
+            Changed();
         }
 
         // ------------------------------------------------------------------ delete one mark (Ctrl+LMB)
@@ -291,68 +503,36 @@ namespace BetterThanCastle
             XYZ cell, n; float d;
             if (MarkRay(r, 600f, true, out cell, out n, out d))
             {
+                string before = BtcTerraform.Encode(_draft);
                 _strokes.Add(_draft.Ops.Count);
                 AddOp(BtcTerraform.Cell('E', cell));
+                RememberText(before, BtcLang.Tr("Delete a mark"));
                 BtcSfx.Click();
+                Commit();
                 return;
             }
-            // a mark of a task already created: open that task for editing with the cell removed
+            // a mark of another task of the own faction: select that task (it opens for editing), the next Ctrl+click deletes
             uint nid; BtcTerraform.Shape s;
-            if (_editNid == 0 && MarkRay(r, 600f, false, out cell, out n, out d) && BtcTerraform.FindOwn(cell, cell, out nid, out s))
+            if (MarkRay(r, 600f, false, out cell, out n, out d) && BtcTerraform.FindOwn(cell, cell, out nid, out s) && nid != _editNid)
             {
-                BeginEdit(nid, s);
-                _strokes.Add(_draft.Ops.Count);
-                AddOp(BtcTerraform.Cell('E', cell));
+                Project p = BtcTerraform.ProjectOf(nid);
+                if (p != null) { UIGameSelector.Select(p.gameObject); BtcSfx.Click(); }
                 return;
             }
             Note(BtcLang.Tr("No mark here"));
         }
 
         // ------------------------------------------------------------------ edit an existing task
-        private static bool _picking;
-        private static uint _editNid, _lastSel;
-
-        private static void PickTask(Camera cam, Vector3 screen)
-        {
-            Ray ray = cam.ScreenPointToRay(screen);
-            XYZ a = default(XYZ), b = default(XYZ), n; float md;
-            bool mark = MarkRay(ray, 600f, false, out a, out n, out md);
-            if (mark) b = a;
-            else
-            {
-                RaycastHit hit;
-                if (!Physics.Raycast(ray, out hit, 1000f, 132096, QueryTriggerInteraction.Ignore)) return;
-                Vector3 pi = hit.point - hit.normal * 0.05f, po = hit.point + hit.normal * 0.05f;
-                a = new XYZ(Mathf.RoundToInt(pi.x), Mathf.RoundToInt(pi.y), Mathf.RoundToInt(pi.z));
-                b = new XYZ(Mathf.RoundToInt(po.x), Mathf.RoundToInt(po.y), Mathf.RoundToInt(po.z));
-            }
-            uint nid; BtcTerraform.Shape s;
-            if (!BtcTerraform.FindOwn(a, b, out nid, out s)) { Note(BtcLang.Tr("No terraform task of yours here")); return; }
-            BeginEdit(nid, s);
-        }
-
-        /// <summary>Loads a task of the local faction into the draft (Save changes sends it back to the host).</summary>
+        /// <summary>Loads a task of the local faction into the tool (every change goes to the host at once).</summary>
         internal static void BeginEdit(uint nid, BtcTerraform.Shape s)
         {
-            if (!Active) Open();
-            _picking = false;
             _down = false;
             _editNid = nid;
+            _await = null; _dirty = false;
             _draft = s.Clone();
+            _sent = BtcTerraform.Encode(_draft);
             _strokes.Clear();
-            Harvest = s.Harvest;
-            StoreFull = s.StoreFull;
-            Note(BtcLang.Tr("Editing the task: change it, then Save changes"));
-            BtcSfx.Click();
-        }
-
-        internal static uint EditingTask { get { return Active ? _editNid : 0; } }
-
-        private static void StopEditing()
-        {
-            _editNid = 0;
-            _draft = new BtcTerraform.Shape();
-            _strokes.Clear();
+            if (!Active) Open(); else Changed();
         }
 
         // ------------------------------------------------------------------ ladders
@@ -384,7 +564,9 @@ namespace BetterThanCastle
             char k = LadChar;
             int n;
             XYZ flat = _chainFlat;
-            if (k == 'B')
+            // Shift: a sideways row of quarry / tunnel ladders at one height instead of the climbing diagonal
+            bool row = k == 'B' || down;
+            if (row)
             {
                 XYZ c;
                 if (!PlaneHit(r, _anchor.ToVector3() + Vector3.up * 0.5f, Vector3.up, out c)) return;
@@ -400,13 +582,15 @@ namespace BetterThanCastle
                 // up the climbing diagonal, or down it when the mouse goes the other way
                 n = Mathf.Clamp(Mathf.RoundToInt(t), -64, 64);
             }
-            if (n != _chainN || !flat.Equals(_chainFlat)) { _chainFlat = flat; SetChain(n); }
+            if (n != _chainN || !flat.Equals(_chainFlat) || row != _chainRow) { _chainFlat = flat; _chainRow = row; SetChain(n); }
         }
+
+        private static bool _chainRow;
 
         private static void SetChain(int n)
         {
             _chainN = n;
-            BtcTerraform.LadderChain(_draft, _anchor, LadChar, _chainF, _chainFlat, n, AutoDig && LadChar != 'B', _chainOps, _chainCells, _chainOk);
+            BtcTerraform.LadderChain(_draft, _anchor, LadChar, _chainF, _chainFlat, n, AutoDig && LadChar != 'B', _chainOps, _chainCells, _chainOk, _chainRow && LadChar != 'B');
         }
 
         // ------------------------------------------------------------------ geometry
@@ -612,8 +796,9 @@ namespace BetterThanCastle
                     budget = Cells(s.Dig, new Color(DigCol.r, DigCol.g, DigCol.b, 0.35f), budget, true, false);
                     budget = Cells(s.Fill, new Color(FillCol.r, FillCol.g, FillCol.b, 0.35f), budget, false, true);
                 }
-                budget = Cells(_draft.Dig, DigCol, budget, false, false);
-                budget = Cells(_draft.Fill, FillCol, budget, false, false);
+                bool edit = _editNid != 0;   // the edited task: only the work still left, like the other tasks
+                budget = Cells(_draft.Dig, DigCol, budget, edit, false);
+                budget = Cells(_draft.Fill, FillCol, budget, false, edit);
                 foreach (BtcTerraform.Shape s in BtcTerraform.All()) Ladders(s, new Color(LadCol.r, LadCol.g, LadCol.b, 0.45f));
                 Ladders(_draft, LadCol);
                 bool ctrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
@@ -712,207 +897,52 @@ namespace BetterThanCastle
             return true;
         }
 
-        // ------------------------------------------------------------------ panel (IMGUI)
-        private static Vector2 _scroll;
+#if DEV
+        // DEV labs (tfui): a stroke / undo / Esc without the mouse
+        internal static void DevStroke(BtcTerraform.Op o)
+        {
+            if (!Active) return;
+            string before = BtcTerraform.Encode(_draft);
+            _strokes.Add(_draft.Ops.Count);
+            AddOp(o);
+            RememberText(before, "dev");
+            Commit();
+        }
 
+        internal static void DevUndo() { Undo(); }
+        internal static void DevLeave() { Leave(); }
+#endif
+
+        // ------------------------------------------------------------------ IMGUI: short notes above the task popup + hover tips of the popup slots
         internal static void OnGUI()
         {
-            if (!Active) { _panel = default(Rect); return; }
             try
             {
+                if (!BtcGameHud.Open) return;
                 int fs = BtcUiEdit.MenuFs;
-                BtcReplayUI.Ensure(fs);
-                float w = Mathf.Round(fs * 21f);
-                float noteH = fs * 2.2f + 4f;
-                float top = fs * 4f, avail = Mathf.Max(fs * 8f, Screen.height - top - noteH - fs);
-                float h = Mathf.Min(Mathf.Max(_panelH, fs * 10f), avail);
-                // centred on the right edge, but never below the screen (the panel used to slide off the bottom)
-                float y = Mathf.Clamp(Screen.height * 0.5f - h * 0.5f, top, Screen.height - h - noteH - fs);
-                _panel = new Rect(Screen.width - w - fs, Mathf.Max(top, y), w, h);
-                BtcReplayUI.Fill(_panel, BtcMenu.Bg);
-                BtcReplayUI.Fill(new Rect(_panel.x, _panel.y, _panel.width, 2f), BtcMenu.Accent);
-                GUI.BeginGroup(_panel);
-                if (_panelH > h + 1f)
+                string tip = BtcGhButton.HoverTip;
+                if (tip != null || (_note != null && Time.unscaledTime < _noteUntil)) BtcReplayUI.Ensure(fs);
+                if (_note != null && Time.unscaledTime < _noteUntil && Event.current.type == EventType.Repaint)
                 {
-                    float sw = 14f;
-                    _scroll = GUI.BeginScrollView(new Rect(0f, 0f, w, h), _scroll, new Rect(0f, 0f, w - sw, _panelH), false, true);
-                    _panelH = Panel(w - sw, fs);
-                    GUI.EndScrollView();
+                    GUIStyle st = BtcReplayUI.sBarLabel ?? BtcReplayUI.sLabel;
+                    float w = Mathf.Min(_note.Length * fs * 0.6f + fs * 2f, Screen.width - fs * 4f), h = fs * 2.2f;
+                    float a = Mathf.Clamp01((_noteUntil - Time.unscaledTime) / 0.4f);
+                    Rect r = new Rect(Screen.width * 0.5f - w * 0.5f, Screen.height - Screen.height * 0.2f - h, w, h);
+                    BtcReplayUI.Fill(r, new Color(0.02f, 0.025f, 0.03f, 0.92f * a));
+                    BtcReplayUI.Fill(new Rect(r.x, r.y, 3f, r.height), new Color(BtcMenu.Accent.r, BtcMenu.Accent.g, BtcMenu.Accent.b, a));
+                    Color oc = GUI.contentColor;
+                    GUI.contentColor = new Color(1f, 1f, 1f, a);
+                    GUI.Label(new Rect(r.x + fs * 0.8f, r.y, r.width - fs * 1.2f, r.height), _note, st);
+                    GUI.contentColor = oc;
                 }
-                else _panelH = Panel(w, fs);
-                GUI.EndGroup();
-                if (_note != null && Time.unscaledTime < _noteUntil)
+                if (tip != null)
                 {
-                    Rect nr = new Rect(_panel.x, Mathf.Min(_panel.yMax + 4f, Screen.height - noteH), _panel.width, fs * 2.2f);
-                    BtcReplayUI.Fill(nr, BtcMenu.Bg);
-                    GUI.BeginGroup(nr);
-                    float ny = fs * 0.2f;
-                    BtcUi.Status(ref ny, nr.width, fs, _note, BtcMenu.Accent);
-                    GUI.EndGroup();
+                    Vector2 m = Event.current.mousePosition;
+                    BtcReplayIcons.Hint(new Rect(m.x - 4f, m.y - 4f, 8f, 8f), tip);
+                    BtcReplayIcons.DrawTip(fs);
                 }
-                BtcReplayIcons.DrawTip(fs);
-                if (Event.current.isMouse && _panel.Contains(Event.current.mousePosition)) Event.current.Use();
             }
             catch (Exception e) { BtcLog.Error("Terraform", "OnGUI: " + e.Message); }
-        }
-
-        private static float _panelH;
-
-        // menu-style content (BtcUi rows) in panel-local coordinates; returns the used height
-        private static float Panel(float w, int fs)
-        {
-            float pad = fs, y = fs * 0.7f;
-            BtcReplayIcons.Glyph(BtcReplayIcons.Grid, new Rect(pad, y + fs * 0.25f, fs * 1.3f, fs * 1.3f), BtcMenu.Accent);
-            GUI.Label(new Rect(pad + fs * 1.9f, y, w - fs * 6f, fs * 1.8f), BtcLang.Tr("Terraforming"), Title(fs));
-            if (BtcReplayIcons.Plain(new Rect(w - pad - fs * 1.6f, y + fs * 0.1f, fs * 1.6f, fs * 1.6f), BtcReplayIcons.Cross, new Color(1f, 1f, 1f, 0.8f), BtcLang.Tr("Close (Esc)"))) Close();
-            y += fs * 2.4f;
-            if (!BtcTerraform.On) BtcUi.Status(ref y, w, fs, BtcLang.Tr("Terraforming needs BetterConnection (BC tab)"), new Color(1f, 0.55f, 0.3f, 1f));
-
-            int cur = Mode == 3 ? 2 : Mode;
-            int m = Chips(ref y, w, fs, cur == 2 ? 1 : 0, BtcLang.Tr("Dig"), BtcLang.Tr("Ladder"));
-            if (m != (cur == 2 ? 1 : 0)) Mode = m == 1 ? 3 : 0;
-            if (Mode == 3)
-            {
-                int k = Chips(ref y, w, fs, LadKind, BtcLang.Tr("Tunnel"), BtcLang.Tr("Quarry"), BtcLang.Tr("Landing"));
-                if (k != LadKind) LadKind = k;
-                if (LadKind != 2 && BtcUi.Action(ref y, w, fs, BtcReplayIcons.Refresh, BtcLang.Tr("Rotate (RMB or R)"), null)) Rotate(false);
-                if (LadKind != 2 && BtcUi.Toggle(ref y, w, fs, BtcLang.Tr("Dig room for ladders"), AutoDig, BtcLang.Tr("Marks the block above a ladder (and a tunnel ladder's own block) for digging")))
-                    AutoDig = !AutoDig;
-            }
-            else
-            {
-                int d = BtcUi.Stepper(ref y, w, fs, BtcLang.Tr("Width"), W.ToString()); if (d != 0) W = W + d;
-                d = BtcUi.Stepper(ref y, w, fs, BtcLang.Tr("Height"), H.ToString()); if (d != 0) H = H + d;
-            }
-
-            y += fs * 0.3f;
-            BtcUi.Section(ref y, w, fs, BtcLang.Tr("Keep dug resources"));
-            int hv = Harvest;
-            int t = MultiChips(ref y, w, fs, hv, BtcLang.Tr("Stone"), BtcLang.Tr("Brimstone"), BtcLang.Tr("Iron"));
-            if (t != hv) Harvest = t;
-            BtcUi.Note(ref y, w, fs, Harvest == 0 ? BtcLang.Tr("Nothing drops: no stockpile needed") : BtcLang.Tr("Kept stone goes straight into the fill; a full bag with nothing to fill leaves the task"));
-            if (Harvest != 0 && BtcUi.Toggle(ref y, w, fs, BtcLang.Tr("Haul to stockpile when the bag is full"), StoreFull, BtcLang.Tr("A worker whose bag is full carries the stone to a stockpile at once, then returns to the task")))
-                StoreFull = !StoreFull;
-
-            y += fs * 0.3f;
-            BtcUi.Section(ref y, w, fs, BtcLang.Tr("Task"));
-            BtcUi.Status(ref y, w, fs, string.Format(BtcLang.Tr("Dig {0}, fill {1}, ladders {2}"), _draft.Dig.Count, _draft.Fill.Count, _draft.Ladders.Count), new Color(1f, 1f, 1f, 0.75f));
-            bool can = BtcTerraform.On && !_draft.Empty;
-            Color old = GUI.color;
-            if (_editNid != 0) BtcUi.Status(ref y, w, fs, BtcLang.Tr("Editing a task"), BtcMenu.Accent);
-            else if (_picking) BtcUi.Status(ref y, w, fs, BtcLang.Tr("Click a cell of one of your terraform tasks (RMB cancels)"), BtcMenu.Accent);
-            if (!can) GUI.color = new Color(1f, 1f, 1f, 0.4f);
-            if (BtcUi.Action(ref y, w, fs, BtcReplayIcons.Check, _editNid != 0 ? BtcLang.Tr("Save changes") : BtcLang.Tr("Create task"), null) && can) Create();
-            GUI.color = old;
-            // editing an existing task: select it in the vanilla task list; Ctrl+G always starts a new one
-            int act;
-            if (_editNid != 0) act = Buttons(ref y, w, fs, BtcLang.Tr("Stop editing"), BtcLang.Tr("Clear all marks"));
-            else act = Buttons(ref y, w, fs, BtcLang.Tr("Clear all marks")) == 0 ? 1 : -1;
-            if (act == 0) { StopEditing(); Close(); }
-            else if (act == 1) { ClearDraft(); Close(); }
-            y += fs * 0.2f;
-            BtcUi.Note(ref y, w, fs, BtcLang.Tr("LMB hold and drag: a straight line along the face, Alt: into the blocks; ladders: drag up or down the slope. Ctrl+LMB deletes a mark, RMB rotates a ladder, Ctrl+Z undo, Shift / Ctrl+wheel height / width, Esc close. Edit a task: select it in the task list"));
-            return y + fs * 0.4f;
-        }
-
-        private static GUIStyle _title;
-        private static int _titleFs;
-
-        private static GUIStyle Title(int fs)
-        {
-            if (_title != null && _titleFs == fs) return _title;
-            _titleFs = fs;
-            _title = new GUIStyle(BtcReplayUI.sBarLabel ?? BtcReplayUI.sLabel);
-            _title.fontSize = Mathf.RoundToInt(fs * 1.15f);
-            _title.fontStyle = FontStyle.Bold;
-            _title.alignment = TextAnchor.MiddleLeft;
-            _title.normal.textColor = Color.white;
-            return _title;
-        }
-
-        private static GUIStyle _chip;
-        private static int _chipFs;
-
-        private static GUIStyle ChipStyle(int fs)
-        {
-            if (_chip == null || _chipFs != fs)
-            {
-                _chipFs = fs;
-                _chip = new GUIStyle(BtcReplayUI.sBarLabel ?? BtcReplayUI.sLabel);
-                _chip.fontSize = Mathf.RoundToInt(fs * 0.9f);
-                _chip.alignment = TextAnchor.MiddleCenter;
-                _chip.clipping = TextClipping.Clip;
-            }
-            return _chip;
-        }
-
-        // one flat cell in the menu look; returns true when clicked
-        private static bool Chip(Rect c, string text, bool sel)
-        {
-            bool hover = c.Contains(Event.current.mousePosition);
-            BtcReplayUI.Fill(c, sel ? BtcMenu.AccentA(0.22f) : new Color(1f, 1f, 1f, hover ? 0.08f : 0.04f));
-            if (sel) BtcReplayUI.Fill(new Rect(c.x, c.yMax - 2f, c.width, 2f), BtcMenu.Accent);
-            Color oc = GUI.contentColor;
-            GUI.contentColor = sel ? BtcMenu.Accent : new Color(1f, 1f, 1f, hover ? 1f : 0.75f);
-            GUI.Label(c, text, _chip);
-            GUI.contentColor = oc;
-            return BtcSfx.Btn(c, "", BtcReplayUI.sBtn);
-        }
-
-        private static Rect ChipRect(float y, float w, int fs, int i, int count)
-        {
-            float pad = fs, gap = 3f;
-            float cw = (w - pad * 2f - gap * (count - 1)) / count;
-            return new Rect(pad + (cw + gap) * i, y, cw, fs * 2f);
-        }
-
-        /// <summary>Segmented row in the menu look: flat cells, the selected one in accent. Returns the selected index.</summary>
-        private static int Chips(ref float y, float w, int fs, int cur, params string[] items)
-        {
-            ChipStyle(fs);
-            for (int i = 0; i < items.Length; i++)
-                if (Chip(ChipRect(y, w, fs, i, items.Length), items[i], i == cur) && i != cur) { cur = i; BtcSfx.Click(); }
-            y += fs * 2.5f;
-            return cur;
-        }
-
-        /// <summary>Row of independent on / off cells over a bit mask (bit i = item i). Returns the new mask.</summary>
-        private static int MultiChips(ref float y, float w, int fs, int mask, params string[] items)
-        {
-            ChipStyle(fs);
-            for (int i = 0; i < items.Length; i++)
-            {
-                bool on = (mask & (1 << i)) != 0;
-                if (Chip(ChipRect(y, w, fs, i, items.Length), items[i], on)) { mask ^= 1 << i; BtcSfx.Switch(!on); }
-            }
-            y += fs * 2.5f;
-            return mask;
-        }
-
-        /// <summary>Row of plain buttons. Returns the clicked index or -1.</summary>
-        private static int Buttons(ref float y, float w, int fs, params string[] items)
-        {
-            ChipStyle(fs);
-            int hit = -1;
-            for (int i = 0; i < items.Length; i++)
-                if (Chip(ChipRect(y, w, fs, i, items.Length), items[i], false)) { hit = i; BtcSfx.Click(); }
-            y += fs * 2.5f;
-            return hit;
-        }
-
-        private static void Create()
-        {
-            BtcTerraform.Shape s = _draft.Clone();
-            s.Harvest = Harvest;
-            s.StoreFull = StoreFull;
-            bool edit = _editNid != 0;
-            if (edit) BtcTerraform.RequestEdit(_editNid, s); else BtcTerraform.RequestCreate(s);
-            _editNid = 0;
-            _draft = new BtcTerraform.Shape();
-            _strokes.Clear();
-            Note(edit ? BtcLang.Tr("Task changed") : BtcLang.Tr("Terraforming task created"));
-            BtcSfx.Click();
-            Close();
         }
     }
 }
