@@ -5,7 +5,8 @@ namespace BetterThanCastle
     internal static class BtcConfig
     {
         internal static ConfigEntry<int> WindowMode;
-        internal static ConfigEntry<bool> SkipIntro;
+        internal static ConfigEntry<bool> SkipIntro, NoLoadCurtain;
+        internal static ConfigEntry<int> ConfigRev;
         internal static ConfigEntry<bool> LoadTimer;
         internal static ConfigEntry<bool> LoadCancel;
         internal static ConfigEntry<bool> LiveSymmetry;
@@ -51,6 +52,7 @@ namespace BetterThanCastle
             BtcAimConfig.Init(cfg);
             WindowMode = cfg.Bind("Display", "WindowMode", 3, "0 = keep the game setting, 1 = fullscreen, 2 = windowed, 3 = borderless.");
             SkipIntro = cfg.Bind("Display", "SkipIntro", true, "Skip the logo screens on startup (applies on next launch).");
+            NoLoadCurtain = cfg.Bind("Display", "NoLoadCurtain", false, "No loading curtain: the black halves that slide over the screen are hidden, so the world is seen loading in real time. Progress and tips stay. Local only, applies at once.");
             UiSound = cfg.Bind("Display", "UiSound", 2, "Sound feedback of the mod menu (hover, clicks, typing, delete): 0 = off, 1 = low, 2 = medium, 3 = high.");
             LiveSymmetry = cfg.Bind("Editor", "LiveSymmetry", true, "Map editor: when a symmetry mode is set in Gameplay settings (mirror/point/quadrants), objects, trees and Island terrain you place are mirrored instantly to the other side. Uses the map Heightmap.png for the axis.");
             CleanHanging = cfg.Bind("Editor", "CleanHanging", true, "Map editor: after you dig or lower terrain, ore, plants, boulders and trees that no longer sit on the surface are removed automatically.");
@@ -114,7 +116,10 @@ namespace BetterThanCastle
             FireflyLights = cfg.Bind("Performance", "FireflyLights", false, "Glow lights of the night fireflies around crystals (dozens of small point lights). Off = fireflies keep their particles, less GPU work. Local only.");
             CrystalShadows = cfg.Bind("Performance", "CrystalShadows", false, "Crystal lights cast shadows (point light shadows: six extra shadow renders per crystal). Off = crystals still glow, much less GPU work. Local only.");
             PauseHiddenAnims = cfg.Bind("Performance", "PauseHiddenAnims", true, "Overhead icons, name tags and thought bubbles animate only while shown; crystal shards only on screen; beacon handles only right after a change. Looks the same. Local only.");
-            HideNameTags = cfg.Bind("Performance", "HideNameTags", true, "Never show the name tags over units and beacons (maximum performance). Local only.");
+            HideNameTags = cfg.Bind("Performance", "HideNameTags", false, "Never show the name tags over units and beacons (maximum performance). Local only.");
+            // one-time default changes: a config written by an older version keeps its old value, so the new default is set once here
+            ConfigRev = cfg.Bind("Meta", "ConfigRev", 0, "Internal: which one-time default changes are applied. Do not edit.");
+            if (ConfigRev.Value < 1) { HideNameTags.Value = false; ConfigRev.Value = 1; }
             StaticCrystals = cfg.Bind("Performance", "StaticCrystals", false, "Crystals do not animate at all (no breathing, shaking, capture fill or day glow); their colour changes only when a capture or neutralisation completes. The capture progress bar stays. Local only.");
             SimpleFireflies = cfg.Bind("Performance", "SimpleFireflies", true, "Fireflies without their particles and trail (about 16 particles each, dozens of fireflies at every home crystal); the glowing ball stays. Local only.");
             CrystalLights = cfg.Bind("Performance", "CrystalLights", false, "The light that crystals cast on the ground around them. Off = crystals still glow themselves, fewer lights to draw. Local only.");

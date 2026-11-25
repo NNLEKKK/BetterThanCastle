@@ -10,6 +10,10 @@
 # Optional 5th field "exp" = experimental (not verified in real games), shown as a badge.
 # Do not use the pipe character inside texts. Keep every entry on ONE line.
 
+@ 0.6.0e | 2026-11-25 | |
++ visuals | - |Option Load without the curtain: the black halves of the loading screen are hidden, so you watch the world load in real time (progress and tips stay). Off by default. | Опция Загрузка без шторки: чёрные половины экрана загрузки скрыты, видно, как мир грузится в реальном времени (прогресс и подсказки остаются). По умолчанию выключено.
+* perf | tab:14:HideNameTags | Name tags over units are hidden by default now (the old default was on; the switch is in Performance, once for every install). | Таблички с именами над юнитами теперь скрыты по умолчанию (раньше было включено; переключатель в Performance, один раз для всех установок).
+
 @ 0.6.0d | 2026-11-25 | | Hotfix
 = hud | - | The Statistics tab shows the match again (it said "No data yet" after the 0.6.0 performance work). | Вкладка статистики снова показывает матч (после оптимизаций 0.6.0 писала "Данных пока нет").
 

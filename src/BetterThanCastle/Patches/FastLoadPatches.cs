@@ -94,4 +94,35 @@ namespace BetterThanCastle.Patches
             if (Mathf.Abs(__result) > Mathf.Abs(room)) __result = room;
         }
     }
+
+    /// <summary>
+    /// Visuals > No loading curtain: the two black halves of LoadingScreenSlide are hidden, the slide itself still runs
+    /// (the driver waits for its AnimStart/AnimEnd signals), so the world shows while it loads. Read at each call: switch applies at once.
+    /// </summary>
+    [HarmonyPatch(typeof(LoadingScreenSlide), "ComputeIncrement")]
+    internal static class NoLoadCurtainPatch
+    {
+        private static void Postfix(LoadingScreenSlide __instance) { Apply(__instance); }
+
+        // the instant calls and the open/close starts also cover the frames before the first animation step
+        [HarmonyPatch(typeof(LoadingScreenSlide), "InstantClose")]
+        internal static class AtInstantClose { private static void Postfix(LoadingScreenSlide __instance) { Apply(__instance); } }
+        [HarmonyPatch(typeof(LoadingScreenSlide), "InstantOpen")]
+        internal static class AtInstantOpen { private static void Postfix(LoadingScreenSlide __instance) { Apply(__instance); } }
+        [HarmonyPatch(typeof(LoadingScreenSlide), "Close")]
+        internal static class AtClose { private static void Postfix(LoadingScreenSlide __instance) { Apply(__instance); } }
+        [HarmonyPatch(typeof(LoadingScreenSlide), "Open")]
+        internal static class AtOpen { private static void Postfix(LoadingScreenSlide __instance) { Apply(__instance); } }
+
+        internal static void Apply(LoadingScreenSlide s)
+        {
+            try
+            {
+                bool show = BtcConfig.NoLoadCurtain == null || !BtcConfig.NoLoadCurtain.Value;
+                if (s.Top != null && s.Top.gameObject.activeSelf != show) s.Top.gameObject.SetActive(show);
+                if (s.Bot != null && s.Bot.gameObject.activeSelf != show) s.Bot.gameObject.SetActive(show);
+            }
+            catch (Exception e) { BtcLog.Error("Hook", "NoLoadCurtain: " + e.Message); }
+        }
+    }
 }

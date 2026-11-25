@@ -573,6 +573,12 @@ namespace BetterThanCastle
                     BtcConfig.SkipIntro.Value = !skip;
                     BtcUndo.Push(BtcVisualRows.Scope, Tt("Skip intro", "Пропуск интро"), delegate { BtcConfig.SkipIntro.Value = skip; });
                 }
+                bool noCurtain = BtcConfig.NoLoadCurtain != null && BtcConfig.NoLoadCurtain.Value;
+                if (BtcVisualRows.Switch(ref y, w, fs, 0, Tt("Load without the curtain (watch the world load)", "Загрузка без шторки (видно, как грузится мир)"), noCurtain, null) && BtcConfig.NoLoadCurtain != null)
+                {
+                    BtcConfig.NoLoadCurtain.Value = !noCurtain;
+                    BtcUndo.Push(BtcVisualRows.Scope, Tt("No loading curtain", "Загрузка без шторки"), delegate { BtcConfig.NoLoadCurtain.Value = noCurtain; });
+                }
                 bool dis = BtcVisualData.GetDiscord();
                 if (BtcVisualRows.Switch(ref y, w, fs, 0, "Discord Rich Presence", dis, null))
                 {
