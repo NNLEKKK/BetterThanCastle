@@ -271,7 +271,8 @@ namespace BetterThanCastle
                 BtcUi.Note(ref y, area.width, fs, Tt("Statistics work in a game or a replay. Start or open one and come back.", "Статистика работает в игре или реплее. Начните или откройте его и вернитесь."));
                 return;
             }
-            if (e.type == EventType.Layout && Time.unscaledTime >= _next)
+            // Repaint, not Layout: ResourcePackManager.OnGUI turns useGUILayout off (0.6.0 GC fix), which stops Layout events
+            if (e.type == EventType.Repaint && Time.unscaledTime >= _next)
             {
                 _next = Time.unscaledTime + 0.25f;
                 try { BtcMatchStatsUI.RefreshFactions(); BuildGraph(); }

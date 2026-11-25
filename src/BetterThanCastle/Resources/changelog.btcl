@@ -10,6 +10,9 @@
 # Optional 5th field "exp" = experimental (not verified in real games), shown as a badge.
 # Do not use the pipe character inside texts. Keep every entry on ONE line.
 
+@ 0.6.0d | 2026-11-25 | | Hotfix
+= hud | - | The Statistics tab shows the match again (it said "No data yet" after the 0.6.0 performance work). | Вкладка статистики снова показывает матч (после оптимизаций 0.6.0 писала "Данных пока нет").
+
 @ 0.6.0c | 2026-11-25 | | Hotfix
 = gameplay | tab:4:mov.allies | Units on a focus order (attack this unit) walk like in vanilla again: allies block them, so melee units keep hitting the one target you chose instead of switching to other enemies after a failed walk. Passing through allies still works for every other order. | Юниты с приказом фокуса (атаковать этого юнита) снова ходят как в ванили: союзники их блокируют, поэтому ближники продолжают бить выбранную цель, а не переключаются на других врагов после неудачного шага. Проход сквозь своих по остальным приказам работает как раньше.
 
