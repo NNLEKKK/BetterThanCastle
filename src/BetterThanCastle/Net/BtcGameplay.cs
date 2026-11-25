@@ -77,7 +77,8 @@ public static class BtcGameplay
 		BtcGameplay.AddWorldRows();
 		BtcLobby.AddRows();
 		BtcBalanceExtra.AddRows();
-		BtcGameplay.V = BtcGameplay.NewDefaults();
+		BtcArcherAccuracy.AddRows();
+		BtcGameplay.V =BtcGameplay.NewDefaults();
 		BtcGameplay.Own = BtcGameplay.NewDefaults();
 		BtcGameplay.Proposal = BtcGameplay.NewDefaults();
 		BtcGameplay.VanillaArr = BtcGameplay.NewDefaults();

@@ -9,7 +9,7 @@ namespace BetterThanCastle
     {
         public const string Guid = "com.btc.betterthancastle";
         public const string Name = "Better Than Castle";
-        public const string Version = "0.6.0e";
+        public const string Version = "0.6.0f";
         // BepInEx parses the plugin version with System.Version: no letter suffix allowed here (the mod is skipped otherwise)
         public const string BepVersion = "0.6.0";
 

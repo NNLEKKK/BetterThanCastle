@@ -10,6 +10,9 @@
 # Optional 5th field "exp" = experimental (not verified in real games), shown as a badge.
 # Do not use the pipe character inside texts. Keep every entry on ONE line.
 
+@ 0.6.0f | 2026-11-25 | |
++ gameplay | tab:4:arr.accuracy | Rule Archers always hit: bricktron arrows with a clear line of sight always hit their target and never hurt allies. Off by default, in Gameplay > Damage. | Правило Лучники всегда попадают: стрелы бриктронов с чистой линией прицела всегда попадают в цель и не ранят союзников. По умолчанию выключено, Gameplay > Урон.
+
 @ 0.6.0e | 2026-11-25 | |
 + visuals | - |Option Load without the curtain: the black halves of the loading screen are hidden, so you watch the world load in real time (progress and tips stay). Off by default. | Опция Загрузка без шторки: чёрные половины экрана загрузки скрыты, видно, как мир грузится в реальном времени (прогресс и подсказки остаются). По умолчанию выключено.
 * perf | tab:14:HideNameTags | Name tags over units are hidden by default now (the old default was on; the switch is in Performance, once for every install). | Таблички с именами над юнитами теперь скрыты по умолчанию (раньше было включено; переключатель в Performance, один раз для всех установок).
