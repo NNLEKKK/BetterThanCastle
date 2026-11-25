@@ -77,7 +77,7 @@ namespace BetterThanCastle.Patches
             {
                 if (!BtcQol.AlliesPass || !Init()) return true;
                 Locomotion4 locomotion = (Locomotion4)_locomotion.GetValue(__instance);
-                if (locomotion == null) return true;
+                if (locomotion == null || BtcAllyPass.Focused(locomotion)) return true;
                 DestinationIterator path = locomotion.PathIterator;
                 if (path == null || !path.HasCurrent || _animator(__instance).IsInTransition(0)) return true;
                 WalkNode current = path.Current;

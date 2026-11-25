@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Brix.Engine;
 using Brix.Game.AI;
 using Brix.Game.AI.KnowledgeSpace;
+using Brix.Game.AI.Nodes;
 using Brix.Game.Components;
 using Brix.Game.Components.Volumes;
 using HarmonyLib;
@@ -139,6 +140,14 @@ namespace BetterThanCastle
             return c;
         }
 
+        /// <summary>A unit on a targeted attack order (focus) keeps vanilla pathing: allies block its searches and walk, so the group queues for slots round the SAME target and nobody drops the order after a failed walk.</summary>
+        internal static bool Focused(Component c)
+        {
+            Labor labor = c != null ? c.GetComponent<Labor>() : null;
+            AttackInfo a = labor != null ? labor.DebugAttack : null;
+            return a != null && a.Active && a.AttackDestination != AttackInfo.AttackDestinationBehaviour.DontPrioritizeDestination && a.DestinationTarget != null;
+        }
+
         internal static Closure Find(VoxelPresence p)
         {
             Closure c;
@@ -157,7 +166,7 @@ namespace BetterThanCastle
         {
             if (!BtcQol.AlliesPass) return;
             VoxelPresence presence = l.presence;
-            if (presence == null || l.Labor == null || l.Labor.Profession == null || l.Labor.Profession.CanPassThrough()) return;
+            if (presence == null || l.Labor == null || l.Labor.Profession == null || l.Labor.Profession.CanPassThrough() || Focused(presence)) return;
             XYZ occupied = l.PositionOccupied;
             XYZ voxel = l.PositionEntering;
             if (!IsBlocking(voxel, occupied, presence))
@@ -225,22 +234,22 @@ namespace BetterThanCastle.Patches
     [HarmonyPatch(typeof(SearchPathRequest), "Work")]
     internal static class SearchPathRequestWorkScopePatch
     {
-        private static void Prefix() { BtcAllyPass.SearchDepth++; }
-        private static void Finalizer() { BtcAllyPass.SearchDepth--; }
+        private static void Prefix(SearchPathRequest __instance, out bool __state) { __state = !BtcAllyPass.Focused(__instance.Presence); if (__state) BtcAllyPass.SearchDepth++; }
+        private static void Finalizer(bool __state) { if (__state) BtcAllyPass.SearchDepth--; }
     }
 
     [HarmonyPatch(typeof(SearchPathRequest), "LoopImprovePath")]
     internal static class SearchPathRequestImproveScopePatch
     {
-        private static void Prefix() { BtcAllyPass.SearchDepth++; }
-        private static void Finalizer() { BtcAllyPass.SearchDepth--; }
+        private static void Prefix(SearchPathRequest __instance, out bool __state) { __state = !BtcAllyPass.Focused(__instance.Presence); if (__state) BtcAllyPass.SearchDepth++; }
+        private static void Finalizer(bool __state) { if (__state) BtcAllyPass.SearchDepth--; }
     }
 
     [HarmonyPatch(typeof(DestinationRepathSearch), "Search")]
     internal static class DestinationRepathSearchScopePatch
     {
-        private static void Prefix() { BtcAllyPass.SearchDepth++; }
-        private static void Finalizer() { BtcAllyPass.SearchDepth--; }
+        private static void Prefix(GameObject ____gameObject, out bool __state) { __state = !(____gameObject != null && BtcAllyPass.Focused(____gameObject.transform)); if (__state) BtcAllyPass.SearchDepth++; }
+        private static void Finalizer(bool __state) { if (__state) BtcAllyPass.SearchDepth--; }
     }
 
     /// <summary>A search starts counting the closed voxels it is refused afresh (CSP CrowdPathingSearchStart).</summary>
