@@ -1,4 +1,5 @@
 using Brix.Game;
+using Brix.Game.AI;
 using Brix.Game.Components;
 using Brix.Game.Components.Volumes;
 using UnityEngine;
@@ -39,7 +40,22 @@ namespace BetterThanCastle
 			GameComponent gc = go.GetComponent<GameComponent>();
 			if (gc == null) gc = go.GetComponentInParent<GameComponent>();
 			LocalFactionVision v = gc != null ? gc.vision : null;
-			return v != null && !v.IsVisibleForMe();
+			if (v != null) return !v.IsVisibleForMe();
+			return IsForeignPlan(go);
+		}
+
+		/// <summary>Blueprints and build projects have no vision component; clients never receive enemy ones (Blueprint.OnRebuildObservers), only the host holds them, so the host could hover them and read the remaining materials.</summary>
+		internal static bool IsForeignPlan(GameObject go)
+		{
+			if (go == null || User.LocalUser == null || User.LocalUser.faction == null) return false;
+			Blueprint bp = go.GetComponent<Blueprint>();
+			if (bp == null) bp = go.GetComponentInParent<Blueprint>();
+			Project pr = bp != null ? bp.Project : null;
+			if (pr == null) pr = go.GetComponent<Project>();
+			if (pr == null) pr = go.GetComponentInParent<Project>();
+			if (bp == null && pr == null) return false;
+			GameObject owner = pr != null ? pr.gameObject : go;
+			return User.LocalUser.faction.IsEnemyTo(owner);
 		}
 
 		/// <summary>VUtil.IsObstructed replacement filter: a hidden enemy trap volume does not obstruct the placing faction.</summary>

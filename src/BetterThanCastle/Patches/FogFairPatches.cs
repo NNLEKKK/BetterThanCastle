@@ -123,4 +123,47 @@ namespace BetterThanCastle.Patches
             catch (Exception) { return true; }
         }
     }
+
+    // Hover on an unseen object (enemy blueprints included) does nothing at all: no tooltip, no highlight, as if nothing is there.
+    [HarmonyPatch(typeof(Brix.UI.GameSelector.UISelectable), "OnHover")]
+    internal static class FogFairSelectableHoverPatch
+    {
+        private static bool Prefix(Brix.UI.GameSelector.UISelectable __instance)
+        {
+            if (!BtcFogFair.Fog) return true;
+            try { return !BtcFogFair.Hidden(__instance.gameObject); }
+            catch (Exception) { return true; }
+        }
+    }
+
+    // Placement mode: the picking ray passes through enemy blueprints (they neither hover nor get in the way), so they cannot block placing.
+    [HarmonyPatch(typeof(Brix.Input.VoxelRaycastHit), "PlaceAtRaycast")]
+    internal static class FogFairRaycastThroughPatch
+    {
+        private static readonly System.Reflection.FieldInfo Target = AccessTools.Field(typeof(Brix.Input.VoxelRaycastHit), "_target");
+
+        private static void Postfix(Brix.Input.VoxelRaycastHit __instance, Ray ray, float distance, Brix.Input.LayerBundle layers, bool useDefaultPlane, ref bool __result)
+        {
+            if (useDefaultPlane || Target == null || !BtcFogFair.Fog) return;
+            try
+            {
+                if (!BtcFogFair.IsForeignPlan(__instance.HitGameObject)) return;
+                float d = ((RaycastHit)Target.GetValue(__instance)).distance + 0.05f;
+                if (d >= distance) return;
+                __result = __instance.PlaceAtRaycast(new Ray(ray.GetPoint(d), ray.direction), distance - d, layers, false, true);
+            }
+            catch (Exception e) { BtcLog.Error("FogFair", "raycast through: " + e.Message); }
+        }
+    }
+
+    [HarmonyPatch(typeof(Brix.UI.GameSelector.UISelectable), "IsHoverable")]
+    internal static class FogFairSelectableIsHoverablePatch
+    {
+        private static void Postfix(Brix.UI.GameSelector.UISelectable __instance, ref bool __result)
+        {
+            if (!__result || !BtcFogFair.Fog) return;
+            try { if (BtcFogFair.Hidden(__instance.gameObject)) __result = false; }
+            catch (Exception) { }
+        }
+    }
 }
