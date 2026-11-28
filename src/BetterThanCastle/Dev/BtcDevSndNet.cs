@@ -6,6 +6,7 @@ using System.Text;
 using Brix.Audio;
 using Brix.Game;
 using Brix.Game.AI;
+using Brix.Game.AI.Damage;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -37,6 +38,9 @@ namespace BetterThanCastle.Dev
                     case "spawn": Spawn(p.Length > 2 ? int.Parse(p[2]) : 7); break;
                     case "swap": Swap(); break;
                     case "dump": Dump(p.Length > 2 ? p[2] : "x"); break;
+                    case "fog": Fog(p.Length > 2 ? p[2] : "x"); break;
+                    case "mine": SpawnMine(p.Length > 2 ? int.Parse(p[2]) : 4); break;
+                    case "kill": KillMine(p.Length > 2 ? int.Parse(p[2]) : 2); break;
                     default: BtcDevLab.Lab("sndnet: unknown " + sub); break;
                 }
             }
@@ -117,6 +121,89 @@ namespace BetterThanCastle.Dev
             File.WriteAllText(path, sb.ToString());
             BtcDevLab.Lab("sndnet dump " + tag + " keys=" + keys.Count + " -> " + path);
             Counts.Clear();
+        }
+
+        // fog mute breakdown per unit: why BtcSoundNet.Audible says yes/no
+        private static void Fog(string tag)
+        {
+            Faction me = User.LocalUser != null ? User.LocalUser.faction : null;
+            StringBuilder sb = new StringBuilder();
+            sb.Append("# fog tag=").Append(tag).Append(" fogOn=").Append(BtcSoundNet.FogOn).Append(" me=").Append(me != null ? me.ID.ToString() : "-").Append('\n');
+            foreach (Labor l in UnityEngine.Object.FindObjectsOfType<Labor>())
+            {
+                if (l == null) continue;
+                GameObject go = l.gameObject;
+                Brix.Game.Components.GameComponent gc = go.GetComponent<Brix.Game.Components.GameComponent>();
+                Brix.Game.Components.LocalFactionVision v = gc != null ? gc.vision : null;
+                Brix.Game.Components.LocalFactionVision vc = go.GetComponent<Brix.Game.Components.LocalFactionVision>();
+                Faction uf = Faction.GetFaction(go);
+                sb.Append("F ").Append(Nid(go)).Append(" iid=").Append(go.GetInstanceID())
+                  .Append(" fac=").Append(uf != null ? uf.ID.ToString() : "-").Append(uf == me ? "(me)" : "")
+                  .Append(" aud=").Append(BtcSoundNet.Audible(go))
+                  .Append(" gcVis=").Append(v == null ? "null" : (v == vc ? "own" : "OTHER"))
+                  .Append(" comp=").Append(vc == null ? "null" : "ok");
+                if (vc != null && me != null)
+                    sb.Append(" vis=").Append(vc.IsVisibleForFaction(me, true)).Append(" seeMe=").Append(vc.FactionsSeeingMe.Contains(me.ID))
+                      .Append(" ownedBy=").Append(Affiliation.IsOwnedBy(go, me.gameObject)).Append(" allied=").Append(Affiliation.IsAllied(go, me.gameObject))
+                      .Append(" facGo=").Append(Faction.GetFaction(me.gameObject) != null ? Faction.GetFaction(me.gameObject).ID.ToString() : "-")
+                      .Append(" en=").Append(vc.enabled).Append(" req=").Append(vc.Requested);
+                sb.Append(" pos=").Append(go.transform.position);
+                AkGameObj ak = go.GetComponent<AkGameObj>();
+                sb.Append(" ak=").Append(ak == null ? "null" : (ak.enabled ? "on" : "OFF"));
+                try
+                {
+                    using (AkTransform t = new AkTransform())
+                    {
+                        AKRESULT r = AkSoundEngine.GetPosition(go, t);
+                        AkVector q = t.Position();
+                        Vector3 wp = new Vector3(q.X, q.Y, q.Z);
+                        sb.Append(" wwise=").Append(r).Append(' ').Append(wp).Append(" d=").Append((wp - go.transform.position).magnitude.ToString("0.0"));
+                    }
+                    uint sw;
+                    sb.Append(" swRes=").Append(AkSoundEngine.GetSwitch("Profession", go, out sw)).Append(" sw=").Append(sw);
+                    sb.Append(" active=").Append(AkSoundEngine.GetIsGameObjectActive(go));
+                    if (tag.EndsWith("post")) sb.Append(" post=").Append(AkSoundEngine.PostEvent("Bricktron_Message_Nothing", go));
+                }
+                catch (Exception e) { sb.Append(" akErr=").Append(e.GetType().Name); }
+                sb.Append('\n');
+            }
+            string path = System.IO.Path.Combine(BtcDevPaths.LogDir, "fog-" + tag + ".txt");
+            File.WriteAllText(path, sb.ToString());
+            BtcDevLab.Lab("sndnet fog " + tag + " -> " + path);
+        }
+
+        private static void SpawnMine(int n)
+        {
+            Faction mine = User.LocalUser != null ? User.LocalUser.faction : null;
+            if (mine == null) { BtcDevLab.Lab("sndnet mine: no faction"); return; }
+            Vector3 c = Vector3.zero; int k = 0;
+            foreach (Labor l in UnityEngine.Object.FindObjectsOfType<Labor>()) if (l.faction == mine) { c += l.transform.position; k++; }
+            if (k > 0) c /= k;
+            int x = 0;
+            for (int i = 0; i < n; i++)
+            {
+                Brix.Engine.XYZ q = Brix.Engine.Architecte.PigerUneCase(c, 6f, 30);
+                Vector3 pos = q.Equals(Brix.Engine.XYZ.zero) ? c + Vector3.up : q.ToVector3() + Vector3.up * 0.5f;
+                GameObject go = BtcDuel.SpawnUnit(Kinds[i % Kinds.Length], mine, pos, Quaternion.identity);
+                if (go != null) { x++; BtcDevLab.Lab("sndnet mine spawned nid=" + Nid(go) + " iid=" + go.GetInstanceID()); }
+            }
+            BtcDevLab.Lab("sndnet mine units=" + x + " at=" + c);
+        }
+
+        private static void KillMine(int n)
+        {
+            Faction mine = User.LocalUser != null ? User.LocalUser.faction : null;
+            int k = 0;
+            foreach (Labor l in UnityEngine.Object.FindObjectsOfType<Labor>())
+            {
+                if (k >= n || l == null || l.faction != mine) continue;
+                Brix.Game.AI.Damage.BricktronDamageReceiver dr = l.GetComponent<Brix.Game.AI.Damage.BricktronDamageReceiver>();
+                if (dr == null) continue;
+                BtcDevLab.Lab("sndnet kill nid=" + Nid(l.gameObject) + " iid=" + l.gameObject.GetInstanceID());
+                dr.ReceiveAttack(9999f, DamageType.Melee, DamageReaction.Twitch, l.transform.position, Vector3.zero, 0f, null);
+                k++;
+            }
+            BtcDevLab.Lab("sndnet kill " + k);
         }
 
         private static void Sides(out Faction mine, out Faction other)

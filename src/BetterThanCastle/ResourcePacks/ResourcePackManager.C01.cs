@@ -175,6 +175,9 @@ public partial class ResourcePackManager : MonoBehaviour
 	private void Update()
 	{
 		BtcUpdater.PollPostUpdate();
+		BtcActivity.Tick();
+		BtcPresence.Tick();
+		BtcFps.Ensure();
 		bool capturing = BtcHotkeys.Capturing;
 		bool escBlocked = BtcHotkeys.EscBlocked;
 		bool flag = BtcHotkeys.MenuOpen != this.menuOpen;
@@ -192,7 +195,7 @@ public partial class ResourcePackManager : MonoBehaviour
 		BtcHotkeys.Tick();
 		BtcDiscord.Poll();
 		BtcOverlays.Tick();
-		if (!BtcAim.Active) { BtcTerraform.Tick(); BtcTerraformTool.Tick(); }
+		if (!BtcAim.Active) { BtcTerraform.Tick(); BtcTerraformTool.Tick(); BtcTrapTask.Tick(); BtcTrapTaskTool.Tick(); BtcTrapFix.Tick(); }
 		BtcVisualCompare.Tick();
 		BtcUnitPlates.Tick();
 		BtcInterface.Tick();
@@ -863,6 +866,8 @@ public partial class ResourcePackManager : MonoBehaviour
 		if (useGUILayout) useGUILayout = false; // no GUILayout here: skip Unity's per-event layout pass (garbage)
 		BtcOverlays.OnGUI();
 		BtcTerraformTool.OnGUI();
+		BtcTrapTaskTool.OnGUI();
+		BtcBpPreset.OnGUI();
 		BtcMatchStatsUI.OnGUI();
 		BtcTimer.OnGUI();
 		BtcReplayUI.OnGUI();
@@ -870,7 +875,9 @@ public partial class ResourcePackManager : MonoBehaviour
 		BtcSessionTick.OnGUI();
 		BtcNick.OnGUI();
 		BtcMenuLauncher.OnGUI();
+		BtcQuickHost.OnGUI();
 		BtcNetCheck.Draw();
+		BtcPresence.DrawHud();
 		ResourcePackManager.HpConfig hpConfig = this.hpCfg;
 		bool flag = this.AltShow(hpConfig, hpConfig != null && hpConfig.altAmmo);
 		bool flag2 = flag;

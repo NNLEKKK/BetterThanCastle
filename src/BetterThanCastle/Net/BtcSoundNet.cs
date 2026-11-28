@@ -147,7 +147,9 @@ namespace BetterThanCastle
 
         internal static void OnOccupationStart(Occupation o)
         {
-            if (o == null || !UnitIds.Add(o.GetInstanceID())) return;
+            if (o == null) return;
+            HealEmitter(o.gameObject);
+            if (!UnitIds.Add(o.GetInstanceID())) return;
             Units.Add(o);
             if (NetworkServer.active) { if (On) SyncSwitch(o, o.CurrentOccupation); }
             else ApplyKnown(o);
@@ -164,12 +166,27 @@ namespace BetterThanCastle
         /// <summary>The Wwise "Profession" switch follows the occupation (vanilla sets it once in Occupation.Start).</summary>
         private static void SyncSwitch(Occupation o, Occupation.Type t)
         {
+            // Wwise auto-registers an object on its first call; an inactive one (a unit spawned or respawned, SetOccupation runs before
+            // it is activated) gets a temporary AkAutoObject instead of an AkGameObj, so its position stays at 0,0,0 for good and the unit
+            // is silent (lab snd-fog). Occupation.Start syncs the switch once the unit is active.
+            if (!o.gameObject.activeInHierarchy) return;
             int id = o.GetInstanceID(), was;
             if (SwitchSet.TryGetValue(id, out was) && was == (int)t) return;
             SwitchSet[id] = (int)t;
             if (!SoundEngine.EngineIsReady) return;
             SoundEngine.SetSwitch("Profession", Enum.GetName(typeof(Occupation.Type), t), o.gameObject);
         }
+
+        /// <summary>A unit Wwise knows without an AkGameObj (registered while inactive) plays every sound at 0,0,0: give it the component.</summary>
+        private static void HealEmitter(GameObject go)
+        {
+            if (!SoundEngine.EngineIsReady || !go.activeInHierarchy || go.GetComponent<AkGameObj>() != null) return;
+            if (!AkSoundEngine.IsAkGameObjectRegistered(go)) return;   // the first Wwise call adds the component by itself
+            go.AddComponent<AkGameObj>();
+            _healed++;
+            BtcLog.Info("SoundNet", "unit " + go.name + " had no sound position (registered while inactive), fixed; total " + _healed);
+        }
+        private static int _healed;
 
         private static void PruneUnits()
         {
@@ -373,7 +390,7 @@ namespace BetterThanCastle
                     if (name == null || ((flags & 1u) != 0u && (g == null || d == null))) { _cUnknown++; continue; }
                     if (!On) continue;
                     GameObject go = ClientScene.FindLocalObject(new NetworkInstanceId(nid));
-                    if (go == null) { _cNoObj++; continue; }
+                    if (go == null || !go.activeInHierarchy) { _cNoObj++; continue; }   // inactive: Wwise would register it without a position
                     if (MatchedLocal(nid, name, now)) { _cMatchedLocal++; continue; }
                     _relaying = true;
                     try

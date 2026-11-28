@@ -1,0 +1,20 @@
+# Online tab lab, client side (see online-mp.txt).
+wait 10
+online dump
+waitfile BTClogs/host/host-ready.txt 300
+wait 6
+online joinfirst
+waitlobby 90
+wait 6
+online chat hi from client
+wait 4
+online dump
+leave
+wait 10
+online dump
+wait 25
+online accept
+waitlobby 90
+wait 6
+online dump
+quit

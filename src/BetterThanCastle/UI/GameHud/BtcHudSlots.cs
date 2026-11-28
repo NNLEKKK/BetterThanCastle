@@ -27,6 +27,17 @@ namespace BetterThanCastle
             Apply(r);
         }
 
+        /// <summary>True when the transform (or one of its parents) is a C# game menu region owned by a slot (BtcInterface skips it).</summary>
+        internal static bool Owns(Transform t)
+        {
+            for (int i = 0; i < Regs.Count; i++)
+            {
+                RectTransform rt = Regs[i].Rt;
+                if (rt != null && (t == rt || t.IsChildOf(rt) || rt.IsChildOf(t))) return true;
+            }
+            return false;
+        }
+
         internal static void ApplyAll()
         {
             for (int i = Regs.Count - 1; i >= 0; i--)

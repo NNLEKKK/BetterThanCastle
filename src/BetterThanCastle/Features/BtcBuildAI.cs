@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using Brix.Components;
+using Brix.External.Factories;
 using Brix.Game.AI;
 using Brix.Game.Components;
 using Brix.Game.Semantique;
@@ -91,7 +93,7 @@ public static class BtcBuildAI
 
 	public static bool Crowded(BuildGoal g, Labor labor)
 	{
-		bool flag = !BtcBuildAI.Build || g == null || labor == null;
+		bool flag = !BtcBuildAI.Build || g == null || labor == null || BtcBuildAI.IsBridge(g);
 		bool result;
 		if (flag)
 		{
@@ -180,7 +182,7 @@ public static class BtcBuildAI
 	public static int Prio(BuildGoal g, Labor labor)
 	{
 		BtcBuildAI.Sync();
-		bool flag = !BtcBuildAI.Build || g == null || labor == null;
+		bool flag = !BtcBuildAI.Build || g == null || labor == null || BtcBuildAI.IsBridge(g);
 		int result;
 		if (flag)
 		{
@@ -203,9 +205,9 @@ public static class BtcBuildAI
 		return result;
 	}
 
-	public static bool CarriesOk(Labor labor, GameObject o)
+	public static bool CarriesOk(BuildGoal g, Labor labor, GameObject o)
 	{
-		bool flag = !BtcBuildAI.Build || labor == null || o == null || labor.recepteur == null;
+		bool flag = !BtcBuildAI.Build || labor == null || o == null || labor.recepteur == null || BtcBuildAI.IsBridge(g);
 		bool result;
 		if (flag)
 		{
@@ -240,7 +242,7 @@ public static class BtcBuildAI
 
 	public static bool Trust(BuildGoal g, Labor labor)
 	{
-		bool flag = !BtcBuildAI.Build || g == null;
+		bool flag = !BtcBuildAI.Build || g == null || BtcBuildAI.IsBridge(g);
 		bool result;
 		if (flag)
 		{
@@ -391,7 +393,7 @@ public static class BtcBuildAI
 						return true;
 					}
 					BuildGoal component = blueprint.GetComponent<BuildGoal>();
-					bool flag6 = component != null && !component.IsAnti && component.recepteur != null && carried.FirstThatFitsIn(component.recepteur) != null;
+					bool flag6 = component != null && !component.IsAnti && !BtcBuildAI.IsBridge(component) && component.recepteur != null && carried.FirstThatFitsIn(component.recepteur) != null;
 					if (flag6)
 					{
 						return true;
@@ -402,6 +404,26 @@ public static class BtcBuildAI
 		}
 		return result;
 	}
+
+	// rope bridges and their planks keep the vanilla build assignment (user rule 2026-11-28); cached per goal
+	public static bool IsBridge(BuildGoal g)
+	{
+		if (g == null) return false;
+		int id = g.GetInstanceID();
+		bool r;
+		if (BtcBuildAI._bridge.TryGetValue(id, out r)) return r;
+		r = g.GetComponent<RopeBridgeConfigurator>() != null;
+		if (!r)
+		{
+			FactoryImprint fi = g.GetComponent<FactoryImprint>();
+			r = fi != null && fi.AssetKey.Name == Blocks.RopeBridgePlank.Name;
+		}
+		if (BtcBuildAI._bridge.Count > 8192) BtcBuildAI._bridge.Clear();
+		BtcBuildAI._bridge[id] = r;
+		return r;
+	}
+
+	private static readonly Dictionary<int, bool> _bridge = new Dictionary<int, bool>();
 
 	private static void Log(string msg, int key)
 	{

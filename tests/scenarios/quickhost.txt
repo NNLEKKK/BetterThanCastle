@@ -1,0 +1,10 @@
+# Quick host from the main menu root screen (BtcQuickHost): button visible on the root screen, the vanilla host path opens the
+# normal lobby screen ("Left: Play: Multiplayer: Lobby: Main"), button hidden in the lobby. Check agent.log [QuickHost] lines.
+wait 12
+quickhostvis
+menutree root 5
+quickhost
+wait 10
+quickhostvis
+menutree lobby 5
+quit

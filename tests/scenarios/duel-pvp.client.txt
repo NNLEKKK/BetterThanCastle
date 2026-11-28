@@ -1,0 +1,23 @@
+# Online micro duel lab, client side (see duel-pvp.txt).
+wait 10
+online dump
+wait 25
+online dacc
+wait 10
+online dacc
+wait 10
+online dacc
+waitduel 300
+wait 3
+online dstate
+waitduelover 90
+wait 3
+online dnext
+wait 8
+online dstate
+wait 5
+online dreset
+wait 4
+online dstate
+wait 20
+quit

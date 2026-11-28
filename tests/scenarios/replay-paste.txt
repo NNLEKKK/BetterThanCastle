@@ -1,0 +1,9 @@
+# replay-paste: before the run put a .btcr file into the Windows clipboard (Set-Clipboard -LiteralPath <file outside Replays>).
+# 1) same path as Ctrl+V -> file copied into Replays, list refreshed, menu opens on the Replay tab, item blinks (agent.log "[ReplayDrop]").
+# 2) during the long wait start a second game exe with -btcopen <file>: it must hand the file over and quit ("[ReplayOpen] request from Windows"),
+#    this game then plays it ("[ReplayOpen] playing").
+wait 25
+chain clip
+wait 70
+chain state
+quit

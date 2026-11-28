@@ -15,6 +15,12 @@ public static class BtcLang
 		}
 	}
 
+	/// <summary>Switch "translate the mod's in-match elements" (rack filters, chopping blocks, terraform task); only matters while the language is Russian.</summary>
+	public static bool GameRussian { get { return BtcLang.Russian && BtcMenuState.Bool("lang:game", true); } }
+
+	/// <summary>Tr for elements drawn inside a match: English when the in-match translation switch is off.</summary>
+	public static string TrG(string en) { return BtcLang.GameRussian ? BtcLang.Tr(en) : en; }
+
 	public static void Toggle()
 	{
 		BtcLang.Load();
@@ -504,6 +510,18 @@ public static class BtcLang
 			"Tree cutting: your workers only fell trees, logs and stumps stay on the ground (needs BetterConnection)",
 			"Рубка леса: ваши рабочие только валят деревья, брёвна и пни остаются на земле (нужен BetterConnection)"
 		},
+		{
+			"Blueprints: anchor point. Before saving, hover a selected mark and press this, it becomes the block under the cursor when the blueprint is placed; while placing, press it over another block of the plan to move the anchor there",
+			"Чертежи: опорная точка. Перед сохранением наведите курсор на выделенную метку и нажмите это, она станет блоком под курсором при постановке чертежа; при постановке нажмите над другим блоком плана, чтобы перенести опору туда"
+		},
+		{
+			"Blueprints: hold to select your marks of every build task at once (click or box), for example to save a blueprint with several tasks",
+			"Чертежи: удерживайте, чтобы выделять свои метки сразу из всех заданий строительства (кликом или рамкой), например чтобы сохранить чертёж с несколькими заданиями"
+		},
+		{
+			"Advanced blueprints: pie menu on your blue marks of stockpiles, tool racks and crafting stations sets their filter or crafting queue in advance; the building gets it when it is built, saved blueprints keep it (needs BetterConnection)",
+			"Продвинутые чертежи: пай-меню на ваших синих метках складов, стоек и мастерских заранее задаёт фильтр или очередь крафта; здание получает их при постройке, сохранённые чертежи их помнят (нужен BetterConnection)"
+		},
 		{ "Log pickup radius", "Радиус сбора брёвен" },
 		{ "no limit", "без лимита" },
 		{ "default", "по умолчанию" },
@@ -595,7 +613,8 @@ public static class BtcLang
 			"Give orders from any camera distance (vanilla ignores clicks when the camera is zoomed out too far)",
 			"Приказы с любого расстояния камеры (в ванили клик не проходит, если камера слишком далеко)"
 		},
-		{ "Terraforming", "Терраформинг" },
+		{ "Terraform", "Терраформ" },
+		{ "Show Editor and movie panels", "Показывать панели Editor и movie" },
 		{ "Open / close the terraforming tool (dig, fill, any shape; needs BetterConnection)", "Открыть / закрыть инструмент терраформинга (копать, насыпать, любая форма; нужен BetterConnection)" },
 		{ "Terraforming needs BetterConnection (BC tab)", "Для терраформинга нужен BetterConnection (вкладка BC)" },
 		{ "The shape is too big", "Форма слишком большая" },
@@ -649,6 +668,30 @@ public static class BtcLang
 		{ "No mark here", "Здесь нет метки" },
 		{ "Rotate (RMB or R)", "Повернуть (ПКМ или R)" },
 		{ "Dig room for ladders", "Копать место под лестницы" },
+		{ "Queue only this kit part", "В очередь только эту часть набора" },
+		{
+			"Better Workbenches: by default your crafting stations skip kit parts no rack has room for (switch it per station in its panel; needs BetterConnection)",
+			"Улучшенные верстаки: по умолчанию ваши крафтильни пропускают части наборов, под которые нет места на стойках (переключается для каждой станции в её панели; нужен BetterConnection)"
+		},
+		{ "Rack limit ON: kit parts no rack has room for are skipped, the next order is crafted", "Лимит стоек ВКЛ: части наборов, под которые нет места на стойках, пропускаются, крафтится следующий заказ" },
+		{ "Rack limit OFF: kit parts are crafted without limit", "Лимит стоек ВЫКЛ: части наборов крафтятся без ограничения" },
+		{ "click to switch for this station", "клик - переключить для этой станции" },
+		{ "Crafting stations", "Крафтильни" },
+		{ "Selected crafting station: queue kit part 1 (part buttons of its panel, left to right)", "Выбранная крафтильня: в очередь часть набора 1 (кнопки частей в её панели слева направо)" },
+		{ "Selected crafting station: queue kit part 2 (part buttons of its panel, left to right)", "Выбранная крафтильня: в очередь часть набора 2 (кнопки частей в её панели слева направо)" },
+		{ "Selected crafting station: queue kit part 3 (part buttons of its panel, left to right)", "Выбранная крафтильня: в очередь часть набора 3 (кнопки частей в её панели слева направо)" },
+		{ "Selected crafting station: queue kit part 4 (part buttons of its panel, left to right)", "Выбранная крафтильня: в очередь часть набора 4 (кнопки частей в её панели слева направо)" },
+		{ "Selected crafting station: queue kit part 5 (part buttons of its panel, left to right)", "Выбранная крафтильня: в очередь часть набора 5 (кнопки частей в её панели слева направо)" },
+		{ "Selected crafting station: queue kit part 6 (part buttons of its panel, left to right)", "Выбранная крафтильня: в очередь часть набора 6 (кнопки частей в её панели слева направо)" },
+		{ "Selected crafting station: switch its rack limit (Better Workbenches)", "Выбранная крафтильня: переключить её лимит стоек (Улучшенные верстаки)" },
+		{ "click: remove one, Shift+click: remove the whole stack", "клик: убрать один, Shift+клик: убрать всю стопку" },
+		{
+			"Better Workbenches: by default one more worker brings what the next orders of your crafting stations need while another one crafts (switch it per station in its panel; needs BetterConnection)",
+			"Улучшенные верстаки: по умолчанию, пока один рабочий крафтит, ещё один подносит то, что нужно следующим заказам ваших крафтилен (переключается для каждой станции в её панели; нужен BetterConnection)"
+		},
+		{ "Selected crafting station: switch its helper (Better Workbenches)", "Выбранная крафтильня: переключить её помощника (Улучшенные верстаки)" },
+		{ "Helper ON: while one worker crafts, one more brings what the next orders need", "Помощник ВКЛ: пока один рабочий крафтит, ещё один подносит то, что нужно следующим заказам" },
+		{ "Helper OFF: only the crafting worker fetches, for the current order", "Помощник ВЫКЛ: подносит только тот, кто крафтит, и только для текущего заказа" },
 		{ "Marks the block above a ladder (and a tunnel ladder's own block) for digging", "Блок над лестницей (и блок самой туннельной лестницы) помечается под раскопку" },
 		{ "Keep dug resources", "Собирать выкопанное" },
 		{ "Nothing drops: no stockpile needed", "Ничего не выпадает: склады не нужны" },
@@ -707,9 +750,22 @@ public static class BtcLang
 		},
 		{ "Quarry ladder: replaces a full block, drag for a staircase. RMB / R rotate", "Лестница карьера: заменяет полный блок, вести - лестничный пролёт. ПКМ / R поворот" },
 		{ "Landing: a flat block to stand on, drag for a row", "Площадка: ровный блок, на котором можно стоять, вести - ряд" },
+		{ "Fill: hold LMB and drag (Alt: out of the face). Workers bring stones, 10 per block, and fill from the bottom up", "Насыпь: зажать ЛКМ и вести (Alt: от грани наружу). Рабочие носят камни, 10 на блок, и насыпают снизу вверх" },
+		{ "Terraforming: fill mode", "Терраформинг: режим насыпи" },
 		{ "off: the block is destroyed, nothing drops", "выкл.: блок уничтожается, ничего не выпадает" },
-		{ "Brush {0} wide, {1} high. Hold {2} / {3} and turn the mouse wheel to change it", "Кисть: ширина {0}, высота {1}. Зажмите {2} / {3} и крутите колесо мыши" },
+		{ "Brush {0} wide, {1} high. Click - / +, or hold {2} / {3} and turn the mouse wheel", "Кисть: ширина {0}, высота {1}. Нажмите - / + или зажмите {2} / {3} и крутите колесо мыши" },
+		{ "Terraforming: brush width - 1", "Терраформинг: ширина кисти - 1" },
+		{ "Terraforming: brush width + 1", "Терраформинг: ширина кисти + 1" },
+		{ "Terraforming: brush height - 1", "Терраформинг: высота кисти - 1" },
+		{ "Terraforming: brush height + 1", "Терраформинг: высота кисти + 1" },
 		{ "Dig any shape, tunnel and quarry ladders, landings", "Копать любую форму, туннельные лестницы и лестницы карьера, площадки" },
+		{ "Bear traps", "Капканы" },
+		{ "Bear traps (own)", "Капканы (свои)" },
+		{ "Bear traps task: needs BetterConnection and the host rule", "Задание «Капканы»: нужен BetterConnection и правило хоста" },
+		{ "Click traps or drag a frame over them to make a task", "Кликните по капканам или обведите их рамкой, чтобы создать задание" },
+		{ "Traps leave the automatic task by going into an own task", "Капкан уходит из общего задания, только когда попадает в своё задание" },
+		{ "Undo: bear traps task", "Отмена: задание «Капканы»" },
+		{ "Own task for a group of traps: click traps or drag a frame over them (the other traps stay in the automatic task)", "Своё задание на группу капканов: кликните по капканам или обведите их рамкой (остальные капканы остаются в общем задании)" },
 		{
 			"Double-click on a unit selects only that unit (vanilla selects all units of its kind)",
 			"Двойной клик по юниту выделяет только его (в ванили выделяются все юниты этого типа)"

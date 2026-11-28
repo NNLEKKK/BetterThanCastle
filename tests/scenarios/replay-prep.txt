@@ -1,0 +1,10 @@
+# First-open keyframe preprocess time: move the replay's cash/*.btcs away first, then load and wait for
+# "[ReplaySeek] preprocess done in N s" in agent.log; prof.txt (and alloc.txt with -Alloc) cover only the preprocess window.
+replay 2026-11-05_17-32-04_Komorebi
+waitreplay 240
+prof reset
+prof start
+wait 24
+prof stop
+wait 2
+quit

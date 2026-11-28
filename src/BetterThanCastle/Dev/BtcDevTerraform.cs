@@ -45,6 +45,34 @@ namespace BetterThanCastle
             catch (Exception e) { BtcLog.Warn("DevTf", "spawn: " + e); }
         }
 
+        /// <summary>Fill lab (2026-11-28): a 6x6x1 pit dug with stone kept (the stones for the fill) + a w x w x h mound on the ground.</summary>
+        internal static void Mound(int w, int h)
+        {
+            try
+            {
+                Occupation[] occ = UnityEngine.Object.FindObjectsOfType<Occupation>();
+                if (occ.Length == 0) { BtcLog.Warn("DevTf", "no workers"); return; }
+                Vector3 b = occ[0].transform.position;
+                XYZ pit, mound;
+                if (!Ground(b.x + 7f, b.z, b.y, out pit) || !Ground(b.x - 7f, b.z, b.y, out mound)) { BtcLog.Warn("DevTf", "no ground"); return; }
+                BtcTerraform.Shape s = new BtcTerraform.Shape();
+                s.Harvest = 7;
+                BtcTerraform.Op d; d.K = 'D'; d.A = new XYZ(pit.x - 2, pit.y, pit.z - 2); d.B = new XYZ(pit.x + 3, pit.y, pit.z + 3);   // 1 deep: nobody is trapped
+                s.Ops.Add(d);
+                for (int x = 0; x < w; x++)
+                    for (int z = 0; z < w; z++)
+                    {
+                        XYZ g;
+                        if (!Ground(mound.x - x, mound.z + z - w / 2, mound.y, out g)) continue;
+                        BtcTerraform.Op f; f.K = 'F'; f.A = g + XYZ.up; f.B = g + XYZ.up * h; s.Ops.Add(f);
+                    }
+                s.Rebuild();
+                BtcTerraform.RequestCreate(s);
+                BtcLog.Info("DevTf", "mound pit=" + pit + " mound=" + mound + " dig=" + s.Dig.Count + " fill=" + s.Fill.Count);
+            }
+            catch (Exception e) { BtcLog.Warn("DevTf", "mound: " + e); }
+        }
+
         /// <summary>User case 2026-11-15: one task = a row dug 1 deep + a row filled 1 high (len long, 3 apart).</summary>
         internal static void Rows(int harvest, int len)
         {
@@ -360,6 +388,7 @@ namespace BetterThanCastle
                     }
                     if (why.Length > 0) BtcLog.Info("DevTf", tag + ": dig left" + why);
                     foreach (XYZ c in s.Fill) if (Voxel.IsEmpty(c) || Voxel.IsCrust(c)) fillLeft++;
+                    if (s.Fill.Count > 0) BtcLog.Info("DevTf", tag + ": fill ready=" + BtcTerraformFill.Ready(s).Count + " left=" + fillLeft + "/" + s.Fill.Count);
                     int built = 0;
                     foreach (XYZ c in s.Ladders.Keys) if (QuarryGoalProvider2.IsStair(c)) built++;
                     foreach (System.Collections.Generic.KeyValuePair<XYZ, BtcTerraform.Ladder> kv in s.Ladders)
@@ -400,8 +429,8 @@ namespace BetterThanCastle
                 BtcLog.Info("DevTf", tag + ": worker " + l.name + " cell=" + cell + " occ=" + loc.PositionOccupied + " ent=" + loc.PositionEntering
                     + " st=" + loc.state + " inPlace=" + loc.IsInPlace() + " moved=" + moved.ToString("0.0")
                     + " feetSolid=" + (!Voxel.IsEmpty(cell)) + " headSolid=" + (!Voxel.IsEmpty(cell + XYZ.up))
-                    + " task=" + (l.CurrentTask == null ? "-" : l.CurrentTask.GetType().Name)
-                    + " goal=" + (l.Goal.IsNullOrReleased() ? "-" : l.Goal.GetType().Name + "@" + l.Goal.voxel.position + (TerraformDigSetting.IsFill(l.Goal) ? "F" : ""))
+                    + " task=" + (l.CurrentTask == null ? "-" : l.CurrentTask.GetType().Name + "[" + l.CurrentTask.Description + " int=" + l.CurrentTask.CanInterrupt + " age=" + (Time.time - l.CurrentTask.TaskStartedTimestamp).ToString("0") + "]") + " pending=" + (l.PendingTask != null) + " fill=" + BtcTerraformFill.StepOf(l)
+                    + " goal=" + (l.Goal.IsNullOrReleased() ? "-" : l.Goal.GetType().Name + "@" + l.Goal.voxel.position)
                     + " bag=" + l.recepteur.ContentDescription.Value<Stones>());
             }
         }

@@ -10,7 +10,7 @@ namespace BetterThanCastle.Patches
     {
         private static void Postfix()
         {
-            try { BtcRackFilter.Install(); BtcWormWard.Install(); BtcWormWardCraft.Install(); BtcTrapRearm.Install(); }
+            try { BtcRackFilter.Install(); BtcWormWard.Install(); BtcWormWardCraft.Install(); BtcBpPreset.Install(); }
             catch (Exception e) { BtcLog.Error("Hook", "Instructions.Batire (rack filter): " + e); }
         }
     }

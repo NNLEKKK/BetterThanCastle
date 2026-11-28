@@ -8,25 +8,28 @@ using UnityEngine;
 
 namespace BetterThanCastle
 {
-	// Local HUD customisation (Overlays > Interface): per-panel scale (0..2, 0 = hidden) and opacity (0..1) of the
-	// in-game screen-space UI. Panels are discovered at runtime (the HUD is built by Lua, names are not fixed):
-	// walk root screen-space canvases, descend through full-stretch containers, every non-stretched RectTransform
-	// below them is a "panel". Defaults (1, 1) are a strict no-op. Settings file: <config>/interface.txt.
-	// Env BTC_UIDUMP=1 logs the canvas hierarchy (discovery aid).
+	// Local HUD customisation of the vanilla screen-space UI (minimap, unit panel, chat, top/bottom bars...): per-panel scale, opacity,
+	// hidden flag and position offset, driven by the UI editor (elements "ui:<panel key>", BtcUiEdit). Panels are discovered at runtime
+	// (the HUD is built by Lua, names are not fixed): walk root screen-space canvases, descend through full-stretch containers, every
+	// non-stretched RectTransform below them is a "panel". Defaults are a strict no-op. The old file <config>/interface.txt (scale/alpha
+	// from the Visuals tab) is read once by the editor migration (LegacyValues). Env BTC_UIDUMP=1 logs the canvas hierarchy.
 	public static class BtcInterface
 	{
 		private const string File_ = "interface.txt";
-		public static readonly string[] TabNames = { "Units", "Minimap", "Bottom bar", "Top bar", "Other" };
-		public static int Tab;
+
+		/// <summary>Slider callback used by the legacy DrawSettings of several features (rendered by BtcVisualRows.SliderCb).</summary>
+		public delegate float SliderFn(string label, int id, float v, float mn, float mx, float st, string fmt, string suf);
 
 		private sealed class Panel
 		{
 			public string key;
 			public string label;
-			public int tab;
-			public Transform t;
-			public Vector3 origScale;
-			public Vector3 lastScale;
+			public RectTransform t;
+			public Canvas canvas;
+			public Vector3 origScale, lastScale;
+			public Vector2 origPos, lastPos;
+			public float curScale = 1f;
+			public Vector2 curOff;
 			public CanvasGroup cg;
 			public bool addedCg;
 			public float origAlpha;
@@ -36,12 +39,13 @@ namespace BetterThanCastle
 			public bool seen;
 		}
 
-		private static readonly Dictionary<string, float[]> settings = new Dictionary<string, float[]>(); // key -> {scale, alpha}
+		/// <summary>Editor values: scale, alpha, offset x px, offset y px (down), hidden (1/0).</summary>
+		private static readonly Dictionary<string, float[]> settings = new Dictionary<string, float[]>();
 		private static readonly Dictionary<string, Panel> panels = new Dictionary<string, Panel>();
 		private static readonly List<Panel> list = new List<Panel>();
 		private static readonly List<string> removeKeys = new List<string>();
 		private static readonly StringBuilder sb = new StringBuilder();
-		private static bool loaded;
+		private static readonly Vector3[] corners = new Vector3[4];
 		private static bool anyNonDefault;
 		private static float nextDiscover;
 		private static float uiOpenUntil;
@@ -49,14 +53,17 @@ namespace BetterThanCastle
 
 		public static bool Active { get { return anyNonDefault; } }
 
-		public static void Load()
+		/// <summary>Bumped whenever the discovered panel list changes (the UI editor rebuilds its element list).</summary>
+		internal static int Version;
+
+		/// <summary>Old Visuals-tab values (key -> {scale, alpha}) from interface.txt, for the one-time UI editor migration.</summary>
+		internal static Dictionary<string, float[]> LegacyValues()
 		{
-			if (loaded) return;
-			loaded = true;
+			Dictionary<string, float[]> d = new Dictionary<string, float[]>();
 			try
 			{
 				string p = BtcPaths.Config(File_);
-				if (!File.Exists(p)) return;
+				if (!File.Exists(p)) return d;
 				string[] lines = File.ReadAllLines(p);
 				for (int i = 0; i < lines.Length; i++)
 				{
@@ -68,89 +75,97 @@ namespace BetterThanCastle
 					float v;
 					if (!float.TryParse(l.Substring(eq + 1), NumberStyles.Float, CultureInfo.InvariantCulture, out v)) continue;
 					bool isScale = k.EndsWith(".scale");
-					bool isAlpha = k.EndsWith(".alpha");
-					if (!isScale && !isAlpha) continue;
+					if (!isScale && !k.EndsWith(".alpha")) continue;
 					string key = k.Substring(0, k.Length - 6);
-					float[] s = Get(key);
+					float[] s;
+					if (!d.TryGetValue(key, out s)) { s = new float[] { 1f, 1f }; d[key] = s; }
 					if (isScale) s[0] = Mathf.Clamp(v, 0f, 2f); else s[1] = Mathf.Clamp01(v);
 				}
-				Recompute();
 			}
-			catch (Exception e)
-			{
-				BtcLog.Error("Interface", "load: " + e.Message);
-			}
+			catch (Exception e) { BtcLog.Error("Interface", "legacy load: " + e.Message); }
+			return d;
 		}
 
-		private static float[] Get(string key)
+		/// <summary>UI editor pushes the values of one panel (called from BtcUiEdit.Apply).</summary>
+		internal static void Set(string key, bool en, float scale, float alpha, float dx, float dy)
 		{
 			float[] s;
-			if (!settings.TryGetValue(key, out s)) { s = new float[] { 1f, 1f }; settings[key] = s; }
-			return s;
+			if (!settings.TryGetValue(key, out s)) { s = new float[5]; settings[key] = s; }
+			s[0] = scale; s[1] = alpha; s[2] = dx; s[3] = dy; s[4] = en ? 0f : 1f;
 		}
 
-		private static bool IsDef(float[] s)
-		{
-			return Mathf.Approximately(s[0], 1f) && Mathf.Approximately(s[1], 1f);
-		}
+		internal static void ClearSettings() { settings.Clear(); }
 
-		private static void Recompute()
+		internal static void Recompute()
 		{
 			bool any = false;
 			foreach (KeyValuePair<string, float[]> kv in settings) if (!IsDef(kv.Value)) { any = true; break; }
 			anyNonDefault = any;
 		}
 
-		private static void Save()
+		private static bool IsDef(float[] s)
 		{
-			try
-			{
-				List<string> lines = new List<string>();
-				lines.Add("# Better Than Castle: HUD panels (local visual). <panel>.scale 0..2 (0 = hidden), <panel>.alpha 0..1; 1/1 = vanilla");
-				foreach (KeyValuePair<string, float[]> kv in settings)
-				{
-					if (IsDef(kv.Value)) continue;
-					lines.Add(kv.Key + ".scale=" + kv.Value[0].ToString("0.###", CultureInfo.InvariantCulture));
-					lines.Add(kv.Key + ".alpha=" + kv.Value[1].ToString("0.###", CultureInfo.InvariantCulture));
-				}
-				File.WriteAllLines(BtcPaths.Config(File_), lines.ToArray());
-			}
-			catch (Exception e)
-			{
-				BtcLog.Error("Interface", "save: " + e.Message);
-			}
+			return Mathf.Abs(s[0] - 1f) < 0.001f && Mathf.Abs(s[1] - 1f) < 0.001f && Mathf.Abs(s[2]) < 0.5f && Mathf.Abs(s[3]) < 0.5f && s[4] < 0.5f;
 		}
 
-		// ---- UI (called from the Overlays tab, IMGUI thread; no per-call allocations beyond label strings) ----
-		public delegate float SliderFn(string label, int id, float v, float mn, float mx, float st, string fmt, string suf);
+		/// <summary>Keeps discovery running while the UI editor shows the panels.</summary>
+		internal static void Touch() { uiOpenUntil = Time.realtimeSinceStartup + 2f; }
 
-		// Draws the sliders of one sub-tab (tab 0 = unit plates is drawn by BtcUnitPlates). Returns false when the tab has no panels.
-		public static bool DrawTab(SliderFn slider, int tab)
+		internal static int Count { get { return list.Count; } }
+		internal static string KeyAt(int i) { return list[i].key; }
+		internal static string LabelAt(int i) { return list[i].label; }
+
+		// world-following markers, tooltips and menus that open on demand are not HUD panels one would place
+		private static readonly string[] Skip = { "Compass", "OverheadDisplays", "LineHighlights", "ToolTipBuilder", "WorkshopUpdate", "MapSaverMenu", "EditorModeMessage" };
+
+		private static readonly string[][] Names =
 		{
-			Load();
-			uiOpenUntil = Time.realtimeSinceStartup + 2f;
-			bool ru = BtcLang.Russian;
-			bool chg = false;
-			bool any = false;
-			for (int i = 0; i < list.Count; i++)
+			new[] { "chatbox", "Chat", "Чат" }, new[] { "scoreboard", "Scoreboard", "Табло счёта" }, new[] { "centermessage", "Centre messages", "Сообщения по центру" },
+			new[] { "taskbar", "Task bar", "Панель задач" }, new[] { "minimap", "Minimap", "Миникарта" }, new[] { "mini map", "Minimap", "Миникарта" },
+		};
+
+		/// <summary>Readable name of a panel (EN or RU), the object path when it is not a known one.</summary>
+		internal static string NameOf(int i, bool ru)
+		{
+			string low = list[i].key.ToLowerInvariant();
+			for (int k = 0; k < Names.Length; k++) if (low.Contains(Names[k][0])) return ru ? Names[k][2] : Names[k][1];
+			return list[i].label;
+		}
+
+		internal static Vector2 PivotAt(int i)
+		{
+			RectTransform t = list[i].t;
+			return t != null ? new Vector2(t.pivot.x, 1f - t.pivot.y) : new Vector2(0.5f, 0.5f);
+		}
+
+		/// <summary>Screen rect (y down) of a panel as vanilla lays it out, i.e. without our scale and offset.</summary>
+		internal static bool NaturalRect(string key, out Rect r)
+		{
+			r = new Rect();
+			Panel p;
+			if (!panels.TryGetValue(key, out p) || p.t == null) return false;
+			Camera cam = p.canvas != null && p.canvas.renderMode != RenderMode.ScreenSpaceOverlay ? p.canvas.worldCamera : null;
+			p.t.GetWorldCorners(corners);
+			float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
+			for (int i = 0; i < 4; i++)
 			{
-				Panel p = list[i];
-				if (p.tab != tab || p.t == null) continue;
-				any = true;
-				float[] s = Get(p.key);
-				float a = slider(p.label + (ru ? " - масштаб" : " - scale"), 9600 + i * 2, s[0], 0f, 2f, 0.05f, "0.00", string.Empty);
-				if (Mathf.Abs(a - s[0]) > 0.0005f) { s[0] = a; chg = true; }
-				float b = slider(p.label + (ru ? " - прозрачность" : " - opacity"), 9601 + i * 2, s[1], 0f, 1f, 0.05f, "0.00", string.Empty);
-				if (Mathf.Abs(b - s[1]) > 0.0005f) { s[1] = b; chg = true; }
+				Vector2 sp = RectTransformUtility.WorldToScreenPoint(cam, corners[i]);
+				float yy = Screen.height - sp.y;
+				if (sp.x < x0) x0 = sp.x; if (sp.x > x1) x1 = sp.x;
+				if (yy < y0) y0 = yy; if (yy > y1) y1 = yy;
 			}
-			if (chg) { Recompute(); Save(); }
-			return any;
+			Rect cur = new Rect(x0, y0, x1 - x0, y1 - y0);
+			float s = Mathf.Max(0.01f, p.curScale);
+			float px = p.t.pivot.x, py = 1f - p.t.pivot.y;
+			float cx = cur.x + cur.width * px - p.curOff.x, cy = cur.y + cur.height * py - p.curOff.y;
+			float w = cur.width / s, h = cur.height / s;
+			r = new Rect(cx - w * px, cy - h * py, w, h);
+			return true;
 		}
 
 		// ---- runtime ----
 		public static void Tick()
 		{
-			if (!loaded) Load();
 			float now = Time.realtimeSinceStartup;
 			if (dumpEnv) DumpTick(now);
 			bool uiOpen = now < uiOpenUntil;
@@ -173,6 +188,7 @@ namespace BetterThanCastle
 			for (int i = 0; i < list.Count; i++) Restore(list[i]);
 			list.Clear();
 			panels.Clear();
+			Version++;
 		}
 
 		private static void Discover()
@@ -180,6 +196,8 @@ namespace BetterThanCastle
 			bool inGame = false;
 			try { inGame = Architecte.commence; } catch (Exception) { }
 			for (int i = 0; i < list.Count; i++) list[i].seen = false;
+			int before = list.Count;
+			bool added = false;
 			if (inGame)
 			{
 				Canvas[] cs = UnityEngine.Object.FindObjectsOfType<Canvas>();
@@ -187,7 +205,7 @@ namespace BetterThanCastle
 				{
 					Canvas c = cs[i];
 					if (c == null || c.renderMode == RenderMode.WorldSpace || c.rootCanvas != c) continue;
-					Collect(c.transform, string.Empty, 0);
+					added |= Collect(c, c.transform, string.Empty, 0);
 				}
 			}
 			// drop vanished panels (restore is moot when the object is gone)
@@ -202,9 +220,10 @@ namespace BetterThanCastle
 					if (panels.TryGetValue(removeKeys[i], out p)) { if (p.t != null) Restore(p); panels.Remove(removeKeys[i]); list.Remove(p); }
 				}
 			}
+			if (added || removeKeys.Count > 0 || before != list.Count) Version++;
 			list.Sort(CompareByKey);
 			sb.Length = 0;
-			for (int i = 0; i < list.Count; i++) sb.Append(list[i].tab).Append(':').Append(list[i].key).Append(" | ");
+			for (int i = 0; i < list.Count; i++) sb.Append(list[i].key).Append(" | ");
 			string cur = sb.ToString();
 			if (cur != lastLog) { lastLog = cur; BtcLog.Info("Interface", "panels: " + cur); }
 		}
@@ -214,8 +233,9 @@ namespace BetterThanCastle
 			return string.CompareOrdinal(a.key, b.key);
 		}
 
-		private static void Collect(Transform t, string path, int depth)
+		private static bool Collect(Canvas canvas, Transform t, string path, int depth)
 		{
+			bool added = false;
 			for (int i = 0; i < t.childCount; i++)
 			{
 				Transform c = t.GetChild(i);
@@ -224,46 +244,47 @@ namespace BetterThanCastle
 				bool stretch = r.anchorMin.x < 0.01f && r.anchorMin.y < 0.01f && r.anchorMax.x > 0.99f && r.anchorMax.y > 0.99f;
 				if (stretch)
 				{
-					if (depth < 3) Collect(c, path + c.name + "/", depth + 1);
+					if (depth < 3) added |= Collect(canvas, c, path + c.name + "/", depth + 1);
 					continue;
 				}
 				Rect rc = r.rect;
 				if (rc.width < 4f && rc.height < 4f) continue;
-				Add(r, path + c.name);
+				if (BtcHudSlots.Owns(c)) continue;   // C# game menu regions have their own editor elements
+				added |= Add(canvas, r, path + c.name);
 			}
+			return added;
 		}
 
-		private static void Add(RectTransform r, string key)
+		private static bool Add(Canvas canvas, RectTransform r, string key)
 		{
-			key = key.Replace('=', '-').Replace('\n', ' ').Replace('\r', ' ');
+			key = key.Replace('=', '-').Replace('|', '-').Replace('\n', ' ').Replace('\r', ' ');
+			for (int i = 0; i < Skip.Length; i++) if (key.IndexOf(Skip[i], StringComparison.Ordinal) >= 0) return false;
 			Panel p;
 			if (panels.TryGetValue(key, out p))
 			{
 				if (p.t == null || p.t.gameObject != r.gameObject) // re-created under the same name: re-bind
 				{
-					p.t = r;
+					p.t = r; p.canvas = canvas;
 					p.origScale = r.localScale; p.lastScale = r.localScale;
+					p.origPos = r.anchoredPosition; p.lastPos = r.anchoredPosition;
+					p.curScale = 1f; p.curOff = Vector2.zero;
 					p.cg = null; p.addedCg = false; p.applied = false;
 				}
 				p.seen = true;
-				return;
+				return false;
 			}
 			p = new Panel();
 			p.key = key;
 			p.t = r;
-			p.origScale = r.localScale;
-			p.lastScale = r.localScale;
+			p.canvas = canvas;
+			p.origScale = r.localScale; p.lastScale = r.localScale;
+			p.origPos = r.anchoredPosition; p.lastPos = r.anchoredPosition;
 			p.seen = true;
 			string lab = key.Replace("Menu: ", string.Empty);
 			p.label = lab.Length > 34 ? lab.Substring(lab.Length - 34) : lab;
-			string low = key.ToLowerInvariant();
-			float cy = (r.anchorMin.y + r.anchorMax.y) * 0.5f;
-			if (low.Contains("minimap") || low.Contains("mini map")) p.tab = 1;
-			else if (cy < 0.25f) p.tab = 2;
-			else if (cy > 0.75f) p.tab = 3;
-			else p.tab = 4;
 			panels[key] = p;
 			list.Add(p);
+			return true;
 		}
 
 		private static void Apply(Panel p)
@@ -275,12 +296,22 @@ namespace BetterThanCastle
 				if (p.applied) Restore(p);
 				return;
 			}
-			// vanilla (layout) rewrote the scale since our last write: take it as the new vanilla value
+			// vanilla (layout) rewrote the scale / position since our last write: take it as the new vanilla value
 			if (p.applied && p.t.localScale != p.lastScale) p.origScale = p.t.localScale;
-			bool hidden = s[0] < 0.02f || s[1] < 0.01f;
+			if (p.applied && p.t.anchoredPosition != p.lastPos) p.origPos = p.t.anchoredPosition;
+			bool hidden = s[4] > 0.5f || s[0] < 0.02f || s[1] < 0.01f;
+			float k = 1f;
+			if (p.t.parent != null) k = Mathf.Max(0.0001f, p.t.parent.lossyScale.x);
+			if (p.canvas != null && p.canvas.renderMode != RenderMode.ScreenSpaceOverlay) k = Mathf.Max(0.0001f, p.canvas.scaleFactor);
 			Vector3 want = hidden ? p.origScale : p.origScale * s[0];
 			if (p.t.localScale != want) p.t.localScale = want;
 			p.lastScale = want;
+			p.curScale = hidden ? 1f : s[0];
+			Vector2 off = hidden ? Vector2.zero : new Vector2(s[2], s[3]);
+			Vector2 wantPos = p.origPos + new Vector2(off.x, -off.y) / k;
+			if (p.t.anchoredPosition != wantPos) p.t.anchoredPosition = wantPos;
+			p.lastPos = wantPos;
+			p.curOff = off;
 			if (p.cg == null)
 			{
 				p.cg = p.t.GetComponent<CanvasGroup>();
@@ -301,6 +332,7 @@ namespace BetterThanCastle
 			if (p.t != null && p.applied)
 			{
 				if (p.t.localScale == p.lastScale) p.t.localScale = p.origScale;
+				if (p.t.anchoredPosition == p.lastPos) p.t.anchoredPosition = p.origPos;
 				if (p.cg != null)
 				{
 					if (p.addedCg) UnityEngine.Object.Destroy(p.cg);
@@ -308,6 +340,7 @@ namespace BetterThanCastle
 				}
 			}
 			p.cg = null; p.addedCg = false; p.applied = false;
+			p.curScale = 1f; p.curOff = Vector2.zero;
 		}
 
 		// ---- discovery aid (env BTC_UIDUMP) ----

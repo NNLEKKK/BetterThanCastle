@@ -104,11 +104,14 @@ namespace BetterThanCastle
         {
             BtcAutoMarks.Tick();
             BtcRecovery.Tick();
-            BtcCraftQueue.Tick();
+            BtcCrystalBar.Tick();
+            BtcWorkbench.Tick();
+            BtcBpPreset.Tick();
             BtcInfHeal.Tick();
             BtcHeldWards.Tick();
             BtcCleanFilter.Tick();
             BtcStationRadius.LoadTick();
+            BtcRackFilter.LoadTick();
             BtcPlayerPrefs.Tick();
             BtcShield.Tick();
             BtcPhantom.Tick();

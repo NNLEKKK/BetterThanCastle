@@ -124,14 +124,15 @@ namespace BetterThanCastle.Patches
         }
     }
 
-    // Hover on an unseen object (enemy blueprints included) does nothing at all: no tooltip, no highlight, as if nothing is there.
+    // Hover on an enemy blueprint/project does nothing at all: no tooltip, no highlight, as if nothing is there.
+    // Only plans: objects with vision (units!) are left to the A7 picker patches above; a vision check here killed RMB focus on visible enemy units.
     [HarmonyPatch(typeof(Brix.UI.GameSelector.UISelectable), "OnHover")]
     internal static class FogFairSelectableHoverPatch
     {
         private static bool Prefix(Brix.UI.GameSelector.UISelectable __instance)
         {
             if (!BtcFogFair.Fog) return true;
-            try { return !BtcFogFair.Hidden(__instance.gameObject); }
+            try { return !BtcFogFair.IsForeignPlan(__instance.gameObject); }
             catch (Exception) { return true; }
         }
     }
@@ -162,7 +163,7 @@ namespace BetterThanCastle.Patches
         private static void Postfix(Brix.UI.GameSelector.UISelectable __instance, ref bool __result)
         {
             if (!__result || !BtcFogFair.Fog) return;
-            try { if (BtcFogFair.Hidden(__instance.gameObject)) __result = false; }
+            try { if (BtcFogFair.IsForeignPlan(__instance.gameObject)) __result = false; }
             catch (Exception) { }
         }
     }

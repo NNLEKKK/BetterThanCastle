@@ -19,6 +19,8 @@ namespace BetterThanCastle
         private bool _recResetAll;
         private float _recResetUntil;
         private GUIStyle _cap;
+        private string _recTypeId, _recTypeText;
+        private int _recTypeFrames;
 
         private static Color LevelColor(int lv) { return lv == 2 ? Critical : (lv == 1 ? Minor : new Color(1f, 1f, 1f, 0f)); }
 
@@ -291,7 +293,50 @@ namespace BetterThanCastle
             Rect cr = new Rect(tr.x, tr.yMax - rowH, tr.width, rowH);
             float bw = rowH * 0.9f;
             Rect minus = new Rect(cr.x + 3f, cr.y + (rowH - bw) * 0.5f, bw, bw), plus = new Rect(cr.xMax - bw - 3f, minus.y, bw, bw);
-            BtcVisualRows.Txt(new Rect(minus.xMax, cr.y, plus.x - minus.xMax, rowH), "x" + v + (ch ? " (" + van[n] + ")" : ""), _chip, ch ? Critical : Color.white);
+            Rect vr = new Rect(minus.xMax, cr.y, plus.x - minus.xMax, rowH);
+            string tid = "rec:" + k + ":t" + r;
+            Event e = Event.current;
+            if (_recTypeId == tid && interact)
+            {
+                BtcReplayUI.Fill(vr, new Color(0.02f, 0.03f, 0.04f, 1f));
+                BtcReplayUI.Fill(new Rect(vr.x, vr.yMax - 2f, vr.width, 2f), BtcMenu.Accent);
+                BtcUi.Field(vr);
+                GUI.SetNextControlName("rec_type");
+                string t = GUI.TextField(vr, _recTypeText, 2, _tf);
+                if (_recTypeFrames == 0) GUI.FocusControl("rec_type");
+                if (e.type == EventType.Repaint) _recTypeFrames++;
+                if (t != _recTypeText) _recTypeText = t;
+                bool enter = e.type == EventType.KeyDown && (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter);
+                bool esc = e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape;
+                bool lost = _recTypeFrames > 3 && GUIUtility.keyboardControl == 0;
+                if (enter || esc || lost)
+                {
+                    int nv;
+                    if (!esc && int.TryParse(_recTypeText, out nv))
+                    {
+                        nv = Mathf.Clamp(nv, 1, 99);
+                        if (nv != v) RecEdit(arr, k, host, "rec:" + k + ":r" + r, delegate { arr[n] = nv; });
+                    }
+                    _recTypeId = null;
+                    GUIUtility.keyboardControl = 0;
+                    if (enter || esc) e.Use();
+                }
+            }
+            else
+            {
+                BtcVisualRows.Txt(vr, "x" + v + (ch ? " (" + van[n] + ")" : ""), _chip, ch ? Critical : Color.white);
+                if (interact)
+                {
+                    if (e.type == EventType.MouseDown && e.button == 0 && vr.Contains(e.mousePosition) && !BtcHotkeys.UiClickSwallowed)
+                    {
+                        _recTypeId = tid;
+                        _recTypeText = v.ToString();
+                        _recTypeFrames = 0;
+                        e.Use();
+                    }
+                    BtcReplayIcons.Hint(vr, new Rect(_off.x + vr.x, _off.y + vr.y, vr.width, vr.height), Tt("Click the number to type an exact value", "Клик по числу - ввести точное значение"));
+                }
+            }
             if (interact)
             {
                 if (IcoBtn(minus, BtcReplayIcons.Back10, false, BtcMenu.Accent, Tt("Less", "Меньше")) && v > 1) RecEdit(arr, k, host, "rec:" + k + ":r" + r, delegate { arr[n] = v - 1; });

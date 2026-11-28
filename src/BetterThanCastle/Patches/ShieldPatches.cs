@@ -189,3 +189,120 @@ namespace BetterThanCastle
         }
     }
 }
+
+namespace BetterThanCastle.Patches
+{
+    /// <summary>Rule shield.avoid: a unit's route searches see the voxels of barriers that are up against it as blocked, so routes go around
+    /// them (BtcShield.PathBlocked). Wrapped only while the shield rule is on; one cached wrapper per inner test (no garbage per search).</summary>
+    [HarmonyPatch(typeof(VoxelPresence), "BuildPresenceTest")]
+    internal static class ShieldPresenceTestPatch
+    {
+        private static readonly Dictionary<Func<XYZ, bool>, Func<XYZ, bool>> Wrapped = new Dictionary<Func<XYZ, bool>, Func<XYZ, bool>>();
+
+        private static void Postfix(VoxelPresence __instance, ref Func<XYZ, bool> __result)
+        {
+            try
+            {
+                if (__result == null || !BtcShield.RuleOn || !NetworkServer.active) return;
+                Func<XYZ, bool> w;
+                if (!Wrapped.TryGetValue(__result, out w))
+                {
+                    if (Wrapped.Count > 8000) Wrapped.Clear();
+                    Func<XYZ, bool> inner = __result;
+                    GameObject go = __instance.gameObject;
+                    w = p => inner(p) && !BtcShield.PathBlocked(go, p);
+                    Wrapped[inner] = w;
+                }
+                __result = w;
+            }
+            catch (Exception e) { BtcLog.Error("Hook", "VoxelPresence.BuildPresenceTest shield: " + e.Message); }
+        }
+    }
+}
+
+namespace BetterThanCastle.Patches
+{
+    /// <summary>Rule shield.avoid: route search scopes (the barriers closed to the searching unit are collected once per call).</summary>
+    [HarmonyPatch(typeof(SearchPathRequest), "Work")]
+    internal static class ShieldSearchWorkScopePatch
+    {
+        private static void Prefix(SearchPathRequest __instance, out GameObject __state)
+        {
+            __state = null;
+            try { __state = BtcShield.BeginPath(__instance.Presence != null ? __instance.Presence.gameObject : null); }
+            catch (Exception e) { BtcLog.Error("Hook", "SearchPathRequest.Work shield: " + e.Message); }
+        }
+        private static Exception Finalizer(Exception __exception, GameObject __state) { BtcShield.EndPath(__state); return __exception; }
+    }
+
+    [HarmonyPatch(typeof(SearchPathRequest), "LoopImprovePath")]
+    internal static class ShieldSearchImproveScopePatch
+    {
+        private static void Prefix(SearchPathRequest __instance, out GameObject __state)
+        {
+            __state = null;
+            try { __state = BtcShield.BeginPath(__instance.Presence != null ? __instance.Presence.gameObject : null); }
+            catch (Exception e) { BtcLog.Error("Hook", "SearchPathRequest.LoopImprovePath shield: " + e.Message); }
+        }
+        private static Exception Finalizer(Exception __exception, GameObject __state) { BtcShield.EndPath(__state); return __exception; }
+    }
+
+    [HarmonyPatch(typeof(DestinationRepathSearch), "Search")]
+    internal static class ShieldRepathScopePatch
+    {
+        private static void Prefix(GameObject ____gameObject, out GameObject __state)
+        {
+            __state = null;
+            try { __state = BtcShield.BeginPath(____gameObject); }
+            catch (Exception e) { BtcLog.Error("Hook", "DestinationRepathSearch.Search shield: " + e.Message); }
+        }
+        private static Exception Finalizer(Exception __exception, GameObject __state) { BtcShield.EndPath(__state); return __exception; }
+    }
+
+    internal static class ShieldPathNode
+    {
+        /// <summary>The cell of a path node (2^lod voxels per axis) touches a barrier closed to the current searcher.</summary>
+        internal static bool Blocked(Brix.Pathfinding.PathNode node)
+        {
+            if (node == null) return false;
+            int lod = node.Lod, size = 1 << lod;
+            XYZ lo = node.LowResPosition;
+            return BtcShield.PathBoxBlocked(lo.x * size, lo.y * size, lo.z * size, size);
+        }
+    }
+
+    /// <summary>A node touching the barrier is not crossed as a whole: the search goes down to its finer children and walks round.</summary>
+    [HarmonyPatch(typeof(SearchPathRequest.BranchEvaluator), "CanCross")]
+    internal static class ShieldBranchCanCrossPatch
+    {
+        private static void Postfix(Brix.Pathfinding.PathBranch branch, ref bool __result)
+        {
+            if (!__result) return;
+            try { if (ShieldPathNode.Blocked(branch.Node)) __result = false; }
+            catch (Exception e) { BtcLog.Error("Hook", "BranchEvaluator.CanCross shield: " + e.Message); }
+        }
+    }
+
+    [HarmonyPatch(typeof(SearchPathRequest.OptimisticBranchEvaluator), "CanCross")]
+    internal static class ShieldOptimisticCanCrossPatch
+    {
+        private static void Postfix(Brix.Pathfinding.PathBranch branch, ref bool __result)
+        {
+            if (!__result) return;
+            try { if (ShieldPathNode.Blocked(branch.Node)) __result = false; }
+            catch (Exception e) { BtcLog.Error("Hook", "OptimisticBranchEvaluator.CanCross shield: " + e.Message); }
+        }
+    }
+
+    /// <summary>The search must not climb into a full parent node that holds part of the barrier (it would walk straight through it).</summary>
+    [HarmonyPatch(typeof(Brix.Pathfinding.PathLodBuilder), "IsSuitableParent")]
+    internal static class ShieldSuitableParentPatch
+    {
+        private static void Postfix(Brix.Pathfinding.PathNode parentNode, ref bool __result)
+        {
+            if (!__result) return;
+            try { if (ShieldPathNode.Blocked(parentNode)) __result = false; }
+            catch (Exception e) { BtcLog.Error("Hook", "PathLodBuilder.IsSuitableParent shield: " + e.Message); }
+        }
+    }
+}

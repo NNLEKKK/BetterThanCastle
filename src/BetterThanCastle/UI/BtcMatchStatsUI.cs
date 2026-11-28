@@ -428,6 +428,9 @@ namespace BetterThanCastle
             _gTTxt = FmtTime(_gT);
         }
 
+        /// <summary>Height of the bar at scale 1 (UI editor migration of the old bottom/offset settings).</summary>
+        internal static float BarHeight1 { get { return FontSize(1f) * 1.75f; } }
+
         private static int FontSize(float scale)
         {
             return Mathf.Clamp(Mathf.RoundToInt(Mathf.Max(11f, Screen.height / 80f) * scale), 8, 48);
@@ -474,11 +477,11 @@ namespace BetterThanCastle
                     else ResourcePackManager.GoTab(11);
                 }
                 float now = Time.unscaledTime;
-                bool needBar = B(BtcConfig.StatsBar, true);
+                bool needBar = BtcHud.SlotOf("stats").Enabled;
                 if ((needBar || PanelOpen) && now >= _nextCache)
                 {
                     _nextCache = now + 0.25f;
-                    _cacheFs = FontSize(F(BtcConfig.StatsBarScale, 1f));
+                    _cacheFs = FontSize(BtcHud.SlotOf("stats").Scale);
                     _panelFs = FontSize(F(BtcConfig.StatsPanelScale, 1f));
                     if (_lbl != null) Rebuild(_cacheFs);
                     else _nextCache = 0f;
@@ -496,7 +499,7 @@ namespace BetterThanCastle
             {
                 if (_lbl == null) { EnsureStyles(FontSize(1f)); _nextCache = 0f; return; }
                 Event e = Event.current;
-                if (B(BtcConfig.StatsBar, true) && Vis.Count > 0) DrawBar(e);
+                if (BtcHud.SlotOf("stats").Enabled && Vis.Count > 0) DrawBar(e);
                 if (PanelOpen) DrawPanel(e);
             }
             catch (Exception ex) { BtcLog.Error("MatchStats", "OnGUI: " + ex); PanelOpen = false; }
@@ -526,10 +529,14 @@ namespace BetterThanCastle
             float gap = fs * 0.8f;
             float total = 0f;
             for (int i = 0; i < Vis.Count; i++) total += BlockW[i] + (i > 0 ? gap : 0f);
-            float x = Mathf.Max(0f, (Screen.width - total) * 0.5f);
-            float off = F(BtcConfig.StatsBarOffset, 0f);
-            float y = B(BtcConfig.StatsBarBottom, false) ? Screen.height - h - off : off;
-            float op = Mathf.Clamp01(F(BtcConfig.StatsBarOpacity, 0.85f));
+            // UI editor element "stats": natural place = top centre at scale 1; the editor scales (font size) and moves it
+            BtcHud.Slot sl = BtcHud.SlotOf("stats");
+            float s = Mathf.Max(0.1f, sl.Scale), bw = total + fs * 0.8f;
+            Rect nat = new Rect((Screen.width - bw / s) * 0.5f, 0f, bw / s, h / s);
+            Rect fr = BtcHud.Place("stats", nat);
+            float x = fr.x + fs * 0.4f;
+            float y = fr.y;
+            float op = Mathf.Clamp01(F(BtcConfig.StatsBarOpacity, 0.85f) * sl.Alpha);
             Color old = GUI.color;
             Box(new Rect(x - fs * 0.4f, y, total + fs * 0.8f, h), new Color(0.06f, 0.06f, 0.08f, 0.8f * op));
             float pad = fs * 0.6f;
@@ -663,26 +670,14 @@ namespace BetterThanCastle
             bool ru = BtcLang.Russian;
             if (BtcConfig.StatsEnabled == null) return;
             if (check(ru ? "Включено (сбор, полоса и панель статистики)" : "Enabled (collecting, stats bar and panel)", BtcConfig.StatsEnabled.Value)) BtcConfig.StatsEnabled.Value = !BtcConfig.StatsEnabled.Value;
-            if (check(ru ? "Показывать полосу" : "Show the bar", BtcConfig.StatsBar.Value)) BtcConfig.StatsBar.Value = !BtcConfig.StatsBar.Value;
-            if (button(ru ? "Положение полосы" : "Bar position", BtcConfig.StatsBarBottom.Value ? (ru ? "снизу" : "bottom") : (ru ? "сверху" : "top"))) BtcConfig.StatsBarBottom.Value = !BtcConfig.StatsBarBottom.Value;
-            Set(BtcConfig.StatsBarOffset, slider(ru ? "Отступ полосы от края (px)" : "Bar offset from the edge (px)", 9700, BtcConfig.StatsBarOffset.Value, 0f, 300f, 2f, "0", string.Empty));
-            Set(BtcConfig.StatsBarScale, slider(ru ? "Масштаб полосы" : "Bar scale", 9701, BtcConfig.StatsBarScale.Value, 0.5f, 2f, 0.05f, "0.00", string.Empty));
-            Set(BtcConfig.StatsBarOpacity, slider(ru ? "Непрозрачность полосы" : "Bar opacity", 9702, BtcConfig.StatsBarOpacity.Value, 0.1f, 1f, 0.05f, "0.00", string.Empty));
-            Set(BtcConfig.StatsPanelScale, slider(ru ? "Масштаб панели" : "Panel scale", 9703, BtcConfig.StatsPanelScale.Value, 0.5f, 2f, 0.05f, "0.00", string.Empty));
-            Set(BtcConfig.StatsPanelOpacity, slider(ru ? "Непрозрачность панели" : "Panel opacity", 9704, BtcConfig.StatsPanelOpacity.Value, 0.2f, 1f, 0.05f, "0.00", string.Empty));
-            string keys = KeysText();
-            button(ru ? "Горячая клавиша панели" : "Panel hotkey", keys + (ru ? "  (меняется в Advanced Hotkeys > Match statistics)" : "  (change in Advanced Hotkeys > Match statistics)"));
-            bool barChg = false, panelChg = false;
+            // show / position / size / opacity of the bar: UI editor element "stats"; the old floating panel is replaced by the Statistics tab
+            if (button(ru ? "Показ, место, размер и прозрачность полосы" : "Bar visibility, place, size and opacity", ru ? "UI редактор" : "UI editor")) BtcChangelog.Go("tab:12");
+            bool barChg = false;
             for (int k = 0; k < NS; k++)
             {
                 if (check((ru ? "Полоса: " : "Bar: ") + Stats[k].Name, InBar[k])) { InBar[k] = !InBar[k]; barChg = true; }
             }
-            for (int k = 0; k < NS; k++)
-            {
-                if (check((ru ? "Панель: " : "Panel: ") + Stats[k].Name, InPanel[k])) { InPanel[k] = !InPanel[k]; panelChg = true; }
-            }
             if (barChg) { BtcConfig.StatsBarList.Value = Join(InBar, true); _barCfg = BtcConfig.StatsBarList.Value; _nextCache = 0f; }
-            if (panelChg) { BtcConfig.StatsPanelHidden.Value = Join(InPanel, false); _panelCfg = BtcConfig.StatsPanelHidden.Value; _nextCache = 0f; }
         }
 
         private static void Set(BepInEx.Configuration.ConfigEntry<float> e, float v)

@@ -85,13 +85,15 @@ namespace BetterThanCastle
 
 		private static void DrawCancel()
 		{
-			Rect r = new Rect(Screen.width - 56f, Screen.height - 56f, 40f, 40f);
+			// UI editor element "loadcancel" (natural place bottom right)
+			BtcHud.Slot sl = BtcHud.SlotOf("loadcancel");
+			Rect r = BtcHud.Place("loadcancel", new Rect(Screen.width - 56f, Screen.height - 56f, 40f, 40f));
 			Color old = GUI.color;
-			GUI.color = r.Contains(Event.current.mousePosition) ? new Color(0.85f, 0.2f, 0.2f, 0.9f) : new Color(0f, 0f, 0f, 0.6f);
+			GUI.color = r.Contains(Event.current.mousePosition) ? new Color(0.85f, 0.2f, 0.2f, 0.9f) : new Color(0f, 0f, 0f, 0.6f * sl.Alpha);
 			GUI.DrawTexture(r, Texture2D.whiteTexture);
-			GUI.color = Color.white;
+			GUI.color = new Color(1f, 1f, 1f, Mathf.Max(0.35f, sl.Alpha));
 			GUIStyle s = new GUIStyle(GUI.skin.label);
-			s.fontSize = 26;
+			s.fontSize = Mathf.Max(8, Mathf.RoundToInt(26 * sl.Scale));
 			s.fontStyle = FontStyle.Bold;
 			s.alignment = TextAnchor.MiddleCenter;
 			s.normal.textColor = Color.white;
@@ -113,8 +115,9 @@ namespace BetterThanCastle
 			// above every other overlay (HUD -1100, launcher -1200, updater -2000): the cross must never be covered
 			GUI.depth = -20000;
 			if (_endPending && Time.realtimeSinceStartup > _endBy) Finish();
-			if (BtcConfig.LoadCancel.Value && ShowCancel()) DrawCancel();
-			if (!BtcConfig.LoadTimer.Value) return;
+			if (BtcHud.SlotOf("loadcancel").Enabled && ShowCancel()) DrawCancel();
+			BtcHud.Slot sl = BtcHud.SlotOf("loadtimer");
+			if (!sl.Enabled) return;
 			string text;
 			if (_running)
 				text = "Loading: " + ((Stopwatch.GetTimestamp() - _start) / (double)Stopwatch.Frequency).ToString("F1") + " s";
@@ -131,12 +134,14 @@ namespace BetterThanCastle
 				_style.normal.textColor = Color.white;
 			}
 
-			Rect r = new Rect(Screen.width * 0.5f - 160f, Screen.height - 70f, 320f, 36f);
+			_style.fontSize = Mathf.Max(8, Mathf.RoundToInt(22 * sl.Scale));
+			Rect r = BtcHud.Place("loadtimer", new Rect(Screen.width * 0.5f - 160f, Screen.height - 70f, 320f, 36f));
 			Color old = GUI.color;
-			GUI.color = new Color(0f, 0f, 0f, 0.6f);
+			GUI.color = new Color(0f, 0f, 0f, 0.6f * sl.Alpha);
 			GUI.DrawTexture(r, Texture2D.whiteTexture);
-			GUI.color = old;
+			GUI.color = new Color(old.r, old.g, old.b, old.a * sl.Alpha);
 			GUI.Label(r, text, _style);
+			GUI.color = old;
 		}
 	}
 	/// <summary>The timer starts at the Start click (single player waits for the curtain before the host starts), not at the loader begin.</summary>

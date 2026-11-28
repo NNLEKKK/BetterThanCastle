@@ -10,12 +10,13 @@ namespace BetterThanCastle
 {
     /// <summary>
     /// Personal work settings of every player that the host AI applies to that player's own units and buildings (BC ON):
-    ///   trap  1/0  workers re-arm this player's fired traps by themselves (match state, starts at the Orders default
-    ///              "trap_auto_rearm", switched for ALL own traps from a trap's pie menu, BtcTrapRearm)
     ///   logs  1/0  tree cutting leaves logs and stumps on the ground (Orders "chop_keep_logs", BtcChopRules)
     ///   chopR int  default floor radius of a new chopping block, 0 = no limit (Orders "chop_block_radius", BtcStationRadius)
-    /// Wire: 134 client->host "trap=1;logs=0;chopR=15", sent at handler registration, on change and every 10 s.
-    /// OFF: no handler, no send; every faction gets the vanilla values (re-arm on, logs carried, no radius).
+    ///   rack  1/0  default rack limit of crafting stations without their own mode (Orders "craft_rack_limit", BtcWorkbench)
+    ///   help  1/0  default helper of crafting stations without their own mode (Orders "craft_helpers", default on, BtcWorkbench)
+    /// Wire: 134 client->host "logs=0;chopR=15;rack=0;help=1", sent at handler registration, on change and every 10 s ("trap=" of older
+    /// versions is ignored: trap re-arming is the bear traps task now, BtcTrapTask).
+    /// OFF: no handler, no send; every faction gets the vanilla values (logs carried, no radius).
     /// Players that never sent (vanilla clients, AI) also get the vanilla values.
     /// </summary>
     internal static class BtcPlayerPrefs
@@ -24,39 +25,27 @@ namespace BetterThanCastle
 
         internal sealed class Prefs
         {
-            public bool TrapAuto = true;
             public bool KeepLogs;
             public int ChopR;
+            public bool RackLimit;   // Better Workbenches: stations without their own mode skip kit parts no rack has room for
+            public bool Helpers = true;   // Better Workbenches: stations without their own mode get one helper bringing ingredients of later orders
         }
 
         private static readonly Prefs Vanilla = new Prefs();
         private static readonly Prefs Local = new Prefs();
         private static readonly Dictionary<int, KeyValuePair<User, Prefs>> Remote = new Dictionary<int, KeyValuePair<User, Prefs>>();
-        private static bool _trapInit;
         private static string _sent;
         private static float _sendAt, _sentAt;
 
         // ------------------------------------------------------------------ local values
-        internal static bool LocalTrapAuto
-        {
-            get { InitTrap(); return Local.TrapAuto; }
-            set { InitTrap(); Local.TrapAuto = value; _sendAt = 0f; BtcLog.Info("Prefs", "trap auto re-arm " + (value ? "on" : "off")); }
-        }
-
-        internal static bool DefaultTrapAuto { get { return BtcHotkeys.GetBool("trap_auto_rearm", true); } }
         internal static bool LocalKeepLogs { get { return BtcHotkeys.GetBool("chop_keep_logs", false); } }
+        internal static bool LocalRackLimit { get { return BtcHotkeys.GetBool("craft_rack_limit", false); } }
+        internal static bool LocalHelpers { get { return BtcHotkeys.GetBool("craft_helpers", true); } }
         internal static int LocalChopR { get { return Mathf.Clamp(Mathf.RoundToInt(BtcHotkeys.GetFloat("chop_block_radius", 15f)), 0, 100); } }
-
-        private static void InitTrap()
-        {
-            if (_trapInit) return;
-            _trapInit = true;
-            Local.TrapAuto = DefaultTrapAuto;
-        }
 
         private static string Encode()
         {
-            return "trap=" + (LocalTrapAuto ? 1 : 0) + ";logs=" + (LocalKeepLogs ? 1 : 0) + ";chopR=" + LocalChopR;
+            return "logs=" + (LocalKeepLogs ? 1 : 0) + ";chopR=" + LocalChopR + ";rack=" + (LocalRackLimit ? 1 : 0) + ";help=" + (LocalHelpers ? 1 : 0);
         }
 
         // ------------------------------------------------------------------ host lookup
@@ -67,9 +56,10 @@ namespace BetterThanCastle
             User lu = User.LocalUser;
             if (lu != null && ReferenceEquals(lu.faction, f))
             {
-                InitTrap();
                 Local.KeepLogs = LocalKeepLogs;
                 Local.ChopR = LocalChopR;
+                Local.RackLimit = LocalRackLimit;
+                Local.Helpers = LocalHelpers;
                 return Local;
             }
             foreach (KeyValuePair<int, KeyValuePair<User, Prefs>> kv in Remote)
@@ -98,7 +88,6 @@ namespace BetterThanCastle
         internal static void RegisterHandlers(NetworkClient clientOverride)
         {
             Remote.Clear();
-            _trapInit = false;
             _sent = null;
             _sendAt = 0f;
             if (!BtcNetworkGate.Enabled) return;
@@ -143,19 +132,20 @@ namespace BetterThanCastle
                 User u = UNetManager.instance != null ? UNetManager.instance.GetUserFromConnection(nm.conn) : null;
                 KeyValuePair<User, Prefs> old;
                 Prefs p = Remote.TryGetValue(nm.conn.connectionId, out old) ? old.Value : new Prefs();
-                string before = p.TrapAuto + "/" + p.KeepLogs + "/" + p.ChopR;
+                string before = p.KeepLogs + "/" + p.ChopR + "/" + p.RackLimit + "/" + p.Helpers;
                 string[] parts = s.Split(';');
                 for (int i = 0; i < parts.Length; i++)
                 {
                     string[] kv = parts[i].Split('=');
                     int v;
                     if (kv.Length != 2 || !int.TryParse(kv[1], out v)) continue;
-                    if (kv[0] == "trap") p.TrapAuto = v != 0;
-                    else if (kv[0] == "logs") p.KeepLogs = v != 0;
+                    if (kv[0] == "logs") p.KeepLogs = v != 0;
                     else if (kv[0] == "chopR") p.ChopR = Mathf.Clamp(v, 0, 100);
+                    else if (kv[0] == "rack") p.RackLimit = v != 0;
+                    else if (kv[0] == "help") p.Helpers = v != 0;
                 }
                 Remote[nm.conn.connectionId] = new KeyValuePair<User, Prefs>(u, p);
-                string after = p.TrapAuto + "/" + p.KeepLogs + "/" + p.ChopR;
+                string after = p.KeepLogs + "/" + p.ChopR + "/" + p.RackLimit + "/" + p.Helpers;
                 if (old.Value == null || before != after) BtcLog.Info("Prefs", "conn " + nm.conn.connectionId + " (" + (u != null ? u.name : "?") + "): " + s);
             }
             catch (Exception e) { BtcLog.Error("Prefs", "OnPrefsAtHost: " + e); }

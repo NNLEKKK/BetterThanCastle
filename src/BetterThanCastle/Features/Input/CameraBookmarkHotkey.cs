@@ -69,6 +69,9 @@ namespace Brix.Input
 				this.HandleShootAt();
 				this.HandleFocusMark();
 				this.HandlePing();
+				this.HandleKitArm();
+				BtcGhPopup.CraftBindsTick();
+				BtcBpPreset.AnchorTick();
 				BtcStationRadius.Tick(instance);
 				BtcTerraformTool.CamTick(instance);
 				this.HandleFocusHold();
@@ -2497,6 +2500,15 @@ namespace Brix.Input
 				}
 			}
 			catch (Exception e) { BtcLog.Error("MultiCam", "binds: " + e.Message); }
+		}
+
+		private void HandleKitArm()
+		{
+			for (int c = 0; c < BtcKitArm.N; c++)
+			{
+				KeyCode[] keys = BtcHotkeys.GetKeys(BtcKitArm.Binds[c], null);
+				if (keys != null && keys.Length != 0 && CameraBookmarkHotkey.IsComboPressed(keys)) BtcKitArm.Press(c);
+			}
 		}
 
 		private void HandlePing()

@@ -48,9 +48,10 @@ namespace BetterThanCastle
             if (Pressed("replay_pause", new[] { KeyCode.Space })) { BtcSfx.Switch(BtcReplay.PlayPaused); BtcReplay.TogglePause(); }
             if (Pressed("replay_slower", new[] { KeyCode.Z })) { BtcSfx.Tick(); BtcReplay.SpeedStep(-1); }
             if (Pressed("replay_faster", new[] { KeyCode.X })) { BtcSfx.Tick(); BtcReplay.SpeedStep(1); }
-            float pc = BtcReplay.Seeking ? BtcReplay.SeekTarget : BtcReplay.PlayClock;
-            if (Pressed("replay_back", new[] { KeyCode.C })) { BtcSfx.Jump(); BtcReplay.SeekTo(Mathf.Max(0f, pc - 10f)); }
-            if (Pressed("replay_fwd", new[] { KeyCode.V })) { BtcSfx.Jump(); BtcReplay.SeekTo(pc + 10f); }
+            // a match of several sessions: jumps work on the whole line (across the joints)
+            float pc = BtcReplayChainPlay.Active ? BtcReplayChainPlay.Clock : (BtcReplay.Seeking ? BtcReplay.SeekTarget : BtcReplay.PlayClock);
+            if (Pressed("replay_back", new[] { KeyCode.C })) { BtcSfx.Jump(); BtcReplayChainPlay.Seek(Mathf.Max(0f, pc - 10f)); }
+            if (Pressed("replay_fwd", new[] { KeyCode.V })) { BtcSfx.Jump(); BtcReplayChainPlay.Seek(pc + 10f); }
             if (Pressed("replay_pov_prev", new[] { KeyCode.LeftShift, KeyCode.A })) { BtcSfx.Tab(); BtcPov.Cycle(-1); }
             if (Pressed("replay_pov_next", new[] { KeyCode.LeftShift, KeyCode.D })) { BtcSfx.Tab(); BtcPov.Cycle(1); }
             if (SkipPauses && !BtcReplay.Seeking) SkipTick();

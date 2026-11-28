@@ -26,7 +26,9 @@ namespace BetterThanCastle
     {
         internal const string HotkeyId = "terraform_tool";
         internal const string WidthKey = "terraform_width", HeightKey = "terraform_height";
-        private static readonly string[] ModeKeys = { "terraform_dig", null, null, "terraform_ladder" };   // index = Mode (2 = old erase, gone)
+        internal const string WMinusKey = "terraform_w_minus", WPlusKey = "terraform_w_plus", HMinusKey = "terraform_h_minus", HPlusKey = "terraform_h_plus";
+        private static readonly string[] SizeKeys = { WMinusKey, WPlusKey, HMinusKey, HPlusKey };
+        private static readonly string[] ModeKeys = { "terraform_dig", "terraform_fill", null, "terraform_ladder" };   // index = Mode (2 = old erase, gone)
         private static readonly KeyCode[] DefKeys = { KeyCode.LeftControl, KeyCode.G };
         private static readonly KeyCode[] NoKeys = new KeyCode[0];
 
@@ -35,8 +37,8 @@ namespace BetterThanCastle
         private static BtcTerraform.Shape _draft = new BtcTerraform.Shape();
         private static readonly List<int> _strokes = new List<int>();
 
-        // 0 dig 3 ladder (2 was the erase mode: removed, marks are deleted with Ctrl+LMB; 1 fill is TEMPORARILY off in the UI: it hangs workers, needs a fix, see STATUS)
-        private static int Mode { get { int m = BtcMenuState.Int("terraform:mode", 0); return m == 2 || m == 1 ? 0 : m; } set { BtcMenuState.SetInt("terraform:mode", value); } }
+        // 0 dig 1 fill 3 ladder (2 was the erase mode: removed, marks are deleted with Ctrl+LMB)
+        private static int Mode { get { int m = BtcMenuState.Int("terraform:mode", 0); return m == 2 ? 0 : m; } set { BtcMenuState.SetInt("terraform:mode", value); } }
         private static int LadKind { get { return BtcMenuState.Int("terraform:ladkind", 0); } set { BtcMenuState.SetInt("terraform:ladkind", value); } } // 0 tunnel 1 quarry 2 landing
         private static int LadDir { get { return BtcMenuState.Int("terraform:laddir", 0) & 3; } set { BtcMenuState.SetInt("terraform:laddir", value & 3); } } // climb towards Dirs[i]
         private static readonly XYZ[] Dirs = { new XYZ(0, 0, 1), new XYZ(1, 0, 0), new XYZ(0, 0, -1), new XYZ(-1, 0, 0) };
@@ -49,8 +51,8 @@ namespace BetterThanCastle
         private static bool DefStoreFull { get { return BtcMenuState.Int("terraform:storefull", 0) != 0; } set { BtcMenuState.SetInt("terraform:storefull", value ? 1 : 0); } }
         internal static bool AutoDig { get { return BtcMenuState.Int("terraform:autodig", 1) != 0; } private set { BtcMenuState.SetInt("terraform:autodig", value ? 1 : 0); } }
 
-        /// <summary>Mode as the popup shows it: 0 dig, 1 tunnel ladder, 2 quarry ladder, 3 landing.</summary>
-        internal static int TfMode { get { return Mode == 3 ? 1 + Mathf.Clamp(LadKind, 0, 2) : 0; } }
+        /// <summary>Mode as the popup shows it: 0 dig, 1 fill, 2 tunnel ladder, 3 quarry ladder, 4 landing.</summary>
+        internal static int TfMode { get { int m = Mode; return m == 3 ? 2 + Mathf.Clamp(LadKind, 0, 2) : m == 1 ? 1 : 0; } }
 
         // stroke state
         private static bool _down, _depth;
@@ -114,12 +116,18 @@ namespace BetterThanCastle
                     }
                 }
                 if (!Active) return;
-                if (_await != null && Time.unscaledTime > _awaitAt + 10f) { _await = null; Note(BtcLang.Tr("The host did not create the task")); }
+                if (_await != null && Time.unscaledTime > _awaitAt + 10f) { _await = null; Note(BtcLang.TrG("The host did not create the task")); }
                 if (Input.GetKeyDown(KeyCode.Escape)) { if (_down) Cancel(); else Leave(); return; }
                 bool ctrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
                 bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
                 bool alt = Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt);
                 if (ctrl && Input.GetKeyDown(KeyCode.Z)) { Undo(); return; }
+                if (!BtcHotkeys.MenuOpen)
+                    for (int i = 0; i < SizeKeys.Length; i++)
+                    {
+                        KeyCode[] k = BtcHotkeys.GetKeys(SizeKeys[i], NoKeys);
+                        if (k.Length != 0 && BtcHotkeys.ComboPressed(k)) Resize(i < 2 ? (i == 0 ? -1 : 1) : 0, i >= 2 ? (i == 2 ? -1 : 1) : 0);
+                    }
                 if (Mode == 3 && LadKind != 2 && !ctrl && Input.GetKeyDown(KeyCode.R)) Rotate(shift);
                 Camera cam = Camera.main;
                 Vector3 mouse = Input.mousePosition;
@@ -227,7 +235,7 @@ namespace BetterThanCastle
         {
             Active = true;
             _down = false;
-            if (!BtcTerraform.On) Note(BtcLang.Tr("Terraforming needs BetterConnection (BC tab)"));
+            if (!BtcTerraform.On) Note(BtcLang.TrG("Terraforming needs BetterConnection (BC tab)"));
             Changed();
         }
 
@@ -235,8 +243,9 @@ namespace BetterThanCastle
         internal static void OpenNew()
         {
             if (!InMatch) return;
-            if (!BtcTerraform.On) { Note(BtcLang.Tr("Terraforming needs BetterConnection (BC tab)")); BtcSfx.Miss(); return; }
+            if (!BtcTerraform.On) { Note(BtcLang.TrG("Terraforming needs BetterConnection (BC tab)")); BtcSfx.Miss(); return; }
             if (_editNid != 0) _leaveNid = _editNid;
+            BtcTrapTaskTool.Close();
             if (!BtcGhLeft.IsIdle) SelectIdle();
             _editNid = 0; _await = null; _dirty = false; _sent = null;
             _draft = NewShape();
@@ -288,14 +297,17 @@ namespace BetterThanCastle
         }
 
         // ------------------------------------------------------------------ popup actions
-        /// <summary>Mode slot of the popup: 0 dig, 1 tunnel ladder, 2 quarry ladder, 3 landing.</summary>
+        /// <summary>Mode slot of the popup: 0 dig, 1 fill, 2 tunnel ladder, 3 quarry ladder, 4 landing.</summary>
         internal static void SetMode(int m)
         {
-            if (m <= 0) Mode = 0; else { Mode = 3; LadKind = Mathf.Clamp(m - 1, 0, 2); }
+            if (m <= 0) Mode = 0; else if (m == 1) Mode = 1; else { Mode = 3; LadKind = Mathf.Clamp(m - 2, 0, 2); }
             Changed();
         }
 
         internal static void ToggleAutoDig() { AutoDig = !AutoDig; Changed(); }
+
+        /// <summary>Brush size step (popup - / + buttons and their binds).</summary>
+        internal static void Resize(int dw, int dh) { W = W + dw; H = H + dh; BtcSfx.Tick(); Changed(); }
 
         /// <summary>Kept resources of the task (or of the next new task while placing).</summary>
         internal static int Harvest { get { return Active ? _draft.Harvest : DefHarvest; } }
@@ -306,7 +318,7 @@ namespace BetterThanCastle
             int h = Harvest ^ flag;
             DefHarvest = h;
             if (!Active) { Changed(); return; }
-            Remember(BtcLang.Tr("Kept resources"));
+            Remember(BtcLang.TrG("Kept resources"));
             _draft.Harvest = h;
             Commit();
         }
@@ -316,7 +328,7 @@ namespace BetterThanCastle
             bool v = !StoreFull;
             DefStoreFull = v;
             if (!Active) { Changed(); return; }
-            Remember(BtcLang.Tr("Haul to stockpile"));
+            Remember(BtcLang.TrG("Haul to stockpile"));
             _draft.StoreFull = v;
             Commit();
         }
@@ -329,8 +341,8 @@ namespace BetterThanCastle
             {
                 if (_chainOps.Count == 0)
                 {
-                    Note(LadChar == 'T' ? BtcLang.Tr("A tunnel ladder needs a full block under it and a wall behind it")
-                                        : BtcLang.Tr("A quarry ladder replaces a full terrain block that stands on something"));
+                    Note(LadChar == 'T' ? BtcLang.TrG("A tunnel ladder needs a full block under it and a wall behind it")
+                                        : BtcLang.TrG("A quarry ladder replaces a full terrain block that stands on something"));
                     return;
                 }
                 string before = BtcTerraform.Encode(_draft);
@@ -342,7 +354,7 @@ namespace BetterThanCastle
                     if (_draft.Ops.Count == n) break;   // too big
                 }
                 _chainOps.Clear(); _chainCells.Clear(); _chainOk.Clear();
-                RememberText(before, BtcLang.Tr("Ladders"));
+                RememberText(before, BtcLang.TrG("Ladders"));
                 BtcSfx.Click();
                 Commit();
                 return;
@@ -351,7 +363,7 @@ namespace BetterThanCastle
             int at = _strokes.Count > 0 ? _strokes[_strokes.Count - 1] : 0;
             BtcTerraform.Shape prev = _draft.Clone();
             if (at < prev.Ops.Count) { prev.Ops.RemoveRange(at, prev.Ops.Count - at); prev.Rebuild(); }
-            RememberText(BtcTerraform.Encode(prev), BtcLang.Tr("Marks"));
+            RememberText(BtcTerraform.Encode(prev), BtcLang.TrG("Marks"));
             Commit();
         }
 
@@ -381,13 +393,13 @@ namespace BetterThanCastle
 
         private static void AddOp(BtcTerraform.Op o)
         {
-            if (_draft.Ops.Count >= BtcTerraform.MaxOps) { Note(BtcLang.Tr("The shape is too big")); _down = false; return; }
+            if (_draft.Ops.Count >= BtcTerraform.MaxOps) { Note(BtcLang.TrG("The shape is too big")); _down = false; return; }
             _draft.Ops.Add(o);
             if (!_draft.Rebuild())
             {
                 _draft.Ops.RemoveAt(_draft.Ops.Count - 1);
                 _draft.Rebuild();
-                Note(BtcLang.Tr("The shape is too big"));
+                Note(BtcLang.TrG("The shape is too big"));
                 _down = false;
             }
         }
@@ -395,7 +407,7 @@ namespace BetterThanCastle
         /// <summary>Sends the draft: a new task (first stroke), or the new shape of the task being edited. An empty shape deletes it.</summary>
         private static void Commit()
         {
-            if (!BtcTerraform.On) { Note(BtcLang.Tr("Terraforming needs BetterConnection (BC tab)")); return; }
+            if (!BtcTerraform.On) { Note(BtcLang.TrG("Terraforming needs BetterConnection (BC tab)")); return; }
             if (_editNid != 0)
             {
                 if (_draft.Empty) { DeleteTask(_editNid); return; }
@@ -472,7 +484,7 @@ namespace BetterThanCastle
             if (_editNid == 0)
             {
                 // placing: only the strokes not sent yet
-                if (_strokes.Count == 0 || _await != null) { Note(BtcLang.Tr("Nothing to undo")); BtcSfx.Miss(); return; }
+                if (_strokes.Count == 0 || _await != null) { Note(BtcLang.TrG("Nothing to undo")); BtcSfx.Miss(); return; }
                 Truncate(_strokes[_strokes.Count - 1]);
                 _strokes.RemoveAt(_strokes.Count - 1);
                 BtcSfx.Jump();
@@ -480,16 +492,16 @@ namespace BetterThanCastle
                 return;
             }
             List<string> h;
-            if (!_hist.TryGetValue(_editNid, out h) || h.Count == 0) { Note(BtcLang.Tr("Nothing to undo")); BtcSfx.Miss(); return; }
+            if (!_hist.TryGetValue(_editNid, out h) || h.Count == 0) { Note(BtcLang.TrG("Nothing to undo")); BtcSfx.Miss(); return; }
             string prev = h[h.Count - 1];
             h.RemoveAt(h.Count - 1);
             BtcSfx.Jump();
-            if (prev.Length == 0) { Note(BtcLang.Tr("Undone: the task is deleted")); DeleteTask(_editNid); return; }
+            if (prev.Length == 0) { Note(BtcLang.TrG("Undone: the task is deleted")); DeleteTask(_editNid); return; }
             BtcTerraform.Shape s = BtcTerraform.Decode(prev);
             if (s == null) return;
             _draft = s;
             _strokes.Clear();
-            Note(BtcLang.Tr("Undone") + (h.Count > 0 ? "   (" + h.Count + ")" : ""));
+            Note(BtcLang.TrG("Undone") + (h.Count > 0 ? "   (" + h.Count + ")" : ""));
             if (_draft.Empty) { DeleteTask(_editNid); return; }
             _sent = prev;
             BtcTerraform.RequestEdit(_editNid, _draft.Clone());
@@ -506,7 +518,7 @@ namespace BetterThanCastle
                 string before = BtcTerraform.Encode(_draft);
                 _strokes.Add(_draft.Ops.Count);
                 AddOp(BtcTerraform.Cell('E', cell));
-                RememberText(before, BtcLang.Tr("Delete a mark"));
+                RememberText(before, BtcLang.TrG("Delete a mark"));
                 BtcSfx.Click();
                 Commit();
                 return;
@@ -519,7 +531,7 @@ namespace BetterThanCastle
                 if (p != null) { UIGameSelector.Select(p.gameObject); BtcSfx.Click(); }
                 return;
             }
-            Note(BtcLang.Tr("No mark here"));
+            Note(BtcLang.TrG("No mark here"));
         }
 
         // ------------------------------------------------------------------ edit an existing task
@@ -681,14 +693,7 @@ namespace BetterThanCastle
         private static bool IsMark(XYZ c, bool draftOnly)
         {
             if (_draft.Dig.Contains(c) || _draft.Fill.Contains(c) || _draft.Ladders.ContainsKey(c)) return true;
-            if (draftOnly) return false;
-            foreach (BtcTerraform.Shape s in BtcTerraform.All())
-            {
-                if (s.Dig.Contains(c)) { if (!Voxel.IsEmpty(c)) return true; }
-                else if (s.Fill.Contains(c)) { if (Voxel.IsEmpty(c) || Voxel.IsCrust(c)) return true; }
-                else if (s.Ladders.ContainsKey(c) && !QuarryGoalProvider2.IsStair(c)) return true;
-            }
-            return false;
+            return false;   // other tasks' marks are hidden, so they do not catch the cursor either
         }
 
         private static bool PlaneHit(Ray r, Vector3 point, Vector3 normal, out XYZ cell)
@@ -791,15 +796,10 @@ namespace BetterThanCastle
                 GL.PushMatrix();
                 GL.Begin(GL.LINES);
                 int budget = DrawBudget;
-                foreach (BtcTerraform.Shape s in BtcTerraform.All())
-                {
-                    budget = Cells(s.Dig, new Color(DigCol.r, DigCol.g, DigCol.b, 0.35f), budget, true, false);
-                    budget = Cells(s.Fill, new Color(FillCol.r, FillCol.g, FillCol.b, 0.35f), budget, false, true);
-                }
-                bool edit = _editNid != 0;   // the edited task: only the work still left, like the other tasks
+                // only the task being placed / edited shows its marks (user 2026-11-26), other tasks stay hidden
+                bool edit = _editNid != 0;   // the edited task: only the work still left
                 budget = Cells(_draft.Dig, DigCol, budget, edit, false);
                 budget = Cells(_draft.Fill, FillCol, budget, false, edit);
-                foreach (BtcTerraform.Shape s in BtcTerraform.All()) Ladders(s, new Color(LadCol.r, LadCol.g, LadCol.b, 0.45f));
                 Ladders(_draft, LadCol);
                 bool ctrl = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
                 if (Mode == 3)

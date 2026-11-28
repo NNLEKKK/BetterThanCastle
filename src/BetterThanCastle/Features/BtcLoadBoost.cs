@@ -17,8 +17,12 @@ public static class BtcLoadBoost
 		return new WaitForSeconds(BtcLoadBoost.Enabled ? BtcLoadBoost.PollSeconds : 1f);
 	}
 
+#if DEV
+	private static bool _earlySnap;
+#endif
 	public static void Begin()
 	{
+		BtcPatcher.WaitLate("world load");
 		BtcGc.Resume("new load");
 		BtcLoadBoost.Loading = true;
 		BtcLoadBoost.RefreshTreeCalls = 0;
@@ -31,6 +35,7 @@ public static class BtcLoadBoost
 #if DEV
 		BetterThanCastle.Dev.BtcDevLoadLine.Mark("GameLoader.Load begin");
 		BetterThanCastle.Dev.BtcDevLoadLine.Hook();
+		if (!_earlySnap) { _earlySnap = true; BetterThanCastle.Dev.BtcDevProbe.SnapshotEarly("load"); }
 #endif
 		BtcJsonWarm.OnLoadBegin();
 		BtcVfxCut.OnLoadBegin();

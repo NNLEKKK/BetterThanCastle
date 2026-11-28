@@ -109,6 +109,7 @@ public static class BtcReplay
 				BtcPaths.Init();
 				BtcReplay.RecordEnabled = (BtcPaths.ReadKey("replay.txt", "Record", "1") != "0");
 				BtcReplay.RecordSingleplayer = (BtcPaths.ReadKey("replay.txt", "RecordSingleplayer", "0") == "1");
+				BtcReplay.SkipAlone = (BtcPaths.ReadKey("replay.txt", "SkipAloneMp", "1") != "0");
 				BtcReplay.ShowIndicator = (BtcPaths.ReadKey("replay.txt", "ShowIndicator", "1") != "0");
 				BtcReplay.RecSpectator = (BtcPaths.ReadKey("replay.txt", "SpectatorUser", "1") != "0");
 				BtcReplay.cfgTimeScale = (BtcPaths.ReadKey("replay.txt", "TimeScale", "1") != "0");
@@ -142,6 +143,8 @@ public static class BtcReplay
 				BtcReplay.RecordEnabled ? "1" : "0",
 				"\r\nRecordSingleplayer=",
 				BtcReplay.RecordSingleplayer ? "1" : "0",
+				"\r\n# Multiplayer game with nobody else in it: not recorded.\r\nSkipAloneMp=",
+				BtcReplay.SkipAlone ? "1" : "0",
 				"\r\nShowIndicator=",
 				BtcReplay.ShowIndicator ? "1" : "0",
 				"\r\n# Hidden spectator user on the host: gives the replay a full spectator view. 0 = raw stream only.\r\nSpectatorUser=",
@@ -163,6 +166,17 @@ public static class BtcReplay
 		BtcReplay.EnsureCfg();
 		BtcReplay.RecordEnabled = v;
 		BtcReplay.SaveCfg();
+	}
+
+	public static bool GetSkipAlone() { BtcReplay.EnsureCfg(); return BtcReplay.SkipAlone; }
+
+	public static void SetSkipAlone(bool v) { BtcReplay.EnsureCfg(); BtcReplay.SkipAlone = v; BtcReplay.SaveCfg(); }
+
+	/// <summary>Multiplayer match with a single user (nobody joined): nothing worth a replay.</summary>
+	internal static bool AloneInMp()
+	{
+		try { User[] us = BtcRegistry.UsersArray(); int n = 0; for (int i = 0; us != null && i < us.Length; i++) if (us[i] != null) n++; return n <= 1; }
+		catch (Exception) { return false; }
 	}
 
 	public static void SetRecordSingleplayer(bool v)
@@ -196,6 +210,9 @@ public static class BtcReplay
 	public static void Tick()
 	{
 		BtcReplayFix.Tick();
+		BtcReplayChainPlay.Tick();
+		BtcReplayDrop.Tick();
+		BtcReplayOpen.Tick();
 		BtcReplay.EnsureCfg();
 		float unscaledTime = Time.unscaledTime;
 		bool flag = BtcReplay.mode == BtcReplay.State.Playing;
@@ -263,7 +280,7 @@ public static class BtcReplay
 							}
 							else
 							{
-								bool flag40 = (Neo.multiplayer || BtcReplay.RecordSingleplayer) && unscaledTime >= BtcReplay.recRetryAt && BtcReplay.attempts < 3 && !BtcReplay.recordedThisMatch && !BtcAim.Active;   // aim trainer: never recorded
+								bool flag40 = (Neo.multiplayer || BtcReplay.RecordSingleplayer) && !(Neo.multiplayer && BtcReplay.SkipAlone && BtcReplay.AloneInMp()) && unscaledTime >= BtcReplay.recRetryAt && BtcReplay.attempts < 3 && !BtcReplay.recordedThisMatch && !BtcAim.Active;   // aim trainer: never recorded
 								bool flag41 = flag40;
 								bool flag42 = flag41;
 								bool flag43 = flag42;
@@ -362,6 +379,7 @@ public static class BtcReplay
 
 	public static void Shutdown()
 	{
+		BtcReplayDrop.Shutdown();
 		try
 		{
 			bool flag = BtcReplay.mode == BtcReplay.State.Recording;
@@ -486,6 +504,7 @@ public static class BtcReplay
 					stringBuilder.Append("keyMin=").Append(BtcReplay.KeyMinutes.ToString(BtcReplay.Inv)).Append('\n');
 					stringBuilder.Append("modver=").Append(BtcReplay.Esc(BtcPlugin.Version)).Append('\n');
 					stringBuilder.Append(BtcReplayFix.GpsLine());
+					stringBuilder.Append(BtcReplayChain.HeaderLines());
 					StringBuilder stringBuilder2 = new StringBuilder();
 					List<User> userList = UNetManager.instance.UserList;
 					for (int i = 0; i < userList.Count; i++)
@@ -1617,6 +1636,10 @@ public static class BtcReplay
 												{
 													if (a == "pl2") data.Pl2 = text;
 													if (a == "tl") data.Tl = text;
+													if (a == "rid") data.Rid = text;
+													if (a == "match") data.Match = text;
+													if (a == "from") data.From = text;
+													if (a == "fromCut") float.TryParse(text, NumberStyles.Float, BtcReplay.Inv, out data.FromCut);
 													bool flag71 = a == "players" && text.Length > 0;
 													bool flag72 = flag71;
 													bool flag73 = flag72;
@@ -1980,7 +2003,9 @@ public static class BtcReplay
 		{
 			throw new Exception("Asset_Map.Disk_Save not found");
 		}
-		method.Invoke(asset_Map, null);
+		BtcReplayChain.InSnapshot = true;
+		try { method.Invoke(asset_Map, null); }
+		finally { BtcReplayChain.InSnapshot = false; }
 		FieldInfo fieldInfo2 = BtcReplay.FindField(asset_Map.GetType(), "_stagePath");
 		string text = (fieldInfo2 != null) ? ((string)fieldInfo2.GetValue(asset_Map)) : null;
 		bool flag15 = string.IsNullOrEmpty(text) || !Directory.Exists(text);
@@ -2514,6 +2539,20 @@ public static class BtcReplay
 			catch (Exception ex)
 			{
 				BtcReplay.Log("Disconnect: " + ex.Message);
+			}
+			// the fake client must leave UNET's client list: a leftover keeps NetworkClient.active true and the main menu reloads
+			// itself forever after the next real session (vanilla Disconnect only shuts down LocalNetworkClient / NetworkManager.client)
+			try
+			{
+				if (BtcReplay.rclient != null && NetworkClient.allClients.Contains(BtcReplay.rclient))
+				{
+					BtcReplay.Log("fake client still listed after the replay: shut down");
+					BtcReplay.rclient.Shutdown();
+				}
+			}
+			catch (Exception ex)
+			{
+				BtcReplay.Log("fake client shutdown: " + ex.Message);
 			}
 			BtcReplay.rclient = null;
 			BtcReplay.rconn = null;
@@ -4371,6 +4410,81 @@ public static class BtcReplay
 		}
 	}
 
+	/// <summary>Match playback (BtcReplayChainPlay): open another session file the same way the snapshot restart does (menu scene, then StartReplay).</summary>
+	internal static void ChainSwitch(BtcReplay.Data d)
+	{
+		BtcReplay.restartData = d;
+		BtcReplay.restartSeek = -1f;
+		BtcReplay.restartAt = Time.unscaledTime;
+		BtcReplay.Log("match: switching to the session " + d.FileName);
+		if (BtcReplay.mode == BtcReplay.State.Playing) BtcReplay.EndPlayback(true);
+	}
+
+	internal static bool RestartPending { get { return BtcReplay.restartData != null; } }
+
+	/// <summary>Match playback, seamless joint: the packet stream (inflated) and the POV block of another session file, without its world snapshot. Any thread.</summary>
+	internal static bool ReadStream(BtcReplay.Data d, out byte[] stream, out byte[] pov)
+	{
+		stream = null; pov = null;
+		if (d == null || d.SnapBytes <= 0) return false;
+		byte[] buffer;
+		using (FileStream fileStream = new FileStream(d.FilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+		{
+			long num = fileStream.Length - 28L - (long)d.SnapBytes;
+			int num2 = (int)(num - (long)d.HeaderEnd);
+			buffer = new byte[num2];
+			fileStream.Seek((long)d.HeaderEnd, SeekOrigin.Begin);
+			BtcReplay.ReadFully(fileStream, buffer, num2);
+		}
+		int povLen = BtcPovRec.BlobLenFromTl(d.Tl);
+		int streamLen = buffer.Length;
+		if (povLen > 0 && povLen < buffer.Length)
+		{
+			pov = new byte[povLen];
+			Buffer.BlockCopy(buffer, buffer.Length - povLen, pov, 0, povLen);
+			streamLen = buffer.Length - povLen;
+		}
+		using (MemoryStream ms = new MemoryStream())
+		using (DeflateStream ds = new DeflateStream(new MemoryStream(buffer, 0, streamLen), CompressionMode.Decompress))
+		{
+			byte[] array = new byte[65536];
+			int count;
+			while ((count = ds.Read(array, 0, array.Length)) > 0) ms.Write(array, 0, count);
+			stream = ms.ToArray();
+		}
+		return true;
+	}
+
+	/// <summary>Match playback, seamless joint: the open feed continues in another session file (the world stays; BtcReplaySeek moves it to that file's keyframe).</summary>
+	internal static void ChainSwapFeed(BtcReplay.Data d, byte[] stream, byte[] pov)
+	{
+		BtcReplay.playData = d;
+		BtcReplay.playBuf = stream;
+		BtcReplay.playTotal = d.Duration;
+		BtcReplay.playPos = 0;
+		BtcReplay.playMsAcc = 0L;
+		BtcReplay.playHavePend = false;
+		BtcReplay.playEnded = false;
+		BtcReplay.playSeeking = false;
+		BtcReplay.seekAfterLoad = -1f;
+		BtcReplayCleanup.Opened_(d.FilePath);
+		BtcReplayNames.Load(d.Pl2);
+		BtcTimer.LoadTl(d.Tl);
+		BtcPovRec.SetBlob(pov);
+		BtcReplay.Log("match: feed continues in " + d.FileName + " (no reload)");
+	}
+
+	internal static void CancelRestart() { BtcReplay.restartData = null; }
+
+	/// <summary>Match playback: keep the speed and pause state across a session switch.</summary>
+	internal static void ChainSpeed(float speed, bool paused)
+	{
+		if (BtcReplay.mode != BtcReplay.State.Playing) return;
+		BtcReplay.playSpeed = Mathf.Clamp(speed, 0.25f, 16f);
+		BtcReplay.playPaused = paused;
+		BtcReplay.ApplyTimeScale();
+	}
+
 	private static void RestartViaMenu(float seconds)
 	{
 		BtcReplay.restartData = BtcReplay.playData;
@@ -5597,6 +5711,8 @@ public static class BtcReplay
 
 	public static bool RecordSingleplayer;
 
+	public static bool SkipAlone = true;
+
 	public static bool ShowIndicator;
 
 	public static string Message;
@@ -5904,6 +6020,18 @@ public static class BtcReplay
 		public int HeaderEnd;
 
 		public int SnapBytes;
+
+		/// <summary>Header "rid"/"match"/"from"/"fromCut" (BtcReplayChain): own recording id, match id, the recording this session continues and its replay time at the save. Null/-1 in old files.</summary>
+		public string Rid;
+
+		public string Match;
+
+		public string From;
+
+		public float FromCut = -1f;
+
+		/// <summary>Set for a session unpacked from a match file (.btcm): the chain links come from its manifest.</summary>
+		public string Pack;
 	}
 
 	public sealed class RecConn : NetworkConnection

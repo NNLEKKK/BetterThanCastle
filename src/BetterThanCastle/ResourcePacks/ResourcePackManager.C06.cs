@@ -1321,6 +1321,8 @@ public partial class ResourcePackManager : MonoBehaviour
 					this.lumRef = 0f;
 				}
 				this.dirLights = list.ToArray();
+				// sun/moon do not change during a match (scene change and a lost light rescan at once): the 30 s walk was a 10-17 ms hitch
+				if (this.dirLights.Length > 0) this.dirLightsNext = unscaledTime + 300f;
 			}
 		}
 	}

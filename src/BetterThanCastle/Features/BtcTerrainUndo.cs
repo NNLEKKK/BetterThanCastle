@@ -1287,6 +1287,20 @@ public static class BtcTerrainUndo
 			}
 			byte[] array2 = new byte[num2];
 			byte[] array3 = new byte[num2];
+			// One handle moved with AssignVoxelHandle: GetVoxelHandle allocates a handle per voxel (2M+ on a big map = ~19 s at replay load).
+			VoxelHandle voxelHandle = null;
+			// Every engine read costs ~4 us, the whole map ~19 s on each replay open. The same map gives the same voxels: reuse the
+			// snapshot from disk, checked against the live engine on sampled columns.
+			string cacheFile = BtcTerrainUndo.VoxCacheFile();
+			if (cacheFile != null && BtcTerrainUndo.LoadVoxCache(cacheFile, array, num2, array2, array3))
+			{
+				BtcTerrainUndo._vstart = array;
+				BtcTerrainUndo._vt = array2;
+				BtcTerrainUndo._vv = array3;
+				BtcTerrainUndo._hasVox = true;
+				BtcTerrainUndo.Log("voxel snapshot from cache: " + num2 + " voxels, " + stopwatch.ElapsedMilliseconds + " ms");
+				return;
+			}
 			for (int j = 0; j < num; j++)
 			{
 				int num7 = array[j];
@@ -1302,7 +1316,8 @@ public static class BtcTerrainUndo
 					int num10 = num7;
 					for (int k = num8; k <= num9; k++)
 					{
-						VoxelHandle voxelHandle = Voxel.Engine.GetVoxelHandle(new XYZ(x, k, z));
+						if (voxelHandle == null) voxelHandle = Voxel.Engine.GetVoxelHandle(new XYZ(x, k, z));
+						else Voxel.Engine.AssignVoxelHandle(voxelHandle, new XYZ(x, k, z));
 						array2[num10] = (byte)Mathf.Clamp(Voxel.Engine.GetVoxelType(voxelHandle), 0, 255);
 						array3[num10] = (byte)Mathf.Clamp(Voxel.Engine.GetVoxelVolume(voxelHandle), 0, 255);
 						num10++;
@@ -1313,6 +1328,7 @@ public static class BtcTerrainUndo
 			BtcTerrainUndo._vt = array2;
 			BtcTerrainUndo._vv = array3;
 			BtcTerrainUndo._hasVox = true;
+			if (cacheFile != null) BtcTerrainUndo.SaveVoxCache(cacheFile, num2, array2, array3);
 			BtcTerrainUndo.Log(string.Concat(new object[]
 			{
 				"voxel snapshot: ",
@@ -1326,6 +1342,98 @@ public static class BtcTerrainUndo
 		{
 			BtcTerrainUndo._hasVox = false;
 			BtcTerrainUndo.Log("CaptureVoxels: " + arg);
+		}
+	}
+
+	private const int VoxCacheMagic = 0x31585642; // "BVX1"
+
+	// Key = column data of the area (bottom, top, crust type, crust volume): a different map or a changed map never matches.
+	private static string VoxCacheFile()
+	{
+		try
+		{
+			ulong h = 14695981039346656037UL;
+			int n = BtcTerrainUndo._w * BtcTerrainUndo._h;
+			for (int i = 0; i < n; i++)
+			{
+				h = (h ^ (ulong)(ushort)BtcTerrainUndo._bot[i]) * 1099511628211UL;
+				h = (h ^ (ulong)(ushort)BtcTerrainUndo._top[i]) * 1099511628211UL;
+				h = (h ^ (ulong)BtcTerrainUndo._typ[i]) * 1099511628211UL;
+				h = (h ^ (ulong)BtcTerrainUndo._cru[i]) * 1099511628211UL;
+			}
+			string dir = Path.Combine(BtcPaths.Root, "cash");
+			Directory.CreateDirectory(dir);
+			return Path.Combine(dir, string.Concat(new object[] { "terrain_", BtcTerrainUndo._x0, "_", BtcTerrainUndo._z0, "_", BtcTerrainUndo._w, "x", BtcTerrainUndo._h, "_", h.ToString("x16"), ".btct" }));
+		}
+		catch (Exception ex)
+		{
+			BtcTerrainUndo.Log("voxel cache key: " + ex.Message);
+			return null;
+		}
+	}
+
+	private static bool LoadVoxCache(string file, int[] start, long count, byte[] vt, byte[] vv)
+	{
+		try
+		{
+			if (!File.Exists(file)) return false;
+			using (BinaryReader r = new BinaryReader(File.OpenRead(file)))
+			{
+				if (r.ReadInt32() != BtcTerrainUndo.VoxCacheMagic || r.ReadInt64() != count) return false;
+				if (r.Read(vt, 0, (int)count) != count || r.Read(vv, 0, (int)count) != count) return false;
+			}
+			// spot check ~250 columns spread over the map against the live engine (~0.2 s on a big map)
+			int n = start.Length;
+			int step = Mathf.Max(1, n / 250);
+			VoxelHandle vh = null;
+			for (int c = step / 2; c < n; c += step)
+			{
+				int s = start[c];
+				if (s < 0) continue;
+				int x = BtcTerrainUndo._x0 + c / BtcTerrainUndo._h;
+				int z = BtcTerrainUndo._z0 + c % BtcTerrainUndo._h;
+				int lo = Mathf.Max((int)(BtcTerrainUndo._bot[c] - 1), 0);
+				int hi = Mathf.Min((int)(BtcTerrainUndo._top[c] + 1), 254);
+				for (int k = lo; k <= hi; k++)
+				{
+					if (vh == null) vh = Voxel.Engine.GetVoxelHandle(new XYZ(x, k, z));
+					else Voxel.Engine.AssignVoxelHandle(vh, new XYZ(x, k, z));
+					int i = s + (k - lo);
+					if (vt[i] != (byte)Mathf.Clamp(Voxel.Engine.GetVoxelType(vh), 0, 255) || vv[i] != (byte)Mathf.Clamp(Voxel.Engine.GetVoxelVolume(vh), 0, 255))
+					{
+						BtcTerrainUndo.Log("voxel cache mismatch at " + x + "," + k + "," + z + ", full capture");
+						return false;
+					}
+				}
+			}
+			File.SetLastWriteTimeUtc(file, DateTime.UtcNow); // replay cache cleanup deletes by age
+			return true;
+		}
+		catch (Exception ex)
+		{
+			BtcTerrainUndo.Log("voxel cache read: " + ex.Message);
+			return false;
+		}
+	}
+
+	private static void SaveVoxCache(string file, long count, byte[] vt, byte[] vv)
+	{
+		try
+		{
+			string tmp = file + ".tmp";
+			using (BinaryWriter w = new BinaryWriter(File.Create(tmp)))
+			{
+				w.Write(BtcTerrainUndo.VoxCacheMagic);
+				w.Write(count);
+				w.Write(vt, 0, (int)count);
+				w.Write(vv, 0, (int)count);
+			}
+			if (File.Exists(file)) File.Delete(file);
+			File.Move(tmp, file);
+		}
+		catch (Exception ex)
+		{
+			BtcTerrainUndo.Log("voxel cache write: " + ex.Message);
 		}
 	}
 

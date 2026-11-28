@@ -1,0 +1,17 @@
+# Online tab lab, host side: both games see each other in the menu, client joins from the list (no IP), chat both ways, client leaves,
+# host invites, client accepts the invite card. Check agent.log "[Cmd] online" lines on both sides.
+wait 10
+online dump
+host default conquest
+waitclients 1 200
+wait 6
+online dump
+online chat hello from host
+wait 6
+online dump
+wait 25
+online invite
+waitclients 1 120
+wait 6
+online dump
+quit

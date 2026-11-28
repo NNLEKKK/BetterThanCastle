@@ -32,7 +32,8 @@ namespace BetterThanCastle
 
         internal static void OnGUI()
         {
-            if (ResourcePackManager.MenuIsOpen) { DismissHint(); return; }
+            bool live = ResourcePackManager.MenuIsOpen && BtcUiEditorTab.Live;   // UI editor live mode: shown so it can be placed, not clickable
+            if (ResourcePackManager.MenuIsOpen && !live) { DismissHint(); return; }
             BtcHud.Slot sl = BtcHud.SlotOf("launcher");
             if (!sl.Enabled) return;
             int fs = Mathf.RoundToInt(BtcHud.Fs * sl.Scale);
@@ -57,6 +58,7 @@ namespace BetterThanCastle
             GUI.contentColor = new Color(ac.r, ac.g, ac.b, a);
             GUI.Label(r, "BTC", _st);
             GUI.contentColor = old;
+            if (live) return;
             if (BtcSfx.Btn(r, "", BtcReplayUI.sBtn)) { DismissHint(); ResourcePackManager.OpenMenu(); return; }
             if (HintPending) DrawHint(r, fs, sl);
         }

@@ -1,0 +1,5 @@
+# chain-compare: research for a seamless joint. The newest match (chain-lab): session A at the joint vs session B at its first keyframe
+# (netIds, kinds, positions, terrain, trees), read from the keyframe caches only.
+wait 20
+chain compare
+quit

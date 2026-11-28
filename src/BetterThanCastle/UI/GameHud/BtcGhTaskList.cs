@@ -695,9 +695,12 @@ namespace BetterThanCastle
                 case PT.Build: key = "##task_build"; sp = Spr.Build; return;
                 case PT.Quarry: key = "##task_quarry"; sp = Spr.Quarry; return;
                 case PT.Cleanup: key = "##task_cleanup"; sp = Spr.Cleanup; return;
-                case PT.Repair: key = "##task_repair"; sp = Spr.Repair; return;
+                case PT.Repair:
+                    BtcTrapTask.Info ti = BtcTrapTask.Of(s.Proj);
+                    if (ti != null && BtcTrapTask.Icon != null) { key = BtcTrapTask.Title(ti); sp = BtcTrapTask.Icon; return; }
+                    key = "##task_repair"; sp = Spr.Repair; return;
                 case PT.Landscape:
-                    if (BtcTerraform.Of(s.Proj) != null) { key = BtcLang.Tr("Terraforming"); sp = BtcTerraformIcon.Get(); return; }
+                    if (BtcTerraform.Of(s.Proj) != null) { key = BtcLang.TrG("Terraform"); sp = BtcTerraformIcon.Get(); return; }
                     key = "##task_landscape"; sp = Spr.Landscape; return;
                 case PT.Tunnel: key = "##task_tunnel"; sp = Spr.Tunnel; return;
                 case PT.Harvest:

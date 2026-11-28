@@ -1,0 +1,39 @@
+# bp-lab: advanced blueprints (BtcBpPreset) single player -> BTClogs/bp-preset.txt. Pie over own marks, presets per kind,
+# compound copy carries presets (+ file round trip), built buildings get stockpile filter / rack kit / crafting queue + loop + limit.
+newgame
+waitgame 240
+wait 5
+bp spawn Pallet 3
+bp spawn Toolrack 6
+bp spawn Workbench 10
+bp spawn Furnace 15
+wait 3
+bp check start
+bp pie Pallet
+bp pie Toolrack
+bp pie Workbench
+bp ev Pallet Event_BtcBp_Only_WoodBlock
+bp ev Toolrack Event_BtcBp_Rack_Archer
+bp ev Workbench Event_BtcBp_Q3_0
+bp ev Workbench Event_BtcBp_Q3_1
+bp ev Workbench Event_BtcBp_Q3_0
+bp ev Workbench Event_BtcBp_RemoveLast
+bp ev Workbench Event_BtcBp_Loop
+bp ev Workbench Event_BtcBp_Limit
+bp ev Furnace Event_BtcBp_Q0_0
+bp ev Furnace Event_BtcBp_Q0_1
+bp pie Workbench
+bp check presets
+bp file
+bp anchor Furnace
+bp compound 14
+wait 5
+bp check after-compound
+bp build Pallet
+bp build Toolrack
+bp build Workbench
+bp build Furnace
+wait 4
+bp check built
+wait 2
+quit

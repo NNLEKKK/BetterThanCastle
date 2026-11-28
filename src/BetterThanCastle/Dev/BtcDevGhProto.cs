@@ -46,6 +46,9 @@ namespace BetterThanCastle.Dev
             else if (a == "editor") BtcGhRightBar.Toggle(3);
             else if (a == "movie") BtcGhRightBar.Toggle(4);
             else if (a == "devrun" && p.Length > 2) BtcGhDev.Run(string.Join(" ", p, 2, p.Length - 2));
+            else if (a == "devdo" && p.Length > 2) BtcGhDev.Do(string.Join(" ", p, 2, p.Length - 2), "lab action", true);
+            else if (a == "devexp") { if (BtcEditorShare.Remote) BtcEditorShare.SendAct(BtcEditorShare.KindExplosion, "", "explosion", null, null, Brix.Input.CameraScript.Target, 4f); BtcLog.Info("GhProto", "devexp remote=" + BtcEditorShare.Remote); }
+            else if (a == "devfac" && p.Length > 2) { BtcGhDev.Run("__btcFaction = __btcFactions[" + p[2] + "]"); BtcLog.Info("GhProto", "devfac " + BtcGhDev.Eval("__btcFaction.name")); }
             else if (a == "deveval" && p.Length > 2) BtcLog.Info("GhProto", "deveval [" + BtcGhDev.Eval(string.Join(" ", p, 2, p.Length - 2)) + "]");
             else if (a == "rule" && p.Length > 3) { float[] v = HarmonyLib.Traverse.Create(typeof(BtcGameplay)).Field("V").GetValue<float[]>(); int i = HarmonyLib.Traverse.Create(typeof(BtcGameplay)).Method("Idx", p[2]).GetValue<int>(); if (v != null && i >= 0) { v[i] = float.Parse(p[3], System.Globalization.CultureInfo.InvariantCulture); BtcGameplay.Refresh(); } BtcLog.Info("GhProto", "rule " + p[2] + " idx " + i + " editorOn=" + BtcGameplay.EditorPanelOn + " allowed=" + BtcGhDev.Allowed); }
             else if (a == "devcount") BtcLog.Info("GhProto", "devcount bricktrons=" + UnityEngine.Object.FindObjectsOfType<Brix.Game.AI.Occupation>().Length + " minitrons=" + UnityEngine.Object.FindObjectsOfType<Brix.Game.AI.Locomotion4>().Length);

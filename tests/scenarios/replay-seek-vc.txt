@@ -1,0 +1,16 @@
+# Voxel baseline cache (cash/terrain_*.btct): open a replay whose map snapshot is cached, then seek back and forth.
+# replay_log: "[terrain] voxel snapshot from cache"; agent.log: "pkverify ... MATCH", "[ReplaySeek] jump ... total N ms", no "terrain restore failed".
+replay 2026-11-05_17-32-04_Komorebi
+waitreplay 240
+wait 5
+seek 600
+wait 5
+seek 60
+wait 5
+pkverify 4
+wait 3
+seek 900
+wait 5
+seek 20
+wait 5
+quit

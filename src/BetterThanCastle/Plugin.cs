@@ -9,9 +9,9 @@ namespace BetterThanCastle
     {
         public const string Guid = "com.btc.betterthancastle";
         public const string Name = "Better Than Castle";
-        public const string Version = "0.6.2";
+        public const string Version = "0.7.0";
         // BepInEx parses the plugin version with System.Version: no letter suffix allowed here (the mod is skipped otherwise)
-        public const string BepVersion = "0.6.2";
+        public const string BepVersion = "0.7.0";
 
         internal static ManualLogSource Log;
         internal static Harmony Harmony;
@@ -24,7 +24,11 @@ namespace BetterThanCastle
             Log = Logger;
             System.Diagnostics.Stopwatch awake = System.Diagnostics.Stopwatch.StartNew();
             float sinceStart = UnityEngine.Time.realtimeSinceStartup;
+            BtcBootTimeline.Init();
+            BtcBootTimeline.Mark("plugin");
             BtcConfig.Init(Config);
+            // a replay file opened from Windows while the game already runs: hand it over to that game and quit at once
+            if (BtcReplayOpen.Boot()) return;
 #if DEV
             Dev.BtcDevAlloc.Install(); // first: methods compiled before it never report their objects
             Dev.BtcDevTools.Init();
@@ -33,12 +37,14 @@ namespace BetterThanCastle
             Harmony = new Harmony(Guid);
             BtcPatcher.Apply(Harmony, typeof(BtcPlugin).Assembly);
             long tPatch = awake.ElapsedMilliseconds;
+            BtcBootTimeline.Mark("patched");
             BtcMemFix.Init();
             BtcLiveSymUI.Init();
             BtcPing.Init();
             BtcWormWardCraft.Init();
             long tInit = awake.ElapsedMilliseconds;
 #if DEV
+            BtcPatcher.WaitLate("dev probe");
             Dev.BtcDevProbe.Init();
             Dev.BtcDevLoadProbe.Init();
             Dev.BtcDevLoadLine.Init();
@@ -54,6 +60,7 @@ namespace BetterThanCastle
             ResourcePackManager.Boot();
             BtcUpdater.Init(Info.Location);
             BtcReplayCleanup.RunAsync(false);
+            BtcBootTimeline.Mark("pluginDone");
             Log.LogInfo("[BTC] loaded v" + Version + ", BetterConnection=" + BtcNetworkGate.Enabled + "; awake " + awake.ElapsedMilliseconds + " ms (pre " + tPre
                 + ", patches " + (tPatch - tPre) + ", init " + (tInit - tPatch) + ", dev " + (tDev - tInit) + ", boot " + (awake.ElapsedMilliseconds - tDev) + "), started at " + sinceStart.ToString("0.00") + " s");
         }

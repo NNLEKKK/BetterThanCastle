@@ -1,0 +1,11 @@
+# brain-break (2026-11-28): a worker's task throws (vanilla disables his Behavior for good); with BehaviorErrorLogPatch he must take a move order
+newgame
+waitgame 240
+wait 5
+brainbreak go
+wait 3
+brainbreak report
+brainbreak move
+wait 6
+brainbreak report
+quit

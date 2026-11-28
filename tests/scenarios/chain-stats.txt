@@ -1,0 +1,12 @@
+# chain-stats: whole-match statistics on the newest match (run chain-lab first). State in session 1 near the joint, then in session 2:
+# counters (owned, loss, res, score, actT) must continue from session 1 (not restart at 0), samples must cover 0..now of the whole match.
+wait 15
+chain play 0
+wait 60
+chain seek 60
+wait 25
+chain state
+chain seek 110
+wait 40
+chain state
+quit

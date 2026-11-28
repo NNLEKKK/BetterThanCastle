@@ -127,6 +127,7 @@ namespace BetterThanCastle
         {
             Styles(fs);
             bool open = IsOpen(key);
+            if (BtcSearchHarvest.Fold(key, text)) open = true;
             float pad = fs;
             Rect r = new Rect(pad, y, w - pad * 2f, fs * 1.8f);
             bool hover = r.Contains(Event.current.mousePosition);
@@ -156,6 +157,7 @@ namespace BetterThanCastle
             Styles(fs);
             float pad = fs, h = fs * 2.1f + (string.IsNullOrEmpty(hint) ? 0f : fs * 1.1f);
             Rect row = new Rect(pad, y, w - pad * 2f, h);
+            BtcSearchHarvest.Row(label, hint, row);
             bool hover = row.Contains(Event.current.mousePosition);
             BtcReplayUI.Fill(row, new Color(1f, 1f, 1f, hover ? 0.07f : 0.03f));
             float g = fs * 1.2f;
@@ -183,6 +185,7 @@ namespace BetterThanCastle
             Event e = Event.current;
             float pad = fs, h = fs * 2.1f + (string.IsNullOrEmpty(hint) ? 0f : fs * 1.1f);
             Rect row = new Rect(pad, y, w - pad * 2f, h);
+            BtcSearchHarvest.Row(label, hint, row);
             bool hover = row.Contains(e.mousePosition);
             BtcReplayUI.Fill(row, new Color(1f, 1f, 1f, hover ? 0.07f : 0.03f));
             float sw = fs * 2.5f, sh = fs * 1.3f;
@@ -213,6 +216,7 @@ namespace BetterThanCastle
             Event e = Event.current;
             float pad = fs, h = fs * 2.1f;
             Rect row = new Rect(pad, y, w - pad * 2f, h);
+            BtcSearchHarvest.Row(label, null, row);
             BtcReplayUI.Fill(row, new Color(1f, 1f, 1f, 0.03f));
             Txt(new Rect(row.x + fs * 0.6f, row.y, row.width - fs * 12f, h), label, _label, new Color(1f, 1f, 1f, 0.85f));
             float b = h * 0.8f, bx = row.xMax - fs * 0.6f - b * 2f - fs * 5f, by = row.y + h * 0.1f;

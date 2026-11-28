@@ -591,6 +591,7 @@ namespace BetterThanCastle
             // rows
             Rect view = new Rect(area.x, y, area.width, area.yMax - y);
             float vw = view.width - (_h > view.height ? 14f : 0f);
+            BtcJump.Scroll(ref _scroll, view.height);
             _scroll = GUI.BeginScrollView(view, _scroll, new Rect(0f, 0f, vw, _h));
             float cy = 0f;
             string q = Q.Trim().ToLowerInvariant();

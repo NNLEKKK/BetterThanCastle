@@ -1,0 +1,5 @@
+# Duel lab drivers (2026-11-27: tell lab-only cost apart from game cost)
+BtcDuelMatch:Update  # rules 10 Hz + bots
+BtcDuelBot:Think  # bot decision step
+BtcDuelBot:UpdateThreat  # threat map
+BtcDuelBot:ChosenThink  # chosen tier

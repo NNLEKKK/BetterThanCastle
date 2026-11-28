@@ -1,0 +1,28 @@
+# chain-lab: a match split by a save. Session 1 (recorded) -> save "chlab" at ~60 s -> 20 s more (tail branch) -> leave -> load "chlab" ->
+# session 2 (recorded, header from=session 1) -> leave. Then: chain dump (1 match, 2 sessions, main = s1@cut + s2), play the match from 0,
+# cross the joint by seeking, state lines. Check agent.log: "[ReplayChain] save linked", "recording continues", "match ... 2 sessions", "joint"/"switching".
+recsp 1
+newgame
+waitgame 240
+wait 60
+phantom save chlab
+wait 20
+leave
+wait 15
+phantom load chlab
+waitgame 240
+wait 60
+leave
+wait 20
+chain dump
+chain play 0
+wait 150
+chain state
+chain seek 70
+wait 90
+chain state
+wait 20
+chain seek 20
+wait 90
+chain state
+quit

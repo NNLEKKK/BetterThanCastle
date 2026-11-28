@@ -19,9 +19,11 @@ namespace BetterThanCastle
             internal bool FgLabel = true;
             internal LuaFn Run, Placing;
             internal bool Terraform; // BTC task: own icon / label, started by BtcTerraformTool
+            internal bool Traps;     // BTC bear traps task: started by BtcTrapTaskTool
         }
 
-        private static readonly Task Terra = new Task { Terraform = true, Loc = "Terraforming", Hotkey = BtcTerraformTool.HotkeyId };
+        private static readonly Task Terra = new Task { Terraform = true, Loc = "Terraform", Hotkey = BtcTerraformTool.HotkeyId };
+        private static readonly Task TrapsTask = new Task { Traps = true, Loc = "Bear traps" };
 
         // BtcGhModes.NewTaskButtons order: Harvest(all), Wood, Boulder, Iron, Brimstone, Plants, Repair, Quarry, Cleaning, Landscape, Tunnel, Build
         private static readonly Task All = new Task { Icon = "_Harvest", Loc = "##gamemenu_taskbar_harvest", Hotkey = "project_CreateHarvestTask", Run = UIGameObserver.lua_NewHarvestTask_All, Placing = UIGameObserver.lua_IsPlacingNewHarvestTask_All };
@@ -48,6 +50,12 @@ namespace BetterThanCastle
                 BtcTerraformTool.OpenNew();
                 return;
             }
+            if (t.Traps)
+            {
+                BtcGhLeft.SetOpen(BtcGhLeft.Side.None);
+                BtcTrapTaskTool.OpenNew();
+                return;
+            }
             t.Run(default(ScriptExecutionContext), default(CallbackArguments));
         }
 
@@ -65,7 +73,7 @@ namespace BetterThanCastle
         {
             BtcGhKit.Spacer(bar.Body, 4f, -1f, BtcGhKit.RailBg, true);
             Alert(bar);
-            Grid(bar, "##gamemenu_taskbar_maintenancetasks", Repair);
+            Grid(bar, "##gamemenu_taskbar_maintenancetasks", Repair, TrapsTask);
             Grid(bar, "##gamemenu_taskbar_harvesttasks", Wood, Plants, Clean, Iron, Brim, Boulder, All);
             Grid(bar, "##gamemenu_taskbar_miningtasks", Tunnel, Land, Quarry, Terra);
             Grid(bar, "##gamemenu_taskbar_constructiontasks", Build);
@@ -79,16 +87,31 @@ namespace BetterThanCastle
                 Task t = tasks[i];
                 if (t.Terraform)
                 {
-                    BtcGhButton tb = BtcGhKit.GridButton(grid, BtcTerraformIcon.Get(), Color.white, 48f, BtcLang.Tr(t.Loc), true, "", true);
+                    BtcGhButton tb = BtcGhKit.GridButton(grid, BtcTerraformIcon.Get(), Color.white, 48f, BtcLang.TrG(t.Loc), true, "", true);
                     tb.HotkeyFn = delegate { return BtcHotkeys.GetKeys(t.Hotkey, null).Length > 0 ? BtcHotkeys.ComboText(t.Hotkey) : ""; };
                     tb.IconColor = delegate { return BtcGhLeft.UnderCap() && BtcTerraform.On ? Color.white : BtcGhKit.Gray; };
                     tb.OnAction = delegate { Start(t); };
                     tb.Highlight = delegate { return BtcTerraformTool.Placing ? 1 : 0; };
-                    tb.Tip = delegate { return BtcTerraform.On ? BtcLang.Tr("Dig any shape, tunnel and quarry ladders, landings") : BtcLang.Tr("Terraforming needs BetterConnection (BC tab)"); };
+                    tb.Tip = delegate { return BtcTerraform.On ? BtcLang.TrG("Dig any shape, tunnel and quarry ladders, landings") : BtcLang.TrG("Terraforming needs BetterConnection (BC tab)"); };
                     bar.Add(tb);
                     continue;
                 }
-                BtcGhButton b = BtcGhKit.GridButton(grid, BtcGhKit.Icon(t.Icon), Color.white, 64f, BtcGameHud.Loc(t.Loc), t.FgLabel, "", true);
+                if (t.Traps)
+                {
+                    BtcGhButton tb = BtcGhKit.GridButton(grid, BtcTrapTask.Icon, Color.white, 64f, BtcLang.TrG(t.Loc), true, "", true);
+                    tb.HotkeyFn = delegate { return ""; };
+                    tb.IconColor = delegate { return BtcGhLeft.UnderCap() && BtcTrapTask.On ? Color.white : BtcGhKit.Gray; };
+                    tb.OnAction = delegate { Start(t); };
+                    tb.Highlight = delegate { return BtcTrapTaskTool.Placing ? 1 : 0; };
+                    tb.Tip = delegate
+                    {
+                        return BtcTrapTask.On ? BtcLang.TrG("Own task for a group of traps: click traps or drag a frame over them (the other traps stay in the automatic task)")
+                                              : BtcLang.TrG("Bear traps task: needs BetterConnection and the host rule");
+                    };
+                    bar.Add(tb);
+                    continue;
+                }
+                BtcGhButton b =BtcGhKit.GridButton(grid, BtcGhKit.Icon(t.Icon), Color.white, 64f, BtcGameHud.Loc(t.Loc), t.FgLabel, "", true);
                 b.HotkeyFn = delegate { return BtcGameHud.Hotkey("Projects", t.Hotkey); };
                 b.IconColor = delegate { return BtcGhLeft.UnderCap() ? Color.white : BtcGhKit.Gray; };
                 b.OnAction = delegate { Start(t); };

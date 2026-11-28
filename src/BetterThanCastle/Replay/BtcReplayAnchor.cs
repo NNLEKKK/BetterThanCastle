@@ -983,6 +983,7 @@ public static class BtcReplayAnchor
 				// sorted: identical terrain must give identical bytes (blobs are compared to skip work)
 				List<KeyValuePair<int, int>> vranges = new List<KeyValuePair<int, int>>(merged);
 				vranges.Sort((x, y) => x.Key.CompareTo(y.Key));
+				VoxelHandle scanHandle = null;
 				foreach (KeyValuePair<int, int> keyValuePair in vranges)
 				{
 					int key = keyValuePair.Key;
@@ -1002,7 +1003,10 @@ public static class BtcReplayAnchor
 							num13 = (int)array6[array5[key] + (k - num11)];
 							num14 = (int)array7[array5[key] + (k - num11)];
 						}
-						VoxelHandle voxelHandle = Brix.Engine.Voxel.Engine.GetVoxelHandle(new XYZ(x, k, z));
+						// one reused handle (GetVoxelHandle allocates per call)
+						if (scanHandle == null) scanHandle = Brix.Engine.Voxel.Engine.GetVoxelHandle(new XYZ(x, k, z));
+						else Brix.Engine.Voxel.Engine.AssignVoxelHandle(scanHandle, new XYZ(x, k, z));
+						VoxelHandle voxelHandle = scanHandle;
 						int num15 = Mathf.Clamp(Brix.Engine.Voxel.Engine.GetVoxelType(voxelHandle), 0, 255);
 						int num16 = Mathf.Clamp(Brix.Engine.Voxel.Engine.GetVoxelVolume(voxelHandle), 0, 255);
 						bool flag5 = (num13 == 0) ? (num15 != 0 || Brix.Engine.Voxel.Engine.IsVoxelNonEmpty(voxelHandle)) : (num15 != num13 || num16 != num14);
@@ -1265,11 +1269,19 @@ public static class BtcReplayAnchor
 		bool flag = dictionary != null;
 		if (flag)
 		{
-			nstate.trees = new Dictionary<XYZ, int>(dictionary.Count);
-			foreach (object obj in dictionary)
+			Dictionary<XYZ, int> typed = dictionary as Dictionary<XYZ, int>;
+			if (typed != null)
 			{
-				DictionaryEntry dictionaryEntry = (DictionaryEntry)obj;
-				nstate.trees[(XYZ)dictionaryEntry.Key] = (int)dictionaryEntry.Value;
+				nstate.trees = new Dictionary<XYZ, int>(typed); // no boxed DictionaryEntry per tree (thousands per keyframe)
+			}
+			else
+			{
+				nstate.trees = new Dictionary<XYZ, int>(dictionary.Count);
+				foreach (object obj in dictionary)
+				{
+					DictionaryEntry dictionaryEntry = (DictionaryEntry)obj;
+					nstate.trees[(XYZ)dictionaryEntry.Key] = (int)dictionaryEntry.Value;
+				}
 			}
 		}
 		PlantSerializedData[] serializedData = BrixSingleton<PlantRegistry>.Instance.SerializedData;

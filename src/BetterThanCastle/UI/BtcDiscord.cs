@@ -610,6 +610,7 @@ public static class BtcDiscord
 							}
 						}
 					}
+					BtcDiscord.ModStatus(activity, ref text11);
 					BtcDiscord.lastStateId = text11;
 					bool flag173 = text11 == "game_mp" || text11 == "game_sp" || text11 == "editor";
 					bool flag174 = flag173;
@@ -2600,6 +2601,41 @@ public static class BtcDiscord
 		public int partyMax;
 
 		public bool fast;
+	}
+
+	// ---- shared status (BtcActivity): the Online tab reads the same state
+	internal static int ResultPub { get { return BtcDiscord.result; } }
+	internal static bool LevelReadyPub { get { return BtcDiscord.IsLevelReady(); } }
+	internal static int LoadPercentPub { get { return BtcDiscord.LoadPercent(); } }
+
+	/// <summary>Mod states vanilla Discord logic does not know (practice, rejoin, away): replace the texts built above.</summary>
+	private static void ModStatus(BtcDiscord.Activity a, ref string key)
+	{
+		try
+		{
+			BtcActivity.Snap s = BtcActivity.Now;
+			switch (s.Kind)
+			{
+				case BtcActivity.Kind.Duel:
+					key = "duel"; a.details = "Micro duel vs bot"; a.state = s.Detail; a.smallImage = "singleplayer"; a.smallText = "Practice"; break;
+				case BtcActivity.Kind.Aim:
+					key = "aim"; a.details = "Aim training"; a.state = s.Detail; a.smallImage = "singleplayer"; a.smallText = "Practice"; break;
+				case BtcActivity.Kind.Rejoin:
+					key = "rejoin"; a.details = "Reconnecting to the match"; a.state = "Better Than Castle"; a.smallImage = "loading"; a.smallText = "Reconnecting"; break;
+				case BtcActivity.Kind.Afk:
+					if (key == "menu") { key = "afk"; a.details = "Away"; a.state = "In the main menu"; }
+					else if (key == "game_mp" || key == "game_sp") { a.smallImage = "pause"; a.smallText = "Away"; a.state = "Away • " + a.state; }
+					break;
+				case BtcActivity.Kind.Lobby:
+					if (!s.Host && !string.IsNullOrEmpty(s.Detail) && a.details != null && a.details.StartsWith("In Lobby")) a.details = "In the lobby of " + s.Detail;
+					break;
+			}
+			int online = BtcPresence.OnlineCount;
+			if (key == "menu" && online > 0) a.state = online + (online == 1 ? " BTC player online" : " BTC players online");
+		}
+		catch (Exception)
+		{
+		}
 	}
 
 	private class PlayerInfo

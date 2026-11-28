@@ -55,6 +55,15 @@ namespace BetterThanCastle
             Tabs.Add(BtcUiEditorTab.Instance);
             Tabs.Add(BtcNoticesTab.Instance);
             Tabs.Add(BtcPerfTab.Instance);
+            Tabs.Add(BtcGeneralTab.Instance);
+            Tabs.Add(BtcOnlineTab.Instance);
+        }
+
+        internal static BtcMenuTab TabById(int id)
+        {
+            EnsureRegistered();
+            for (int i = 0; i < Tabs.Count; i++) if (Tabs[i].Id == id) return Tabs[i];
+            return null;
         }
 
         /// <summary>Id of the tab that is open (kept by ResourcePackManager.SelectTab).</summary>
@@ -81,8 +90,13 @@ namespace BetterThanCastle
         {
             BtcReplayIcons.Blueprint, BtcReplayIcons.Eye, BtcReplayIcons.Wave, BtcReplayIcons.Keys, BtcReplayIcons.Gear,
             BtcReplayIcons.Share, BtcReplayIcons.Group, BtcReplayIcons.Play, BtcReplayIcons.Swords,
-            BtcReplayIcons.Bug, BtcReplayIcons.News, BtcReplayIcons.Chart, BtcReplayIcons.Layout, BtcReplayIcons.Chat, BtcReplayIcons.Bolt
+            BtcReplayIcons.Bug, BtcReplayIcons.News, BtcReplayIcons.Chart, BtcReplayIcons.Layout, BtcReplayIcons.Chat, BtcReplayIcons.Bolt, BtcReplayIcons.Monitor, BtcReplayIcons.Globe
         };
+
+        /// <summary>Tabs that live in the header corner instead of the rail (right to left: notifications, changelog, UI editor, general, online, bug).</summary>
+        internal static readonly int[] CornerIds = { 13, 10, 12, 15, 16, 9 };
+
+        internal static bool IsCorner(int id) { return Array.IndexOf(CornerIds, id) >= 0; }
 
         private static int Fs { get { return BtcUiEdit.MenuFs; } }
         internal static float RailWidth(int fs) { return BtcUiEdit.RailMode == 0 ? fs * 3.4f : fs * (BtcUiEdit.RailMode == 1 ? 10.5f : 9f); }
@@ -168,7 +182,7 @@ namespace BetterThanCastle
         /// <summary>Free strip of the header between the title and the version label: the global search field lives here.</summary>
         internal static Rect HeaderFree;
         /// <summary>Last drawn rect of every rail / corner button by tab id (the first-run tour points at them).</summary>
-        internal static readonly Rect[] TargetRects = new Rect[16];
+        internal static readonly Rect[] TargetRects = new Rect[17];
 
         internal static void DrawHeader(Rect content, int fs, string title)
         {
@@ -186,8 +200,8 @@ namespace BetterThanCastle
             st.fontSize = old;
             _right.fontSize = Mathf.RoundToInt(fs * 0.8f);
             GUI.contentColor = new Color(1f, 1f, 1f, 0.35f);
-            // right edge stays clear of the four corner buttons (sound, changelog, bug, language) and of the language chips when they are open
-            float reserve = fs * 1.2f + fs * 2.55f * 6f + (_langOpen ? fs * 7f : fs * 0.6f);
+            // right edge stays clear of the corner tab buttons
+            float reserve = fs * 1.2f + fs * 2.55f * CornerIds.Length + fs * 0.6f;
             GUI.Label(new Rect(content.x, content.y, content.width - reserve, h), "v" + BtcPlugin.Version, _right);   // ends left of the corner buttons
             float vEnd = content.xMax - reserve - fs * 3.8f, sx = content.x + fs * 1.2f + titleW + fs * 2f;
             HeaderFree = new Rect(sx, content.y + (h - fs * 2.2f) * 0.5f, Mathf.Min(fs * 20f, vEnd - sx), fs * 2.2f);
@@ -211,6 +225,7 @@ namespace BetterThanCastle
                     case 11: return !BtcStatsTab.MasterOn;
                     case 12: return !BtcUiEdit.On;
                     case 5: return !BtcSaveFormat.ShareOn;
+                    case 16: return !BtcPresence.On;
                 }
             }
             catch (Exception) { }
@@ -240,7 +255,7 @@ namespace BetterThanCastle
             for (int i = 0; i < ids.Length; i++)
             {
                 int id = ids[i];
-                if (id == 9 || id == 10 || id == 12 || id == 13) continue; // report / changelog / UI editor live in the top corner
+                if (IsCorner(id)) continue; // report / changelog / UI editor / general / notifications live in the top corner
                 Rect ir = new Rect(x, y, itemW, item);
                 if (id >= 0 && id < TargetRects.Length) TargetRects[id] = ir;
                 bool on = id == active, ok = enabled == null || enabled(id), hover = ir.Contains(e.mousePosition);
@@ -278,12 +293,7 @@ namespace BetterThanCastle
             return clicked;
         }
 
-        // technical buttons (language, report a bug, changelog) live in the top right corner of the header, not in the rail
-        private static bool _langOpen;
-        private static readonly string[] LangShort = { "EN", "RU" };
-        private static readonly string[] LangName = { "English", "Русский" };
-
-        /// <summary>Header corner buttons: language (globe, expands EN/RU chips to its left), bug report, changelog. Returns the clicked tab id (9 or 10) or -1.</summary>
+        /// <summary>Header corner tab buttons (<see cref="CornerIds"/>). Returns the clicked tab id or -1.</summary>
         internal static int DrawCorner(Rect content, int fs, int active, string[] names)
         {
             BtcReplayUI.Ensure(fs);
@@ -291,24 +301,10 @@ namespace BetterThanCastle
             float h = fs * 3.5f, sm = fs * 2.2f, gap = fs * 0.35f;
             float y = content.y + (h - sm) * 0.5f, x = content.xMax - fs * 1.2f - sm;
             int clicked = -1;
-            {   // UI sound level (off / low / medium / high): rightmost
-                Rect sp = new Rect(x, y, sm, sm);
-                bool sh = sp.Contains(e.mousePosition);
-                int lvl = BtcSfx.Level;
-                BtcReplayUI.Fill(sp, new Color(1f, 1f, 1f, sh ? 0.12f : 0.06f));
-                float sg = sm * 0.6f;
-                Rect sgr = new Rect(sp.center.x - sg * 0.5f, sp.center.y - sg * 0.5f, sg, sg);
-                BtcReplayIcons.Glyph(BtcReplayIcons.Speaker, sgr, lvl == 0 ? new Color(1f, 1f, 1f, 0.3f) : new Color(1f, 1f, 1f, sh ? 0.95f : 0.65f));
-                if (lvl == 0) BtcReplayIcons.Glyph(BtcReplayIcons.Cross, new Rect(sgr.center.x, sgr.center.y - sg * 0.1f, sg * 0.55f, sg * 0.55f), new Color(1f, 0.45f, 0.45f, 0.9f));
-                else for (int b = 0; b < lvl; b++) BtcReplayUI.Fill(new Rect(sp.x + sm * 0.12f + b * sm * 0.22f, sp.yMax - sm * 0.16f, sm * 0.16f, sm * 0.08f), Accent);
-                if (sh && e.type == EventType.Repaint) { _tip = BtcSfx.LevelName; _tipAnchor = sp; }
-                if (BtcSfx.Btn(sp, "", BtcReplayUI.sBtn)) BtcSfx.CycleLevel();
-                x -= sm + gap;
-            }
-            int[] cids = { 13, 10, 12, 9 };
-            for (int k = 0; k < cids.Length; k++)   // right to left: changelog, UI editor, bug
+            int[] cids = CornerIds;
+            for (int k = 0; k < cids.Length; k++)   // right to left: notifications, changelog, UI editor, general, online, bug
             {
-                int cid = cids[k], cicon = cid == 9 ? BtcReplayIcons.Bug : (cid == 12 ? BtcReplayIcons.Layout : (cid == 13 ? BtcReplayIcons.Chat : BtcReplayIcons.News));
+                int cid = cids[k], cicon = cid == 9 ? BtcReplayIcons.Bug : (cid == 12 ? BtcReplayIcons.Layout : (cid == 13 ? BtcReplayIcons.Chat : (cid == 15 ? BtcReplayIcons.Monitor : (cid == 16 ? BtcReplayIcons.Globe : BtcReplayIcons.News))));
                 Rect cr = new Rect(x, y, sm, sm);
                 if (cid >= 0 && cid < TargetRects.Length) TargetRects[cid] = cr;
                 bool con = cid == active, chov = cr.Contains(e.mousePosition);
@@ -317,43 +313,19 @@ namespace BetterThanCastle
                 float cg = sm * 0.6f;
                 BtcReplayIcons.Glyph(cicon, new Rect(cr.center.x - cg * 0.5f, cr.center.y - cg * 0.5f, cg, cg), new Color(cc.r, cc.g, cc.b, chov || con ? 1f : 0.8f));
                 if (cid == 13 && !con && BtcHud.Unseen > 0) BtcReplayUI.Fill(new Rect(cr.xMax - sm * 0.28f, cr.y + sm * 0.06f, sm * 0.22f, sm * 0.22f), new Color(1f, 0.85f, 0.4f, 1f));
+                if (cid == 16)
+                {
+                    // online: count of players, red dot for unread messages, grey when the list is off
+                    if (FeatureOff(16)) BtcReplayUI.Fill(cr, new Color(0f, 0f, 0f, 0.45f));
+                    else if (BtcPresence.UnreadTotal > 0 && !con) BtcReplayUI.Fill(new Rect(cr.xMax - sm * 0.28f, cr.y + sm * 0.06f, sm * 0.22f, sm * 0.22f), new Color(1f, 0.35f, 0.35f, 1f));
+                    else if (BtcPresence.OnlineCount > 0 && !con) BtcReplayUI.Fill(new Rect(cr.xMax - sm * 0.28f, cr.y + sm * 0.06f, sm * 0.22f, sm * 0.22f), new Color(0.45f, 0.85f, 0.45f, 1f));
+                }
                 if (cid == 10 && !con && BtcChangelog.HasUnseen) BtcReplayUI.Fill(new Rect(cr.xMax - sm * 0.28f, cr.y + sm * 0.06f, sm * 0.22f, sm * 0.22f), Accent);
                 if (chov && e.type == EventType.Repaint && cid < names.Length) { _tip = names[cid]; _tipAnchor = cr; }
                 if (BtcSfx.Btn(cr, "", BtcReplayUI.sBtn)) clicked = cid;
                 x -= sm + gap;
             }
-            // language globe; a click expands the EN / RU chips to the left of it
-            int cur = BtcLang.Russian ? 1 : 0;
-            Rect gl = new Rect(x, y, sm, sm);
-            bool hov = gl.Contains(e.mousePosition);
-            if (_langOpen && e.type == EventType.MouseDown)
-            {
-                bool inside = gl.Contains(e.mousePosition);
-                float cx0 = gl.x - LangShort.Length * (sm * 1.3f + gap);
-                if (new Rect(cx0, y, LangShort.Length * (sm * 1.3f + gap), sm).Contains(e.mousePosition)) inside = true;
-                if (!inside) _langOpen = false;
-            }
-            BtcReplayUI.Fill(gl, _langOpen ? new Color(Accent.r, Accent.g, Accent.b, 0.22f) : (hov ? new Color(1f, 1f, 1f, 0.12f) : new Color(1f, 1f, 1f, 0.06f)));
-            float g = sm * 0.6f;
-            BtcReplayIcons.Glyph(BtcReplayIcons.Globe, new Rect(gl.center.x - g * 0.5f, gl.center.y - g * 0.5f, g, g), _langOpen ? Accent : new Color(1f, 1f, 1f, hov ? 0.95f : 0.65f));
-            if (hov && e.type == EventType.Repaint && !_langOpen) { _tip = BtcReplayUI.T("Language: ", "Язык: ") + LangName[cur]; _tipAnchor = gl; }
-            if (BtcSfx.Btn(gl, "", BtcReplayUI.sBtn)) _langOpen = !_langOpen;
-            if (_langOpen && _center != null)
-            {
-                float cw = sm * 1.3f;
-                for (int i = LangShort.Length - 1; i >= 0; i--)
-                {
-                    Rect ch = new Rect(gl.x - (LangShort.Length - i) * (cw + gap) + gap, y, cw, sm);
-                    bool on = i == cur, chh = ch.Contains(e.mousePosition);
-                    BtcReplayUI.Fill(ch, on ? new Color(Accent.r, Accent.g, Accent.b, 0.25f) : new Color(1f, 1f, 1f, chh ? 0.12f : 0.06f));
-                    Color oc = GUI.contentColor;
-                    GUI.contentColor = on ? Color.white : new Color(1f, 1f, 1f, 0.75f);
-                    GUI.Label(ch, LangShort[i], _center);
-                    GUI.contentColor = oc;
-                    if (chh && e.type == EventType.Repaint) { _tip = LangName[i]; _tipAnchor = ch; }
-                    if (BtcSfx.Btn(ch, "", BtcReplayUI.sBtn)) { BtcLang.SetRussian(i == 1); _langOpen = false; }
-                }
-            }
+            // language and UI sounds moved to the General tab (15) and the UI editor (2026-11-26)
             return clicked;
         }
 

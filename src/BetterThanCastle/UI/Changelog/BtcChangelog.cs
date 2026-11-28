@@ -104,8 +104,8 @@ namespace BetterThanCastle
         internal static readonly string[] AreaRu = { "Реплеи", "Хоткеи", "Визуал", "Геймплей", "Терраформинг", "Редактор карт", "Щиты баз", "Зрители и пинги", "Статистика и HUD", "Профиль", "Производительность и загрузка", "Мультиплеер", "Дуэль", "Паки", "Меню / UI", "Другое" };
 
         // ---- link targets
-        internal static readonly string[] TabNameEn = { "Resource Packs", "Visuals", "BetterConnection", "Advanced Hotkeys", "Gameplay", "Share", "Profile", "Replay", "Practice", "Report a bug", "Changelog", "Statistics", "UI editor", "Notifications", "Performance" };
-        internal static readonly string[] TabNameRu = { "Ресурс-паки", "Визуал", "BetterConnection", "Advanced Hotkeys", "Геймплей", "Share", "Профиль", "Реплеи", "Практика", "Сообщить о баге", "Что нового", "Статистика", "UI редактор", "Уведомления", "Производительность" };
+        internal static readonly string[] TabNameEn = { "Resource Packs", "Visuals", "BetterConnection", "Advanced Hotkeys", "Gameplay", "Share", "Profile", "Replay", "Practice", "Report a bug", "Changelog", "Statistics", "UI editor", "Notifications", "Performance", "General", "Online" };
+        internal static readonly string[] TabNameRu = { "Ресурс-паки", "Визуал", "BetterConnection", "Advanced Hotkeys", "Геймплей", "Share", "Профиль", "Реплеи", "Практика", "Сообщить о баге", "Что нового", "Статистика", "UI редактор", "Уведомления", "Производительность", "Общее", "Онлайн" };
 
         /// <summary>Where a target leads, for the tooltip / chip ("Replay", "Advanced Hotkeys", "web").</summary>
         internal static string TargetName(string target)
@@ -158,6 +158,9 @@ namespace BetterThanCastle
                     }
                     else if (id == 2) BtcBcTab.Instance.Jump(a);
                     else if (id == 14) BtcPerfTab.Instance.Jump(a);
+                    else if (id == 15) BtcGeneralTab.Instance.Jump(a);
+                    else if (id == 16) BtcUi.SetOpen("online:" + a, true);
+                    else if (id == 12) BtcUiEditorTab.Instance.Jump(a);
                     else if (id == 6 && num) BtcProfileTab.Instance.SetPage(pg);
                 }
                 return true;

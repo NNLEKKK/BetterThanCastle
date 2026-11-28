@@ -336,6 +336,10 @@ namespace BetterThanCastle
             Bd("s.pause", S, "menu", 0, false, "Pause the game while this menu is open", "Ставить игру на паузу, пока открыто меню", null, () => VC.menuPause, v => VC.menuPause = v);
             Bd("s.block", S, "menu", 0, false, "Block game input while this menu is open", "Блокировать ввод в игру, пока открыто меню", null, () => VC.menuBlockInput, v => VC.menuBlockInput = v);
             B("s.enemytex", S, "menu", 0, false, "Enemy skin from pack (<pack>/Enemy folder)", "Скин врагов из пака (папка <пак>/Enemy)", null, () => instance.enemyTexOn, v => instance.SetEnemyTex(v));
+            B("s.fps", S, "fps", 0, false, "Show the FPS counter (move it in the UI editor)", "Показывать счётчик FPS (двигается в редакторе интерфейса)", null, () => BtcFps.On, v => BtcFps.On = v);
+            B("s.fpsmax", S, "fps", 1, false, "Also show the slowest frame of the last second (ms): catches micro freezes", "Показывать и самый долгий кадр за секунду (мс): ловит микрофризы", () => BtcFps.On, () => BtcFps.ShowMax, v => BtcFps.ShowMax = v);
+            B("s.fpsgraph", S, "fps", 1, false, "Frame time graph: drops and freezes on a timeline (taller and redder bar = longer frame, purple = garbage collection)", "График времени кадра: просадки и фризы на таймлайне (выше и краснее столбик = дольше кадр, фиолетовый = сборка мусора)", () => BtcFps.On, () => BtcFps.Graph, v => BtcFps.Graph = v);
+            F("s.fpslen", S, "fps", 2, "Graph length", "Длина графика", () => BtcFps.On && BtcFps.Graph, 5f, 120f, 5f, "0", " s", () => BtcFps.Len, v => BtcFps.Len = v);
             B("s.gamma", S, "light", 0, false, "Auto-equalize gamma (same brightness day and night)", "Автовыравнивание гаммы (одинаковая яркость днём и ночью)", null, () => instance.autoGamma, v => BtcVisualData.SetAutoGamma(v));
             Func<bool> auto = () => instance.autoGamma;
             Func<bool> manual = () => !instance.autoGamma;

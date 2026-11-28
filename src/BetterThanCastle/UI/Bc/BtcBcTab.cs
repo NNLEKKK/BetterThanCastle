@@ -162,12 +162,6 @@ namespace BetterThanCastle
                     BtcBc.BcSetOwnTransport);
                 y += fs * 0.4f;
             }
-            if (BtcUi.Fold(ref y, w, fs, KeyAdd("bc:screen"), Tt("On screen", "На экране"), 0))
-            {
-                BtcUi.ToggleUndo(ref y, w, fs, Scope, Tt("Show ping", "Показывать пинг"), BtcBc.BcShowPing, Tt("Ping of the players in the corner during a game", "Пинг игроков в углу во время игры"), BtcBc.BcSetShowPing);
-                BtcUi.ToggleUndo(ref y, w, fs, Scope, Tt("Show \"Client pause: allowed\" label", "Показывать метку \"Пауза клиентов: разрешена\""), BtcBc.BcShowPauseLabel, null, BtcBc.BcSetShowPauseLabel);
-                y += fs * 0.4f;
-            }
             if (BtcUi.Fold(ref y, w, fs, KeyAdd("bc:diag"), Tt("Diagnostics", "Диагностика"), 0))
             {
                 BtcUi.ToggleUndo(ref y, w, fs, Scope, Tt("Diagnostic log", "Диагностический лог"), BtcBc.BcDiagLog, "unet_netdiag_*.log", BtcBc.BcSetDiagLog);

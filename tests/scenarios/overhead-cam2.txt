@@ -1,0 +1,39 @@
+# Overhead cost split (2026-11-27): all 50 overheads shown, camera pans; vanilla vs no distance sorting vs no pixel perfect vs both.
+prof start
+engine counters off
+newgame
+waitgame 240
+daytime 12
+engine vsync off
+spawn bricktron 50
+waitspawn 120
+wait 15
+ohead plates 1 1
+ohead dump
+ohead pan 10 6
+prof reset
+wait 20
+dump hidpan
+ohead nosort 1
+prof reset
+wait 20
+dump hidnosort
+ohead nosort 0
+ohead showall 1
+prof reset
+wait 20
+dump showvan
+ohead nosort 1
+prof reset
+wait 20
+dump shownosort
+ohead nosort 0
+ohead nopix 1
+prof reset
+wait 20
+dump shownopix
+ohead nosort 1
+prof reset
+wait 20
+dump showboth
+quit

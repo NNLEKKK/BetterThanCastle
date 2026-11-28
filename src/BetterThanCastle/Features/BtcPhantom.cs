@@ -512,7 +512,9 @@ namespace BetterThanCastle
                     if (_dirty && un >= _nextSend - 0.8f || un >= _nextSend) { _dirty = false; _nextSend = un + 1f; Broadcast(); }   // 1 Hz: a replay seek re-marks within a second
                 }
                 else if (un >= _nextClient) { _nextClient = un + 0.5f; ClientStep(); }
+#if DEV
                 if (un >= _nextLog) { _nextLog = un + 30f; BtcLog.Info("Phantom", "live=" + LiveCount + " marks=" + Marks.Count + " spawned=" + _spawned + " died=" + _died + " fx=" + BtcPhantomFx.Bursts + " snd=" + BtcPhantomFx.Sounds + " shotThrough=" + _shotThrough); }
+#endif
             }
             catch (Exception e) { BtcLog.Error("Phantom", "tick: " + e); }
         }

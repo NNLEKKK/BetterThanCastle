@@ -39,7 +39,7 @@ namespace BetterThanCastle
             ConfigEntry<bool>[] vis = { BtcConfig.PauseHiddenAnims, BtcConfig.HideNameTags, BtcConfig.StaticCrystals, BtcConfig.SimpleFireflies, BtcConfig.CrystalLights, BtcConfig.ShortShadows,
                 BtcConfig.NoSunShadows, BtcConfig.NoAmbientOcclusion, BtcConfig.NoBloom, BtcConfig.WarmShaders, BtcConfig.UnitNightLights, BtcConfig.FireflyLights, BtcConfig.CrystalShadows };
             ConfigEntry<bool>[] ui = { BtcConfig.CsGameMenu, BtcConfig.ReplayNoGameHud };
-            ConfigEntry<bool>[] load = { BtcConfig.FastLoad, BtcConfig.ThreadedTerrain, BtcConfig.SkipModeIntro, BtcConfig.LoadTimer, BtcConfig.LoadCancel, BtcConfig.ReuseMenuPanels, BtcConfig.EarlyClientUi };
+            ConfigEntry<bool>[] load = { BtcConfig.FastLoad, BtcConfig.ThreadedTerrain, BtcConfig.SkipModeIntro, BtcConfig.ReuseMenuPanels, BtcConfig.EarlyClientUi };
             if (Has(vis, key)) fold = "perf:visual";
             else if (Has(ui, key)) fold = "perf:ui";
             else if (Has(load, key)) fold = "perf:load";
@@ -96,6 +96,10 @@ namespace BetterThanCastle
             {
                 Row(ref y, w, fs, BtcConfig.MemoryFixes, "Memory optimisation (fewer and shorter GC freezes)", "Оптимизация памяти (меньше и короче фризы GC)", after, afterRu);
                 Row(ref y, w, fs, BtcConfig.FrameSavers, "Frame optimisation (less CPU per frame)", "Оптимизация кадра (меньше нагрузка на CPU)", after, afterRu);
+                Row(ref y, w, fs, BtcConfig.CrowdRepath, "Crowd detour cache (no regular hitches with many units)", "Кэш обходов в толпе (без регулярных подфризов при многих юнитах)",
+                    "Needs BetterConnection; host or single player. " + after, "Нужен BetterConnection; хост или одиночная игра. " + afterRu);
+                Row(ref y, w, fs, BtcConfig.FastOverheads, "Fast icons over units (no lag when the camera moves)", "Быстрые иконки над юнитами (без лагов при движении камеры)",
+                    "Same look, drawn by the mod in one pass. Local, switches at once.", "Вид тот же, мод рисует их за один проход. Локально, переключается сразу.");
                 Row(ref y, w, fs, BtcConfig.AnimatorCulling, "Skip animations of units off screen", "Не анимировать юнитов вне экрана",
                     "Needs BetterConnection. Measured: almost no gain.", "Нужен BetterConnection. По замерам почти не даёт прироста.");
                 y += fs * 0.5f;
@@ -146,7 +150,7 @@ namespace BetterThanCastle
                     "Faster replay load, less memory; the mini map stays.", "Быстрее загрузка реплея, меньше памяти; миникарта остаётся.");
                 y += fs * 0.5f;
             }
-            if (BtcUi.Fold(ref y, w, fs, "perf:load", Tt("Loading", "Загрузка"), 7))
+            if (BtcUi.Fold(ref y, w, fs, "perf:load", Tt("Loading", "Загрузка"), 5))
             {
                 Row(ref y, w, fs, BtcConfig.FastLoad, "Faster world load", "Ускоренная загрузка мира",
                     "Terrain drawn in a few frames, no idle waits, faster curtain, no freeze at match start. " + after,
@@ -157,8 +161,6 @@ namespace BetterThanCastle
                 Row(ref y, w, fs, BtcConfig.SkipModeIntro, "Skip the game mode intro window", "Пропускать вступительное окно режима",
                     "Sandbox, conquest and invasion start at once, as if its button was pressed (the tutorial keeps it).",
                     "Песочница, завоевание и вторжение начинаются сразу, как будто нажата кнопка окна (в обучении окно остаётся).");
-                Row(ref y, w, fs, BtcConfig.LoadTimer, "Load timer", "Таймер загрузки", null, null);
-                Row(ref y, w, fs, BtcConfig.LoadCancel, "Cancel button while loading", "Кнопка отмены во время загрузки", null, null);
                 Row(ref y, w, fs, BtcConfig.ReuseMenuPanels, "Reuse menu panels while loading (experimental)", "Переиспользовать панели меню при загрузке (эксперимент)",
                     "Was slower in tests, off by default.", "В тестах было медленнее, по умолчанию выключено.");
                 Row(ref y, w, fs, BtcConfig.EarlyClientUi, "Client builds its interface while the host loads (experimental)", "Клиент строит интерфейс, пока грузится хост (эксперимент)",

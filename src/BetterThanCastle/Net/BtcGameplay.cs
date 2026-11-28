@@ -802,24 +802,28 @@ public static class BtcGameplay
 		BtcMapScale.RegisterHandlers(clientOverride);
 		BtcHandicap.RegisterHandlers(clientOverride);
 		BtcSpawnPick.RegisterHandlers(clientOverride);
-		BtcEditorShare.RegisterHandlers();
+		BtcEditorShare.RegisterHandlers(clientOverride);
 		BtcReplayAuto.RegisterHandlers(clientOverride);
 		BtcPovRec.RegisterHandlers();
 		BtcMatchStatsNet.RegisterHandlers(clientOverride);
 		BtcRackFilterNet.RegisterHandlers(clientOverride);
 		BtcCleanFilterNet.RegisterHandlers(clientOverride);
 		BtcTimer.RegisterHandlers(clientOverride);
-		BtcCraftQueue.RegisterHandlers(clientOverride);
+		BtcWorkbench.RegisterHandlers(clientOverride);
 		BtcFocusMark.RegisterHandlers(clientOverride);
 		BtcStationRadius.RegisterHandlers(clientOverride);
 		BtcPlayerPrefs.RegisterHandlers(clientOverride);
 		BtcPing.RegisterHandlers(clientOverride);
+		BtcDuelNet.RegisterHandlers(clientOverride);
 		BtcRecovery.RegisterHandlers(clientOverride);
 		BtcFocusHold.RegisterHandlers(clientOverride);
 		BtcShield.RegisterHandlers(clientOverride);
 		BtcPhantom.RegisterHandlers(clientOverride);
 		BtcWormWard.RegisterHandlers(clientOverride);
 		BtcTerraform.RegisterHandlers(clientOverride);
+		BtcTrapTask.RegisterHandlers(clientOverride);
+		BtcKitArm.RegisterHandlers(clientOverride);
+		BtcBpPreset.RegisterHandlers(clientOverride);
 		bool active = NetworkServer.active;
 		bool flag = active;
 		bool flag2 = flag;
@@ -881,6 +885,8 @@ public static class BtcGameplay
 			BtcRackFilterNet.SendState(conn);
 			BtcCleanFilterNet.SendState(conn);
 			BtcTerraform.SendState(conn);
+			BtcTrapTask.SendState(conn);
+			BtcBpPreset.SendState(conn);
 		}
 	}
 

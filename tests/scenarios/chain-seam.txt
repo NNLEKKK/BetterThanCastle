@@ -1,0 +1,29 @@
+# chain-seam: seamless joint vs a normal load (newest match from chain-lab, joint at 64.3 s).
+# Reference: the match opened at the start of session 2 (normal load), played to 35 s of session 2, worldsig ref35.
+# Test: the match from 50 s, the joint is crossed without a reload, played to 35 s of session 2, worldsig seam35 diffed against ref35.
+# agent.log: "[ReplaySeek] seamless joint ..." (re-keyed / left to the jump), "[ReplayChain] seamless joint into session 2", worldsig diff lines.
+wait 15
+chain seamless 1
+chain play 64.4
+wait 40
+chain state
+speed 8
+playto 35 200
+worldsig ref35
+chain stop
+wait 20
+chain play 50
+wait 45
+chain state
+speed 8
+playto 35 200
+worldsig seam35 ref35
+chain state
+chain seek 30
+wait 6
+chain state
+chain seek 99.3
+wait 6
+chain state
+worldsig back35 ref35
+quit

@@ -1,0 +1,39 @@
+BtcReplayAnchor:OnRecord  # per stream record, anchor bookkeeping
+BtcReplaySeek:AfterRecord  # per record, keyframe capture trigger
+BtcReplay:FeedPacket  # per packet, split into messages + TransportReceive
+NetworkConnection:TransportReceive  # vanilla message dispatch
+ClientScene:OnObjectSpawn  # msg 3
+ClientScene:OnObjectSpawnScene  # msg 10
+ClientScene:OnObjectDestroy  # msg 1
+ClientScene:OnUpdateVarsMessage  # msg 8, SyncVar/OnDeserialize
+ClientScene:OnRPCMessage  # msg 2
+ClientScene:OnSyncEventMessage  # msg 7
+ClientScene:OnSyncListMessage  # msg 9
+ClientScene:OnLocalClientObjectHide  # msg 13
+UNetAnimator:OnAnimationClientMessage  # animator msgs
+VoxelRequestBatcher:FixedUpdate  # terrain requests (already timed)
+UNetTransform:OnDeserialize  # per-component SyncVar reads (msg 8 split)
+SignalStateMachineComponent:OnDeserialize
+Volume:OnDeserialize
+CharacterVolume:OnDeserialize
+DamageReceiver:OnDeserialize
+BricktronDamageReceiver:OnDeserialize
+GenericParentTracker:OnDeserialize
+CharacterParentTracker:OnDeserialize
+ToolParentTracker:OnDeserialize
+Profession:OnDeserialize
+Firefly:OnDeserialize
+FireflyNest:OnDeserialize
+UNetAnimator:OnDeserialize
+AnimatorTracker:OnDeserialize
+Faction:OnDeserialize
+ProjectState:OnDeserialize
+ProjectData:OnDeserialize
+RecepteurState:OnDeserialize
+UNetGroupe:OnDeserialize
+AffiliationComponent:OnDeserialize
+Minitron:OnDeserialize
+Trackable:OnDeserialize
+TrackableVoxelTransform:OnDeserialize
+VoxelTransform:OnDeserialize
+UISelectable:OnDeserialize

@@ -1,0 +1,19 @@
+# Idle units cost + periodic hitch hunt (2026-11-27): vsync off, empty sandbox 40 s, then 50 idle bricktrons of one faction 90 s.
+# Results: prof-empty.txt, prof-idle50.txt (SPIKE TIMELINE + SPIKE PERIODS), engine.txt.
+prof start
+engine counters off
+newgame
+waitgame 240
+daytime 12
+engine vsync off
+wait 10
+prof reset
+wait 40
+dump empty
+spawn bricktron 50
+waitspawn 120
+wait 15
+prof reset
+wait 90
+dump idle50
+quit

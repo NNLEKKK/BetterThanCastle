@@ -258,7 +258,7 @@ namespace BetterThanCastle
 
         internal static float GameTime()
         {
-            if (BtcReplay.Mode == BtcReplay.State.Playing) return BtcReplay.PlayClock;
+            if (BtcReplay.Mode == BtcReplay.State.Playing) return BtcChainStats.T(BtcReplay.PlayClock);   // a match of several sessions: time of the whole match
             return Time.time - _t0;
         }
 

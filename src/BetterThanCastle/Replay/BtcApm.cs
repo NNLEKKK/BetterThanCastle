@@ -722,6 +722,26 @@ namespace BetterThanCastle
             _dirty = false;
         }
 
+        /// <summary>Top of the wave scale of the open replay (match playback draws the other sessions with it).</summary>
+        internal static float Scale { get { return _scale > 0f ? _scale : 60f; } }
+
+        /// <summary>Match playback: the graph of every player of the open replay as "COL:bucket:apm,apm,..:epm,epm,.." joined with '|' (empty when there is none).</summary>
+        internal static string Summary()
+        {
+            if (!Has) return "";
+            StringBuilder sb = new StringBuilder(1024);
+            for (int i = 0; i < Play.Count; i++)
+            {
+                Line l = Play[i];
+                if (sb.Length > 0) sb.Append('|');
+                sb.Append(l.Col).Append(':').Append(l.Bs.ToString("0.##", CultureInfo.InvariantCulture)).Append(':');
+                for (int k = 0; k < l.V.Length; k++) { if (k > 0) sb.Append(','); sb.Append(Mathf.RoundToInt(l.V[k])); }
+                sb.Append(':');
+                if (l.VE != null) for (int k = 0; k < l.VE.Length; k++) { if (k > 0) sb.Append(','); sb.Append(Mathf.RoundToInt(l.VE[k])); }
+            }
+            return sb.ToString();
+        }
+
         /// <summary>The wave inside the replay bar, above the progress track (same time axis as the track). No background: the bar is the backdrop.</summary>
         internal static void Draw(Rect r, float total, float fs)
         {

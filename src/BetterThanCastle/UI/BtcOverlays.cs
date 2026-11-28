@@ -703,6 +703,7 @@ public static class BtcOverlays
 		BtcWaypoints.Render(cam, BtcOverlays.master);
 		BtcBlockMarks.Render(cam);
 		BtcTerraformTool.Render(cam);
+		BtcTrapTaskTool.Render(cam);
 		bool flag = cam == null || !BtcOverlays.AnyOn;
 		bool flag2 = !flag;
 		bool flag3 = flag2;

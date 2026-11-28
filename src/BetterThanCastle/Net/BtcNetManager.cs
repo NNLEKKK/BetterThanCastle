@@ -419,11 +419,21 @@ namespace BetterThanCastle
         private const float RejoinRetry = 8f;
         private const float RejoinGiveUp = 900f;
         private static string _rjAddr;
+        /// <summary>A full rejoin to the last host is running (status line).</summary>
+        internal static bool Rejoining { get { return _rjAddr != null; } }
         private static int _rjPort;
         private static float _rjUntil, _rjNext;
         private static bool _rjConnecting;
         private static bool _rjAbandon;
         private static LobbyPlayer _rjOldLobby;
+        // m.Disconnect() -> vanilla OnLobbyStopClient -> ResetToDefault wipes LocalPlayerName, and the rejoin skips the menu that
+        // sets it again: the player came back as "Player" (lobby fallback) or under a stale name. Kept here and put back.
+        private static string _rjName;
+
+        /// <summary>Nick to rejoin with while a full rejoin runs (the name the host knows us by), else null.</summary>
+        internal static string RejoinName { get { return _rjAddr != null && !string.IsNullOrEmpty(_rjName) ? _rjName : null; } }
+
+        private static bool RealName(string n) { return !string.IsNullOrEmpty(n) && n != "Player" && n != "Spectator"; }
 
         /// <summary>The host answered a full rejoin with a plain lobby join: it left the match and hosts a new lobby. Stop rejoining
         /// and leave that lobby (we sat in it unseen from the menu: a row nobody could remove, back again after every kick).</summary>
@@ -441,7 +451,10 @@ namespace BetterThanCastle
             _rjNext = Time.realtimeSinceStartup + 2f;
             _rjConnecting = false;
             _rjOldLobby = m.LocalLobbyPlayer;
-            BtcLog.Warn("Net", "full rejoin: " + why + " -> back to the menu, then joining " + _rjAddr + ":" + _rjPort + " again");
+            string known = null;
+            try { if (User.LocalUser != null) known = User.LocalUser.ScreenName; } catch (Exception) { }
+            _rjName = RealName(known) ? known : RealName(s.myName) ? s.myName : RealName(m.LocalPlayerName) ? m.LocalPlayerName : Neo.multiplayerName;
+            BtcLog.Warn("Net", "full rejoin: " + why + " -> back to the menu, then joining " + _rjAddr + ":" + _rjPort + " again as '" + _rjName + "'");
             BtcHud.Notice(BtcReplayUI.T("Connection lost: rejoining the game", "Связь потеряна: заходим в игру заново"), BtcReplayIcons.Cross, BtcHud.Warn);
             if (s.clientReconnectCoroutine != null) { m.StopCoroutine(s.clientReconnectCoroutine); s.clientReconnectCoroutine = null; }
             s.reconnectRecoveryInProgress = false;
@@ -483,7 +496,8 @@ namespace BetterThanCastle
             _rjNext = now + RejoinRetry;
             try
             {
-                BtcLog.Info("Net", "full rejoin: joining " + _rjAddr + ":" + _rjPort);
+                if (string.IsNullOrEmpty(m.LocalPlayerName) && !string.IsNullOrEmpty(_rjName)) m.LocalPlayerName = _rjName;
+                BtcLog.Info("Net", "full rejoin: joining " + _rjAddr + ":" + _rjPort + " as '" + m.LocalPlayerName + "'");
                 m.ConnectToServer(_rjAddr, _rjPort);
                 _rjConnecting = true;
             }
@@ -693,9 +707,10 @@ namespace BetterThanCastle
             }
             if (!s.bcSession) return;
             CachePlayerNames(m, s);
-            if (s.myName == null && !NetworkServer.active && User.LocalUser != null)
+            // follow the name the host gives us (was set once per process: a stale nick of an earlier match or a passing "Player")
+            if (!NetworkServer.active && User.LocalUser != null)
             {
-                try { if (!string.IsNullOrEmpty(User.LocalUser.ScreenName)) s.myName = User.LocalUser.ScreenName; } catch (Exception) { }
+                try { string sn = User.LocalUser.ScreenName; if (RealName(sn) && sn != s.myName) s.myName = sn; } catch (Exception) { }
             }
             BtcNetCheck.Tick(m);
             bool live = NetLive(m, s);
@@ -799,6 +814,25 @@ namespace BetterThanCastle
                 DiagLog("RequestVoluntaryPauseToggle - client request DROPPED, LocalNetworkClient not usable.");
             }
         }
+
+        /// <summary>Host: the movie panel (BtcMovieTime) pauses / resumes the match for everyone (null = toggle). The pause is the
+        /// voluntary one (same card, same resume rules); the panel needs no client pause permission, the editor rule allows it.</summary>
+        internal static bool MoviePause(bool? want, int connId, string name)
+        {
+            UNetManager m = Current;
+            State s = Peek(m);
+            if (m == null || s == null || !NetworkServer.active || !s.bcSession || s.isLoadingLevel || InLobby(m)) return false;
+            bool v = want.HasValue ? want.Value : !s.voluntaryPauseActive;
+            if (v == s.voluntaryPauseActive) return true;
+            SetVoluntaryPause(m, s, v, v ? connId : NoVoluntaryPauseOwner, v ? name : null);
+            BroadcastPauseState(s);
+            return true;
+        }
+
+        internal static int MovieHostConn { get { return HostOwnerId; } }
+
+        /// <summary>The map is loaded for this peer (no load loop that a slow clock would stall).</summary>
+        internal static bool Live { get { UNetManager m = Current; return NetLive(m, Peek(m)); } }
 
         internal static void RequestToggleClientPausePermission(UNetManager m)
         {
@@ -1465,17 +1499,17 @@ namespace BetterThanCastle
             {
                 BtcHud.Plate("netwarn", BtcReplayIcons.Wave, BtcHud.Warn, BtcReplayUI.T("Host is not responding...", "Хост не отвечает..."));
             }
-            if (inGame && voluntary && BtcConfig.ShowPauseLabel.Value)
+            if (inGame && voluntary)
             {
                 // stays on screen until the pause is released
                 BtcHud.Card("pause", BtcReplayIcons.Pause, BtcHud.Ok, BtcReplayUI.T("Paused by " + owner, "Пауза: " + owner), null, null, false);
             }
-            if (BtcReplay.Mode != BtcReplay.State.Playing && NetworkServer.active && BtcConfig.ShowPauseLabel.Value)
+            if (BtcReplay.Mode != BtcReplay.State.Playing && NetworkServer.active)
             {
                 bool can = s.clientsCanVoluntaryPause;
                 BtcHud.Plate("clientpause", can ? BtcReplayIcons.Check : BtcReplayIcons.Cross, can ? BtcHud.Ok : BtcHud.Danger, can ? BtcReplayUI.T("Client pause: allowed", "Пауза клиентов: разрешена") : BtcReplayUI.T("Client pause: DISABLED", "Пауза клиентов: ЗАПРЕЩЕНА"));
             }
-            if (BtcReplay.Mode != BtcReplay.State.Playing && BtcConfig.ShowPing.Value && (NetworkServer.active || (m.LocalNetworkClient != null && m.LocalNetworkClient.isConnected)))
+            if (BtcReplay.Mode != BtcReplay.State.Playing && BtcHud.SlotOf("ping").Enabled && (NetworkServer.active || (m.LocalNetworkClient != null && m.LocalNetworkClient.isConnected)))
             {
                 List<PingRowInfo> rows = BuildPingRows(m, s);
                 if (rows.Count == 0) return;

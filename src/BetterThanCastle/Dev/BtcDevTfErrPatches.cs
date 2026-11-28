@@ -17,9 +17,17 @@ namespace BetterThanCastle
         {
             try
             {
-                if (BtcTerraform.ByObj.Count == 0 || N++ > 400 || __instance.Goal == null) return;
+                if (BtcTerraform.ByObj.Count == 0 || N > 400) return;
+                if (__instance.Goal == null)
+                {
+                    // the fill work has no goal (BtcTerraformFill)
+                    if (__instance.Project != null && BtcTerraform.Of(__instance.Project) != null)
+                    { N++; BtcLog.Info("TfErr", __instance.name + " fill work " + (exception == null ? "null" : exception.GetType().Name)); }
+                    return;
+                }
                 if (TerraformDigSetting.Get(__instance.Goal as DigGoal) == null && !(__instance.Goal is BuildStairsGoal)) return;
-                BtcLog.Info("TfErr", __instance.name + " work " + (exception == null ? "null" : exception.GetType().Name) + " goal@" + __instance.Goal.voxel.position + (TerraformDigSetting.IsFill(__instance.Goal) ? "F" : ""));
+                N++;
+                BtcLog.Info("TfErr", __instance.name + " work " + (exception == null ? "null" : exception.GetType().Name) + " goal@" + __instance.Goal.voxel.position);
             }
             catch (Exception) { }
         }
@@ -32,9 +40,10 @@ namespace BetterThanCastle
         {
             try
             {
-                if (BtcTerraform.ByObj.Count == 0 || BtcDevTfWorkErrPatch.N++ > 400 || __instance.Goal == null) return;
+                if (BtcTerraform.ByObj.Count == 0 || BtcDevTfWorkErrPatch.N > 400 || __instance.Goal == null) return;
                 if (TerraformDigSetting.Get(__instance.Goal as DigGoal) == null) return;
-                BtcLog.Info("TfErr", __instance.name + " path " + (e == null ? "null" : e.GetType().Name) + " goal@" + __instance.Goal.voxel.position + (TerraformDigSetting.IsFill(__instance.Goal) ? "F" : ""));
+                BtcDevTfWorkErrPatch.N++;
+                BtcLog.Info("TfErr", __instance.name + " path " + (e == null ? "null" : e.GetType().Name) + " goal@" + __instance.Goal.voxel.position);
             }
             catch (Exception) { }
         }

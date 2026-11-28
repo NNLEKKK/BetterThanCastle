@@ -135,7 +135,7 @@ namespace BetterThanCastle
             int devKey = _page * 2 + (Expert ? 1 : 0);
             if (devKey != _devLast) { _devLast = devKey; BtcLog.Info("VisualDev", "drew page " + _page + " expert=" + Expert + " h=" + _h); }
 #endif
-            BtcVisualRows.Expert = Expert;
+            BtcVisualRows.Expert = Expert || BtcSearchHarvest.Active;   // the search index sees Expert rows too
             if (_page == PProf) BtcVisualProfiles.Draw(content, fs);
             else DrawPage(content, fs);
             BtcReplayIcons.DrawTip(fs, area.xMax, false);
@@ -311,6 +311,7 @@ namespace BetterThanCastle
                 case "ping": return Tt("Team pings", "Пинги союзникам");
                 case "focus": return Tt("Focus (hit sound, marker)", "Фокус (хитсаунд, метка)");
                 case "menu": return Tt("Menu behaviour", "Поведение меню");
+                case "fps": return Tt("FPS counter", "Счётчик FPS");
                 default: return Tt("Brightness", "Яркость");
             }
         }
@@ -335,6 +336,7 @@ namespace BetterThanCastle
                 case "ping": return BtcReplayIcons.Target;
                 case "focus": return BtcReplayIcons.Swords;
                 case "menu": return BtcReplayIcons.Lock;
+                case "fps": return BtcReplayIcons.Chart;
                 default: return BtcReplayIcons.Sun;
             }
         }
@@ -506,37 +508,18 @@ namespace BetterThanCastle
         {
             string key = "vis:plates:units";
             _keys.Add(key);
-            if (FoldF(ref y, w, fs, key, BtcReplayIcons.Plate, Tt("Unit plates and HUD panels", "Плашки юнитов и панели HUD"), ""))
+            if (FoldF(ref y, w, fs, key, BtcReplayIcons.Plate, Tt("Unit plates", "Плашки юнитов"), ""))
             {
-                string[] tabs = BtcInterface.TabNames;
-                string[] names = new string[tabs.Length];
-                for (int i = 0; i < tabs.Length; i++) names[i] = BtcLang.Tr(tabs[i]);
-                int c = BtcVisualRows.Choice(ref y, w, fs, 0, Tt("Panel group", "Группа панелей"), BtcInterface.Tab, names, null, null);
-                if (c >= 0) BtcInterface.Tab = c;
-                BtcVisualRows.Prefix = "pl" + BtcInterface.Tab;
+                BtcVisualRows.Prefix = "pl0";
                 float yy = y;
-                if (BtcInterface.Tab == 0)
-                    BtcUnitPlates.DrawSettings((string l, int id, float v, float mn, float mx, float st, string fmt, string suf) => BtcVisualRows.SliderCb(ref yy, w, fs, l, id, v, mn, mx, st, fmt, suf));
-                else
-                {
-                    bool any = BtcInterface.DrawTab((string l, int id, float v, float mn, float mx, float st, string fmt, string suf) => BtcVisualRows.SliderCb(ref yy, w, fs, l, id, v, mn, mx, st, fmt, suf), BtcInterface.Tab);
-                    if (!any) BtcUi.Note(ref yy, w, fs, Tt("No panels here (HUD panels appear in a match)", "Здесь нет панелей (панели HUD появляются в матче)"));
-                }
+                BtcUnitPlates.DrawSettings((string l, int id, float v, float mn, float mx, float st, string fmt, string suf) => BtcVisualRows.SliderCb(ref yy, w, fs, l, id, v, mn, mx, st, fmt, suf));
                 if (!BtcVisualRows.Expert) BtcUi.Note(ref yy, w, fs, Tt("Sizes and positions of the plates are in Expert mode.", "Размеры и положение плашек - в режиме «Эксперт»."));
+                if (BtcUi.Action(ref yy, w, fs, BtcReplayIcons.Layout, Tt("Panels of the game HUD (minimap, chat, bars) are in the UI editor", "Панели HUD игры (миникарта, чат, полосы) - в UI редакторе"), "")) BtcChangelog.Go("tab:12");
                 y = yy + fs * 0.5f;
             }
             if (Sec(ref y, w, fs, "plates", "dmg")) Settings(ref y, w, fs, "plates", "dmg");
             if (Sec(ref y, w, fs, "plates", "crystal")) Settings(ref y, w, fs, "plates", "crystal");
             if (Sec(ref y, w, fs, "plates", "gametimer")) Settings(ref y, w, fs, "plates", "gametimer");
-            string ck = "vis:plates:chat";
-            _keys.Add(ck);
-            if (FoldF(ref y, w, fs, ck, BtcReplayIcons.Chat, Tt("Chat", "Чат"), ""))
-            {
-                BtcVisualRows.Prefix = "chat";
-                float yy = y;
-                BtcGameChatFade.DrawSettings((l, on) => BtcVisualRows.Check(ref yy, w, fs, l, on), (string l, int id, float v, float mn, float mx, float st, string fmt, string suf) => BtcVisualRows.SliderCb(ref yy, w, fs, l, id, v, mn, mx, st, fmt, suf));
-                y = yy + fs * 0.5f;
-            }
         }
 
         private void PageStats(ref float y, float w, int fs)
@@ -554,40 +537,10 @@ namespace BetterThanCastle
 
         private void PageScreen(ref float y, float w, int fs)
         {
-            string key = "vis:screen:display";
-            _keys.Add(key);
-            if (FoldF(ref y, w, fs, key, BtcReplayIcons.Monitor, Tt("Window", "Окно"), ""))
-            {
-                int cur = BtcDisplay.Mode - 1;
-                string[] tips = { Tt("Fullscreen", "Полный экран"), Tt("Windowed", "Окно"), Tt("Borderless", "Без рамки") };
-                int c = BtcVisualRows.Choice(ref y, w, fs, 0, Tt("Window mode", "Режим окна"), cur, null, new[] { BtcReplayIcons.Monitor, BtcReplayIcons.Layout, BtcReplayIcons.Grid }, tips);
-                if (c >= 0 && c != cur)
-                {
-                    int oldMode = BtcDisplay.Mode;
-                    BtcDisplay.Apply(c + 1, 1);
-                    BtcUndo.Push(BtcVisualRows.Scope, Tt("Window mode", "Режим окна"), delegate { BtcDisplay.Apply(oldMode, 1); });
-                }
-                bool skip = BtcConfig.SkipIntro != null && BtcConfig.SkipIntro.Value;
-                if (BtcVisualRows.Switch(ref y, w, fs, 0, Tt("Skip intro (logo screens on startup)", "Пропускать интро (заставки при запуске)"), skip, null) && BtcConfig.SkipIntro != null)
-                {
-                    BtcConfig.SkipIntro.Value = !skip;
-                    BtcUndo.Push(BtcVisualRows.Scope, Tt("Skip intro", "Пропуск интро"), delegate { BtcConfig.SkipIntro.Value = skip; });
-                }
-                bool noCurtain = BtcConfig.NoLoadCurtain != null && BtcConfig.NoLoadCurtain.Value;
-                if (BtcVisualRows.Switch(ref y, w, fs, 0, Tt("Load without the curtain (watch the world load)", "Загрузка без шторки (видно, как грузится мир)"), noCurtain, null) && BtcConfig.NoLoadCurtain != null)
-                {
-                    BtcConfig.NoLoadCurtain.Value = !noCurtain;
-                    BtcUndo.Push(BtcVisualRows.Scope, Tt("No loading curtain", "Загрузка без шторки"), delegate { BtcConfig.NoLoadCurtain.Value = noCurtain; });
-                }
-                bool dis = BtcVisualData.GetDiscord();
-                if (BtcVisualRows.Switch(ref y, w, fs, 0, "Discord Rich Presence", dis, null))
-                {
-                    BtcVisualData.SetDiscord(!dis);
-                    BtcUndo.Push(BtcVisualRows.Scope, "Discord Rich Presence", delegate { BtcVisualData.SetDiscord(dis); });
-                }
-                y += fs * 0.5f;
-            }
+            // window mode, intro, loading curtain and Discord moved to the General tab (15) on 2026-11-26
+            if (BtcUi.Action(ref y, w, fs, BtcReplayIcons.Monitor, Tt("Window mode, intro, loading curtain, Discord: General tab", "Режим окна, интро, шторка загрузки, Discord: вкладка «Общее»"), "")) BtcChangelog.Go("tab:15");
             if (Sec(ref y, w, fs, "screen", "menu")) Settings(ref y, w, fs, "screen", "menu");
+            if (Sec(ref y, w, fs, "screen", "fps")) Settings(ref y, w, fs, "screen", "fps");
             if (Sec(ref y, w, fs, "screen", "light")) Settings(ref y, w, fs, "screen", "light");
         }
 

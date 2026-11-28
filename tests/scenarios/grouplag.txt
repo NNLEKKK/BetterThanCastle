@@ -11,7 +11,7 @@ duelnorules 1
 duel
 waitduel 240
 wait 3
-rule mov.cancel 1
+rule mov.instant 1
 rule mov.allies 1
 duelplace 1 all 44 10 270
 duelplace 0 0 30 8 90

@@ -121,6 +121,7 @@ namespace BetterThanCastle
                 {
                     r.Clear(m.MatchId);
                     BtcLog.Info("MatchStats", "host stats stream match=" + m.MatchId);
+                    if (replay) BtcChainStats.AfterClear(r);   // a match of several sessions: the earlier sessions lie under this one
                 }
                 if (m.Kind == 2)
                 {
@@ -128,6 +129,7 @@ namespace BetterThanCastle
                     BtcMsFaction df = r.Get(m.Ids[0], true);
                     df.Det[m.Cat].Clear();
                     for (int k = 0; k < m.DN; k++) if (!string.IsNullOrEmpty(m.DKeys[k])) df.Det[m.Cat][m.DKeys[k]] = m.DVals[k];
+                    if (replay) BtcChainStats.FixDet(df, m.Cat);
                     df.DetVer[m.Cat]++;
                     r.Version++;
                     return;
@@ -140,15 +142,17 @@ namespace BetterThanCastle
                     {
                         Array.Clear(f.V, 0, f.V.Length);
                         Array.Copy(row, f.V, Mathf.Min(row.Length, f.V.Length));
+                        if (replay) BtcChainStats.FixLive(m.Ids[i], f.V);
                     }
                     else
                     {
                         int[] v = new int[BtcMatchStats.NV];
                         Array.Copy(row, v, Mathf.Min(row.Length, v.Length));
-                        f.AddSample(m.Idx, m.T, v);
+                        if (replay) f.AddSample(BtcChainStats.Idx(m.Idx), BtcChainStats.T(m.T), BtcChainStats.FixSample(m.Ids[i], v));
+                        else f.AddSample(m.Idx, m.T, v);
                     }
                 }
-                if (m.Kind == 0) { r.T = m.T; BtcMatchStats.LastRemote = Time.unscaledTime; }
+                if (m.Kind == 0) { r.T = replay ? BtcChainStats.T(m.T) : m.T; BtcMatchStats.LastRemote = Time.unscaledTime; }
                 r.Version++;
             }
             catch (Exception e) { BtcLog.Error("MatchStats", "OnMsgAtClient: " + e); }

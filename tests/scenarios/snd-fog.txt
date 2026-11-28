@@ -1,0 +1,19 @@
+# fog sound mute (BtcSoundNet.Audible) on own units: start units vs spawned (Transactor.SpawnUNet like the editor panel) vs crystal respawn
+newgame
+waitgame 240
+wait 5
+sndnet fog start
+sndnet dump start
+sndnet mine 4
+wait 3
+sndnet fog spawned
+wait 10
+sndnet fog spawned10
+sndnet fog spawnpost
+sndnet dump spawned
+sndnet kill 3
+wait 45
+sndnet fog respawn
+sndnet fog respawnpost
+sndnet dump respawn
+quit

@@ -1,0 +1,14 @@
+# mp-saveleave (host): match with 1 client, save, host leaves to the menu, stay 30 s in the menu.
+# Bug 2026-11-27: after save + leave the main menu reloaded every ~1.5 s (NetworkClient.active stuck true).
+# Check agent.log: "[Net] client still active after Disconnect" (fix fired, names the leftover client) and no repeated menu loads.
+host default conquest
+waitclients 1 200
+wait 3
+startmatch 120
+waitgame 240
+wait 30
+phantom save mpsl
+wait 10
+leave
+wait 30
+quit

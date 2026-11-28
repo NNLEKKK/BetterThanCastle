@@ -42,7 +42,11 @@ namespace BetterThanCastle
         /// <summary>Which screen to show: 0 none, 1 loading / keyframes (opaque), 2 long seek (light).</summary>
         internal static int Mode()
         {
+            // between two sessions of a match the menu scene loads for a moment: keep the cover up
+            if (BtcReplay.Mode != BtcReplay.State.Playing && BtcReplayChainPlay.Switching) { _seekSince = -1f; _loadSeen = true; if (_t0 < 0f) _t0 = Time.unscaledTime; return 1; }
             if (BtcReplay.Mode != BtcReplay.State.Playing) { _t0 = -1f; _seekSince = -1f; _loadSeen = false; _settleSince = -1f; return 0; }
+            // preparing the sessions of a match one after another: no glimpse of the world between them
+            if (BtcReplayChainPlay.Preparing || (BtcReplayChainPlay.Active && BtcReplayChainPlay.Switching)) { _seekSince = -1f; _loadSeen = true; if (_t0 < 0f) _t0 = Time.unscaledTime; return 1; }
             if (BtcReplaySeek.Preprocessing || BtcReplay.Loading) { _seekSince = -1f; _loadSeen = true; _settleSince = -1f; if (_t0 < 0f) _t0 = Time.unscaledTime; return 1; }
             // the world finished loading but the keyframe pass has not started yet: keep the cover so the world is not shown in between
             if (_loadSeen && BtcReplaySeek.Settling && !BtcReplay.Seeking)
@@ -74,7 +78,7 @@ namespace BetterThanCastle
             if (BtcReplayUI.sBarLabel == null) return;
             int depth = GUI.depth;
             GUI.depth = -10000;
-            if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape) { e.Use(); BtcReplay.StopReplay(); GUI.depth = depth; return; }
+            if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape) { e.Use(); Exit(); GUI.depth = depth; return; }
 
             bool light = mode == 2;
             BtcReplayUI.Fill(new Rect(0f, 0f, Screen.width, Screen.height), new Color(0.02f, 0.02f, 0.03f, light ? 0.55f : 1f));
@@ -87,6 +91,10 @@ namespace BetterThanCastle
 
             float el = _t0 >= 0f ? Time.unscaledTime - _t0 : (_seekSince >= 0f ? Time.unscaledTime - _seekSince : 0f);
             string head = light ? Tt("Seeking to ", "Перемотка к ") + BtcReplayUI.TClock(BtcReplay.SeekTarget) : Tt("Opening the replay", "Открываю реплей");
+            if (!light && BtcReplayChainPlay.Active)
+                head = BtcReplayChainPlay.Preparing
+                    ? Tt("Preparing the match: session ", "Подготовка катки: сессия ") + BtcReplayChainPlay.PrepIndex + "/" + BtcReplayChainPlay.PrepTotal
+                    : Tt("Match: session ", "Катка: сессия ") + (BtcReplayChainPlay.Step + 1) + "/" + BtcReplayChainPlay.L.S.Count;
             if (_big == null || _big.fontSize != fs + 4) { _big = new GUIStyle(BtcReplayUI.sBarLabel); _big.fontSize = fs + 4; }
             float y = card.y + fs * 0.7f;
             BtcReplayIcons.Glyph(light ? BtcReplayIcons.Fwd10 : BtcReplayIcons.Play, new Rect(card.x + fs * 0.6f, y, fs * 1.8f, fs * 1.8f), BtcMenu.AccentA(1f));
@@ -102,8 +110,9 @@ namespace BetterThanCastle
             }
             else
             {
-                bool cached = BtcReplaySeek.HasCacheFor(BtcReplay.FeedFile);
-                step = BtcReplaySeek.Preprocessing ? 3 : (BtcReplay.Loading ? (BtcReplay.LoadStep > 0 ? BtcReplay.LoadStep : 2) : 3);
+                bool between = BtcReplay.Mode != BtcReplay.State.Playing;
+                bool cached = !between && BtcReplaySeek.HasCacheFor(BtcReplay.FeedFile);
+                step = between ? 1 : (BtcReplaySeek.Preprocessing ? 3 : (BtcReplay.Loading ? (BtcReplay.LoadStep > 0 ? BtcReplay.LoadStep : 2) : 3));
                 float sp = step == 3 ? BtcReplaySeek.PrepFraction : -1f;
                 prog = cached ? Mathf.Clamp01(((Mathf.Min(step, 3) - 1) + (step >= 3 ? 1f : 0.5f)) / 3f) : Mathf.Clamp01(((step - 1) + (sp >= 0f ? sp : 0.5f)) / 3f);
                 string[] names = { Tt("Reading the replay file", "Чтение файла реплея"), Tt("Loading the world", "Загрузка мира"), cached ? Tt("Keyframes ready (from the cache)", "Ключевые кадры готовы (из кэша)") : Tt("Placing keyframes for instant seek", "Расстановка ключевых кадров для мгновенной перемотки") };
@@ -131,11 +140,17 @@ namespace BetterThanCastle
             y += fs * 1.2f;
             float ib = fs * 1.6f;
             Rect ex = new Rect(card.x + fs * 0.6f, y, ib, ib);
-            if (BtcReplayIcons.Plain(ex, BtcReplayIcons.Stop, BtcReplayUI.Red, Tt("Exit the replay (Esc)", "Выйти из реплея (Esc)"))) BtcReplay.StopReplay();
+            if (BtcReplayIcons.Plain(ex, BtcReplayIcons.Stop, BtcReplayUI.Red, Tt("Exit the replay (Esc)", "Выйти из реплея (Esc)"))) Exit();
             GUI.Label(new Rect(ex.xMax + fs * 0.5f, y, fs * 14f, ib), Tt("Exit (Esc)", "Выйти (Esc)"), BtcReplayUI.sBarLabel);
             BtcReplayIcons.DrawTip(fs);
             if ((e.type == EventType.MouseDown || e.type == EventType.MouseUp) && !light) e.Use();   // the cover swallows clicks
             GUI.depth = depth;
+        }
+
+        private static void Exit()
+        {
+            if (BtcReplayChainPlay.Active) BtcReplayChainPlay.Stop();
+            else BtcReplay.StopReplay();
         }
 
         /// <summary>Eight squares on a ring, one bright and a fading tail, turning.</summary>

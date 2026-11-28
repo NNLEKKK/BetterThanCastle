@@ -167,7 +167,8 @@ namespace BetterThanCastle
                         if (IsChop(st) && User.LocalUser != null && Affiliation.IsSameOrNeutral(User.LocalUser.faction, st.faction)) Shown.Add(st);
                     }
                 }
-                if (Shown.Count == 0 || BtcHotkeys.MenuOpen) return false;
+                if (Shown.Count == 0 || BtcHotkeys.MenuOpen) { _drag = null; _hover = null; return false; }
+                DragTick();
                 KeyCode[] keys = BtcHotkeys.GetKeys("station_radius", null);
                 if (keys == null || keys.Length == 0) return false;
                 for (int i = 0; i < keys.Length; i++) if (!Input.GetKey(keys[i])) return false;
@@ -184,6 +185,52 @@ namespace BetterThanCastle
                 return true;
             }
             catch (Exception e) { BtcLog.Error("StationR", "Tick: " + e.Message); return false; }
+        }
+
+        // ------------------------------------------------------------------ drag the ring edge (like the circle of a task): hold LMB on the ring, pull
+        private static CraftingStation _drag, _hover;
+        internal static readonly Color Yellow = new Color(1f, 0.85f, 0.1f, 1f);
+
+        /// <summary>true while the cursor is on a ring edge or a ring is dragged: the game gets no mouse input (see ResourcePackManager input lock).</summary>
+        internal static bool MouseBusy { get { return _drag != null || _hover != null; } }
+
+        // distance of the cursor ray hit on the station's floor plane from the station centre; -1 when the ray misses
+        private static float CursorDist(CraftingStation st)
+        {
+            Camera cam = Camera.main;
+            if (cam == null || st == null) return -1f;
+            Vector3 p = st.transform.position;
+            Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+            float enter;
+            if (!new Plane(Vector3.up, -p.y).Raycast(ray, out enter)) return -1f;
+            Vector3 h = ray.GetPoint(enter);
+            return Mathf.Sqrt((h.x - p.x) * (h.x - p.x) + (h.z - p.z) * (h.z - p.z));
+        }
+
+        private static void DragTick()
+        {
+            if (_drag != null)
+            {
+                if (!Input.GetMouseButton(0) || _drag == null || !_drag) { _drag = null; return; }
+                float d = CursorDist(_drag);
+                if (d < 0f) return;
+                int r = Mathf.Clamp(Mathf.RoundToInt(d), 1, MaxR);
+                if (r != RadiusOf(_drag)) { Request(_drag, r); BtcSfx.Tick(); }
+                return;
+            }
+            _hover = null;
+            if (BtcReplay.Mode == BtcReplay.State.Playing) return;
+            if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) return;
+            for (int i = 0; i < Shown.Count; i++)
+            {
+                CraftingStation st = Shown[i];
+                if (st == null) continue;
+                int r = RadiusOf(st);
+                if (r <= 0) continue;
+                float d = CursorDist(st);
+                if (d >= 0f && Mathf.Abs(d - r) <= 0.9f) { _hover = st; break; }
+            }
+            if (_hover != null && Input.GetMouseButtonDown(0)) { _drag = _hover; }
         }
 
         private static void Request(CraftingStation st, int r)
@@ -214,7 +261,7 @@ namespace BetterThanCastle
                     _mat.SetInt("_ZTest", (int)UnityEngine.Rendering.CompareFunction.Always);
                 }
                 _mat.SetPass(0);
-                Color col = BtcMenu.Accent; col.a = 0.8f;
+                Color col = Yellow; col.a = 0.85f;
                 for (int i = 0; i < Shown.Count; i++)
                 {
                     if (Shown[i] == null) continue;
@@ -224,7 +271,8 @@ namespace BetterThanCastle
                     const int N = 72;
                     GL.Begin(GL.QUADS);
                     GL.Color(col);
-                    float r0 = r - 0.08f, r1 = r + 0.08f;
+                    float hw = (Shown[i] == _drag || Shown[i] == _hover) ? 0.16f : 0.08f;
+                    float r0 = r - hw, r1 = r + hw;
                     for (int k = 0; k < N; k++)
                     {
                         float a0 = k * Mathf.PI * 2f / N, a1 = (k + 1) * Mathf.PI * 2f / N;
@@ -251,18 +299,17 @@ namespace BetterThanCastle
                 _lab = new GUIStyle(GUI.skin.label);
                 _lab.alignment = TextAnchor.MiddleCenter;
                 _lab.fontStyle = FontStyle.Bold;
-                _lab.normal.textColor = Color.white;
+                _lab.normal.textColor = Yellow;
             }
-            _lab.fontSize = Mathf.Max(11, Mathf.RoundToInt(Screen.height * 0.015f));
+            _lab.fontSize = Mathf.Max(9, Mathf.RoundToInt(Screen.height * 0.011f));
             for (int i = 0; i < Shown.Count; i++)
             {
                 if (Shown[i] == null) continue;
-                Vector3 p = cam.WorldToScreenPoint(Shown[i].transform.position + Vector3.up * 2.6f);
+                Vector3 p = cam.WorldToScreenPoint(Shown[i].transform.position + Vector3.up * 1.6f);
                 if (p.z <= 0f) continue;
                 int r = RadiusOf(Shown[i]);
-                string t = (r > 0 ? BtcLang.Tr("Log pickup radius") + ": " + r : BtcLang.Tr("Log pickup radius") + ": " + BtcLang.Tr("no limit"))
-                    + (HasOwn(Shown[i]) ? "" : " (" + BtcLang.Tr("default") + ")");
-                Rect rc = new Rect(p.x - 160f, Screen.height - p.y - 12f, 320f, 24f);
+                string t = r.ToString();
+                Rect rc = new Rect(p.x - 30f, Screen.height - p.y - 9f, 60f, 18f);
                 GUI.color = new Color(0f, 0f, 0f, 0.7f);
                 GUI.Label(new Rect(rc.x + 1f, rc.y + 1f, rc.width, rc.height), t, _lab);
                 GUI.color = Color.white;

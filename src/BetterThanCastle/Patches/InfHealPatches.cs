@@ -14,8 +14,12 @@ namespace BetterThanCastle.Patches
             catch (Exception e) { BtcLog.Error("Hook", "InfHeal.Save: " + e); }
             try { BtcShieldBox.OnSave(__instance.path); }
             catch (Exception e) { BtcLog.Error("Hook", "InfHeal.Save: " + e); }
-            try { BtcPhantom.OnSave(__instance.path); BtcWormWard.OnSave(__instance.path); BtcCleanFilter.OnSave(__instance.path); BtcStationRadius.OnSave(__instance.path); }
+            try { BtcPhantom.OnSave(__instance.path); BtcWormWard.OnSave(__instance.path); BtcCleanFilter.OnSave(__instance.path); BtcStationRadius.OnSave(__instance.path); BtcWorkbench.OnSave(__instance.path); BtcRackFilter.OnSave(__instance.path); BtcBpPreset.OnSave(__instance.path); }
             catch (Exception e) { BtcLog.Error("Hook", "Phantom.Save: " + e); }
+            try { BtcTrapTask.OnSave(__instance.path); }
+            catch (Exception e) { BtcLog.Error("Hook", "TrapTask.Save: " + e); }
+            try { BtcReplayChain.OnSave(__instance.path); }
+            catch (Exception e) { BtcLog.Error("Hook", "ReplayChain.Save: " + e); }
         }
     }
 
@@ -28,8 +32,12 @@ namespace BetterThanCastle.Patches
             catch (Exception e) { BtcLog.Error("Hook", "InfHeal.Load: " + e); }
             try { BtcShieldBox.OnLoad(__instance.path); }
             catch (Exception e) { BtcLog.Error("Hook", "InfHeal.Load: " + e); }
-            try { BtcPhantom.OnLoad(__instance.path); BtcWormWard.OnLoad(__instance.path); BtcCleanFilter.OnLoad(__instance.path); BtcStationRadius.OnLoad(__instance.path); }
+            try { BtcPhantom.OnLoad(__instance.path); BtcWormWard.OnLoad(__instance.path); BtcCleanFilter.OnLoad(__instance.path); BtcStationRadius.OnLoad(__instance.path); BtcWorkbench.OnLoad(__instance.path); BtcRackFilter.OnLoad(__instance.path); BtcBpPreset.OnLoad(__instance.path); }
             catch (Exception e) { BtcLog.Error("Hook", "Phantom.Load: " + e); }
+            try { BtcTrapTask.OnLoad(__instance.path); }
+            catch (Exception e) { BtcLog.Error("Hook", "TrapTask.Load: " + e); }
+            try { BtcReplayChain.OnLoad(__instance.path); }
+            catch (Exception e) { BtcLog.Error("Hook", "ReplayChain.Load: " + e); }
         }
     }
 

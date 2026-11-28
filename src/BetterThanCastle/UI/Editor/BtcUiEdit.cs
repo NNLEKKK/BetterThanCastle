@@ -22,24 +22,64 @@ namespace BetterThanCastle
             public E Clone() { return (E)MemberwiseClone(); }
         }
 
-        /// <summary>One element the editor can place. Anchor: 0 top-left, 1 top-centre, 2 top-right, 3 left column (stack index in Row).</summary>
+        /// <summary>
+        /// One element the editor can place. Anchor: 0 top-left, 1 top-centre, 2 top-right, 3 left column (stack index in Row),
+        /// 4 free (the feature reports its natural rect through BtcHud.Place; until then a default rect of W x H HUD fonts whose pivot sits at
+        /// screen fraction Ax/Ay), 5 vanilla uGUI panel (BtcInterface, id "ui:" + panel key, discovered in a match).
+        /// Px/Py = pivot inside the rect for scaling (0..1, y down).
+        /// </summary>
         internal sealed class Elem
         {
             public string Id, En, Ru, HintEn, HintRu;
             public int Icon, Anchor, Row;
             public float W, H;          // size at scale 1 in units of the HUD font size
             public float DefScale = 1f, DefNx, DefNy;
+            public float Px = 0.5f, Py = 0.5f, Ax = 0.5f, Ay = 0.5f;
         }
 
-        internal static readonly Elem[] Elems =
+        internal const string VanillaPrefix = "ui:";
+
+        /// <summary>Fixed elements plus the vanilla HUD panels discovered in the current match (rebuilt when BtcInterface's list changes).</summary>
+        internal static Elem[] Elems
+        {
+            get
+            {
+                if (_all == null || _allVer != BtcInterface.Version)
+                {
+                    _allVer = BtcInterface.Version;
+                    List<Elem> l = new List<Elem>(Fixed);
+                    for (int i = 0; i < BtcInterface.Count; i++)
+                    {
+                        Vector2 pv = BtcInterface.PivotAt(i);
+                        l.Add(new Elem { Id = VanillaPrefix + BtcInterface.KeyAt(i), En = "Game: " + BtcInterface.NameOf(i, false), Ru = "Игра: " + BtcInterface.NameOf(i, true), HintEn = "Panel of the game's own HUD (found in this match)", HintRu = "Панель обычного HUD игры (найдена в этом матче)", Icon = BtcReplayIcons.Monitor, Anchor = 5, W = 6f, H = 3f, Px = pv.x, Py = pv.y });
+                    }
+                    _all = l.ToArray();
+                }
+                return _all;
+            }
+        }
+
+        private static Elem[] _all;
+        private static int _allVer = -1;
+
+        internal static bool IsVanilla(string id) { return id != null && id.StartsWith(VanillaPrefix, StringComparison.Ordinal); }
+
+        private static readonly Elem[] Fixed =
         {
             new Elem { Id = "launcher", En = "BTC button", Ru = "Кнопка BTC", HintEn = "Opens the mod menu", HintRu = "Открывает мод-меню", Icon = BtcReplayIcons.Layout, Anchor = 0, W = 3.6f, H = 2.0f, DefNx = -0.0133f, DefNy = 0.9444f },
+            new Elem { Id = "quickhost", En = "Host game button", Ru = "Кнопка «Создать игру»", HintEn = "Main menu: opens a multiplayer lobby in one click", HintRu = "Главное меню: открывает лобби мультиплеера в один клик", Icon = BtcReplayIcons.Globe, Anchor = 4, W = 12f, H = 2.6f, Px = 1f, Py = 0f, Ax = 0.985f, Ay = 0.02f },
             new Elem { Id = "cards", En = "Notice cards", Ru = "Карточки-уведомления", HintEn = "Top cards: rules, editor panel, pause owner...", HintRu = "Верхние карточки: правила, эдитор-панель, пауза...", Icon = BtcReplayIcons.News, Anchor = 1, W = 34f, H = 2.3f, DefNy = -0.0086f },
             new Elem { Id = "notice", En = "Short messages", Ru = "Короткие сообщения", HintEn = "One-line messages under the cards", HintRu = "Однострочные сообщения под карточками", Icon = BtcReplayIcons.Chat, Anchor = 1, W = 18f, H = 2.0f, DefNy = -0.0102f },
             new Elem { Id = "groups", En = "Control groups panel", Ru = "Панель контрольных групп", HintEn = "Groups and camera slots", HintRu = "Группы и слоты камеры", Icon = BtcReplayIcons.Group, Anchor = 2, W = 11f, H = 8f, DefScale = 0.4f, DefNx = -0.0036f, DefNy = 0.8052f },
             new Elem { Id = "pauseplate", En = "Pause plate", Ru = "Плашка паузы", HintEn = "Connection / pause state", HintRu = "Состояние связи и паузы", Icon = BtcReplayIcons.Pause, Anchor = 3, Row = 0, W = 16f, H = 1.9f, DefScale = 0.7f, DefNx = -0.0133f },
             new Elem { Id = "clientpause", En = "Client pause plate", Ru = "Плашка паузы клиентов", HintEn = "Whether clients may pause", HintRu = "Могут ли клиенты ставить паузу", Icon = BtcReplayIcons.Lock, Anchor = 3, Row = 1, W = 17f, H = 1.9f, DefScale = 0.4f, DefNx = -0.0133f, DefNy = -0.0016f },
             new Elem { Id = "ping", En = "Ping chip", Ru = "Чип пинга", HintEn = "Worst ping, hover for the list", HintRu = "Худший пинг, по наведению список", Icon = BtcReplayIcons.Wave, Anchor = 3, Row = 2, W = 7f, H = 1.9f, DefScale = 0.4523f, DefNx = -0.0128f, DefNy = 0.0217f },
+            new Elem { Id = "rec", En = "REC indicator", Ru = "Индикатор записи REC", HintEn = "Replay recording time and size while you host", HintRu = "Время и размер записи реплея, когда вы хост", Icon = BtcReplayIcons.Play, Anchor = 4, W = 14f, H = 1.4f, Px = 0f, Py = 0f, Ax = 0.008f, Ay = 0.01f },
+            new Elem { Id = "stats", En = "Match statistics bar", Ru = "Полоса статистики матча", HintEn = "Live numbers of the match (which numbers: Visuals > Match statistics)", HintRu = "Живые показатели матча (какие именно: Визуал > Статистика матча)", Icon = BtcReplayIcons.Chart, Anchor = 4, W = 30f, H = 1.75f, Px = 0.5f, Py = 0f, Ax = 0.5f, Ay = 0f },
+            new Elem { Id = "loadtimer", En = "Load timer", Ru = "Таймер загрузки", HintEn = "Seconds from the Start click until the map is playable", HintRu = "Секунды от нажатия Старт до готовой карты", Icon = BtcReplayIcons.Slow, Anchor = 4, W = 16f, H = 1.8f, Px = 0.5f, Py = 1f, Ax = 0.5f, Ay = 0.968f },
+            new Elem { Id = "loadcancel", En = "Load cancel cross", Ru = "Крестик отмены загрузки", HintEn = "Aborts a map load and returns to the main menu", HintRu = "Прерывает загрузку карты и возвращает в главное меню", Icon = BtcReplayIcons.Cross, Anchor = 4, W = 2f, H = 2f, Px = 1f, Py = 1f, Ax = 0.99f, Ay = 0.985f },
+            new Elem { Id = "fps", En = "FPS counter", Ru = "Счётчик FPS", HintEn = "Frames per second and the slowest frame (turn it on in Visuals > Screen)", HintRu = "Кадры в секунду и самый долгий кадр (включается в Визуал > Экран)", Icon = BtcReplayIcons.Chart, Anchor = 4, W = 9f, H = 1.5f, Px = 1f, Py = 0f, Ax = 0.995f, Ay = 0.005f },
+            new Elem { Id = "fpsgraph", En = "Frame time graph", Ru = "График времени кадра", HintEn = "Slowest frame over time: drops and freezes on a timeline (turn it on in Visuals > Screen)", HintRu = "Самый долгий кадр по времени: просадки и фризы на таймлайне (включается в Визуал > Экран)", Icon = BtcReplayIcons.Chart, Anchor = 4, W = 16f, H = 4.3f, Px = 1f, Py = 0f, Ax = 0.995f, Ay = 0.03f },
             new Elem { Id = "ready", En = "Players Ready panel", Ru = "Панель готовности игроков", HintEn = "Advanced timer: waiting for players to press Ready", HintRu = "Продвинутый таймер: ждём, пока игроки нажмут Готов", Icon = BtcReplayIcons.Group, Anchor = 1, W = 36f, H = 7f },
             // C# game menu regions (Display/CsGameMenu, UI/GameHud): uGUI roots moved/scaled by BtcHudSlots
             new Elem { Id = "gh.left", En = "Game menu: left bar", Ru = "Игровое меню: левая панель", HintEn = "Score, blueprints, new task, structures, blocks", HintRu = "Счёт, чертежи, новая задача, строения, блоки", Icon = BtcReplayIcons.List, Anchor = 0, W = 2.6f, H = 19f },
@@ -48,6 +88,7 @@ namespace BetterThanCastle
             new Elem { Id = "gh.popup", En = "Game menu: task options", Ru = "Игровое меню: варианты задачи", HintEn = "Options of the selected task above the task list", HintRu = "Варианты выбранной задачи над лентой задач", Icon = BtcReplayIcons.Gear, Anchor = 1, W = 20f, H = 4f },
             new Elem { Id = "gh.rightContent", En = "Game menu: settings sidebar", Ru = "Игровое меню: боковое меню настроек", HintEn = "Settings and help lists", HintRu = "Списки настроек и справки", Icon = BtcReplayIcons.Gear, Anchor = 2, W = 14.5f, H = 11f },
             new Elem { Id = "gh.right", En = "Game menu: right bar", Ru = "Игровое меню: правая панель", HintEn = "Home, settings, back to work, call to arms", HintRu = "Домой, настройки, за работу, к оружию", Icon = BtcReplayIcons.Gear, Anchor = 2, W = 2.6f, H = 19f },
+            new Elem { Id = "gh.kits", En = "Game menu: arm by kit", Ru = "Игровое меню: вооружение по китам", HintEn = "Kit buttons above Call to arms: the nearest workers take that kit from your racks", HintRu = "Кнопки китов над «К оружию»: ближайшие рабочие берут этот кит со стоек", Icon = BtcReplayIcons.Gear, Anchor = 2, W = 2.6f, H = 8f },
         };
 
         internal static Elem ElemOf(string id) { for (int i = 0; i < Elems.Length; i++) if (Elems[i].Id == id) return Elems[i]; return null; }
@@ -72,7 +113,53 @@ namespace BetterThanCastle
                 if (File.Exists(FilePath)) Parse(File.ReadAllText(FilePath, Encoding.UTF8), false);
             }
             catch (Exception e) { BtcLog.Error("UiEdit", "load: " + e.Message); }
+            MigrateLegacy();
             Apply();
+        }
+
+        /// <summary>
+        /// One-time move of the old on-screen checkboxes / sliders of other tabs into editor elements (2026-11-26): BC "show ping" / "client
+        /// pause label", Replay "REC indicator", Performance "load timer" / "cancel cross", Visuals match-statistics bar (show, scale, opacity,
+        /// top/bottom + offset) and Visuals HUD panels (interface.txt). The old values are reset to neutral so nothing applies twice.
+        /// </summary>
+        private static void MigrateLegacy()
+        {
+            if (BtcMenuState.Bool("uiedit:migr1", false)) return;
+            BtcMenuState.SetBool("uiedit:migr1", true);
+            int n = 0;
+            try
+            {
+                if (BtcConfig.ShowPing != null && !BtcConfig.ShowPing.Value) { Get("ping").En = false; BtcConfig.ShowPing.Value = true; n++; }
+                if (BtcConfig.ShowPauseLabel != null && !BtcConfig.ShowPauseLabel.Value) { Get("clientpause").En = false; BtcConfig.ShowPauseLabel.Value = true; n++; }
+                if (!BtcReplay.GetShowIndicator()) { Get("rec").En = false; BtcReplay.SetShowIndicator(true); n++; }
+                if (BtcConfig.LoadTimer != null && !BtcConfig.LoadTimer.Value) { Get("loadtimer").En = false; BtcConfig.LoadTimer.Value = true; n++; }
+                if (BtcConfig.LoadCancel != null && !BtcConfig.LoadCancel.Value) { Get("loadcancel").En = false; BtcConfig.LoadCancel.Value = true; n++; }
+                if (BtcConfig.StatsBar != null)
+                {
+                    E s = Get("stats");
+                    float sc = Mathf.Clamp(BtcConfig.StatsBarScale.Value, 0.3f, 3f), op = Mathf.Clamp01(BtcConfig.StatsBarOpacity.Value), off = BtcConfig.StatsBarOffset.Value;
+                    s.En = BtcConfig.StatsBar.Value;
+                    s.Scale = sc;
+                    s.Alpha = Mathf.Clamp(op / 0.85f, 0.1f, 1f);
+                    float H = Mathf.Max(1f, Screen.height);
+                    s.Ny = BtcConfig.StatsBarBottom.Value ? (H - BtcMatchStatsUI.BarHeight1 * sc - off) / H : off / H;
+                    if (!s.En || Mathf.Abs(sc - 1f) > 0.001f || off > 0.5f || BtcConfig.StatsBarBottom.Value || op < 0.84f) n++;
+                    BtcConfig.StatsBar.Value = true; BtcConfig.StatsBarScale.Value = 1f; BtcConfig.StatsBarOffset.Value = 0f; BtcConfig.StatsBarBottom.Value = false;
+                    BtcConfig.StatsBarOpacity.Value = Mathf.Max(0.85f, op);
+                }
+                foreach (KeyValuePair<string, float[]> kv in BtcInterface.LegacyValues())
+                {
+                    E v = Get(VanillaPrefix + kv.Key);
+                    bool hidden = kv.Value[0] < 0.02f || kv.Value[1] < 0.01f;
+                    v.En = !hidden;
+                    v.Scale = hidden ? 1f : Mathf.Clamp(kv.Value[0], 0.3f, 3f);
+                    v.Alpha = hidden ? 1f : Mathf.Clamp(kv.Value[1], 0.1f, 1f);
+                    n++;
+                }
+                Save();
+                BtcLog.Info("UiEdit", "legacy screen settings moved into the editor: " + n);
+            }
+            catch (Exception e) { BtcLog.Error("UiEdit", "migrate: " + e.Message); }
         }
 
         /// <summary>Call once at boot and after the HUD slots exist (idempotent).</summary>
@@ -126,6 +213,7 @@ namespace BetterThanCastle
             EnsureLoaded();
             if (Mathf.Abs(_hud - 1f) > 0.001f || Mathf.Abs(_menu - 1f) > 0.001f || _rail != 0 || ColorDiff(_accent, DefaultAccent)) return true;
             for (int i = 0; i < Elems.Length; i++) if (!IsDefault(Elems[i].Id)) return true;
+            foreach (KeyValuePair<string, E> kv in Cfg) if (IsVanilla(kv.Key) && !IsDefault(kv.Key)) return true;
             return false;
         }
 
@@ -146,6 +234,13 @@ namespace BetterThanCastle
                     s.Enabled = e.En; s.Scale = e.Scale; s.Alpha = e.Alpha; s.Norm = new Vector2(e.Nx, e.Ny);
                 }
                 BtcHudSlots.ApplyAll();
+                // vanilla HUD panels: every stored entry, also panels not present right now
+                BtcInterface.ClearSettings();
+                if (_on)
+                    foreach (KeyValuePair<string, E> kv in Cfg)
+                        if (IsVanilla(kv.Key))
+                            BtcInterface.Set(kv.Key.Substring(VanillaPrefix.Length), kv.Value.En, kv.Value.Scale, kv.Value.Alpha, kv.Value.Nx * Screen.height, kv.Value.Ny * Screen.height);
+                BtcInterface.Recompute();
                 Color na = _on ? _accent : DefaultAccent;
                 bool accChanged = na != BtcMenu.Accent;
                 BtcMenu.Accent = na;
@@ -172,12 +267,18 @@ namespace BetterThanCastle
             sb.Append("rail=").Append(_rail).Append("\n");
             sb.Append("sub=").Append(_sub).Append("\n");
             sb.Append("accent=").Append(BtcVisualColor.Hex(_accent)).Append("\n");
-            for (int i = 0; i < Elems.Length; i++)
-            {
-                E e = Get(Elems[i].Id);
-                sb.Append("el.").Append(Elems[i].Id).Append('=').Append(e.En ? 1 : 0).Append('|').Append(F(e.Scale)).Append('|').Append(F(e.Alpha)).Append('|').Append(F(e.Nx)).Append('|').Append(F(e.Ny)).Append("\n");
-            }
+            for (int i = 0; i < Fixed.Length; i++) AppendEl(sb, Fixed[i].Id, Get(Fixed[i].Id));
+            // vanilla panels: only the changed ones (the list depends on the match), sorted for stable text
+            List<string> keys = new List<string>();
+            foreach (KeyValuePair<string, E> kv in Cfg) if (IsVanilla(kv.Key) && !IsDefault(kv.Key)) keys.Add(kv.Key);
+            keys.Sort(string.CompareOrdinal);
+            for (int i = 0; i < keys.Count; i++) AppendEl(sb, keys[i], Cfg[keys[i]]);
             return sb.ToString();
+        }
+
+        private static void AppendEl(StringBuilder sb, string id, E e)
+        {
+            sb.Append("el.").Append(id).Append('=').Append(e.En ? 1 : 0).Append('|').Append(F(e.Scale)).Append('|').Append(F(e.Alpha)).Append('|').Append(F(e.Nx)).Append('|').Append(F(e.Ny)).Append("\n");
         }
 
         private static float PF(string s, float def) { float v; return float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out v) ? v : def; }
@@ -206,7 +307,7 @@ namespace BetterThanCastle
                 else if (k.StartsWith("el.", StringComparison.Ordinal))
                 {
                     string id = k.Substring(3);
-                    if (ElemOf(id) == null) continue;
+                    if (!IsVanilla(id) && ElemOf(id) == null) continue;
                     string[] p = v.Split('|');
                     E e = DefaultOf(id);
                     if (p.Length >= 5)
@@ -328,6 +429,18 @@ namespace BetterThanCastle
                 case 0: x = u * 0.6f; y = u * 0.5f; break;
                 case 1: w = Mathf.Min(el.Id == "cards" || el.Id == "ready" ? W * 0.55f : W * 0.6f, w); x = (W - w) * 0.5f; y = el.Id == "cards" || el.Id == "ready" ? off : off + BtcHud.Fs * 2.9f; break;
                 case 2: x = W - 45f - w; y = u * 0.5f; break;
+                case 4:
+                case 5:
+                    {
+                        Rect n;
+                        bool seen = el.Anchor == 4 ? BtcHud.NaturalOf(el.Id, out n) : BtcInterface.NaturalRect(el.Id.Substring(VanillaPrefix.Length), out n);
+                        if (!seen)
+                        {
+                            float nw = el.W * BtcHud.Fs, nh = el.H * BtcHud.Fs;
+                            n = new Rect(el.Ax * W - nw * el.Px, el.Ay * H - nh * el.Py, nw, nh);
+                        }
+                        return BtcHud.Scaled(n, e.Scale, el.Px, el.Py, withOffset ? new Vector2(e.Nx * H, e.Ny * H) : Vector2.zero);
+                    }
                 default:
                     {
                         // left column: every plate stacks under the previous ones (their default scale), under the BTC button

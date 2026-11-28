@@ -89,277 +89,8 @@ public partial class ResourcePackManager : MonoBehaviour
 		y += rowH;
 	}
 
-	private void DrawBcRows(Event e, float w, float rowH, int fs, Color old)
-	{
-		float num = 0f;
-		bool bcEnabled = BtcBc.BcEnabled;
-		bool bcCanChangeEnabled = BtcBc.BcCanChangeEnabled;
-		bool flag = this.CheckRow(e, ref num, w, rowH, fs, old, "BetterConnection (master switch)", bcEnabled) && bcCanChangeEnabled;
-		bool flag2 = flag;
-		bool flag3 = flag2;
-		bool flag4 = flag3;
-		bool flag5 = flag4;
-		bool flag6 = flag5;
-		bool flag7 = flag6;
-		bool flag8 = flag7;
-		bool flag9 = flag8;
-		bool flag10 = flag9;
-		if (flag10)
-		{
-			BtcBc.BcSetEnabled(!bcEnabled);
-			bcEnabled = BtcBc.BcEnabled;
-		}
-		bool flag11 = !bcCanChangeEnabled;
-		bool flag12 = flag11;
-		bool flag13 = flag12;
-		bool flag14 = flag13;
-		bool flag15 = flag14;
-		bool flag16 = flag15;
-		bool flag17 = flag16;
-		bool flag18 = flag17;
-		bool flag19 = flag18;
-		bool flag20 = flag19;
-		if (flag20)
-		{
-			this.NoteRow(ref num, w, fs, "Locked while hosting or connected. Leave the lobby/game to switch it.");
-		}
-		this.NoteRow(ref num, w, fs, bcEnabled ? "On: improved connection (heartbeat, auto-reconnect instead of kicking to the menu, pings, voluntary pause). Everyone in the game needs BetterConnection too." : "Off: fully vanilla networking. You can play with vanilla players, as host or as client. All BetterConnection options below are hidden.");
-		bool flag21 = !bcEnabled;
-		bool flag22 = flag21;
-		bool flag23 = flag22;
-		bool flag24 = flag23;
-		bool flag25 = flag24;
-		bool flag26 = flag25;
-		bool flag27 = flag26;
-		bool flag28 = flag27;
-		bool flag29 = flag28;
-		bool flag30 = flag29;
-		if (flag30)
-		{
-			this.bcContentH = num + rowH * 0.3f;
-		}
-		else
-		{
-			this.HeaderRow(e, ref num, w, rowH, fs, old, "On screen and diagnostics");
-			bool bcShowPing = BtcBc.BcShowPing;
-			bool flag31 = this.CheckRow(e, ref num, w, rowH, fs, old, "Hide ping display", !bcShowPing);
-			bool flag32 = flag31;
-			bool flag33 = flag32;
-			bool flag34 = flag33;
-			bool flag35 = flag34;
-			bool flag36 = flag35;
-			bool flag37 = flag36;
-			bool flag38 = flag37;
-			bool flag39 = flag38;
-			bool flag40 = flag39;
-			if (flag40)
-			{
-				BtcBc.BcSetShowPing(!bcShowPing);
-			}
-			bool bcShowPauseLabel = BtcBc.BcShowPauseLabel;
-			bool flag41 = this.CheckRow(e, ref num, w, rowH, fs, old, "Hide \"Client pause: allowed\" label", !bcShowPauseLabel);
-			bool flag42 = flag41;
-			bool flag43 = flag42;
-			bool flag44 = flag43;
-			bool flag45 = flag44;
-			bool flag46 = flag45;
-			bool flag47 = flag46;
-			bool flag48 = flag47;
-			bool flag49 = flag48;
-			bool flag50 = flag49;
-			if (flag50)
-			{
-				BtcBc.BcSetShowPauseLabel(!bcShowPauseLabel);
-			}
-			bool bcDiagLog = BtcBc.BcDiagLog;
-			bool flag51 = this.CheckRow(e, ref num, w, rowH, fs, old, "Diagnostic log (unet_netdiag_*.log)", bcDiagLog);
-			bool flag52 = flag51;
-			bool flag53 = flag52;
-			bool flag54 = flag53;
-			bool flag55 = flag54;
-			bool flag56 = flag55;
-			bool flag57 = flag56;
-			bool flag58 = flag57;
-			bool flag59 = flag58;
-			bool flag60 = flag59;
-			if (flag60)
-			{
-				BtcBc.BcSetDiagLog(!bcDiagLog);
-			}
-			this.HeaderRow(e, ref num, w, rowH, fs, old, "Session");
-			bool bcInSession = BtcBc.BcInSession;
-			this.ValueRow(ref num, w, rowH, fs, "Status", BtcBc.BcStatusText());
-			bool flag68 = bcInSession;
-			bool flag69 = flag68;
-			bool flag70 = flag69;
-			bool flag71 = flag70;
-			bool flag72 = flag71;
-			bool flag73 = flag72;
-			bool flag74 = flag73;
-			bool flag75 = flag74;
-			bool flag76 = flag75;
-			bool flag77 = flag76;
-			if (flag77)
-			{
-				bool flag78 = this.PerfButtonRow(e, ref num, w, rowH, old, BtcBc.BcVoluntaryPauseActive ? "Resume the game (voluntary pause is on)" : "Pause the game (voluntary pause)");
-				bool flag79 = flag78;
-				bool flag80 = flag79;
-				bool flag81 = flag80;
-				bool flag82 = flag81;
-				bool flag83 = flag82;
-				bool flag84 = flag83;
-				bool flag85 = flag84;
-				bool flag86 = flag85;
-				bool flag87 = flag86;
-				if (flag87)
-				{
-					BtcBc.BcTogglePause();
-				}
-				bool bcClientsCanPause = BtcBc.BcClientsCanPause;
-				bool bcIsHost = BtcBc.BcIsHost;
-				bool flag88 = bcIsHost;
-				bool flag89 = flag88;
-				bool flag90 = flag89;
-				bool flag91 = flag90;
-				bool flag92 = flag91;
-				bool flag93 = flag92;
-				bool flag94 = flag93;
-				bool flag95 = flag94;
-				bool flag96 = flag95;
-				if (flag96)
-				{
-					bool flag97 = this.CheckRow(e, ref num, w, rowH, fs, old, "Clients are allowed to pause the game", bcClientsCanPause);
-					bool flag98 = flag97;
-					bool flag99 = flag98;
-					bool flag100 = flag99;
-					bool flag101 = flag100;
-					bool flag102 = flag101;
-					bool flag103 = flag102;
-					bool flag104 = flag103;
-					bool flag105 = flag104;
-					bool flag106 = flag105;
-					if (flag106)
-					{
-						BtcBc.BcToggleClientPausePermission();
-					}
-				}
-				else
-				{
-					this.ValueRow(ref num, w, rowH, fs, "Pause allowed by host", bcClientsCanPause ? "Yes" : "No");
-				}
-				this.HeaderRow(e, ref num, w, rowH, fs, old, "Pings");
-				List<string> list = BtcBc.BcGetPingLines();
-				bool flag107 = list.Count == 0;
-				bool flag108 = flag107;
-				bool flag109 = flag108;
-				bool flag110 = flag109;
-				bool flag111 = flag110;
-				bool flag112 = flag111;
-				bool flag113 = flag112;
-				bool flag114 = flag113;
-				bool flag115 = flag114;
-				bool flag116 = flag115;
-				if (flag116)
-				{
-					GUI.Label(new Rect((float)fs, num, w - (float)fs * 2f, rowH), BtcLang.Tr("No data yet"), this.menuNoteStyle);
-					num += rowH;
-				}
-				BtcKick.PingRows(e, ref num, w, rowH, fs, old, this.menuLabelStyle, list);
-			}
-			else
-			{
-				this.NoteRow(ref num, w, fs, "Pause, pings and client permissions appear here during a network game.");
-			}
-			this.bcContentH = num + rowH * 0.3f;
-		}
-	}
 
-	private void DrawDbgRows(Event e, float w, float rowH, int fs, Color old)
-	{
-		float num = 0f;
-		this.HeaderRow(e, ref num, w, rowH, fs, old, "Dumps (written to BetterThanCastle/debug/dump)");
-		bool flag = this.PerfButtonRow(e, ref num, w, rowH, old, "Dump textures");
-		bool flag2 = flag;
-		bool flag3 = flag2;
-		bool flag4 = flag3;
-		bool flag5 = flag4;
-		bool flag6 = flag5;
-		bool flag7 = flag6;
-		bool flag8 = flag7;
-		if (flag8)
-		{
-			this.dbgDumpTexPending = true;
-		}
-		this.NoteRow(ref num, w, fs, "List of the game's textures plus their original PNGs - the base for making a resource pack.");
-		bool flag9 = this.PerfButtonRow(e, ref num, w, rowH, old, "Dump buildings");
-		bool flag10 = flag9;
-		bool flag11 = flag10;
-		bool flag12 = flag11;
-		bool flag13 = flag12;
-		bool flag14 = flag13;
-		bool flag15 = flag14;
-		bool flag16 = flag15;
-		if (flag16)
-		{
-			this.dbgDumpBldPending = true;
-		}
-		this.NoteRow(ref num, w, fs, "HP components of non-bricktron objects (buildings): BetterThanCastle/debug/dump/buildings.txt.");
-		this.dbgContentH = num + rowH * 0.3f;
-	}
 
-	private void DrawLangButton(Rect panel, float rowH, float pad)
-	{
-		float num = rowH * 2.6f;
-		Rect position = new Rect(panel.xMax - num - pad, panel.y + pad * 0.5f, num, rowH * 0.85f);
-		bool russian = BtcLang.Russian;
-		bool flag = GUI.Button(position, russian ? "RU | en" : "EN | ru", this.menuTabStyle);
-		bool flag2 = flag;
-		bool flag3 = flag2;
-		bool flag4 = flag3;
-		bool flag5 = flag4;
-		bool flag6 = flag5;
-		bool flag7 = flag6;
-		if (flag7)
-		{
-			BtcLang.Toggle();
-		}
-	}
-
-	private void DrawPackTab(Event e, float w, float rowH, int fs, Color old)
-	{
-		this.DrawPackRows(e, w, rowH, old);
-		float num = (float)(this.menuPacks.Count + 1) * rowH;
-		Rect rect = new Rect(0f, num, w, rowH);
-		this.DrawRowBackground(e, rect, this.hatsOpen, old);
-		bool flag = GUI.Button(rect, (this.hatsOpen ? "[-] " : "[+] ") + BtcLang.Tr("Halloween Hats"), this.menuHatItemStyle);
-		bool flag2 = flag;
-		bool flag3 = flag2;
-		bool flag4 = flag3;
-		bool flag5 = flag4;
-		bool flag6 = flag5;
-		bool flag7 = flag6;
-		if (flag7)
-		{
-			this.hatsOpen = !this.hatsOpen;
-		}
-		bool flag8 = this.hatsOpen;
-		bool flag9 = flag8;
-		bool flag10 = flag9;
-		bool flag11 = flag10;
-		bool flag12 = flag11;
-		bool flag13 = flag12;
-		bool flag14 = flag13;
-		if (flag14)
-		{
-			GUI.BeginGroup(new Rect(0f, num + rowH, w, (float)(ResourcePackManager.HatOrder.Count + 1) * rowH));
-			this.DrawHatRows(e, w, rowH, fs, old);
-			GUI.EndGroup();
-		}
-		float num2 = (float)(this.menuPacks.Count + 2 + (this.hatsOpen ? (ResourcePackManager.HatOrder.Count + 1) : 0)) * rowH;
-		GUI.BeginGroup(new Rect(0f, num2, w, this.dbgContentH + rowH));
-		this.DrawDbgRows(e, w, rowH, fs, old);
-		GUI.EndGroup();
-	}
 
 	private static uint ComputeStringHash(string s)
 	{
@@ -382,98 +113,9 @@ public partial class ResourcePackManager : MonoBehaviour
 		return num;
 	}
 
-	private void DrawUnitPlatesSection(Event e, ref float y, float w, float rowH, int fs, Color old)
-	{
-		float yy = y;
-		string[] tabs = BtcInterface.TabNames;
-		int cols = Mathf.Clamp((int)(w / (rowH * 3.6f)), 2, tabs.Length);
-		float bw = w / (float)cols;
-		for (int i = 0; i < tabs.Length; i++)
-		{
-			Rect r = new Rect((float)(i % cols) * bw, yy + (float)(i / cols) * rowH, bw - 2f, rowH - 2f);
-			if (GUI.Button(r, BtcLang.Tr(tabs[i]), (i == BtcInterface.Tab) ? this.menuTabActiveStyle : this.menuTabStyle)) BtcInterface.Tab = i;
-		}
-		yy += (float)((tabs.Length + cols - 1) / cols) * rowH;
-		if (BtcInterface.Tab == 0)
-		{
-			BtcUnitPlates.DrawSettings(delegate (string label, int id, float v, float mn, float mx, float st, string fmt, string suf) { return this.SliderRow(e, ref yy, w, rowH, fs, old, label, id, v, mn, mx, st, fmt, string.Empty, suf); });
-		}
-		else
-		{
-			bool any = BtcInterface.DrawTab(delegate (string label, int id, float v, float mn, float mx, float st, string fmt, string suf) { return this.SliderRow(e, ref yy, w, rowH, fs, old, label, id, v, mn, mx, st, fmt, string.Empty, suf); }, BtcInterface.Tab);
-			if (!any)
-			{
-				GUI.Label(new Rect((float)fs, yy, w - (float)fs, rowH), BtcLang.Russian ? "Нет панелей (панели появляются в матче)" : "No panels here (HUD panels appear in a match)", this.menuLabelStyle);
-				yy += rowH;
-			}
-		}
-		y = yy;
-	}
 
-	// Overlays tab header (above the scroll list, next to Discord Rich Presence): window mode row + skip intro row.
-	private void DrawDisplayHeader(Event e, float y, Rect area, float rowH, int pad, float box, Color old)
-	{
-		Rect lr = new Rect(area.x, y, area.width, rowH);
-		this.DrawRowBackground(e, lr, false, old);
-		float lw = area.width * 0.34f;
-		GUI.Label(new Rect(area.x + (float)pad, y, lw - (float)pad, rowH), BtcLang.Russian ? "Режим окна" : "Window mode", this.menuLabelStyle);
-		string[] names = BtcLang.Russian ? ResourcePackManager.DisplayNamesRu : ResourcePackManager.DisplayNamesEn;
-		float bw = (area.width - lw) / 3f;
-		int cur = BtcDisplay.Mode;
-		for (int i = 0; i < 3; i++)
-		{
-			if (GUI.Button(new Rect(area.x + lw + bw * (float)i, y, bw, rowH), names[i], cur == i + 1 ? this.menuActiveStyle : this.menuItemStyle))
-			{
-				BtcDisplay.Apply(i + 1, 1);
-			}
-		}
-		Rect sr = new Rect(area.x, y + rowH, area.width, rowH);
-		bool skip = BtcConfig.SkipIntro != null && BtcConfig.SkipIntro.Value;
-		this.DrawRowBackground(e, sr, skip, old);
-		if (e.type == EventType.Repaint)
-		{
-			this.DrawCheckbox(new Rect(sr.x + (float)pad, sr.y + (rowH - box) * 0.5f, box, box), skip);
-		}
-		if (GUI.Button(sr, BtcLang.Russian ? "Пропускать интро (заставки при запуске)" : "Skip intro (logo screens on startup)", this.menuHatItemStyle) && BtcConfig.SkipIntro != null)
-		{
-			BtcConfig.SkipIntro.Value = !skip;
-		}
-	}
 
-	private static readonly string[] DisplayNamesEn = new string[] { "Fullscreen", "Windowed", "Borderless" };
-	private static readonly string[] DisplayNamesRu = new string[] { "Полный экран", "Окно", "Без рамки" };
 
-	private void DrawMatchStatsSection(Event e, ref float y, float w, float rowH, int fs, Color old)
-	{
-		float yy = y;
-		BtcMatchStatsUI.DrawSettings((string label, bool on) => this.CheckRow(e, ref yy, w, rowH, fs, old, label, on), (string label, string val) => this.PerfButtonRow(e, ref yy, w, rowH, old, label + ": " + val), delegate (string label, int id, float v, float mn, float mx, float st, string fmt, string suf) { return this.SliderRow(e, ref yy, w, rowH, fs, old, label, id, v, mn, mx, st, fmt, string.Empty, suf); });
-		y = yy;
-	}
-
-	private void DrawChatSection(Event e, ref float y, float w, float rowH, int fs, Color old)
-	{
-		float yy = y;
-		BtcGameChatFade.DrawSettings((string label, bool on) => this.CheckRow(e, ref yy, w, rowH, fs, old, label, on), delegate (string label, int id, float v, float mn, float mx, float st, string fmt, string suf) { return this.SliderRow(e, ref yy, w, rowH, fs, old, label, id, v, mn, mx, st, fmt, string.Empty, suf); });
-		y = yy;
-	}
-
-	private void DrawOverlaySection(Event e, ref float y, float w, float rowH, int fs, Color old, int idx)
-	{
-		float yy = y;
-		bool flag = idx == 4;
-		if (flag)
-		{
-			BtcBlockMarks.DrawSettings((string label, bool on) => this.CheckRow(e, ref yy, w, rowH, fs, old, label, on), (string label, string val) => this.PerfButtonRow(e, ref yy, w, rowH, old, label + ": " + val), (string label, int id, float v, float mn, float mx, float st, string fmt, string suf) => this.SliderRow(e, ref yy, w, rowH, fs, old, label, id, v, mn, mx, st, fmt, string.Empty, suf), delegate(string label, int id)
-			{
-				this.ColorRow(e, ref yy, w, rowH, fs, old, label, id);
-			});
-		}
-		else
-		{
-			BtcOverlays.DrawOne(idx, (string label, bool on) => this.CheckRow(e, ref yy, w, rowH, fs, old, label, on), (string label, string val) => this.PerfButtonRow(e, ref yy, w, rowH, old, label + ": " + val));
-		}
-		y = yy;
-	}
 
 	private const string FolderName = "ResourcePacks";
 
@@ -519,8 +161,30 @@ public partial class ResourcePackManager : MonoBehaviour
 	/// <summary>F7: opens the UI editor everywhere, closes the menu when the editor is already open.</summary>
 	internal static void ToggleUiEditor()
 	{
-		if (ResourcePackManager.MenuIsOpen && BtcMenu.CurrentId == 12) ResourcePackManager.CloseMenu();
-		else ResourcePackManager.OpenUiEditor(BtcReplay.Mode == BtcReplay.State.Playing);
+		if (ResourcePackManager.MenuIsOpen && BtcMenu.CurrentId == 12) { BtcUiEditorTab.Live = false; ResourcePackManager.CloseMenu(); return; }
+		bool replay = BtcReplay.Mode == BtcReplay.State.Playing;
+		bool inMatch = false;
+		try { inMatch = Architecte.commence; } catch (Exception) { }
+		ResourcePackManager.OpenUiEditor(replay);
+		// in a match the editor works over the real screen (live mode); main menu and replays keep the editor tab
+		if (inMatch && !replay) BtcUiEditorTab.StartLive();
+	}
+
+	/// <summary>Layout page button "Edit on the real screen": closes the window and starts the live overlay.</summary>
+	internal static void StartUiEditorLive()
+	{
+		ResourcePackManager.OpenUiEditor(false);
+		BtcUiEditorTab.StartLive();
+	}
+
+	/// <summary>Opens the main menu on the Replay tab library (a replay file was pasted or dropped).</summary>
+	internal static void OpenReplays()
+	{
+		ResourcePackManager m = ResourcePackManager.instance;
+		if (m == null) return;
+		if (!m.menuOpen) m.ToggleMenu();
+		BtcReplayLibrary.SettingsOpen = false;
+		m.SelectTab(7);
 	}
 
 	/// <summary>Opens the main mod menu (launcher button).</summary>

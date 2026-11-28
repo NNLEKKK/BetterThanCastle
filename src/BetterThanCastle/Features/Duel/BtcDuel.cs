@@ -19,6 +19,8 @@ namespace BetterThanCastle
         /// <summary>True from the moment the player pressed Start until the game is left. Every duel hook starts with this check.</summary>
         internal static bool Active;
         internal static BtcDuelMatch Match;
+        /// <summary>Matches won / lost by the player since the game started (status line only).</summary>
+        internal static int Wins, Losses;
         /// <summary>Snapshot of the SkipAnims setting for the running match (read by the patches every call, no allocation).</summary>
         internal static bool SkipAnims = true;
         /// <summary>DEV/self-play: when >= 0 a second bot (this level) drives the human side.</summary>
@@ -41,19 +43,75 @@ namespace BetterThanCastle
             return ById.TryGetValue(go.GetInstanceID(), out u);
         }
 
+        // ---------------- PvP (online duel, BtcDuelPvp / BtcDuelNet) ----------------
+        /// <summary>Player vs player: no bot, side 1 = the opponent's faction. Set on the host, the opponent and spectators.</summary>
+        internal static bool Pvp;
+        /// <summary>This game only mirrors the host (opponent or spectator): no rules, no spawning, HUD from the state messages.</summary>
+        internal static bool IsClient;
+        /// <summary>0 = host side (west), 1 = opponent side (east), -1 = spectator / not a player.</summary>
+        internal static int LocalSide;
+        internal static string HostId = "", GuestId = "", HostNick = "", GuestNick = "";
+        /// <summary>Settings of the running PvP duel as the host sent them ("5 Halberdier vs 5 Halberdier · arena x1 ...").</summary>
+        internal static string SetupLine = "";
+        /// <summary>Next round wanted by side 0 / 1 (PvP: a new round starts when both pressed it).</summary>
+        internal static readonly bool[] WantNext = new bool[2];
+        private static string _expHost, _expNick;
+        private static float _expAt = -1f;
+
         // ---------------- launching ----------------
-        /// <summary>Menu button: pick sandbox on the default map and start a local game; the driver then builds the arena.</summary>
+        /// <summary>Menu button: sandbox on the duel's empty map (fallback: the default map) and a local game; the driver then builds the arena.</summary>
         internal static bool Launch()
         {
-            if (Active || BtcAim.Active) return false;
+            if (Active || BtcAim.Active || BtcDuelPvp.Busy) return false;
             BtcDuelConfig.Save();
-            if (!BtcDuelLaunch.PickSandbox()) return false;
+            bool onVoid = BtcDuelConfig.EmptyMap && BtcDuelVoid.Ensure();
+            if (!(onVoid ? BtcDuelLaunch.PickSandbox(BtcDuelVoid.Codename) : BtcDuelLaunch.PickSandbox())) return false;
+            Pvp = false; IsClient = false; LocalSide = 0;
             Active = true;
+            BtcDuelMap.Reset();
             EnsureDriver();
             Match.BeginLoad();
+            Match.VoidMap = onVoid;
             GameParam.StartGame(null);
             return true;
         }
+
+        /// <summary>Host of an online duel: the opponent is ready in the lobby, the start is pressed right after this.</summary>
+        internal static void BeginPvpHost(string guestId, string guestNick)
+        {
+            BtcDuelConfig.Save();
+            Pvp = true; IsClient = false; LocalSide = 0;
+            HostId = BtcPresence.MyId; HostNick = BtcPresence.MyNick; GuestId = guestId ?? ""; GuestNick = guestNick ?? "";
+            SetupLine = BtcDuelPvp.SettingsLine();
+            WantNext[0] = WantNext[1] = false;
+            Active = true;
+            BtcDuelMap.Reset();
+            EnsureDriver();
+            Match.BeginLoad();
+            Match.VoidMap = true;
+        }
+
+        /// <summary>Opponent: the duel host is loading the match; the first state message switches this game into client mode.</summary>
+        internal static void ExpectPvpGuest(string hostId, string hostNick) { _expHost = hostId; _expNick = hostNick; _expAt = Time.unscaledTime; }
+        internal static void CancelExpect() { _expAt = -1f; }
+
+        /// <summary>First duel state message on a client (opponent or spectator).</summary>
+        internal static void EnterClient(string hostId, string guestId, string hostNick, string guestNick)
+        {
+            Pvp = true; IsClient = true;
+            HostId = hostId; GuestId = guestId; HostNick = hostNick; GuestNick = guestNick;
+            string me = BtcPresence.MyId;
+            LocalSide = me == guestId ? 1 : (me == hostId ? 0 : -1);
+            _expAt = -1f;
+            Active = true;
+            BtcDuelMap.Reset();
+            EnsureDriver();
+            Match.BeginClient();
+            BtcLog.Info("Duel", "client mode side=" + LocalSide + " host=" + hostNick + " guest=" + guestNick + (_expHost != null && _expHost != hostId ? " (expected another host)" : ""));
+        }
+
+        /// <summary>Back to the bot duel defaults when a session ends.</summary>
+        internal static void ClearPvp() { Pvp = false; IsClient = false; LocalSide = 0; WantNext[0] = WantNext[1] = false; }
 
         internal static void EnsureDriver()
         {
@@ -127,8 +185,14 @@ namespace BetterThanCastle
         internal static void Despawn(GameObject go)
         {
             if (go == null) return;
-            // the vanilla NetworkAsymmetricDestroy only releases objects owned by the local user (bot units are not): release directly like the editor cleanup does
-            try { ObjectPoolSingleton.Release(go); }
+            // the vanilla NetworkAsymmetricDestroy only releases objects owned by the local user (bot units are not): release directly like the editor cleanup does.
+            // Online duel: unspawn first so the clients drop the object too (same as the shield arrow stop)
+            try
+            {
+                NetworkIdentity ni = go.GetComponent<NetworkIdentity>();
+                if (Pvp && NetworkServer.active && ni != null && !ni.netId.IsEmpty()) NetworkServer.UnSpawn(go);
+                ObjectPoolSingleton.Release(go);
+            }
             catch (Exception e) { BtcLog.Warn("Duel", "despawn: " + e.Message); try { UnityEngine.Object.Destroy(go); } catch (Exception) { } }
         }
 

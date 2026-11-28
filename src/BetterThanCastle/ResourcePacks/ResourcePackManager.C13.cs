@@ -710,7 +710,7 @@ public partial class ResourcePackManager : MonoBehaviour
 		ResourcePackManager.HpConfig hpConfig = this.hpCfg;
 		try
 		{
-			this.ApplyMenuInputLock((this.menuOpen && hpConfig != null && hpConfig.menuBlockInput) || BtcMatchStatsUI.PanelOpen || BtcTimer.MouseOver || BtcMultiCam.MouseOverUi);
+			this.ApplyMenuInputLock((this.menuOpen && hpConfig != null && hpConfig.menuBlockInput) || BtcMatchStatsUI.PanelOpen || BtcTimer.MouseOver || BtcMultiCam.MouseOverUi || BtcStationRadius.MouseBusy);
 			this.ApplyMenuPause(this.menuOpen && hpConfig != null && hpConfig.menuPause);
 		}
 		catch (Exception ex)
@@ -756,7 +756,8 @@ public partial class ResourcePackManager : MonoBehaviour
 					bool flag = ControlContext.ContextIsActive("Chat");
 					if (!flag)
 					{
-						instance.ChangeInputToMenu();
+						// vanilla throws in the main menu (UIGameSelector track not built yet): the uGUI block below must still happen
+						try { instance.ChangeInputToMenu(); } catch (Exception) { }
 					}
 					this.menuInputLocked = !flag;
 					this.SetEventSystemEnabled(false);
@@ -774,7 +775,7 @@ public partial class ResourcePackManager : MonoBehaviour
 				this.menuInputCheckAt = unscaledTime + 0.25f;
 				if (!ControlContext.ContextIsActive("Chat") && instance != null)
 				{
-					instance.ChangeInputToMenu();
+					try { instance.ChangeInputToMenu(); } catch (Exception) { }
 				}
 				this.SetEventSystemEnabled(false);
 			}
@@ -785,7 +786,7 @@ public partial class ResourcePackManager : MonoBehaviour
 			{
 				if (instance != null)
 				{
-					instance.ChangeInputToGame();
+					try { instance.ChangeInputToGame(); } catch (Exception) { }   // same vanilla throw as ChangeInputToMenu in the main menu
 				}
 				else
 				{

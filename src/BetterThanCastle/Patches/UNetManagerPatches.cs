@@ -162,12 +162,39 @@ namespace BetterThanCastle.Patches
     [HarmonyPatch(typeof(UNetManager), "Disconnect")]
     internal static class UNetManagerDisconnectPatch
     {
-        private static bool Prefix(UNetManager __instance)
+        private static bool Prefix(UNetManager __instance, out bool __state)
         {
+            __state = false;
             if (BtcReplayAuto.DeferDisconnect(__instance)) return false;
+            __state = true;
             try { BtcNetManager.OnDisconnect(__instance); }
             catch (Exception e) { BtcLog.Error("Hook", "UNetManager.Disconnect: " + e); }
             return true;
+        }
+
+        // A NetworkClient left in UNET's client list (not NetworkManager.client, not LocalNetworkClient) keeps NetworkClient.active
+        // true after vanilla Disconnect: the main menu's LoadUserSettingOnStart.Start calls Disconnect -> StopClient -> offline scene
+        // = the main menu again -> endless menu reload every ~1.5 s (laggy, flickering menu, Play bounces back). Local state only.
+        private static void Postfix(UNetManager __instance, bool __state)
+        {
+            if (!__state) return;
+            try
+            {
+                if (!NetworkClient.active || NetworkServer.active) return;
+                List<NetworkClient> all = NetworkClient.allClients;
+                System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                for (int i = 0; all != null && i < all.Count; i++)
+                {
+                    NetworkClient c = all[i];
+                    if (c == null) { sb.Append(" [null]"); continue; }
+                    NetworkConnection conn = c.connection;
+                    sb.Append(" [").Append(c.GetType().Name).Append(" conn=").Append(conn != null ? conn.GetType().Name + "#" + conn.connectionId : "none")
+                      .Append(" connected=").Append(c.isConnected).Append("]");
+                }
+                BtcLog.Warn("Net", "client still active after Disconnect, shutting down " + (all != null ? all.Count : 0) + " leftover client(s):" + sb);
+                NetworkClient.ShutdownAll();
+            }
+            catch (Exception e) { BtcLog.Error("Hook", "UNetManager.Disconnect postfix: " + e); }
         }
     }
 

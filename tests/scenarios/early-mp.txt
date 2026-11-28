@@ -1,0 +1,9 @@
+# Early patch classes: host lobby + client join + match start (BtcDevProbe.SnapshotEarly at load begin).
+wait 30
+host default conquest
+waitclients 1 200
+wait 3
+startmatch 120
+waitgame 240
+wait 3
+quit

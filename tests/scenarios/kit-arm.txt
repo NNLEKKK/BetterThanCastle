@@ -1,0 +1,23 @@
+# Arm by kit (BtcKitArm), single player: 4 racks (2 archer, 2 knight kits), 10 extra workers; press archer, then knight.
+newgame
+waitgame 240
+wait 5
+spawn bricktron 10
+wait 3
+spawn rack 4
+wait 5
+wait 2
+kitfill Archer 2
+kitfill Knight 2
+wait 2
+kitdump before
+kitarm 2
+wait 1
+kitarm 0
+wait 1
+kitarm 2
+wait 2
+kitdump mid
+wait 23
+kitdump after
+quit

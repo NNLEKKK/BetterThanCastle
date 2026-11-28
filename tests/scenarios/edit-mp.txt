@@ -1,0 +1,14 @@
+# shared editor panel in MP: host turns gen.editor on, client spawns for both factions + explosion + kill via msg 137; check agent.log "[Editor]" on both sides
+host default conquest
+waitclients 1 300
+wait 3
+gh rule gen.editor 1
+wait 2
+startmatch 180
+waitgame 300
+wait 10
+gh devcount
+gh devdo __btcSpawn(fy_Bricktron, {fy_HalberdierWeapon, fy_HalberdierHelmet})
+wait 40
+gh devcount
+quit

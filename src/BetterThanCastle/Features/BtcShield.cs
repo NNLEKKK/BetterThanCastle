@@ -98,7 +98,7 @@ namespace BetterThanCastle
         private static bool _dirty;
         private static int _hitsSent;
 
-        private static int iOn = -1, iHome, iCapt, iRad, iHomeR = -1, iDps, iPeace, iShards, iShardN, iTeam, iMage, iMageR, iMageD, iMageT, iAi, iKnock = -1, iCube = -1;
+        private static int iOn = -1, iHome, iCapt, iRad, iHomeR = -1, iDps, iPeace, iShards, iShardN, iTeam, iMage, iMageR, iMageD, iMageT, iAi, iKnock = -1, iCube = -1, iAvoid = -1;
 
         // ------------------------------------------------------------------ rules
         internal static void AddRows()
@@ -122,7 +122,10 @@ namespace BetterThanCastle
                 "Enemy units that were inside when the barrier went up take this much damage per second until they walk out.", "Вражеские юниты, оказавшиеся внутри при включении барьера, получают столько урона в секунду, пока не выйдут.");
             BtcGameplay.Add("shield.knock", G, "Knockback on touch (0 = just stop)", "Отбрасывание при касании (0 = просто стоп)", 4f, 0f, 30f, 1f, false,
                 "An enemy that walks or jumps into a barrier is knocked out of it by a weak smash (no damage), stronger the deeper it got. 0 = it is only stopped at the edge.", "Враг, который заходит или запрыгивает в барьер, вылетает из него от слабого смэша (без урона), тем сильнее, чем глубже зашёл. 0 = его просто останавливает у края.");
-            BtcGameplay.Add("shield.peace", G, "Up during peace time", "Активны в мирное время", 1f, 0f, 1f, 1f, true,
+            BtcGameplay.Add("shield.avoid", G, "Units walk around barriers", "Юниты обходят барьеры", 1f, 0f, 1f, 1f, true,
+                "Units that cannot enter a barrier treat it as a solid wall: their routes go around it instead of bumping into it. A target inside it is unreachable while it is up.",
+                "Юниты, которым нельзя внутрь барьера, считают его глухой стеной: их маршруты идут в обход, а не упираются в него. Цель внутри недостижима, пока барьер активен.");
+            BtcGameplay.Add("shield.peace", G,"Up during peace time", "Активны в мирное время", 1f, 0f, 1f, 1f, true,
                 "Every barrier is up while the advanced timer shows peace (and while players get ready). Without a drop rule below, barriers fall when the peace ends.", "Все барьеры активны, пока продвинутый таймер показывает мирное время (и пока игроки жмут Готов). Без правил снятия ниже барьеры падают, когда мир кончается.");
             BtcGameplay.Add("shield.shards", G, "Drop by captured crystals", "Снятие по захваченным осколкам", 0f, 0f, 1f, 1f, true,
                 "Enemy barriers fall for a player who holds the set number of captured crystals (the home crystal does not count). Lose them and the barriers are back.", "Вражеские барьеры падают для игрока, который держит заданное число захваченных кристаллов (домашний не считается). Потерял их - барьеры снова работают.");
@@ -145,7 +148,7 @@ namespace BetterThanCastle
             iRad = BtcGameplay.Idx("shield.radius"); iDps = BtcGameplay.Idx("shield.dps"); iPeace = BtcGameplay.Idx("shield.peace");
             iShards = BtcGameplay.Idx("shield.shards"); iShardN = BtcGameplay.Idx("shield.shardN"); iTeam = BtcGameplay.Idx("shield.team");
             iMage = BtcGameplay.Idx("shield.mage"); iMageR = BtcGameplay.Idx("shield.mageR"); iMageD = BtcGameplay.Idx("shield.mageD"); iMageT = BtcGameplay.Idx("shield.mageT"); iAi = BtcGameplay.Idx("shield.ai");
-            iKnock = BtcGameplay.Idx("shield.knock"); iCube = BtcGameplay.Idx("shield.cube"); iHomeR = BtcGameplay.Idx("shield.homeR");
+            iKnock = BtcGameplay.Idx("shield.knock"); iCube = BtcGameplay.Idx("shield.cube"); iHomeR = BtcGameplay.Idx("shield.homeR"); iAvoid = BtcGameplay.Idx("shield.avoid");
         }
 
         private static float Val(int i, float def)
@@ -216,7 +219,9 @@ namespace BetterThanCastle
                 BtcShieldFx.Tick(true);
                 long t2 = Sw.ElapsedTicks;
                 _tLogic += t1 - t0; _tFx += t2 - t1; _frames++;
+#if DEV
                 if (Time.unscaledTime >= _nextPerf) { _nextPerf = Time.unscaledTime + 10f; PerfLog(); }
+#endif
             }
             catch (Exception e) { BtcLog.Error("Shield", "tick: " + e); }
         }
@@ -227,14 +232,16 @@ namespace BetterThanCastle
         private static int _frames, _nVeto;
         private static float _nextPerf;
 
+#if DEV
         private static void PerfLog()
         {
             if (_frames == 0) return;
             double ms = 1000.0 / System.Diagnostics.Stopwatch.Frequency;
             BtcLog.Info("Shield", "cost frames=" + _frames + " logic=" + (_tLogic * ms / _frames).ToString("F3", Inv) + "ms/f fx=" + (_tFx * ms / _frames).ToString("F3", Inv)
-                + "ms/f worstStep=" + (_maxStep * ms).ToString("F2", Inv) + "ms hooks=" + _nVeto + " hooksTotal=" + (_tVeto * ms).ToString("F2", Inv) + "ms bars=" + Bars.Count + " units=" + Units.Count);
+                + "ms/f worstStep=" + (_maxStep * ms).ToString("F2", Inv) + "ms hooks=" + _nVeto + " hooksTotal=" + (_tVeto * ms).ToString("F2", Inv) + "ms bars=" + Bars.Count + " units=" + Units.Count + " pathRefused=" + PathRefused);
             _tLogic = _tFx = _tVeto = _maxStep = 0; _frames = 0; _nVeto = 0;
         }
+#endif
 
         private static void Clear(string why)
         {
@@ -262,6 +269,7 @@ namespace BetterThanCastle
             ComputeStates(now);
             StepUnits(dt, now);
             for (int i = 0; i < Bars.Count; i++) Bars[i].Fresh = false;
+#if DEV
             if (Time.unscaledTime >= _nextLog)
             {
                 _nextLog = Time.unscaledTime + 10f;
@@ -270,6 +278,7 @@ namespace BetterThanCastle
                 foreach (KeyValuePair<int, Unit> kv in Units) if (kv.Value.Trapped != int.MinValue) trapped++;
                 BtcLog.Info("Shield", "bars=" + Bars.Count + " up=" + up + " units=" + Units.Count + " trapped=" + trapped + " proj=" + Projs.Count);
             }
+#endif
         }
 
         /// <summary>A box made for the crystal at this point in the map editor replaces the automatic shape (C becomes the box centre).</summary>
@@ -689,6 +698,81 @@ namespace BetterThanCastle
             if (IsPlayer(f)) return b.UpFor(f.ID);
             if (f.IsSpectator) return false;
             return b.UpAny && B(iAi) && f.isAI;
+        }
+
+        /// <summary>Host, rule shield.avoid: route searches of the unit see voxel v as blocked (inside a barrier that is up against its faction).
+        /// A barrier the unit stands in (trapped, knocked) stays open for it, so it can walk out.</summary>
+        internal static bool PathBlocked(GameObject unit, Brix.Engine.XYZ v)
+        {
+            if (!Any || !Host || unit == null || iAvoid < 0 || !B(iAvoid)) return false;
+            Faction f = FacOf(unit);
+            if (f == null) return false;
+            Vector3 p = new Vector3(v.x, v.y, v.z), self = unit.transform.position;
+            for (int i = 0; i < Bars.Count; i++)
+            {
+                Bar b = Bars[i];
+                if (!b.UpAny || !In(b, p) || !Blocks(b, f) || In(b, self)) continue;
+                PathRefused++;
+                return true;
+            }
+            return false;
+        }
+
+        internal static int PathRefused;
+
+        // Route search scope (rule shield.avoid): the barriers that are up against the searching unit (and that it does not stand in),
+        // collected once per search. Open ground is "full" path nodes that skip the presence test, and the search climbs into full
+        // parent nodes, so the node graph itself must refuse cells that touch such a barrier (CanCross / IsSuitableParent hooks).
+        private static readonly List<Bar> PathBars = new List<Bar>();
+        private static GameObject _pathUnit;
+
+        /// <summary>Enters a route search of unit; returns the previous searcher (nested searches), give it back to EndPath.</summary>
+        internal static GameObject BeginPath(GameObject unit)
+        {
+            GameObject prev = _pathUnit;
+            SetPathUnit(unit);
+            return prev;
+        }
+
+        internal static void EndPath(GameObject prev) { SetPathUnit(prev); }
+
+        private static void SetPathUnit(GameObject unit)
+        {
+            _pathUnit = unit;
+            PathBars.Clear();
+            if (!Any || !Host || unit == null || iAvoid < 0 || !B(iAvoid)) return;
+            Faction f = FacOf(unit);
+            if (f == null) return;
+            Vector3 self = unit.transform.position;
+            for (int i = 0; i < Bars.Count; i++)
+            {
+                Bar b = Bars[i];
+                if (b.UpAny && Blocks(b, f) && !In(b, self)) PathBars.Add(b);
+            }
+        }
+
+        /// <summary>Inside a route search: the voxel box [mn, mx] (inclusive voxel coordinates) touches a barrier closed to the searcher.</summary>
+        internal static bool PathBoxBlocked(int x0, int y0, int z0, int size)
+        {
+            if (PathBars.Count == 0) return false;
+            Vector3 mn = new Vector3(x0 - 0.5f, y0 - 0.5f, z0 - 0.5f), mx = new Vector3(x0 + size - 0.5f, y0 + size - 0.5f, z0 + size - 0.5f);
+            for (int i = 0; i < PathBars.Count; i++)
+            {
+                Bar b = PathBars[i];
+                if (!IsBox(b))
+                {
+                    Vector3 c = new Vector3(Mathf.Clamp(b.C.x, mn.x, mx.x), Mathf.Clamp(b.C.y, mn.y, mx.y), Mathf.Clamp(b.C.z, mn.z, mx.z));
+                    if ((c - b.C).sqrMagnitude <= b.R * b.R) { PathRefused++; return true; }
+                    continue;
+                }
+                for (int k = 0, n = Parts(b); k < n; k++)
+                {
+                    Vector3 pmn, pmx;
+                    Part(b, k, out pmn, out pmx);
+                    if (mn.x <= pmx.x && mx.x >= pmn.x && mn.y <= pmx.y && mx.y >= pmn.y && mn.z <= pmx.z && mx.z >= pmn.z) { PathRefused++; return true; }
+                }
+            }
+            return false;
         }
 
         private static void StepUnits(float dt, float now)

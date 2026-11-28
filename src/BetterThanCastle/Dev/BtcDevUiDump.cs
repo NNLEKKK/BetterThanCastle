@@ -26,6 +26,28 @@ namespace BetterThanCastle.Dev
             BtcLog.Info("UiDump", "'" + prefix + "' roots=" + roots + " lines=" + sb.Length + " -> " + path);
         }
 
+        /// <summary>cmd `menutree <tag> [depth]`: names of every ACTIVE uGUI object under each canvas root, down to depth (default 4).</summary>
+        internal static void Tree(string tag, int maxDepth)
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach (Canvas cv in Object.FindObjectsOfType<Canvas>())
+            {
+                if (cv == null || !cv.isRootCanvas) continue;
+                Active(sb, cv.transform, 0, maxDepth);
+            }
+            string path = Path.Combine(BtcDevPaths.LogDir, "menutree-" + tag + ".txt");
+            File.WriteAllText(path, sb.ToString());
+            BtcLog.Info("UiDump", "menutree " + tag + " lines=" + sb.Length + " -> " + path);
+        }
+
+        private static void Active(StringBuilder sb, Transform t, int depth, int maxDepth)
+        {
+            if (!t.gameObject.activeInHierarchy) return;
+            sb.Append(' ', depth * 2).Append(t.name).Append('\n');
+            if (depth >= maxDepth) return;
+            for (int i = 0; i < t.childCount; i++) Active(sb, t.GetChild(i), depth + 1, maxDepth);
+        }
+
         private static void Node(StringBuilder sb, RectTransform rt, int depth)
         {
             if (depth > 40) return;

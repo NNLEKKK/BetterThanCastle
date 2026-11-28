@@ -91,6 +91,7 @@ namespace BetterThanCastle.Dev
                         return true;
                     }
                 case "phantom": return BtcDevPhantom.Cmd(p);
+                case "chain": return BtcDevChain.Cmd(p);
                 case "animnet": return BtcDevAnimNet.Cmd(p);
                 case "sndnet": return BtcDevSndNet.Cmd(p);
                 case "wormward": return BtcDevWormWard.Cmd(p);
@@ -189,6 +190,43 @@ namespace BetterThanCastle.Dev
                         Brix.Engine.XYZ pa = new Brix.Engine.XYZ(Mathf.Min(x0, x1) - 1, y0 - 1, (z0 + z1) / 2), pb = new Brix.Engine.XYZ(Mathf.Min(x0, x1), y0 - 1, (z0 + z1) / 2);
                         string col = ""; for (int yy = y0 - 4; yy <= y0 + 3; yy++) col += Brix.Engine.Voxel.IsFull(new Brix.Engine.XYZ(pa.x, yy, pa.z)) ? "#" : "."; Lab("col " + (y0 - 4) + ":" + col + " floor=" + BtcDuelMap.Floor.ToString("0.00"));
                         Lab("wall " + cells.Count + " cells y0=" + y0 + " full=" + full + " link=" + Brix.Game.AI.Pathfinding.PathNodeRegistry.PermissionVers(pa, pb) + " below=" + Brix.Engine.Voxel.IsFull(new Brix.Engine.XYZ(pa.x, pa.y - 1, pa.z)) + " at=" + Brix.Engine.Voxel.IsFull(pa));
+                        return true;
+                    }
+                case "duelfire":
+                    {
+                        // duelfire <side> <slots> <x> <z>: manual fire at the floor block under arena x,z (like CmdFireAt at a voxel)
+                        Ensure();
+                        Brix.Engine.XYZ v = Brix.Engine.XYZ.FromVector3(W(F(p, 3, 50f), F(p, 4, 10f)));
+                        v = new Brix.Engine.XYZ(v.x, v.y - 1, v.z);
+                        foreach (BtcDuelUnitRef u in Pick((int)F(p, 1, 0f), p.Length > 2 ? p[2] : "all"))
+                        {
+                            try { Order.Combat.ShootAt.Send(u.Labor, Location.Of(new Vector3(v.x, v.y, v.z)), Labor.DecisionSource.User); }
+                            catch (Exception e) { BtcLog.Warn("Lab", "fire: " + e.Message); }
+                            Lab("fire u" + u.Id + " at " + v.x + "," + v.y + "," + v.z + " full=" + Brix.Engine.Voxel.IsFull(v));
+                        }
+                        return true;
+                    }
+                case "duelhurt":
+                    {
+                        // duelhurt <side> <slots> <hp>: plain damage without attacker (no stun, no smash)
+                        foreach (BtcDuelUnitRef u in Pick((int)F(p, 1, 0f), p.Length > 2 ? p[2] : "all"))
+                        {
+                            Brix.Game.AI.Damage.BricktronDamageReceiver dr = u.Go.GetComponent<Brix.Game.AI.Damage.BricktronDamageReceiver>();
+                            if (dr != null) dr.ApplyDamage(F(p, 3, 5f), null);
+                            Lab("hurt u" + u.Id + " hp=" + (dr != null ? dr.CurrentHP.ToString("0") : "?"));
+                        }
+                        return true;
+                    }
+                case "dueltask":
+                    {
+                        // dueltask <side> <slots> <tag>: current task of each unit (+ shield path refusals)
+                        StringBuilder sb = new StringBuilder();
+                        foreach (BtcDuelUnitRef u in Pick((int)F(p, 1, 0f), p.Length > 2 ? p[2] : "all"))
+                        {
+                            Task t = u.Labor.CurrentTask;
+                            sb.Append(" u").Append(u.Id).Append("=").Append(t != null ? t.ToString() + "/" + t.Status : "none").Append(" ").Append(Loc(u));
+                        }
+                        Lab("task " + (p.Length > 3 ? p[3] : "") + sb + " shieldRefused=" + BtcShield.PathRefused);
                         return true;
                     }
                 case "duelo":

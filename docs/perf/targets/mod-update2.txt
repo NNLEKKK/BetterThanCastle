@@ -1,0 +1,51 @@
+# Mod per-frame/timer work added after the 2026-11-21 pass (0.6.1/0.6.2 features), 2026-11-27 periodic-spike hunt
+BtcPresence:Tick  # online tab
+BtcActivity:Tick  # activity status
+BtcDuelPvp:Tick  # pvp duel
+BtcTrapTask:Tick  # traps task 1 Hz
+BtcTrapTaskTool:Tick  # traps tool
+BtcTrapFix:Tick  # trap fix
+BtcWorkbench:Tick  # workbench sync
+BtcRackFilter:LoadTick  # rack filters load
+BtcReplayOpen:Tick  # replay open from windows
+BtcReplayDrop:Tick  # drag and drop
+BtcReplayChainPlay:Tick  # replay chains
+BtcTrackFix:Tick  # track fix
+BtcSpawnState:Tick  # spawn state
+BtcPlayerPrefs:Tick  # player prefs
+BtcMovieTime:Tick  # movie panel
+BtcEditorShare:Tick  # editor share
+BtcAnimCut:Tick  # decoration animators
+BtcVfxCut:Tick  # vfx cut
+BtcFactionFix:Tick  # faction fix
+BtcFactionFix:Frame  # faction fix frame
+BtcWormWard:Tick  # wormhole wards
+BtcShieldBox:Tick  # shield box
+BtcMapPreset:Tick  # map preset
+BtcLiveSym:Tick  # live symmetry
+BtcSpawnPick:Tick  # spawn pick
+BtcLobby:Tick  # lobby
+BtcGameplay:Tick  # gameplay rules
+BtcNetId:Tick  # net id
+BtcNetCheck:Tick  # version check
+BtcNetManager:Tick  # net manager
+BtcOwnTransport:Tick  # own transport
+BtcPlate:Tick  # plates
+BtcPlateImg:Tick  # plate images
+BtcAvatar:Tick  # avatar
+BtcChatFade:Tick  # chat fade
+BtcBlockMarks:Tick  # block marks
+BtcCarve:Tick  # carve
+BtcEdUndo:Tick  # editor undo
+BtcHandicap:Tick  # handicap
+BtcLineMove:Tick  # line move
+BtcMapScale:Tick  # map scale
+BtcSymmetry:Tick  # symmetry
+BtcWaypoints:Tick  # waypoints
+BtcPov:Tick  # pov
+BtcReplayAuto:Tick  # replay auto share
+BtcReplayFix:Tick  # replay fix
+BtcReplayMinimap:Tick  # replay minimap
+BtcReplayTasks:Tick  # replay tasks
+BtcReplayWorld:Tick  # replay world
+BtcPhantomLook:TickShared  # phantom look

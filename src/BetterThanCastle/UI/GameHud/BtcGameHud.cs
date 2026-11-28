@@ -118,9 +118,9 @@ namespace BetterThanCastle
             _helpBtn = Add(rail, "UI_Help", "##gamemenu_ingamehelp_title", "", delegate { BtcLog.Info("GameHud", "help sidebar (Menu_Help.lua): not built yet"); },
                 delegate { return !Neo.IsMultiplayer && IsSandbox(); });
             // developers' Editor and movie sidebars (GameMenu.lua mh.debug / mh.movie), while debug menus are allowed
-            BtcGhButton ed = Add(rail, "UI_Console", "Editor", "", delegate { Toggle(3); }, delegate { return BtcGhDev.Allowed; });
+            BtcGhButton ed = Add(rail, "UI_Console", "Editor", "", delegate { Toggle(3); }, delegate { return BtcGhDev.Shown; });
             ed.BgColor = delegate { return _open == 3 ? BtcGhKit.Selected : BtcGhKit.RailBg; };
-            BtcGhButton mv = Add(rail, "UI_Play", "movie", "", delegate { Toggle(4); }, delegate { return BtcGhDev.Allowed; });
+            BtcGhButton mv = Add(rail, "UI_Play", "movie", "", delegate { Toggle(4); }, delegate { return BtcGhDev.Shown; });
             mv.BgColor = delegate { return _open == 4 ? BtcGhKit.Selected : BtcGhKit.RailBg; };
 
             RectTransform sp = BtcGhKit.Make(Brix.External.Factories.Images.Default, rail, "");
@@ -134,7 +134,64 @@ namespace BetterThanCastle
             ca.HotkeyFn = delegate { return BtcGameHud.Hotkey("Camera", "command_CallToArms"); };
             BtcGhModes.BackToWork = BackToWork;
             BtcGhModes.CallToArms = CallToArms;
+            BuildKits(rail);
             BtcHudSlots.Register("gh.right", rail);
+        }
+
+        // Arm by kit (BtcKitArm): a column of kit buttons right above Back to work / Call to arms (the two bottom rail buttons).
+        // It ignores the rail layout, grows upwards with the number of shown kits and is its own UI editor element (gh.kits).
+        private static RectTransform _kits;
+        private static readonly BtcGhButton[] KitBtns = new BtcGhButton[BtcKitArm.N];
+        private static readonly UnityEngine.UI.Text[] KitNums = new UnityEngine.UI.Text[BtcKitArm.N];
+
+        private static void BuildKits(RectTransform rail)
+        {
+            _kits = BtcGhKit.Make(Brix.External.Factories.Layouts.Vertical, rail, "");
+            BtcGhKit.Rect(_kits, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 96f), new Vector2(0f, 0f));
+            BtcGhKit.Img(_kits, null, BtcGhKit.Clear, false);
+            BtcGhKit.Le(_kits, -1f, -1f, -1f, -1f, -1f, -1f, true);
+            BtcGhKit.Group(_kits, 0, 0, 0, 0, 0f, TextAnchor.LowerCenter);
+            for (int i = 0; i < BtcKitArm.N; i++)
+            {
+                int c = i;
+                BtcGhButton b;
+                RectTransform p = BtcGhKit.RailButton(_kits, BtcGhKit.Icon(BtcKitArm.Icons[c]), Color.white, BtcGameHud.Loc(BtcKitArm.LocKeys[c]), "", BtcGhKit.Yellow, out b);
+                b.OnAction = delegate { BtcKitArm.Press(c); };
+                b.BgColor = delegate { return BtcGhKit.Clear; }; // only the panel background, no grey button tile
+                if (b.Root != null) b.Root.color = BtcGhKit.Clear;
+                if (b.Icon != null) BtcGhKit.Centre(b.Icon.rectTransform, 40f, 40f); // rail icons are 32
+
+                b.Visible = delegate { return BtcKitArm.Count[c] > 0 && BtcKitArm.Usable; };
+                b.HotkeyFn = delegate { return BtcHotkeys.GetKeys(BtcKitArm.Binds[c], null).Length > 0 ? BtcHotkeys.ComboText(BtcKitArm.Binds[c]) : ""; };
+                RectTransform num = BtcGhKit.Make(Brix.External.Factories.Texts.Default, p, "");
+                BtcGhKit.Stretch(num, 4f);
+                KitNums[c] = BtcGhKit.Txt(num, "", 12, BtcGhKit.Yellow, TextAnchor.UpperLeft);
+                KitNums[c].raycastTarget = false;
+                BtcGhKit.Le(num, 64f, 64f, -1f, -1f, -1f, -1f, true);
+                b.transform.SetAsLastSibling();
+                KitBtns[c] = b;
+                BtcGameHud.Track(b);
+            }
+            _kits.gameObject.AddComponent<BtcKitArmTick>();
+            BtcKitArm.Changed = RefreshKits;
+            BtcHudSlots.Register("gh.kits", _kits);
+            BtcKitArm.Recount();
+        }
+
+        private static void RefreshKits()
+        {
+            if (_kits == null) return;
+            int shown = 0;
+            for (int c = 0; c < BtcKitArm.N; c++)
+            {
+                if (KitBtns[c] == null) continue;
+                KitBtns[c].Refresh();
+                string t = BtcKitArm.Count[c].ToString();
+                if (KitNums[c] != null && KitNums[c].text != t) KitNums[c].text = t;
+                if (KitBtns[c].transform.parent.gameObject.activeSelf) shown++;
+            }
+            Vector2 sd = _kits.sizeDelta;
+            if (sd.y != 48f * shown) _kits.sizeDelta = new Vector2(sd.x, 48f * shown);
         }
 
 
@@ -149,7 +206,12 @@ namespace BetterThanCastle
             catch { return false; }
         }
 
-        internal static void Close() { _content = null; _settings = null; _editor = null; _movie = null; _open = 0; BtcGhDev.Close(); }
+        internal static void Close()
+        {
+            _content = null; _settings = null; _editor = null; _movie = null; _open = 0; BtcGhDev.Close();
+            _kits = null; BtcKitArm.Changed = null;
+            for (int i = 0; i < BtcKitArm.N; i++) { KitBtns[i] = null; KitNums[i] = null; }
+        }
 
         private static BtcGhSidebar _editor, _movie;
 
@@ -177,7 +239,7 @@ namespace BetterThanCastle
         }
 
         /// debug menus switched off while a dev sidebar is open (host turned gen.editor off): close it
-        internal static void CheckDev() { if ((_open == 3 || _open == 4) && !BtcGhDev.Allowed) Toggle(_open); }
+        internal static void CheckDev() { if ((_open == 3 || _open == 4) && !BtcGhDev.Shown) Toggle(_open); }
 
         /// GameMenu.lua 3328-3530: pause + quicksave (SP, not world editor), screenshot, mute, xray + allow debug menu (not world
         /// editor), editor camera. IsBuildDebug() is false in release builds, so its fog/speed/audio/gc buttons are not shown.
@@ -202,6 +264,7 @@ namespace BetterThanCastle
             {
                 Setting(bar, grid, "UI_XRay", "##gamemenu_topmenu_xray", delegate { if (XRayImpl.instance != null) XRayImpl.instance.enabled = !XRayImpl.instance.enabled; }, null);
                 Setting(bar, grid, "UI_Console", "##gamemenu_topmenu_toggledebug", delegate { Architecte.allowDebugMenu = !Architecte.allowDebugMenu; }, null); // ToggleAllowDebugMenu
+                Setting(bar, grid, "UI_Play", "Show Editor and movie panels", delegate { BtcGhDev.Hidden = !BtcGhDev.Hidden; CheckDev(); BtcGameHud.RefreshAll(); }, delegate { return BtcGhDev.Allowed; });
             }
             Setting(bar, grid, "UI_TerrainHug", "##gamemenu_topmenu_editorcamera", delegate
             {
@@ -212,7 +275,7 @@ namespace BetterThanCastle
 
         private static BtcGhButton Setting(BtcGhSidebar bar, RectTransform grid, string icon, string loc, Action act, Func<bool> visible)
         {
-            BtcGhButton b = BtcGhKit.GridButton(grid, BtcGhKit.Icon(icon), BtcGhKit.Red, 32f, BtcGameHud.Loc(loc), true, null, false);
+            BtcGhButton b = BtcGhKit.GridButton(grid, BtcGhKit.Icon(icon), BtcGhKit.Red, 32f, loc.StartsWith("##") ? BtcGameHud.Loc(loc) : BtcLang.Tr(loc), true, null, false);
             b.OnAction = act;
             b.Visible = visible;
             return bar.Add(b);

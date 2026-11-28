@@ -51,10 +51,10 @@ namespace BetterThanCastle.Patches
             catch (Exception e) { BtcLog.Error("Hook", "BuildGoal.Crowded: " + e); return false; }
         }
 
-        internal static bool OrCarries(bool hasRoom, Labor labor, GameObject o)
+        internal static bool OrCarries(bool hasRoom, BuildGoal g, Labor labor, GameObject o)
         {
             if (hasRoom) return true;
-            try { return BtcBuildAI.CarriesOk(labor, o); }
+            try { return BtcBuildAI.CarriesOk(g, labor, o); }
             catch (Exception e) { BtcLog.Error("Hook", "BuildGoal.CarriesOk: " + e); return false; }
         }
 
@@ -98,7 +98,7 @@ namespace BetterThanCastle.Patches
             cm.Advance(7);
             cm.Instruction.labels.Add(cont);
 
-            // (3) labor.recepteur.HasRoomFor(o) -> HasRoomFor(o) || BtcBuildAI.CarriesOk(labor, o)
+            // (3) labor.recepteur.HasRoomFor(o) -> HasRoomFor(o) || BtcBuildAI.CarriesOk(this, labor, o)
             cm.Start();
             cm.MatchForward(false, new CodeMatch(i => IsCall(i, "HasRoomFor")));
             if (cm.IsInvalid || cm.Pos < 1 || !cm.InstructionAt(-1).IsLdloc())
@@ -108,7 +108,7 @@ namespace BetterThanCastle.Patches
             }
             CodeInstruction ldO = new CodeInstruction(cm.InstructionAt(-1));
             ldO.labels.Clear();
-            cm.Advance(1).Insert(new CodeInstruction(OpCodes.Ldarg_1), ldO,
+            cm.Advance(1).Insert(new CodeInstruction(OpCodes.Ldarg_0), new CodeInstruction(OpCodes.Ldarg_1), ldO,
                 new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(BuildGoalIsMatchForPatch), "OrCarries")));
             return cm.InstructionEnumeration();
         }

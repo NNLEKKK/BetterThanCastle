@@ -21,9 +21,15 @@ namespace BetterThanCastle
         internal static bool InfiniteHeal = false;
         /// <summary>1 = 100x20 arena, 3 = 300x60.</summary>
         internal static int ArenaScale = 1;
+        /// <summary>Own empty map with a 1-block floor over the void (false after the empty map failed once: default map + raised plateau).</summary>
+        internal static bool EmptyMap
+        {
+            get { return _cEmpty == null || _cEmpty.Value; }
+            set { if (_cEmpty != null) _cEmpty.Value = value; }
+        }
 
         private static ConfigEntry<string> _cPlayer, _cBot, _cDiff;
-        private static ConfigEntry<bool> _cSkip, _cHeal;
+        private static ConfigEntry<bool> _cSkip, _cHeal, _cEmpty;
         private static ConfigEntry<int> _cArena;
 
         internal static void Init(ConfigFile cfg)
@@ -34,6 +40,7 @@ namespace BetterThanCastle
             _cSkip = cfg.Bind("Duel", "SkipAnims", true, "ON: the vanilla animation-skip trick (move-attack right before a hit) works. OFF: every melee unit keeps the full strike cycle.");
             _cHeal = cfg.Bind("Duel", "InfiniteHeal", false, "ON: every duel unit heals 10 HP/s all the time.");
             _cArena = cfg.Bind("Duel", "ArenaScale", 1, "1 = 100x20 arena, 3 = three times larger (300x60).");
+            _cEmpty = cfg.Bind("Duel", "EmptyMap", true, "ON: the duel runs on its own empty map, a 1-block floor over the void (fast load). OFF: the old plateau on the default map.");
             ArenaScale = _cArena.Value == 3 ? 3 : 1;
             Parse(_cPlayer.Value, PlayerCount);
             Parse(_cBot.Value, BotCount);

@@ -1,0 +1,6 @@
+# Early patch classes: open the latest replay.
+wait 25
+replay latest
+waitreplay 180
+wait 3
+quit

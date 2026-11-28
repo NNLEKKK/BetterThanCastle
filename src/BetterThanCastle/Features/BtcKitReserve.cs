@@ -87,6 +87,9 @@ namespace BetterThanCastle
             return ReferenceEquals(r.Labor.CurrentTask, r.Task);
         }
 
+        /// someone runs to this rack to take a kit (BtcKitAssemble leaves such racks alone)
+        internal static bool AnyPick(GameObject rack) { return On && Booked(rack, null, false) > 0; }
+
         // Reservations of others on the rack (kits to take or places to fill); stale ones are dropped on the way.
         private static int Booked(GameObject rack, Labor except, bool store)
         {

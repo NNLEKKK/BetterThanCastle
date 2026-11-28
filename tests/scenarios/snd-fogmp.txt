@@ -1,0 +1,15 @@
+# fog/sound emitters in MP: host spawns units for both sides (Transactor.SpawnUNet), kills some, both sides check AkGameObj + Wwise positions
+host default conquest
+waitclients 1 300
+wait 3
+startmatch 180
+waitgame 300
+wait 10
+sndnet spawn 4
+wait 12
+sndnet fog mpa
+sndnet kill 2
+wait 45
+sndnet fog mpb
+wait 25
+quit

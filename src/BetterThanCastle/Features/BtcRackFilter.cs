@@ -189,6 +189,98 @@ namespace BetterThanCastle
             catch (Exception e) { BtcLog.Error("RackFilter", "TryDerive: " + e); }
         }
 
+        // ------------------------------------------------------------------ saves (host): btc-rackfilter.txt "x y z kit" in the save folder
+        // The vanilla save keeps only the rack exclusions; TryDerive above can rebuild a filter from them on EMPTY racks only, so racks with kits
+        // on them lost their filter. Restored by position (nearest rack within 1.5 blocks), retry for 30 s.
+        internal const string FileName = "btc-rackfilter.txt";
+        private static List<Vector4> _pending;
+        private static float _applyAt, _deadline;
+
+        internal static void OnSave(string folder)
+        {
+            if (!NetworkServer.active || !Enabled || string.IsNullOrEmpty(folder)) return;
+            try
+            {
+                string file = System.IO.Path.Combine(folder, FileName);
+                System.Globalization.CultureInfo c = System.Globalization.CultureInfo.InvariantCulture;
+                System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                int n = 0;
+                ToolRack[] all = BtcRegistry.RacksArray();
+                for (int i = 0; i < all.Length; i++)
+                {
+                    int kit = Get(all[i]);
+                    if (kit < 0) continue;
+                    Vector3 p = all[i].transform.position;
+                    sb.Append(p.x.ToString("F2", c)).Append(' ').Append(p.y.ToString("F2", c)).Append(' ').Append(p.z.ToString("F2", c)).Append(' ').Append(kit).Append('\n');
+                    n++;
+                }
+                if (n == 0) { if (System.IO.File.Exists(file)) System.IO.File.Delete(file); return; }
+                System.IO.File.WriteAllText(file, sb.ToString());
+                BtcLog.Info("RackFilter", "saved " + n + " rack filter(s)");
+            }
+            catch (Exception e) { BtcLog.Error("RackFilter", "OnSave: " + e); }
+        }
+
+        internal static void OnLoad(string folder)
+        {
+            _pending = null;
+            if (!NetworkServer.active || !Enabled || string.IsNullOrEmpty(folder)) return;
+            try
+            {
+                string file = System.IO.Path.Combine(folder, FileName);
+                if (!System.IO.File.Exists(file)) return;
+                System.Globalization.CultureInfo c = System.Globalization.CultureInfo.InvariantCulture;
+                List<Vector4> list = new List<Vector4>();
+                string[] lines = System.IO.File.ReadAllLines(file);
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    string[] t = lines[i].Split(' ');
+                    float x, y, z; int k;
+                    if (t.Length == 4 && float.TryParse(t[0], System.Globalization.NumberStyles.Float, c, out x) && float.TryParse(t[1], System.Globalization.NumberStyles.Float, c, out y)
+                        && float.TryParse(t[2], System.Globalization.NumberStyles.Float, c, out z) && int.TryParse(t[3], out k) && k >= 0 && k < KitNames.Length)
+                        list.Add(new Vector4(x, y, z, k));
+                }
+                if (list.Count == 0) return;
+                _pending = list;
+                _applyAt = Time.unscaledTime + 2f;
+                _deadline = Time.unscaledTime + 30f;
+                BtcLog.Info("RackFilter", "save has " + list.Count + " rack filter(s), restoring after the load");
+            }
+            catch (Exception e) { BtcLog.Error("RackFilter", "OnLoad: " + e); }
+        }
+
+        /// <summary>BtcTimer.Tick (host): put saved filters back on the nearest racks.</summary>
+        internal static void LoadTick()
+        {
+            if (_pending == null || Time.unscaledTime < _applyAt) return;
+            if (!NetworkServer.active || !Enabled) { _pending = null; return; }
+            try
+            {
+                _applyAt = Time.unscaledTime + 1f;
+                ToolRack[] all = BtcRegistry.RacksArray();
+                List<Vector4> left = new List<Vector4>();
+                int done = 0;
+                for (int k = 0; k < _pending.Count; k++)
+                {
+                    ToolRack best = null;
+                    float bestD = 1.5f * 1.5f;
+                    for (int i = 0; i < all.Length; i++)
+                    {
+                        if (all[i] == null || all[i].recepteur == null) continue;
+                        float d = (all[i].transform.position - (Vector3)_pending[k]).sqrMagnitude;
+                        if (d < bestD) { bestD = d; best = all[i]; }
+                    }
+                    if (best == null || KeyOf(best) <= 0) { left.Add(_pending[k]); continue; }
+                    ApplyLocal(best, Mathf.RoundToInt(_pending[k].w));
+                    done++;
+                }
+                if (done > 0) BtcRackFilterNet.Broadcast();
+                _pending = left.Count > 0 && Time.unscaledTime < _deadline ? left : null;
+                if (_pending == null) BtcLog.Info("RackFilter", "restore finished, " + done + " this pass, " + left.Count + " not found");
+            }
+            catch (Exception e) { _pending = null; BtcLog.Error("RackFilter", "LoadTick: " + e); }
+        }
+
         // ------------------------------------------------------------------ pie DSL (Info/Livre text injected by Patches/LivrePatches.cs)
         internal static bool PieVisible()
         {

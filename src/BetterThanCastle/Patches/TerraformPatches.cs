@@ -5,6 +5,7 @@ using Brix.Engine;
 using Brix.External.Factories;
 using Brix.Game.AI;
 using Brix.Game.AI.Damage;
+using Brix.Game.AI.UI;
 using Brix.Game.AI.KnowledgeSpace;
 using Brix.Game;
 using Brix.Game.Components;
@@ -56,17 +57,9 @@ namespace BetterThanCastle.Patches
                 if (!__instance.NeedsAGoal(voxel)) return false;
                 // like the quarry: never dig a ladder, the cell under one (its support) or a cell kept for a quarry ladder
                 if (s.Ladders.ContainsKey(voxel + XYZ.up) || QuarryGoalProvider2.IsStair(voxel) || QuarryGoalProvider2.IsStair(voxel + XYZ.up)) return false;
-                if (s.Fill.Contains(voxel))
-                {
-                    if (__instance.NeedsFill(voxel))
-                    {
-                        // a fill cell is a DigGoal set up to fill (TerraformFill): the Flatten fill goal reaches one block up only,
-                        // the DigGoal two, so a mound is filled up to 2 above the worker's head like vanilla building
-                        __instance.toFill.Add(voxel);
-                        if (!__instance.NeedsFill(voxel - XYZ.up)) __result = new SpawnOrder(voxel, XYZ.zero, Test.DigGoal, false);
-                    }
-                }
-                else if (s.Dig.Contains(voxel) && __instance.NeedsDig(voxel))
+                // fill cells spawn no goal: BtcTerraformFill hands out the fill work itself (GetInstruction)
+                if (s.Fill.Contains(voxel)) return false;
+                if (s.Dig.Contains(voxel) && __instance.NeedsDig(voxel))
                 {
                     // dig cells get the vanilla Tunnel / Quarry DigGoal: its access reaches far wider than a Flatten goal
                     // (a worker digs up to 3 high in a tunnel), so tunnels and staircases are dug from below
@@ -100,9 +93,8 @@ namespace BetterThanCastle.Patches
                     DigGoal d;
                     ObjectPoolSingleton.RequestComponent<DigGoal>(out d, Test.DigGoal, order.pos.ToVector3(), Quaternion.identity, true);
                     d.transform.SetParent(__instance.goalParent.transform);
-                    d.ResourceSetting = new TerraformDigSetting(s, d.transform.parent, s.Fill.Contains(order.pos));
+                    d.ResourceSetting = new TerraformDigSetting(s, d.transform.parent);
                     d.RebuildNode();
-                    TerraformFill.Configure(d);
                     __result = d;
                     return false;
                 }
@@ -164,10 +156,9 @@ namespace BetterThanCastle.Patches
                 Goal g = Tmp[i];
                 if (g.IsNullOrReleased()) continue;
                 LandscapeGoal lg = g as LandscapeGoal;
-                bool fillDig = TerraformDigSetting.IsFill(g);
                 bool match = kind == 2 ? g is BuildStairsGoal
-                    : kind == 0 ? (g is DigGoal && !fillDig) || (lg != null && lg.GetLandscapeType() == LandscapeGoal.Landscape.Dig)
-                    : fillDig || (lg != null && lg.GetLandscapeType() == LandscapeGoal.Landscape.Fill);
+                    : kind == 0 ? g is DigGoal || (lg != null && lg.GetLandscapeType() == LandscapeGoal.Landscape.Dig)
+                    : lg != null && lg.GetLandscapeType() == LandscapeGoal.Landscape.Fill;
                 if (match && (!reachableOnly || Knowledge.Instance.CanReach(g, target, -1))) found = true;
             }
             Tmp.Clear();
@@ -180,8 +171,9 @@ namespace BetterThanCastle.Patches
     {
         private static bool Prefix(LandscapeProject __instance, IGameComponent target, bool reacheableOnly, ref bool __result)
         {
-            if (BtcTerraform.Of(__instance) == null) return true;
-            try { __result = TerraformGoals.Has(__instance.goalProvider, 1, target, reacheableOnly); return false; }
+            BtcTerraform.Shape s = BtcTerraform.Of(__instance);
+            if (s == null) return true;
+            try { __result = BtcTerraformFill.Ready(s).Count > 0; return false; }
             catch (Exception e) { BtcLog.Error("Hook", "Terraform.HasFillGoals: " + e.Message); return true; }
         }
     }
@@ -440,7 +432,7 @@ namespace BetterThanCastle.Patches
         private const float LooseRange = 12f;
 
         // the stone the worker would take for a fill lies on the ground (not in a stockpile) close to him; cached for a second
-        private static bool LooseStonesNear(Labor labor)
+        internal static bool LooseStonesNear(Labor labor)
         {
             int id = labor.GetInstanceID();
             Loose l;
@@ -464,6 +456,9 @@ namespace BetterThanCastle.Patches
             {
                 GameObject go = t.GameObject;
                 if (go.IsNullOrReleased() || !Apparence.Is<Stones>(go) || !LitterGoalProvider.IsOnGround(go)) continue;
+                // taken by another worker (vanilla GoPickUp reserves it), or walled in by a fill: whole crews ran to one stack in a
+                // trench that was being filled (user 2026-11-28)
+                if (Knowledge.Instance.IsReserved(go) || BtcTerraformFill.Filled(XYZ.FromVector3(go.transform.position))) continue;
                 float d = (go.transform.position - at).sqrMagnitude;
                 if (d < bd) { bd = d; best = go; }
             }
@@ -476,10 +471,9 @@ namespace BetterThanCastle.Patches
     internal sealed class TerraformDigSetting : IDigGoalResourceSetting
     {
         internal readonly BtcTerraform.Shape S;
-        internal readonly bool Fill;   // this DigGoal fills its cell instead of digging it (TerraformFill)
         private readonly Transform _parent;
 
-        internal TerraformDigSetting(BtcTerraform.Shape s, Transform parent, bool fill) { S = s; _parent = parent; Fill = fill; }
+        internal TerraformDigSetting(BtcTerraform.Shape s, Transform parent) { S = s; _parent = parent; }
 
         public GroundResource TypesToHarvest { get { return (GroundResource)(S.Harvest & 7); } }
 
@@ -490,138 +484,11 @@ namespace BetterThanCastle.Patches
             return t != null && t._parent != null && g.transform.parent == t._parent ? t : null;
         }
 
-        /// <summary>Shape of a terraform DIG goal (fill goals excluded).</summary>
+        /// <summary>Shape of a terraform dig goal.</summary>
         internal static BtcTerraform.Shape Of(DigGoal g)
         {
             TerraformDigSetting t = Get(g);
-            return t != null && !t.Fill ? t.S : null;
-        }
-
-        internal static bool IsFill(Goal g)
-        {
-            DigGoal d = g as DigGoal;
-            if (d == null) return false;
-            TerraformDigSetting t = Get(d);
-            return t != null && t.Fill;
-        }
-    }
-
-    /// <summary>A terraform fill cell served by a DigGoal (wider reach than the Flatten fill goal): the work node of vanilla
-    /// LandscapeGoal fill (pick stones up, then add earth worth 10 stones minus what the cell holds, take the stones from the bag).</summary>
-    internal static class TerraformFill
-    {
-        internal static void Configure(DigGoal d)
-        {
-            TerraformDigSetting t = TerraformDigSetting.Get(d);
-            if (t == null || !t.Fill || d.workNodeGenerator == null) return;
-            WorkNodeGenerator<DigGoal> gen = d.workNodeGenerator;
-            gen.ActionWrappers.Clear();
-            gen.PrepareAction = (g, l) => Prepare(l);
-            gen.WorkAction = (g, l) => Node.Sequence.Do((DigGoal goal, Labor labor) => Hit(goal, labor), g, l).Label("Terraform fill").ToNode;
-            gen.WorkDoneCondition = (g, l) => Filled(g.voxel.position);
-            gen.WorkInvalidCondition = (g, l) => g.IsNullOrReleased() || Filled(g.voxel.position);
-            gen.ReleaseWhen = ReleaseNodeWhen.Ended | ReleaseNodeWhen.Invalid;
-        }
-
-        internal static bool Filled(XYZ p) { return !Voxel.IsEmpty(p) && !Voxel.IsCrust(p); }
-
-        /// <summary>A bricktron stands in the cell (feet in p, or feet under it and the head in p). Vanilla fills it anyway and
-        /// its BuryBehavior then moves only the transform out of the earth, the locomotion stays in the old cell: the unit hangs
-        /// for good and answers no order (same as vanilla Flatten). Such a cell waits until it is free.</summary>
-        internal static bool Occupied(XYZ p, Labor labor)
-        {
-            if (VoxelPresence.HasPresenceAt(p) || VoxelPresence.HasPresenceAt(p - XYZ.up)) return true;
-            if (labor != null && In(labor.navigation.Locomotion, labor.transform, p)) return true;
-            // the presence registry knows only the cell a unit stands in: one walking over a 1-high fill row is entering it
-            // (its feet end up in the earth, BuryBehavior only frees a buried head, the unit hangs for good)
-            int n = Physics.OverlapSphereNonAlloc(p.ToVector3(), 1.6f, Hits, ~0, QueryTriggerInteraction.Ignore);
-            bool hit = false;
-            Bounds cell = new Bounds(p.ToVector3(), new Vector3(0.9f, 0.9f, 0.9f));
-            for (int i = 0; i < n && !hit; i++)
-            {
-                Collider c = Hits[i];
-                if (c == null) continue;
-                Locomotion4 loc = c.GetComponentInParent<Locomotion4>();
-                if (loc == null) continue;
-                hit = c.bounds.Intersects(cell) || In(loc, loc.transform, p);
-            }
-            Array.Clear(Hits, 0, n);
-            return hit;
-        }
-
-        private static readonly Collider[] Hits = new Collider[64];
-
-        // the unit stands in or enters p, or into the cell under it (head in p)
-        private static bool In(Locomotion4 loc, Transform t, XYZ p)
-        {
-            XYZ low = p - XYZ.up;
-            XYZ feet = XYZ.FromVector3(t.position);
-            if (feet == p || feet == low) return true;
-            if (loc == null) return false;
-            XYZ a = loc.PositionOccupied, b = loc.PositionEntering;
-            return a == p || a == low || b == p || b == low;
-        }
-
-        // one tool hit: never into a unit; a cell that takes no earth (holds 10 already but is still crust) ends the work
-        // instead of looping the animation for nothing
-        private static Node Hit(DigGoal goal, Labor labor)
-        {
-            XYZ p = goal.voxel.position;
-            if (Occupied(p, labor))
-            {
-#if DEV
-                BtcLog.Info("TfFill", labor.name + " skip occupied " + p);
-#endif
-                return Node.FailWork<Exceptions.GoalTooCrowded>();
-            }
-            if (10 - TerraformHarvest.InGround(p) <= 0) return Node.FailWork<Exceptions.VoxelHasBeenBuildOver>();
-            Apply(goal, labor);
-            return Node.Empty;
-        }
-
-        // stones lying close by first (picked up on the way), else vanilla: the bag or the nearest source
-        private static Node Prepare(Labor l)
-        {
-            if (l.recepteur.ContentDescription.Value<Stones>() < 10)
-            {
-                GameObject loose = TerraformPriority.NearestLoose(l);
-                if (loose != null && l.recepteur.HasRoomFor(loose))
-                {
-                    Brix.Game.Components.GameComponent gc = loose.GetComponent<Brix.Game.Components.GameComponent>();
-                    if (gc != null) return Brix.Game.AI.Nodes.PickUpNode.GoPickUp(l, gc, 20);
-                }
-            }
-            return Brix.Game.AI.Nodes.PickUpNode.FindAndPickUp(l, Adjectif.stones.Profile, 20);
-        }
-
-        private static void Apply(DigGoal goal, Labor labor)
-        {
-            XYZ p = goal.voxel.position;
-            int qty = 10 - TerraformHarvest.InGround(p);
-            if (qty <= 0) return;
-            Brix.Game.Batchers.VoxelRequestBatcher.Instance.CallRpcAddTerrainResources(p.x, p.y, p.z, VoxelTerrainType.Sand, qty, true, true);
-            int left = qty;
-            List<GameObject> take = new List<GameObject>();
-            foreach (var d in labor.recepteur.StoredItems)
-            {
-                if (left <= 0) break;
-                if (d.Description.Value<Stones>() != 1) continue;
-                take.Add(d.GameObject); left--;
-            }
-            for (int i = 0; i < take.Count; i++) take[i].SafeNetworkDestroy();
-            BtcTerraform.Shape s = TerraformDigSetting.Get(goal).S;
-            BtcTerraform.Kick(s, p);   // the cell above may take its goal now
-        }
-    }
-
-    [HarmonyPatch(typeof(DigGoal), "SetupBuilder")]
-    internal static class TerraformFillSetupPatch
-    {
-        // DigGoal.Start rebuilds its work node: keep the fill setup
-        private static void Postfix(DigGoal __instance)
-        {
-            try { TerraformFill.Configure(__instance); }
-            catch (Exception e) { BtcLog.Error("Hook", "Terraform.FillSetup: " + e.Message); }
+            return t != null ? t.S : null;
         }
     }
 
@@ -639,18 +506,6 @@ namespace BetterThanCastle.Patches
                 __result = false;
                 if (TerraformCrowd.Busy(__instance, labor)) { errorDestination.AddDecisionError(SharedWorkException<Exceptions.GoalTooCrowded>.Get.Problem, labor); return false; }
                 time += 0.05f;
-                if (t.Fill)
-                {
-                    // vanilla LandscapeGoal fill rules: a floor under the cell, stones the worker can get (bag or nearest)
-                    if (Voxel.IsEmpty(pos - XYZ.up)) return false;
-                    if (TerraformFill.Occupied(pos, labor)) { errorDestination.AddDecisionError(SharedWorkException<Exceptions.GoalTooCrowded>.Get.Problem, labor); return false; }
-                    if (!TerraformReach.Can(labor, __instance)) { errorDestination.AddDecisionError(SharedWorkException<Exceptions.CantReach>.Get.Problem, labor); return false; }
-                    GameObject st = labor.Find(Adjectif.stones.Profile);
-                    if (st == null || !labor.recepteur.HasRoomFor(st)) { errorDestination.AddDecisionError(SharedWorkException<Exceptions.CannotFindWhatINeedToPickUp>.Get.Problem, labor); return false; }
-                    time += 0.1f;
-                    __result = true;
-                    return false;
-                }
                 if (!labor.Occupation.Profession.CanBreakVoxels()) { errorDestination.AddDecisionError(SharedWorkException<Exceptions.CharacterCantDig>.Get.Problem, labor); return false; }
                 // a full bag does not stop the dig (user 2026-11-15): with a fill to do the worker goes filling (priority),
                 // without one he keeps digging; what does not fit stays on the ground for the fill
@@ -675,7 +530,7 @@ namespace BetterThanCastle.Patches
             if (t == null) return true;
             try
             {
-                __result = TerraformReach.Can(labor, __instance) ? TerraformPriority.Of(labor, __instance, t.Fill, __instance.voxel.position.y) : int.MinValue;
+                __result = TerraformReach.Can(labor, __instance) ? TerraformPriority.Of(labor, __instance, false, __instance.voxel.position.y) : int.MinValue;
                 return false;
             }
             catch (Exception e) { BtcLog.Error("Hook", "Terraform.DigPriority: " + e.Message); return true; }
@@ -789,7 +644,7 @@ namespace BetterThanCastle.Patches
                 // cells still to dig keep the crew even while no goal is spawned yet (a crust is being removed, the next layer
                 // opens up): vanilla would let every worker go and then auto-delete the task
                 __result = (room && __instance.HasRoomFor(labor) && (digLeft > 0 || __instance.HasDigGoals(labor, false)))
-                    || (__instance.HasFillGoals(labor, false) && labor.Find(Adjectif.stones.Profile));
+                    || (__instance.HasRoomFor(labor) && BtcTerraformFill.HasWork(s, __instance, labor));
                 return false;
             }
             catch (Exception e) { BtcLog.Error("Hook", "Terraform.HasWorkFor: " + e.Message); return true; }
@@ -839,11 +694,66 @@ namespace BetterThanCastle.Patches
         }
     }
 
-    // the terraform tool owns the mouse while it is open: no vanilla picking (selection, orders, hover)
+    // a selected terraform task shows only our marks: the vanilla Flatten box, threshold plane, goal voxels and drag handles stay hidden
+    [HarmonyPatch(typeof(LandscapeController), "RefreshVisibility")]
+    internal static class TerraformVanillaUiPatch
+    {
+        private static readonly AccessTools.FieldRef<LandscapeController, LandscapeProjectUI> Ui = AccessTools.FieldRefAccess<LandscapeController, LandscapeProjectUI>("ui");
+        private static readonly AccessTools.FieldRef<LandscapeController, LandscapeProject> Proj = AccessTools.FieldRefAccess<LandscapeController, LandscapeProject>("project");
+
+        internal static void Hide(LandscapeController c)
+        {
+            LandscapeProject p = Proj(c);
+            if (p == null || BtcTerraform.Of(p) == null) return;
+            LandscapeProjectUI ui = Ui(c);
+            if (ui != null) ui.Showing = false;
+            c.enabled = false;
+        }
+
+        /// <summary>A task bound after its controller started (shape arrived later) hides the vanilla look at once.</summary>
+        internal static void Refresh(GameObject go)
+        {
+            try
+            {
+                LandscapeController c = go != null ? go.GetComponentInChildren<LandscapeController>(true) : null;
+                if (c != null) Hide(c);
+            }
+            catch (Exception e) { BtcLog.Error("Hook", "Terraform.VanillaUi: " + e.Message); }
+        }
+
+        private static void Postfix(LandscapeController __instance)
+        {
+            try { Hide(__instance); }
+            catch (Exception e) { BtcLog.Error("Hook", "Terraform.VanillaUi: " + e.Message); }
+        }
+    }
+
+    // beacon move / box drag end turn the vanilla threshold plane back on
+    [HarmonyPatch(typeof(LandscapeController), "OnBeaconMoveEnd")]
+    internal static class TerraformVanillaUiBeaconPatch
+    {
+        private static void Postfix(LandscapeController __instance)
+        {
+            try { TerraformVanillaUiPatch.Hide(__instance); }
+            catch (Exception e) { BtcLog.Error("Hook", "Terraform.VanillaUiBeacon: " + e.Message); }
+        }
+    }
+
+    [HarmonyPatch(typeof(LandscapeController), "OnDragEnd")]
+    internal static class TerraformVanillaUiDragPatch
+    {
+        private static void Postfix(LandscapeController __instance)
+        {
+            try { TerraformVanillaUiPatch.Hide(__instance); }
+            catch (Exception e) { BtcLog.Error("Hook", "Terraform.VanillaUiDrag: " + e.Message); }
+        }
+    }
+
+    // the terraform tool (and the bear traps task tool) owns the mouse while it is open: no vanilla picking (selection, orders, hover)
     [HarmonyPatch(typeof(Picking), "OnUpdate")]
     internal static class TerraformPickingPatch
     {
-        private static bool Prefix() { return !BtcTerraformTool.Active; }
+        private static bool Prefix() { return !BtcTerraformTool.Active && !BtcTrapTaskTool.Active; }
     }
 
     [HarmonyPatch(typeof(Asset_Map), "Disk_Save")]
@@ -882,6 +792,45 @@ namespace BetterThanCastle.Patches
                 TerraformReach.MarkFailed(__instance, g);
             }
             catch (Exception e) { BtcLog.Error("Hook", "Terraform.WorkFail: " + e.Message); }
+        }
+    }
+
+    [HarmonyPatch(typeof(Project), "GetInstruction")]
+    internal static class TerraformInstructionPatch
+    {
+        // terraform task: big items stored first (rule work.digStore), then the fill work of BtcTerraformFill, else vanilla
+        // (dig / ladder goals). DigStoreInstructionPatch leaves terraform tasks to this patch.
+        private static bool Prefix(Project __instance, Labor labor, Var<OrderPackage<Labor>> result, ref Node __result)
+        {
+            if (BtcTerraform.ByObj.Count == 0) return true;
+            LandscapeProject lp = __instance as LandscapeProject;
+            BtcTerraform.Shape s = lp != null ? BtcTerraform.Of(lp) : null;
+            if (s == null) return true;
+            try
+            {
+                if (BtcDigStore.TryStoreFirst(__instance, labor, result)) { __result = Node.Empty; return false; }
+                if (!BtcTerraformFill.Wants(s, lp, labor)) return true;
+                __result = BtcTerraformFill.GetInstruction(s, __instance, labor, result);
+                return false;
+            }
+            catch (Exception e) { BtcLog.Error("Hook", "Terraform.GetInstruction: " + e); return true; }
+        }
+    }
+
+    [HarmonyPatch(typeof(Project), "GoalCounts")]
+    internal static class TerraformGoalCountsPatch
+    {
+        // fill cells have no goals: count the ready ones (priority input, goal counter of the task)
+        private static void Postfix(Project __instance, ref int __result)
+        {
+            if (BtcTerraform.ByObj.Count == 0) return;
+            try
+            {
+                LandscapeProject lp = __instance as LandscapeProject;
+                BtcTerraform.Shape s = lp != null ? BtcTerraform.Of(lp) : null;
+                if (s != null && s.Fill.Count > 0) __result += BtcTerraformFill.Ready(s).Count;
+            }
+            catch (Exception e) { BtcLog.Error("Hook", "Terraform.GoalCounts: " + e.Message); }
         }
     }
 }

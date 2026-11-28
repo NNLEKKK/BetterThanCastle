@@ -1,0 +1,20 @@
+# pick-enemy: does a picking ray at an enemy unit land on the unit (UnitActionPicker wins) or pass to the ground?
+# fair.fog on, then off. Log tag PickProbe.
+duelunits 3 2 0
+duelunits 4 2 0
+duelplayerbot -1
+duelnobot 1
+duelnorules 1
+duel
+waitduel 240
+wait 3
+duelplace 1 all 30 10 270
+duelplace 0 all 24 10 90
+wait 2
+rule fair.fog 1
+wait 1
+pickprobe FOG1
+rule fair.fog 0
+wait 1
+pickprobe FOG0
+quit

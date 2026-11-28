@@ -1,0 +1,14 @@
+# client of snd-fogmp: fog dumps after the host ones
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 120
+ready 420
+waitgame 300
+waitfile BTClogs/host/fog-mpa.txt 300
+wait 2
+sndnet fog mpa
+waitfile BTClogs/host/fog-mpb.txt 300
+wait 2
+sndnet fog mpb
+wait 5
+quit

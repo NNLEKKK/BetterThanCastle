@@ -1,0 +1,19 @@
+# mp-saveleave2 (host): watch a replay first (fake replay client), then host a match with 1 client, save, leave, 30 s in the menu.
+# Bug 2026-11-27: a leftover NetworkClient kept NetworkClient.active true -> main menu reloaded every ~1.5 s.
+# Check agent.log / replay_log: "fake client still listed after the replay" or "[Net] client still active after Disconnect".
+replay latest
+waitreplay 180
+wait 20
+leave
+wait 15
+host default conquest
+waitclients 1 300
+wait 3
+startmatch 120
+waitgame 240
+wait 30
+phantom save mpsl
+wait 10
+leave
+wait 30
+quit

@@ -1,0 +1,21 @@
+# terraform-fill2 (2026-11-28): pit 6x6x1 dug with stone kept + pillar 2x2x4 filled (stand on what was filled); progress every 30 s
+newgame
+waitgame 240
+wait 5
+tfmound 2 4
+wait 3
+tfdump t0
+tfhire
+wait 30
+tfdump t30
+wait 30
+tfdump t60
+wait 30
+tfdump t90
+wait 30
+tfdump t120
+wait 30
+tfdump t150
+wait 30
+tfdump t180
+quit

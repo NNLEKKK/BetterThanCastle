@@ -88,7 +88,7 @@ Untested at the time of writing: items 1-5 in real MP, header patch with a real 
 10. (2026-11-05 c) Tasks: overlay removed (no pillar/ring/frame); game visuals as in-game; the task PLATE over each beacon gets a frame + badge + text in the owner colour (log `plates coloured N` in the DEV `taskdump`). Unit owner dots: layout window (F7) button "Unit owner dots": off / while Alt / always (cfg Replay/UnitOwnerDots, default Alt). UNTESTED: a game was running, only compiled (Debug + Release).
 
 ## Small list items 2026-11-07
-- craft.max: BC ON, set 20; queue 20 orders at a bench, client sees all 20 (tail msg 107), remove/clear works, BC OFF = 8.
+- Better Workbenches (craft.better + craft.queue, BC ON): see section "Better Workbenches".
 - G5: put a healing ward, stand in, lift it so it is unpowered, units heal anywhere; save, reload: they still heal (log `[InfHeal] saved/restored`).
 - I2: open a replay that has POV tracks: the camera starts on the first player's camera (log `[PovRec] start camera set`).
 - noskip (Movement): move-attack before a hit no longer cancels the strike. H2: enemy HP numbers/centres hidden in MP, visible in replays. G8/J3 see STATUS.
@@ -196,3 +196,76 @@ Known limits: world labels drawn by scripts (HP bars, pings, unit plates) follow
 2. Replay jumps: no unit keeps running on the spot; units that stand idle in normal viewing stand idle after a jump.
 3. MP client (BC ON): enemy armed units leave your vision and come back: they still carry their kit; your racks/stockpiles show content after a rejoin. Log line `[TrackFix] ... parked=N` shows parking happened; `[PoolRevive] reconnected N` after reuse.
 4. Lab method: scenarios desync-ref then desync-jump (Komorebi): J* vs D* show no rdisp Toolrack diffs, animFlagMismatch 0, J900 unit renderers same.
+
+## Online tab (corner tab 16, 2026-11-26)
+Two PCs on the same Radmin network, both with this build. Lab online-mp (two copies on one PC) passed discovery, avatars, join from the list, chat both ways, met history.
+1. Open the menu, globe icon in the top right corner: own card first (avatar, nick in plate colour, status "In the main menu", Radmin 26.x address, copy button). The other PC shows up within ~3 s, also when the vanilla lobby list does not show its host.
+2. PC A hosts a lobby: on PC B the card turns green "Hosting a lobby", map, mode, 1/N and a Join button. Join -> waiting window -> in the lobby (no IP typed).
+3. Both in the lobby / match: statuses update (lobby of X, match with clock and "vs" names, pause, replay, duel vs bot with score, aim training). Discord shows the same.
+4. A (host in lobby) presses + (Invite) on B's card while B is in the main menu: B gets a notice + a top card "A invites you" with Join for 60 s, and the same invite at the top of B's Online tab (Join / Decline). Join works from both.
+5. Chat: All online + direct messages (chat icon on a card). Enter sends, history kept after restart, red dot on the globe for unread, notice for direct messages. Trash clears a chat, Ctrl+Z brings it back.
+6. Quit B: on A the card goes to "Met before (offline)" at once (bye), with "x min ago" and last address; trash forgets it (Ctrl+Z restores).
+7. Settings fold: switching off "Others can join" removes the Join button on the other PC; "Show my address" off hides the address; header switch off = nobody sees you, globe greyed.
+8. Firewall: Windows may ask to allow UDP for the game once; if a player never shows, add their Radmin IP in Settings > Extra addresses.
+
+## Online duel + void arena (2026-11-26, 0b08edb)
+1. Duel tab Start (bot): loads fast, arena = thin floor in the void, zone colours, camera on the arena; push a unit off the edge -> it dies and counts as a kill.
+2. Two PCs, both BC ON, Online tab: crossed swords on the other card (tooltip shows your settings); other side gets a card, Accept -> lobby -> duel loads by itself (host start may freeze ~11 s: vanilla hosting).
+3. Opponent sees the floor, commands own units (Bot column), attacks yours; HUD names "A vs B", round number, score line at the bottom.
+4. Round end -> Next round x/2 on both; starts only when both pressed. Give up + reset mid-fight: presser loses, new round at once, both score lines agree.
+5. Third PC: Online list "Join match" on the host -> spectator, sees floor + HUD with names, Exit only.
+6. Opponent leaves mid-round -> host gets a win + notice. Elo / all time survive a restart (configs/duel-pvp.txt), duel-logs/pvp-history.txt has one line per round.
+7. BC OFF on either side: swords button greyed with a reason; nothing new on the wire.
+
+## Better Workbenches (2026-11-26, rule craft.better default ON + craft.queue 8..40 default 40, BC ON, msg 139)
+- Host: queue 40 orders at a workbench; the queue is ONE row 8 slots wide, LMB drag (or wheel) scrolls it, a drag never removes a slot, a plain click removes that one.
+- Client (2 PCs): same station shows the same 40 icons in the same order after every add/remove/finish/loop; host and client lists never differ (msg 139 resend every 3 s).
+- Leftovers: junk nobody can store (no stockpile for it) inside a workbench does not stop workers from carrying finished kit parts to racks nor from crafting the next order.
+- Lab: put many barrels/bombs/resources in by hand (contextual store), no limit.
+- Part buttons: workbench shows poleaxe, kettle hat, bow, quiver, cap; each queues only that part. Hidden when the rule is off.
+- Save with a 20-order queue, load: all 20 back (btc-craftqueue.txt in the save folder).
+- Rule OFF or BC OFF: limit 8, no part buttons, vanilla capacity, no msg 139.
+- Keep for later: queue bow+quiver with loop, 8 rope + 16 planks inside; after the bow, nobody carries the ropes out while the quiver is crafted.
+- Rack limit: 1 rack with a Halberdier filter and 1 free poleaxe slot; queue poleaxe x3 + bow at a workbench with the rack button red: one poleaxe is crafted, then the bow, the other poleaxes wait; take a kit off the rack -> the next poleaxe starts. Button grey = vanilla. Orders > "Better Workbenches: by default..." sets new stations' mode; a client's toggle shows on the host and survives save/load.
+- Prefetch: loop bow + quiver, 2+ workers: while the operator makes the quiver, exactly one other worker brings rope/planks; never two helpers at one station; the operator is never replaced.
+- Helper switch: worker button grey = no helper (only the operator fetches for the current order); Hotkeys > Crafting stations default off -> new stations start grey; client toggle reaches the host and survives save/load.
+
+## Bear traps task (2026-11-26, rule work.trapTask, BC ON, C# game menu)
+1. Place a trap: task "Bear traps" with the trap icon appears in the task list (and on the beacon). Remove all traps: it goes.
+2. Fire several traps: goal counter = fired traps; workers each run to a DIFFERENT trap, nearest first; extra workers do other work.
+3. Priority lowest / crew 0: nobody re-arms. Manual builder re-arm still works.
+4. Worker carrying an ingot/plank/kit part: stores it first, then re-arms; with no fitting container he does not take the task.
+5. New task > Bear traps: click a trap / drag a frame -> own task "Bear traps (own)" selected; click/frame adds, Ctrl removes, Ctrl+Z undo, Esc leaves.
+6. Traps of an own task are not in the auto one; delete the own task -> they return. Save + load: tasks and members come back.
+7. MP client: same as above from the client; enemy never sees your task membership.
+
+## Movie panel in MP + terraform look (2026-11-26, BC ON, host rule gen.editor)
+1. Host + 1 client, editor panel shared. Client opens movie sidebar: slow 0.5 / 0.1, fast 1.5 / 5 -> both PCs run at that speed (units, anims, arrows); same button again = normal. Host sees notice "X - movie panel: slow 0.5".
+2. Pause / step 1s / step 0.1s from either side: everyone pauses (pause card), steps run ~1 s / 0.1 s on all.
+3. Stop the Sun, Time of Day slider, Sun Speed slider, Toggle Fog of War: change on both PCs; notice to the others (slider once per 2 s).
+4. Slow 0.1, then client drops/rejoins: rejoiner loads normally, then runs at 0.1. Leave the match at 0.1: main menu runs at normal speed.
+5. Editor rule off mid-match at 0.5: speed back to 1 for all. SP: movie buttons behave as vanilla.
+6. Terraform: select a terraform task -> no vanilla Flatten box/threshold/voxel highlight, only our marks of THIS task; other tasks' marks hidden; nothing shown with no task selected. Vanilla Flatten tasks still show the vanilla box.
+Logs: [Movie] speed / host speed / fog lines.
+
+## Replay chains (2026-11-27, one match over several sessions)
+1. Play a match (MP or SP with recording), save, play on 1-2 min, leave. Load the save, play, leave. Library: ONE card with the sessions badge "2", length = session 1 up to the save + session 2.
+2. Open the card: strip with 2 blocks and a violet branch lane (the part after the save). Rows: play from a session, unlink (Ctrl+Z brings it back), branch row: watch / star = make main.
+3. Watch the match: first open prepares session 2 (cover "Preparing the match: session 1/1"), then plays; at the joint the next session opens by itself under the cover. Bar: joints, marks of both sessions, APM of the other session (after it was opened once), sessions button "1/2" with the list.
+4. C / V and clicks across the joint, branch lane click, "Make this branch the main line".
+5. Merge by hand: link button in the library, pick 2 replays of one map, Merge; different maps are refused.
+6. Export (arrow icon in the match details): .btcm in Replays + copied; on another PC drop it into the Replays folder: sessions unpacked, card appears.
+7. MP client: the host replay arrives with the links (client library shows the same match).
+
+## Replay files from Windows (2026-11-27)
+1. Explorer: double click a .btcr with the game closed -> the game starts and plays it after the main menu (no Steam). With the game open in the menu -> a second window flashes and closes, the running game plays it. In a match -> only a toast, the file is in the list.
+2. Copy a .btcr / .btcm in Explorer, Ctrl+V in the game (not in a text field) -> copied to Replays, menu opens on Replays, the card blinks.
+3. Drag a .btcr onto the game window -> same. A non-replay file -> toast "only replay files".
+4. Replay settings > Playback: switch off -> file types removed (icons gone); exe path field: paste "Copy as path" of another copy -> green check, double click opens that copy; wrong path -> red cross.
+8. Seamless joint (Replay settings switch on): at the joint no loading screen, the world goes on; click a far point of another session on the bar -> short hitch, no loading screen; switch off -> the old reload. MP replay with many units: watch for units popping in place or wrong colours of factions after a joint.
+
+## Advanced blueprints (2026-11-28, presets need BC ON)
+- Pie on own stockpile / rack marks sets the preset; hover shows a summary; build mode shows icons above marks.
+- Click a station mark: the station panel edits the preset (kits, parts, queue stacks with Shift+click, loop, clear, rack limit, helper). Built station gets it.
+- Save a compound with 2+ build tasks of different priority and an anchor (LeftAlt+X over a selected mark); place it: anchor under the cursor, LeftAlt+X over another block moves it, marks land in separate new tasks with the saved priorities, presets on the new marks.
+- World save with preset marks -> load -> presets kept. MP: client presets on own marks applied by the host; enemy/ally cannot edit; BC OFF: no pie branch, vanilla wire.

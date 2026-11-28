@@ -24,7 +24,8 @@ namespace BetterThanCastle
         internal static ConfigEntry<bool> FogSounds;
         internal static ConfigEntry<bool> OwnTransport;
         internal static ConfigEntry<bool> AnimatorCulling;
-        internal static ConfigEntry<bool> MemoryFixes, FrameSavers, FastSave, FastLoad, ThreadedTerrain, SkipModeIntro, ReplayNoGameHud, CsGameMenu;
+        internal static ConfigEntry<bool> CrowdRepath, FastOverheads;
+        internal static ConfigEntry<bool> MemoryFixes, FrameSavers, FastSave, FastLoad, ThreadedTerrain, SkipModeIntro, ReplayNoGameHud, CsGameMenu, BackgroundPatching;
         internal static ConfigEntry<bool> WarmShaders, UnitNightLights, FireflyLights, CrystalShadows, PauseHiddenAnims, HideNameTags, StaticCrystals, SimpleFireflies, CrystalLights, ShortShadows, NoAmbientOcclusion, NoBloom, NoSunShadows;
         internal static ConfigEntry<bool> LogMove;
         internal static ConfigEntry<bool> LogBuildAi;
@@ -33,6 +34,9 @@ namespace BetterThanCastle
         internal static ConfigEntry<bool> LogFactionDump;
         internal static ConfigEntry<bool> UpdateCheck;
         internal static ConfigEntry<string> UpdateSkipped;
+        internal static ConfigEntry<bool> OnlineOn, OnlineShowIp, OnlineAllowJoin, OnlineInvites, OnlineChat, OnlineChatNotify;
+        internal static ConfigEntry<string> OnlineId, OnlineMyIp, OnlineManual;
+        internal static ConfigEntry<int> OnlinePort;
         internal static ConfigEntry<bool> ReplayAutoShare, ReplayDownloadFromHost, ChatFade;
         internal static ConfigEntry<float> ChatFadeSeconds;
         internal static ConfigEntry<bool> PovShowCone;
@@ -63,6 +67,16 @@ namespace BetterThanCastle
             EarlyClientUi = cfg.Bind("LoadingExperimental", "EarlyClientUi", false, "EXPERIMENTAL (off since 0.5.0: host and clients load together like 0.3.0). MP client: build the in-game UI while the host finishes loading. Off = vanilla order.");
             UpdateCheck = cfg.Bind("Update", "CheckOnStart", true, "Check GitHub Releases at game start and offer to update the mod.");
             UpdateSkipped = cfg.Bind("Update", "SkippedVersion", "", "Version the player chose to skip.");
+            OnlineOn = cfg.Bind("Online", "Enabled", true, "Online tab: show mod players on your networks (Radmin, Hamachi, LAN) and show yourself to them (own UDP port, not the game connection).");
+            OnlineId = cfg.Bind("Online", "Id", "", "Random id of this player in the Online list (made once).");
+            OnlinePort = cfg.Bind("Online", "Port", 47781, "UDP port of the Online list (all players must use the same one).");
+            OnlineShowIp = cfg.Bind("Online", "ShowIp", true, "Show your game address (Radmin / LAN IP) to other mod players.");
+            OnlineMyIp = cfg.Bind("Online", "MyIp", "", "Address shown to others instead of the detected one (empty = auto: Radmin/Hamachi first, then LAN).");
+            OnlineManual = cfg.Bind("Online", "ExtraAddresses", "", "Extra addresses to ask directly (comma separated), for networks that drop broadcasts.");
+            OnlineAllowJoin = cfg.Bind("Online", "AllowJoin", true, "Others can join your lobby (and your running BetterConnection match) from the Online list.");
+            OnlineInvites = cfg.Bind("Online", "Invites", true, "Accept invites from hosts (a card with a Join button).");
+            OnlineChat = cfg.Bind("Online", "Chat", true, "Online chat with other mod players.");
+            OnlineChatNotify = cfg.Bind("Online", "ChatNotify", true, "Notify about new messages in the common chat (direct messages always notify).");
             BetterConnection = cfg.Bind("Network", "BetterConnection", true,
                 "ON: mod network extensions are active (all players need the mod). " +
                 "OFF: the mod behaves exactly like vanilla on the wire (play with vanilla clients/hosts).");
@@ -108,9 +122,12 @@ namespace BetterThanCastle
             AnimatorCulling = cfg.Bind("Performance", "AnimatorCulling", true,
                 "Unit animators skip skeleton/transform updates while off-screen (CullUpdateTransforms). Visual only; needs BetterConnection ON. Measured: no frame-time gain (state machine cost dominates), so OFF by default.");
             MemoryFixes = cfg.Bind("Performance", "MemoryFixes", true, "Fewer and shorter freezes from garbage collection: smaller Lua heap and stacks, fixes of game memory leaks, no dead analytics (ported from Castle Story Plus). Local only, nothing changes on the wire. Applies after a restart.");
+            CrowdRepath = cfg.Bind("Performance", "CrowdRepath", true, "Units blocked by other units in a crowd do not repeat a detour search that just failed (same place, same goal) for 0.6 s: removes the regular hitches of big crowds. Host / single player with BetterConnection. Applies after a restart.");
+            FastOverheads = cfg.Bind("Performance", "FastOverheads", true, "Icons, name tags and thought bubbles over units are drawn by the mod from the vanilla overheads (same look): moving the camera no longer moves every shown overhead (about 10 ms per frame with 50 shown). Local only, switches at once.");
             FrameSavers = cfg.Bind("Performance", "FrameSavers", true, "Less CPU per frame for the same game: work the game repeated for the same answer is done once (overhead icons, sound positions, input names, animator states, picking rays...; ported from Castle Story Plus). Local only, nothing changes on the wire or in the simulation. Applies after a restart.");
             FastSave = cfg.Bind("Performance", "FastSave", true, "Saving a running game no longer freezes it: quicksave and the save menu write the game objects a slice per frame, and the big data files are written by a background thread into a new folder that then replaces the old save (instead of copying the whole save back and forth). Ported from Castle Story Plus. Local only; applies at once.");
             FastLoad = cfg.Bind("Performance", "FastLoad", true, "Faster world load: the terrain is drawn in a few frames instead of one step per frame, loader waits are checked every frame, the loading curtain is faster, and the serializer is warmed up in the background so the replay snapshot at match start no longer freezes the game (~1.6 s). Ideas partly from Castle Story Plus. Local only, nothing changes on the wire. Applies after a restart.");
+            BackgroundPatching = cfg.Bind("Performance", "BackgroundPatching", true, "Faster game start: the mod hooks that are only needed in a world are installed on a background thread while the game loads its menu (about 4-5 s less to the main menu). A world load waits for them if they are not done yet. Applies after a restart.");
             ThreadedTerrain = cfg.Bind("Performance", "ThreadedTerrain", true, "Build the terrain on several CPU threads: the two heaviest terrain passes (levels/config and normals/UVs) are split over the cores, bit-identical result, ~0.7 s faster world load. Local only, nothing changes on the wire. Applies at once.");
             SkipModeIntro = cfg.Bind("Performance", "SkipModeIntro", true, "Skip the intro window of sandbox, conquest and invasion: its button action runs at once (conquest/invasion single player timers start as after the click). The tutorial keeps it. Local only. Applies at the next match.");
             // key renamed from WarmShaders (default was ON in 0.6.0): the new key starts OFF for everyone, the first world load is 1.6 s shorter

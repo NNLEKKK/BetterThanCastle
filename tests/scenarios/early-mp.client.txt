@@ -1,0 +1,8 @@
+# Early patch classes, client side.
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 90
+ready 120
+waitgame 240
+wait 3
+quit

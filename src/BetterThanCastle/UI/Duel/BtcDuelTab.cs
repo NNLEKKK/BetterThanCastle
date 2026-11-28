@@ -55,6 +55,7 @@ namespace BetterThanCastle
 
             Rect view = new Rect(area.x, y, area.width, area.yMax - y);
             float vw = view.width - (_h > view.height ? 14f : 0f);
+            BtcJump.Scroll(ref _scroll, view.height);
             _scroll = GUI.BeginScrollView(view, _scroll, new Rect(0f, 0f, vw, _h));
             float cy = fs * 0.2f;
             _keys.Clear();
@@ -92,11 +93,13 @@ namespace BetterThanCastle
                 GUI.Label(new Rect(card.x + fs * 3f, card.y + h * 0.5f, card.width - fs * 3.5f, h * 0.45f),
                     active ? Tt("Use Rematch / Exit on screen. Changes apply at the next rematch.", "Реванш / Выход на экране. Изменения сработают со следующего реванша.")
                            : BtcDuelConfig.Total(BtcDuelConfig.PlayerCount) + " vs " + BtcDuelConfig.Total(BtcDuelConfig.BotCount) + "  ·  " + BtcDuelConfig.Difficulty, _dim);
-                if (!active && BtcSfx.Btn(card, "", BtcReplayUI.sBtn)) BtcDuel.Launch();
+                if (!active && BtcSfx.Btn(card, "", BtcReplayUI.sBtn)) { if (BtcDuel.Launch()) ResourcePackManager.CloseMenu(); }
                 y += h + fs * 0.5f;
             }
             BtcUi.Note(ref y, w, fs, Tt("Train pure micro on a small arena: safe zones, neutral, mid. Win by kill & escape or by holding the mid for 5 s. Settings apply to the next match (Rematch is instant).",
                 "Тренировка микро на маленькой арене: сейфзоны, нейтраль, мид. Победа: kill & escape или удержание мида 5 с. Настройки применяются со следующего матча (реванш мгновенный)."));
+            BtcUi.Note(ref y, w, fs, Tt("Against a player: Online tab, the crossed swords button on a player card. These settings are used; the opponent plays the Bot column. Falling off the arena kills the unit.",
+                "Против игрока: вкладка Онлайн, кнопка со скрещёнными мечами в карточке игрока. Берутся эти настройки, соперник играет колонку «Бот». Упавший с арены юнит погибает."));
 
             if (BtcUi.Fold(ref y, w, fs, KeyAdd("duel:match"), Tt("Match", "Матч"), 0))
             {
@@ -150,7 +153,7 @@ namespace BetterThanCastle
             float c1 = w * 0.40f, cw = w * 0.27f;
             GUI.Label(new Rect(pad + fs * 0.6f, y, c1, rh), Tt("Unit", "Юнит"), _dim);
             GUI.Label(new Rect(c1, y, cw, rh), Tt("You", "Ты") + " (" + BtcDuelConfig.Total(BtcDuelConfig.PlayerCount) + ")", _dim);
-            GUI.Label(new Rect(c1 + cw, y, cw, rh), Tt("Bot", "Бот") + " (" + BtcDuelConfig.Total(BtcDuelConfig.BotCount) + ")", _dim);
+            GUI.Label(new Rect(c1 + cw, y, cw, rh), Tt("Bot / opponent", "Бот / соперник") + " (" + BtcDuelConfig.Total(BtcDuelConfig.BotCount) + ")", _dim);
             y += rh;
             for (int k = 0; k < BtcDuelConfig.UnitKinds; k++)
             {

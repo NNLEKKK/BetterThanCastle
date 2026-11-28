@@ -17,6 +17,9 @@ namespace BetterThanCastle
             return true;
         }
 
+        /// <summary>The Online list hears about the quit at once (else the others keep this player 15 s).</summary>
+        private void OnApplicationQuit() { BtcPresence.Close(true); }
+
         private void SelectTab(int id)
         {
             if (id == 9) BtcReportTab.OnOpen(BtcMenu.CurrentId);

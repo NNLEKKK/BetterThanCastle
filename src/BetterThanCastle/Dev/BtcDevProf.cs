@@ -105,6 +105,7 @@ namespace BetterThanCastle.Dev
             Array.Clear(Frames, 0, Ring);
             _frameIdx = 0; _frames = 0; _sumDt = 0; _maxDt = 0; _over33 = 0; _over100 = 0; _namedMs = 0;
             for (int i = 0; i < Spikes.Length; i++) Spikes[i] = null;
+            Timeline.Clear(); _ema = 0f;
             _startReal = Time.realtimeSinceStartup;
             _gcStart = GC.CollectionCount(0);
             _gc0Start = _gc0Prev = GC.CollectionCount(0); _gc1Start = _gc1Prev = GC.CollectionCount(1); _gc2Start = _gc2Prev = GC.CollectionCount(2);
@@ -342,6 +343,11 @@ namespace BetterThanCastle.Dev
 
             int cnt = _touchedCount; if (cnt > MaxIds) cnt = MaxIds;
             if (ms > SpikeMs && (cnt > 0 || gcTag != null)) RecordSpike(ms, now, cnt, gcTag);
+            // timeline: every frame well above the running average (periodic hitches show their period here)
+            if (_ema <= 0f) _ema = ms;
+            if (ms > 12f && ms > _ema * 1.8f && Timeline.Count < 1500)
+                Timeline.Add(new Spike { Ms = ms, Frame = (int)_frames, Time = now - _startReal, Culprits = Culprits(cnt, gcTag, ms - _ema) });
+            _ema += (ms - _ema) * 0.05f;
             double namedFrame = 0;
             for (int i = 0; i < cnt; i++) namedFrame += Ms(FrameTicks[Touched[i]]);
             _namedMs += namedFrame < ms ? namedFrame : ms;
@@ -380,6 +386,61 @@ namespace BetterThanCastle.Dev
             Spike s = new Spike();
             s.Ms = ms; s.Frame = (int)_frames; s.Time = now - _startReal; s.Culprits = sb.Length == 0 ? "-" : sb.ToString();
             Spikes[slot] = s;
+        }
+
+        private static readonly List<Spike> Timeline = new List<Spike>();
+        private static float _ema;
+
+        // top named methods of this frame; "unnamed" when the named ones explain less than half of the excess over the average
+        private static string Culprits(int cnt, string gcTag, float excess)
+        {
+            int a = -1, b = -1;
+            long ta = 0, tb = 0;
+            for (int i = 0; i < cnt; i++)
+            {
+                int id = Touched[i];
+                long v = FrameTicks[id];
+                if (v > ta) { b = a; tb = ta; a = id; ta = v; }
+                else if (v > tb) { b = id; tb = v; }
+            }
+            StringBuilder sb = new StringBuilder();
+            if (gcTag != null) sb.Append(gcTag);
+            if (a < 0 || Ms(ta) < excess * 0.5f) { if (sb.Length > 0) sb.Append(' '); sb.Append("unnamed"); }
+            AppendCulprit(sb, a, ta); AppendCulprit(sb, b, tb);
+            return sb.ToString();
+        }
+
+        private static void AppendTimeline(StringBuilder sb)
+        {
+            sb.AppendLine("SPIKE TIMELINE (t_sec frame_ms culprits; frames > 1.8x running avg and > 12 ms)");
+            Dictionary<string, List<float>> by = new Dictionary<string, List<float>>();
+            for (int i = 0; i < Timeline.Count; i++)
+            {
+                Spike s = Timeline[i];
+                if (i < 400) sb.Append(s.Time.ToString("0.00")).Append(' ').Append(s.Ms.ToString("0.0")).Append(' ').Append(s.Culprits).AppendLine();
+                string first = s.Culprits;
+                int sp = first.IndexOf(' ');
+                if (first.StartsWith("GC(", StringComparison.Ordinal)) first = "GC";
+                else if (sp > 0) first = first.Substring(0, sp);
+                int eq = first.IndexOf('=');
+                if (eq > 0) first = first.Substring(0, eq);
+                List<float> l;
+                if (!by.TryGetValue(first, out l)) by[first] = l = new List<float>();
+                l.Add(s.Time);
+            }
+            sb.AppendLine("SPIKE PERIODS (top culprit: count, median gap s, gaps)");
+            foreach (KeyValuePair<string, List<float>> kv in by)
+            {
+                List<float> t = kv.Value;
+                List<float> gaps = new List<float>();
+                for (int i = 1; i < t.Count; i++) if (t[i] - t[i - 1] > 0.3f) gaps.Add(t[i] - t[i - 1]);
+                gaps.Sort();
+                sb.Append(kv.Key).Append(": n=").Append(t.Count);
+                if (gaps.Count > 0) sb.Append(" median=").Append(gaps[gaps.Count / 2].ToString("0.0"));
+                sb.Append(" [");
+                for (int i = 1; i < t.Count && i < 16; i++) sb.Append(i > 1 ? " " : "").Append((t[i] - t[i - 1]).ToString("0.0"));
+                sb.AppendLine("]");
+            }
         }
 
         private static void AppendCulprit(StringBuilder sb, int id, long ticks)
@@ -497,6 +558,7 @@ namespace BetterThanCastle.Dev
                     if (sp[i] == null) continue;
                     sb.Append(sp[i].Ms.ToString("0.0")).Append(' ').Append(sp[i].Frame).Append(' ').Append(sp[i].Time.ToString("0")).Append(' ').Append(sp[i].Culprits).AppendLine();
                 }
+                AppendTimeline(sb);
 
                 sb.AppendLine("COUNTERS");
                 sb.Append("units=").Append(_units).Append(" professions=").Append(_procs).Append(" particleSystems=").Append(_particleSystems).Append(" particles=").Append(_particlesAlive).Append(" rigid_active=").Append(_rigidActive).Append("/").Append(_rigidTotal).Append(" structs=").Append(_structs).Append(" [").Append(_structDetail).Append("] targets_ok=").Append(_targetsOk).Append(" targets_unresolved=").Append(_targetsFail).Append(" timed_methods=").Append(_idCount).AppendLine();

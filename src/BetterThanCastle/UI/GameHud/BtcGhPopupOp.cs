@@ -13,6 +13,7 @@ using Brix.Utils;
 using Smooth.Slinq;
 using Smooth.Slinq.Context;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace BetterThanCastle
 {
@@ -107,6 +108,8 @@ namespace BetterThanCastle
             _recipeIcons = m;
         }
 
+        internal static Sprite RecipeIcon(RecipeInfo r) { return RecipeSprite(r); }
+
         private static Sprite RecipeSprite(RecipeInfo r)
         {
             if (r == null) return Ico("Cancel");
@@ -168,8 +171,10 @@ namespace BetterThanCastle
         private static void UpdateOp()
         {
             _op = SelectedStation();
-            _opKind = _op != null ? KindOf(_op) : -1;
-            _opSlots = _op != null ? SlotsOf(_opKind) : new RSlot[0];
+            _bp = _op == null ? BtcBpPreset.SelectedStation : null;
+            _opKind = _op != null ? KindOf(_op) : (_bp != null ? BtcBpPreset.StationKind(_bp) : -1);
+            _opSlots = OpOn() ? SlotsOf(_opKind) : new RSlot[0];
+            _opParts = PartsOf(_opSlots);
             ReadOpContent();
         }
 
@@ -190,9 +195,26 @@ namespace BetterThanCastle
             catch (Exception e) { BtcLog.Warn("GameHud", "station content: " + e.Message); }
         }
 
-        private static bool OpHas() { return _op != null; }
-        private static bool HasQueue() { return _op != null && _op.QueuedRecipes != null && _op.QueuedRecipes.Count != 0; }
-        private static RData ActiveData() { return HasQueue() ? DataOf(_op.QueuedRecipes[0]) : null; }
+        private static bool OpHas() { return OpOn(); }
+        private static bool HasQueue() { List<RecipeInfo> q = OpQueue(); return q != null && q.Count != 0; }
+        private static bool HasNeed() { return _bp == null && HasQueue(); }
+        private static RData ActiveData() { return HasNeed() ? DataOf(_op.QueuedRecipes[0]) : null; }
+
+        // ------------------------------------------------------------------ station mark (BtcBpPreset): the same panel edits the preset of the selected mark
+        private static Blueprint _bp;
+
+        /// preset changed (sel: the selected mark changed)
+        internal static void OnBpChanged(bool sel)
+        {
+            try { if (sel) UpdateOp(); Refresh(M_OPSEL | M_OPQ | M_OPLOOP | M_OPCONTENT); }
+            catch (Exception e) { BtcLog.Error("GameHud", "station mark: " + e.Message); }
+        }
+
+        private static bool OpOn() { return _op != null || _bp != null; }
+        private static List<RecipeInfo> OpQueue() { return _bp != null ? BtcBpPreset.Queue(_bp) : (_op != null ? _op.QueuedRecipes : null); }
+        private static bool OpLoop() { return _bp != null ? BtcBpPreset.Loop(_bp) : _op != null && _op.Looping; }
+        private static bool OpLimit() { return _bp != null ? BtcBpPreset.LimitOn(_bp) : BtcWorkbench.LimitOn(_op); }
+        private static bool OpHelp() { return _bp != null ? BtcBpPreset.HelpOn(_bp) : BtcWorkbench.HelpOn(_op); }
 
         /// Data.Operable:HasOutputContent: any finished good of this station's recipes sits in the inventory.
         private static bool HasOutputContent()
@@ -230,10 +252,9 @@ namespace BetterThanCastle
         private static void DefineOperableItems()
         {
             Items.Add(RecipesSec());
-            Items.Add(new Div(M_OPSEL | M_OPQ | M_OPCONTENT, HasQueue, 8f)); Items.Add(NeedSec());
+            Items.Add(new Div(M_OPSEL | M_OPQ | M_OPCONTENT, HasNeed, 8f)); Items.Add(NeedSec());
             Items.Add(new Div(M_OPSEL | M_OPQ | M_OPCONTENT, HasOutputContent, 8f)); Items.Add(FinishedSec());
-            Items.Add(new Div(M_OPSEL | M_OPQ | M_OPLOOP, HasQueue, 8f)); Items.Add(QueueSec());
-        }
+            Items.Add(new Div(M_OPSEL | M_OPQ | M_OPLOOP, HasQueue, 8f)); Items.Add(QueueSec());        }
 
         private static Sec RecipesSec()
         {
@@ -244,14 +265,128 @@ namespace BetterThanCastle
                     int slot = i;
                     s.Add(new Btn
                     {
-                        Visible = delegate { return _op != null && slot < _opSlots.Length; },
+                        Visible = delegate { return OpOn() && slot < _opSlots.Length; },
                         IconFn = delegate { return slot < _opSlots.Length ? SlotSprite(_opSlots[slot]) : null; },
                         IconColor = Color.white, IconSize = 64f,
                         HasHotkey = true, Hotkey = Key("Projects", "project_QueueSlot" + (slot + 1)),
                         OnAction = delegate { ActQueueSlot(slot + 1); },
                     });
                 }
+                // Better Workbenches: one button per kit part (spear only, hat only...)
+                s.Add(new InnerDiv(HasParts));
+                for (int i = 0; i < 6; i++)
+                {
+                    int p = i;
+                    s.Add(new Btn
+                    {
+                        Visible = delegate { return HasParts() && p < _opParts.Length; },
+                        IconFn = delegate { return p < _opParts.Length ? RecipeSprite(_opParts[p]) : null; },
+                        IconColor = Color.white, IconSize = 48f,
+                        Tip = delegate { return BtcLang.Tr("Queue only this kit part"); },
+                        HasHotkey = true, Hotkey = BindText("craft_part_" + (p + 1)),
+                        OnAction = delegate { ActQueuePart(p); },
+                    });
+                }
+                // Better Workbenches: rack limit mode of this station (red = on: kit parts without a free rack slot are skipped)
+                s.Add(new Btn
+                {
+                    Visible = HasParts,
+                    IconName = "_Tool_Rack", IconSize = 40f,
+                    IconColorFn = delegate { return OpLimit() ? BtcGhKit.Red : BtcGhKit.Gray; },
+                    Tip = delegate
+                    {
+                        return BtcLang.Tr(OpLimit() ? "Rack limit ON: kit parts no rack has room for are skipped, the next order is crafted"
+                            : "Rack limit OFF: kit parts are crafted without limit") + " (" + BtcLang.Tr("click to switch for this station") + ")";
+                    },
+                    HasHotkey = true, Hotkey = BindText("craft_rack_toggle"),
+                    OnAction = ActRackToggle,
+                });
+                // Better Workbenches: helper mode of this station (red = on: one more worker brings what the next orders need), every station
+                s.Add(new InnerDiv(delegate { return HelpVisible() && !HasParts(); }));
+                s.Add(new Btn
+                {
+                    Visible = HelpVisible,
+                    IconName = "_Bricktron", IconSize = 40f,
+                    IconColorFn = delegate { return OpHelp() ? BtcGhKit.Red : BtcGhKit.Gray; },
+                    Tip = delegate
+                    {
+                        return BtcLang.Tr(OpHelp() ? "Helper ON: while one worker crafts, one more brings what the next orders need"
+                            : "Helper OFF: only the crafting worker fetches, for the current order") + " (" + BtcLang.Tr("click to switch for this station") + ")";
+                    },
+                    HasHotkey = true, Hotkey = BindText("craft_help_toggle"),
+                    OnAction = ActHelpToggle,
+                });
             });
+        }
+
+        private static bool HelpVisible() { return BtcWorkbench.On && (_bp != null ? BtcBpPreset.HelperKind(_bp) : _op != null && BtcWorkbench.HelperStation(_op)); }
+
+        private static void ActRackToggle()
+        {
+            try { if (_bp != null) BtcBpPreset.ToggleLimit(_bp); else BtcWorkbench.ToggleLimit(SelectedStation()); Refresh(M_OPSEL | M_OPQ); }
+            catch (Exception e) { BtcLog.Error("GameHud", "rack limit: " + e.Message); }
+        }
+
+        private static void ActHelpToggle()
+        {
+            try { if (_bp != null) BtcBpPreset.ToggleHelp(_bp); else BtcWorkbench.ToggleHelp(SelectedStation()); Refresh(M_OPSEL | M_OPQ); }
+            catch (Exception e) { BtcLog.Error("GameHud", "helper: " + e.Message); }
+        }
+
+        /// BTC bind label for a button corner ("" while unbound)
+        private static Func<string> BindText(string id)
+        {
+            return delegate { return BtcHotkeys.GetKeys(id, NoKeys).Length == 0 ? "" : BtcHotkeys.ComboText(id); };
+        }
+
+        private static readonly KeyCode[] NoKeys = new KeyCode[0];
+        private static string[] _partBinds;
+
+        /// CameraBookmarkHotkey per-frame handlers: Crafting stations binds act on the selected station (Better Workbenches)
+        internal static void CraftBindsTick()
+        {
+            if (!BtcWorkbench.On) return;
+            CraftingStation s = SelectedStation();
+            if (s == null) return;
+            try
+            {
+                if (_op != s) UpdateOp();
+                if (_partBinds == null) { _partBinds = new string[6]; for (int i = 0; i < 6; i++) _partBinds[i] = "craft_part_" + (i + 1); }
+                for (int i = 0; i < _partBinds.Length; i++)
+                {
+                    KeyCode[] k = BtcHotkeys.GetKeys(_partBinds[i], NoKeys);
+                    if (k.Length != 0 && BtcHotkeys.ComboPressed(k) && i < _opParts.Length) { ActQueuePart(i); BtcSfx.Click(); }
+                }
+                KeyCode[] r = BtcHotkeys.GetKeys("craft_rack_toggle", NoKeys);
+                if (r.Length != 0 && BtcHotkeys.ComboPressed(r) && _opParts.Length > 0) { ActRackToggle(); BtcSfx.Click(); }
+                KeyCode[] h = BtcHotkeys.GetKeys("craft_help_toggle", NoKeys);
+                if (h.Length != 0 && BtcHotkeys.ComboPressed(h)) { ActHelpToggle(); BtcSfx.Click(); }
+            }
+            catch (Exception e) { BtcLog.Error("GameHud", "craft binds: " + e.Message); }
+        }
+
+        private static RecipeInfo[] _opParts = new RecipeInfo[0];
+
+        private static bool HasParts() { return OpOn() && _opParts.Length > 0 && BtcWorkbench.On; }
+
+        private static RecipeInfo[] PartsOf(RSlot[] slots)
+        {
+            List<RecipeInfo> a = new List<RecipeInfo>();
+            for (int i = 0; i < slots.Length; i++)
+                if (slots[i].Infos.Length > 1) a.AddRange(slots[i].Infos);
+            return a.ToArray();
+        }
+
+        private static void ActQueuePart(int p)
+        {
+            try
+            {
+                if (_bp != null) { if (p >= 0 && p < _opParts.Length && BtcWorkbench.On) BtcBpPreset.Add(_bp, new[] { _opParts[p] }); return; }
+                CraftingStation s = SelectedStation();
+                if (s == null || _op == null || p < 0 || p >= _opParts.Length || !BtcWorkbench.On) return;
+                StationCmd().CallCmdcraftingQueueRecipe(s.gameObject, _opParts[p].id, 1);
+            }
+            catch (Exception e) { BtcLog.Error("GameHud", "queue part: " + e.Message); }
         }
 
         private static Sprite SlotSprite(RSlot r)
@@ -262,7 +397,7 @@ namespace BetterThanCastle
 
         private static Sec NeedSec()
         {
-            return new Sec(M_OPSEL | M_OPQ | M_OPCONTENT, HasQueue, "##operable_resources_requirements", delegate(Sec s)
+            return new Sec(M_OPSEL | M_OPQ | M_OPCONTENT, HasNeed, "##operable_resources_requirements", delegate(Sec s)
             {
                 for (int i = 0; i < 8; i++)
                 {
@@ -305,29 +440,141 @@ namespace BetterThanCastle
             });
         }
 
+        // Queue stacks: runs of the same order next to each other are one slot with "xN" above the icon (the real order stays visible).
+        private static readonly RecipeInfo[] _qRec = new RecipeInfo[BtcWorkbench.Limit];
+        private static readonly int[] _qStart = new int[BtcWorkbench.Limit], _qCount = new int[BtcWorkbench.Limit];
+        private static int _qGroups;
+
+        private static void BuildStacks()
+        {
+            _qGroups = 0;
+            if (!HasQueue()) return;
+            List<RecipeInfo> q = OpQueue();
+            for (int i = 0; i < q.Count && _qGroups < _qRec.Length; i++)
+            {
+                if (_qGroups > 0 && q[i] == _qRec[_qGroups - 1]) { _qCount[_qGroups - 1]++; continue; }
+                _qRec[_qGroups] = q[i]; _qStart[_qGroups] = i; _qCount[_qGroups] = 1;
+                _qGroups++;
+            }
+        }
+
+        /// click: remove one order of the stack (its last one, so a running first order is kept); Shift+click: the whole stack
+        private static void ActRemoveStack(int g)
+        {
+            if (_bp != null && g < _qGroups)
+            {
+                bool every = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+                BtcBpPreset.RemoveRange(_bp, every ? _qStart[g] : _qStart[g] + _qCount[g] - 1, every ? _qCount[g] : 1);
+                return;
+            }
+            CraftingStation s = SelectedStation();
+            if (s == null || g >= _qGroups) return;
+            int start = _qStart[g], n = _qCount[g];
+            bool all = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            int first = all ? start : start + n - 1;
+            for (int i = start + n - 1; i >= first; i--) StationCmd().CallCmdcraftingRemoveAt(s.gameObject, i);   // back to front: indices stay valid
+        }
+
+        /// One queue row, as wide as its stacks up to 8 slots (vanilla width); more stacks scroll inside it (hold LMB and drag, or the wheel).
+        private sealed class Strip : Cell
+        {
+            internal readonly Sec Inner = new Sec(0, Always, null, delegate { });
+            private ScrollRect _sr;
+            private LayoutElement _le;
+            private RectTransform _vrt;
+            private int _shown = -1;
+
+            private static float WidthFor(int slots) { slots = Mathf.Clamp(slots, 1, 8); return slots * 48f + (slots - 1) * 1f; }
+
+            internal override void Create(Sec s)
+            {
+                float w = WidthFor(8);
+                GameObject vp = new GameObject("QueueStrip", typeof(RectTransform));
+                RectTransform vrt = (RectTransform)vp.transform;
+                _vrt = vrt;
+                vrt.SetParent(s.Root, false);
+                vrt.sizeDelta = new Vector2(w, 48f);
+                LayoutElement le = vp.AddComponent<LayoutElement>();
+                _le = le;
+                le.minWidth = le.preferredWidth = w; le.minHeight = le.preferredHeight = 48f;
+                Image bg = vp.AddComponent<Image>();
+                bg.color = BtcGhKit.Clear;   // drag target between the slots
+                vp.AddComponent<RectMask2D>();
+
+                GameObject ct = new GameObject("Content", typeof(RectTransform));
+                RectTransform crt = (RectTransform)ct.transform;
+                crt.SetParent(vrt, false);
+                crt.anchorMin = new Vector2(0f, 0f); crt.anchorMax = new Vector2(0f, 1f); crt.pivot = new Vector2(0f, 0.5f);
+                crt.anchoredPosition = Vector2.zero; crt.sizeDelta = new Vector2(w, 0f);
+                HorizontalLayoutGroup g = ct.AddComponent<HorizontalLayoutGroup>();
+                g.spacing = 1f; g.childAlignment = TextAnchor.MiddleLeft;
+                g.childControlWidth = true; g.childControlHeight = true; g.childForceExpandWidth = false; g.childForceExpandHeight = false;
+                ContentSizeFitter f = ct.AddComponent<ContentSizeFitter>();
+                f.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+                _sr = vp.AddComponent<ScrollRect>();
+                _sr.horizontal = true; _sr.vertical = false;
+                _sr.movementType = ScrollRect.MovementType.Clamped;
+                _sr.inertia = true; _sr.decelerationRate = 0.1f; _sr.scrollSensitivity = 25f;
+                _sr.viewport = vrt; _sr.content = crt;
+                vp.AddComponent<StripDragEnd>();
+                Inner.Root = crt;
+                Go = vp;
+            }
+
+            internal override void Refresh()
+            {
+                bool v = Visible == null || Visible();
+                if (Go.activeSelf != v) Go.SetActive(v);
+                if (!v) return;
+                BuildStacks();
+                int slots = Mathf.Clamp(_qGroups, 1, 8);
+                if (slots != _shown)
+                {
+                    _shown = slots;
+                    float w = WidthFor(slots);
+                    _le.minWidth = _le.preferredWidth = w;
+                    _vrt.sizeDelta = new Vector2(w, 48f);
+                }
+                Inner.RefreshContent();
+            }
+        }
+
+        /// Next to the strip's ScrollRect: a short press-drag-release is still a click on the slot (BtcGhButton.EndDrag).
+        internal sealed class StripDragEnd : MonoBehaviour, UnityEngine.EventSystems.IEndDragHandler
+        {
+            public void OnEndDrag(UnityEngine.EventSystems.PointerEventData e) { BtcGhButton.EndDrag(e); }
+        }
+
         private static Sec QueueSec()
         {
             return new Sec(M_OPSEL | M_OPQ | M_OPLOOP, HasQueue, "##operable_queue", delegate(Sec s)
             {
-                for (int i = 0; i < 8; i++) // Data.Operable:GetQueueSize() is the constant 8 (BtcCraftQueue's longer tail has no slot, as in the Lua)
+                Strip strip = new Strip { Visible = HasQueue };
+                for (int i = 0; i < BtcWorkbench.Limit; i++) // Data.Operable:GetQueueSize() is the constant 8; Better Workbenches scrolls the rest
                 {
-                    int k = i;
-                    s.Add(new Btn
+                    int k = i;   // stack index
+                    strip.Inner.Add(new Btn
                     {
-                        Visible = delegate { return HasQueue() && _op.QueuedRecipes.Count > k; },
-                        IconFn = delegate { return HasQueue() && _op.QueuedRecipes.Count > k ? RecipeSprite(_op.QueuedRecipes[k]) : null; },
+                        Visible = delegate { return _qGroups > k; },
+                        IconFn = delegate { return _qGroups > k ? RecipeSprite(_qRec[k]) : null; },
                         IconColor = Color.white, IconSize = 64f,
-                        OnAction = delegate { ActRemoveFromQueue(k); },
+                        CountFn = delegate { return _qGroups > k && _qCount[k] > 1 ? "x" + _qCount[k] : ""; },
+                        CountAlign = TextAnchor.UpperCenter, CountSize = 12, CountColor = BtcGhKit.Yellow,
+                        Tip = delegate { return _qGroups > k && _qCount[k] > 1 ? BtcLang.Tr("click: remove one, Shift+click: remove the whole stack") : null; },
+                        OnAction = delegate { ActRemoveStack(k); },
                         Highlight = k == 0 ? (Func<int>)delegate { return 15; } : null,
+                        DeferOnDrag = true,
                     });
                 }
+                s.Add(strip);
                 s.Add(new InnerDiv(HasQueue));
                 s.Add(new Btn { Visible = HasQueue, IconName = "_UI_Wheel", IconSize = 32f, IconColorFn = LoopColor, HasHotkey = true, Hotkey = Key("Projects", "project_ToggleLoop"), OnAction = ActLoop });
                 s.Add(new Btn { Visible = HasQueue, IconName = "_UI_X", IconSize = 32f, IconColor = BtcGhKit.Red, HasHotkey = true, Hotkey = Key("Projects", "project_ClearQueue"), OnAction = ActClear });
             });
         }
 
-        private static Color LoopColor() { return _op != null && _op.Looping ? BtcGhKit.Red : BtcGhKit.Gray; }
+        private static Color LoopColor() { return OpLoop() ? BtcGhKit.Red : BtcGhKit.Gray; }
 
         // ------------------------------------------------------------------ actions (CraftingStation.lua_AddToQueue / RemoveFromQueue / ClearQueue / SetIsQueueLooping)
         private static UNetProjectCmd StationCmd() { return User.LocalUser.GetComponent<UNetProjectCmd>(); }
@@ -337,6 +584,7 @@ namespace BetterThanCastle
         {
             try
             {
+                if (_bp != null) { if (slot >= 1 && slot <= _opSlots.Length) BtcBpPreset.Add(_bp, _opSlots[slot - 1].Infos); return; }
                 CraftingStation s = SelectedStation();
                 if (s == null || _op == null || slot < 1 || slot > _opSlots.Length) return;
                 RecipeInfo[] infos = _opSlots[slot - 1].Infos;
@@ -353,12 +601,14 @@ namespace BetterThanCastle
 
         internal static void ActClear()
         {
+            if (_bp != null) { BtcBpPreset.ClearQueue(_bp); return; }
             CraftingStation s = SelectedStation();
             if (s != null) StationCmd().CallCmdcraftingDoNothing(s.gameObject);
         }
 
         internal static void ActLoop()
         {
+            if (_bp != null) { BtcBpPreset.ToggleLoop(_bp); return; }
             CraftingStation s = SelectedStation();
             if (s != null) StationCmd().CallCmdcraftingLoop(s.gameObject, !s.Looping);
         }

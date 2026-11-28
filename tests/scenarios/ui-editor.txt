@@ -50,4 +50,8 @@ gsearch map
 wait 2
 gsearch
 wait 2
+uilive
+wait 4
+uiliveoff
+wait 2
 quit

@@ -258,7 +258,7 @@ public static class BtcReplayUI
 		{
 			BtcReplayUI.Hidden = false;
 			BtcReplayMinimap.Reset();
-			bool flag8 = BtcReplay.Mode != BtcReplay.State.Recording || !BtcReplay.GetShowIndicator();
+			bool flag8 = BtcReplay.Mode != BtcReplay.State.Recording || !BtcHud.SlotOf("rec").Enabled;
 			bool flag9 = !flag8;
 			bool flag10 = flag9;
 			bool flag11 = flag10;
@@ -285,14 +285,21 @@ public static class BtcReplayUI
 					BtcReplayUI.indText = "REC " + BtcReplayUI.Clock(BtcReplay.RecSeconds) + "  " + BtcReplayUI.Size(BtcReplay.RecBytes);
 				}
 				GUI.depth = -900;
-				Rect position = new Rect((float)num * 0.6f, (float)num * 0.4f, (float)num * 14f, (float)num * 1.4f);
+				// UI editor element "rec": natural place top-left, scaled by font size, faded by the slot alpha
+				BtcHud.Slot recSl = BtcHud.SlotOf("rec");
+				Rect position = BtcHud.Place("rec", new Rect((float)num * 0.6f, (float)num * 0.4f, (float)num * 14f, (float)num * 1.4f));
+				if (BtcReplayUI.recStyle == null) BtcReplayUI.recStyle = new GUIStyle(BtcReplayUI.sLabel);
+				BtcReplayUI.recStyle.font = BtcReplayUI.sLabel.font;
+				BtcReplayUI.recStyle.fontSize = Mathf.Max(6, Mathf.RoundToInt(BtcReplayUI.sLabel.fontSize * recSl.Scale));
 				Color contentColor = GUI.contentColor;
-				GUI.contentColor = new Color(1f, 0.4f, 0.4f, 0.75f);
-				GUI.Label(position, BtcReplayUI.indText, BtcReplayUI.sLabel);
+				GUI.contentColor = new Color(1f, 0.4f, 0.4f, 0.75f * recSl.Alpha);
+				GUI.Label(position, BtcReplayUI.indText, BtcReplayUI.recStyle);
 				GUI.contentColor = contentColor;
 			}
 		}
 	}
+
+	private static GUIStyle recStyle;
 
 	/// <summary>Replay player panel hidden (Hide UI button / F8); reset when playback ends.</summary>
 	public static bool Hidden;
@@ -417,11 +424,16 @@ public static class BtcReplayUI
 			Rect rect2 = new Rect(r2.x, by + (float)num * 0.2f * hs, r2.width, (float)num * 1.9f * hs);
 			Rect waveR = new Rect(r2.x, rect.y + 2f, r2.width, apmH > 0f ? Mathf.Max(0f, r2.center.y - 6f - rect.y) : 0f);   // down to the timeline line
 			if (apmH > 0f) rect2 = Rect.MinMaxRect(rect2.x, waveR.y, rect2.xMax, rect2.yMax);   // the wave is part of the seek area
-			float num6 = Mathf.Max(0.001f, BtcReplay.PlayTotal);
-			float num7 = BtcReplay.Seeking ? BtcReplay.SeekTarget : BtcReplay.PlayClock;
+			// a match of several sessions: the bar is the whole line, the open session draws its own parts inside segR (its local time 0..segT)
+			bool chain = BtcReplayChainPlay.Active;
+			float num6 = Mathf.Max(0.001f, chain ? BtcReplayChainPlay.Total : BtcReplay.PlayTotal);
+			float num7 = chain ? BtcReplayChainPlay.Clock : (BtcReplay.Seeking ? BtcReplay.SeekTarget : BtcReplay.PlayClock);
+			Rect segR = BtcReplayChainUI.OpenRect(r2);
+			float segT = chain ? Mathf.Max(0.001f, BtcReplayChainPlay.End) : num6;
+			Rect segWave = new Rect(segR.x, waveR.y, segR.width, waveR.height);
 			Event current = Event.current;
-			BtcReplayGif.HandleTrack(rect2, r2, num6);
-				bool flag14 = current.type == EventType.MouseDown && current.button == 0 && rect2.Contains(current.mousePosition);
+			BtcReplayGif.HandleTrack(rect2, segR, segT);
+				bool flag14 = current.type == EventType.MouseDown && current.button == 0 && rect2.Contains(current.mousePosition) && !(chain && BtcReplayChainUI.OverLane(r2, y, current.mousePosition));
 			bool flag15 = flag14;
 			bool flag16 = flag15;
 			bool flag17 = flag16;
@@ -451,7 +463,7 @@ public static class BtcReplayUI
 				if (flag31)
 				{
 					BtcReplayUI.seekDrag = false;
-					BtcSfx.Jump(); BtcReplay.SeekTo(num7);
+					BtcSfx.Jump(); if (chain) BtcReplayChainPlay.Seek(num7); else BtcReplay.SeekTo(num7);
 					current.Use();
 				}
 				else
@@ -469,10 +481,13 @@ public static class BtcReplayUI
 				}
 			}
 			float num8 = Mathf.Clamp01(num7 / num6);
-			BtcReplayTrack.Draw(r2, num8, BtcReplay.Seeking, BtcReplayUI.seekDrag || rect2.Contains(current.mousePosition), num6, num);
-			float autoLift = BtcAutoMarks.DrawLane(BtcReplayTrack.Line(r2), num2 * BtcReplayLayout.MarkScale, num6, rect);
-			BtcReplayGif.DrawRange(r2, num6); if (apmH > 0f) BtcApm.Draw(waveR, num6, (float)num);
-			BtcTimer.DrawTimeline(BtcReplayTrack.Line(r2), num2 * BtcReplayLayout.MarkScale, num6, new Rect(rect.x, rect.y - autoLift, rect.width, rect.height));
+			BtcReplayTrack.Draw(r2, num8, BtcReplay.Seeking || (chain && BtcReplayChainPlay.Switching), BtcReplayUI.seekDrag || rect2.Contains(current.mousePosition), num6, num);
+			if (chain) { BtcReplayChainUI.DrawSessions(r2, num); BtcReplayChainUI.DrawBranches(r2, y - BtcReplayTrack.Line(r2).yMax - 2f); }
+			float autoLift = BtcAutoMarks.DrawLane(BtcReplayTrack.Line(segR), num2 * BtcReplayLayout.MarkScale, segT, rect);
+			if (chain) autoLift = Mathf.Max(autoLift, BtcReplayChainUI.DrawOtherMarks(r2, num2 * BtcReplayLayout.MarkScale, rect));
+			BtcReplayGif.DrawRange(segR, segT);
+			if (apmH > 0f) { BtcApm.Draw(segWave, segT, (float)num); if (chain) BtcReplayChainUI.DrawOtherApm(waveR, r2); }
+			BtcTimer.DrawTimeline(BtcReplayTrack.Line(segR), num2 * BtcReplayLayout.MarkScale, segT, new Rect(rect.x, rect.y - autoLift, rect.width, rect.height));
 			bool flag38 = BtcReplayUI.seekDrag || rect2.Contains(current.mousePosition);
 			bool flag39 = flag38;
 			bool flag40 = flag39;
@@ -500,13 +515,16 @@ public static class BtcReplayUI
 				Rect rect3 = new Rect(Mathf.Clamp(num10 - num11 * 0.5f, rect.x, rect.x + rect.width - num11), rect.y - autoLift - num12 - 4f, num11, num12);
 				BtcReplayUI.Fill(rect3, new Color(0f, 0f, 0f, 0.85f));
 				GUI.Label(rect3, BtcReplayUI.TClock(num9 * num6), BtcReplayUI.sTip);
-					if (apmH > 0f) BtcApm.DrawHover(waveR, num9, num10, rect3.y - 4f, (float)num);
-				if (BtcAutoMarks.AltDown)
+				// hover details of the open session only (in its own time); other sessions show their marks' tips
+				bool overOpen = !chain || (num10 >= segR.x && num10 <= segR.xMax);
+				float localT = chain ? num9 * num6 - BtcReplayChainPlay.Off : num9 * num6;
+					if (apmH > 0f && overOpen) BtcApm.DrawHover(segWave, Mathf.Clamp01(localT / segT), num10, rect3.y - 4f, (float)num);
+				if (BtcAutoMarks.AltDown && overOpen)
 				{
-					BtcAutoMarks.DrawPreview(num9 * num6, num10, rect3.y - 4f, num2 * BtcReplayLayout.MarkScale);
+					BtcAutoMarks.DrawPreview(localT, num10, rect3.y - 4f, num2 * BtcReplayLayout.MarkScale);
 				}
 			}
-			string text = BtcReplayUI.TClock(num7) + " / " + BtcReplayUI.TClock(BtcReplay.PlayTotal);
+			string text = BtcReplayUI.TClock(num7) + " / " + BtcReplayUI.TClock(num6);
 			bool seeking = BtcReplay.Seeking;
 			bool flag49 = seeking;
 			bool flag50 = flag49;
@@ -528,7 +546,7 @@ public static class BtcReplayUI
 			{
 				text = text + "  " + BtcReplayUI.T("(end)", "(конец)");
 			}
-			float u = (float)num * Mathf.Min(1f, ((float)Screen.width - (float)num) / ((float)num * 62f));
+			float u = (float)num * Mathf.Min(1f, ((float)Screen.width - (float)num) / ((float)num * (chain ? 67f : 62f)));
 			float gap = u * 0.25f;
 			float ib = Mathf.Min(height, u * 2f);
 			float iy = y + (height - ib) * 0.5f;
@@ -536,6 +554,8 @@ public static class BtcReplayUI
 			Color wc = new Color(1f, 1f, 1f, 0.9f);
 			GUI.Label(new Rect(cx, y, u * 8.5f, height), text, BtcReplayUI.sBarLabel);
 			cx += u * 8.5f;
+			Rect chainBtn = new Rect(0f, 0f, 0f, 0f);
+			if (chain) { chainBtn = BtcReplayChainUI.DrawButton(cx, y, height, ib, num); cx = chainBtn.xMax + gap * 2f; }
 			if (BtcReplayIcons.Plain(new Rect(cx, iy, ib, ib), BtcReplay.PlayPaused ? BtcReplayIcons.Play : BtcReplayIcons.Pause, wc, BtcReplayUI.T("Pause / play (Space)", "Пауза / плей (Пробел)"))) BtcReplay.TogglePause();
 			cx += ib + gap * 2f;
 			if (BtcReplayIcons.Plain(new Rect(cx, iy, ib, ib), BtcReplayIcons.Slow, wc, BtcReplayUI.T("Slower (Z)", "Медленнее (Z)"))) BtcReplay.SpeedStep(-1);
@@ -544,9 +564,9 @@ public static class BtcReplayUI
 			cx += u * 3.5f;
 			if (BtcReplayIcons.Plain(new Rect(cx, iy, ib, ib), BtcReplayIcons.Fast, wc, BtcReplayUI.T("Faster (X)", "Быстрее (X)"))) BtcReplay.SpeedStep(1);
 			cx += ib + gap * 2f;
-			if (BtcReplayIcons.Plain(new Rect(cx, iy, ib, ib), BtcReplayIcons.Back10, wc, BtcReplayUI.T("Back 10 s (C)", "Назад 10 с (C)"))) BtcReplay.SeekTo(BtcReplay.PlayClock - 10f);
+			if (BtcReplayIcons.Plain(new Rect(cx, iy, ib, ib), BtcReplayIcons.Back10, wc, BtcReplayUI.T("Back 10 s (C)", "Назад 10 с (C)"))) { if (chain) BtcReplayChainPlay.Seek(num7 - 10f); else BtcReplay.SeekTo(BtcReplay.PlayClock - 10f); }
 			cx += ib + gap;
-			if (BtcReplayIcons.Plain(new Rect(cx, iy, ib, ib), BtcReplayIcons.Fwd10, wc, BtcReplayUI.T("Forward 10 s (V)", "Вперёд 10 с (V)"))) BtcReplay.SeekTo((BtcReplay.Seeking ? BtcReplay.SeekTarget : BtcReplay.PlayClock) + 10f);
+			if (BtcReplayIcons.Plain(new Rect(cx, iy, ib, ib), BtcReplayIcons.Fwd10, wc, BtcReplayUI.T("Forward 10 s (V)", "Вперёд 10 с (V)"))) { if (chain) BtcReplayChainPlay.Seek(num7 + 10f); else BtcReplay.SeekTo((BtcReplay.Seeking ? BtcReplay.SeekTarget : BtcReplay.PlayClock) + 10f); }
 			cx += ib + u;
 			// POV / spectator switch (Shift+A / Shift+D); click the nick for the list
 			if (BtcReplayIcons.Plain(new Rect(cx, iy, ib, ib), BtcReplayIcons.Prev, wc, BtcReplayUI.T("Previous (Shift+A)", "Предыдущий (Shift+A)"))) BtcPov.Cycle(-1);
@@ -592,6 +612,7 @@ public static class BtcReplayUI
 			if (BtcReplayIcons.Plain(new Rect((float)Screen.width - (float)num * 0.5f - ib, iy, ib, ib), BtcReplayIcons.Stop, BtcReplayUI.Red, BtcReplayUI.T("Exit replay", "Выйти из реплея"))) BtcReplay.StopReplay();
 			BtcReplayLayout.End();
 			BtcReplayInput.Draw((float)num, rect.y - autoLift - 4f); BtcReplayGif.DrawPanel(rect, autoLift, (float)num);
+			if (chain) BtcReplayChainUI.DrawList(chainBtn, rect.y - autoLift, num);
 			BtcReplayIcons.DrawTip(num);
 			BtcReplayUI.DrawPovList(nameR, num);
 		}

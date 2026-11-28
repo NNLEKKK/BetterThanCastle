@@ -41,6 +41,30 @@ namespace BetterThanCastle
             return s;
         }
 
+        private static readonly Dictionary<string, Rect> _natural = new Dictionary<string, Rect>();
+
+        /// <summary>Last natural rect (scale 1, no offset) a free-placed element reported; the UI editor preview uses it.</summary>
+        internal static bool NaturalOf(string id, out Rect r) { return _natural.TryGetValue(id, out r); }
+
+        /// <summary>
+        /// Free-placed element (UI editor anchor 4): the feature passes the rect it would draw at scale 1 with no offset and gets the final rect
+        /// (scaled around the element pivot, shifted by the editor offset). The caller scales its own font sizes by <see cref="Slot.Scale"/>.
+        /// </summary>
+        internal static Rect Place(string id, Rect natural)
+        {
+            Slot sl = SlotOf(id);
+            _natural[id] = natural;
+            BtcUiEdit.Elem el = BtcUiEdit.ElemOf(id);
+            float px = el != null ? el.Px : 0.5f, py = el != null ? el.Py : 0.5f;
+            return Scaled(natural, sl.Scale, px, py, sl.Offset);
+        }
+
+        internal static Rect Scaled(Rect n, float s, float px, float py, Vector2 off)
+        {
+            float cx = n.x + n.width * px, cy = n.y + n.height * py;
+            return new Rect(cx - n.width * s * px + off.x, cy - n.height * s * py + off.y, n.width * s, n.height * s);
+        }
+
         internal static int Fs { get { return Mathf.Max(8, Mathf.RoundToInt(Mathf.Max(13, Screen.height / 45) * BtcUiEdit.HudScale)); } }
 
         // ---- notification history (menu tab 13): every notice and every card that appeared this session

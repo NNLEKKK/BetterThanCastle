@@ -1,0 +1,26 @@
+# Overheads shown + camera pan: true freeze (constraints off every frame) vs hidden lines deactivated (2026-11-27).
+engine counters off
+newgame
+waitgame 240
+daytime 12
+engine vsync off
+spawn bricktron 50
+waitspawn 120
+wait 10
+ohead plates 1 1
+nrec on
+ohead pan 10 6
+ohead showall 1
+wait 12
+nrec dump pan-shown
+ohead freeze 1
+wait 12
+nrec dump pan-shown-frozen
+ohead freeze 0
+ohead trim 1
+wait 12
+nrec dump pan-shown-trim
+ohead trim 0
+wait 12
+nrec dump pan-shown-again
+quit

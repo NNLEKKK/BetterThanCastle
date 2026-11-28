@@ -1,0 +1,27 @@
+# Native sample timings (Profiling.Recorder) for overheads while the camera pans (2026-11-27).
+engine counters off
+newgame
+waitgame 240
+daytime 12
+engine vsync off
+spawn bricktron 50
+waitspawn 120
+wait 10
+ohead plates 1 1
+nrec on
+wait 10
+nrec dump still-hidden
+ohead pan 10 6
+wait 12
+nrec dump pan-hidden
+ohead showall 1
+wait 12
+nrec dump pan-shown
+ohead pan off
+wait 12
+nrec dump still-shown
+ohead pan 10 6
+ohead canvasoff 1
+wait 12
+nrec dump pan-shown-canvasoff
+quit

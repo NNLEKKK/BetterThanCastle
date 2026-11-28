@@ -80,6 +80,37 @@ namespace BetterThanCastle.Dev
             return __exception;
         }
 
+        /// <summary>Patch classes with at least one target already called (first world load begin): BTClogs/early-<tag>.txt.
+        /// Input for the late patch list (BtcPatcher): a class never seen here can be applied off the main thread.</summary>
+        internal static void SnapshotEarly(string tag)
+        {
+            try
+            {
+                SortedDictionary<string, int> cls = new SortedDictionary<string, int>();
+                foreach (KeyValuePair<MethodBase, Counter> kv in Map)
+                {
+                    if (kv.Value.Calls == 0) continue;
+                    HarmonyLib.Patches info = Harmony.GetPatchInfo(kv.Key);
+                    if (info == null) continue;
+                    List<Patch> ps = new List<Patch>();
+                    ps.AddRange(info.Prefixes); ps.AddRange(info.Postfixes); ps.AddRange(info.Transpilers); ps.AddRange(info.Finalizers);
+                    foreach (Patch p in ps)
+                    {
+                        if (p.owner != BtcPlugin.Guid || p.PatchMethod.DeclaringType == null) continue;
+                        Type t = p.PatchMethod.DeclaringType;
+                        while (t.DeclaringType != null && !t.IsDefined(typeof(HarmonyPatch), true)) t = t.DeclaringType;
+                        cls[t.Name] = 1;
+                    }
+                }
+                StringBuilder sb = new StringBuilder();
+                foreach (string n in cls.Keys) sb.AppendLine(n);
+                File.WriteAllText(Path.Combine(BtcDevPaths.LogDir, "early-" + tag + ".txt"), sb.ToString());
+                lock (BtcPatcher.Applied) File.WriteAllText(Path.Combine(BtcDevPaths.LogDir, "patch-classes.txt"), string.Join("\r\n", BtcPatcher.Applied.ToArray()));
+                BtcLog.Info("Probe", "early snapshot " + tag + ": " + cls.Count + " classes");
+            }
+            catch (Exception e) { BtcLog.Warn("Probe", "early snapshot: " + e.Message); }
+        }
+
         internal static void Flush()
         {
             try

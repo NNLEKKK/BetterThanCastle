@@ -12,7 +12,7 @@ namespace BetterThanCastle
     /// list, compact lines), search, sorting, MP/SP filter, favourites, own folders and names (Replays/replays-meta.txt), a wide details panel under
     /// the selected item. Map thumbnails come from BtcReplayPreview and are shown big and cropped, without frames.
     /// </summary>
-    internal static class BtcReplayLibrary
+    internal static partial class BtcReplayLibrary
     {
         internal static bool SettingsOpen;
 
@@ -69,11 +69,57 @@ namespace BetterThanCastle
         {
             string f = InfoOf(d).Format;
             float x = mb.xMax + fs * 0.3f;
-            if (f.Length == 0) return x;
-            Rect r = new Rect(x, mb.y, fs * (0.9f + f.Length * 0.5f), mb.height);
-            BtcReplayUI.Fill(r, new Color(0f, 0f, 0f, 0.6f));
-            Txt(r, f, _badge, new Color(1f, 0.92f, 0.6f, 1f));
-            return r.xMax + fs * 0.3f;
+            if (f.Length > 0)
+            {
+                Rect r = new Rect(x, mb.y, fs * (0.9f + f.Length * 0.5f), mb.height);
+                BtcReplayUI.Fill(r, new Color(0f, 0f, 0f, 0.6f));
+                Txt(r, f, _badge, new Color(1f, 0.92f, 0.6f, 1f));
+                x = r.xMax + fs * 0.3f;
+            }
+            return SessionsBadge(new Rect(x, mb.y, 0f, mb.height), d, fs);
+        }
+
+        // pasted / dropped / opened files (BtcReplayDrop): the list scrolls to their card and it pulses once it is on screen (BtcJump, as search links);
+        // filters that would hide it are cleared and its folder opens
+        private static readonly HashSet<string> FlashSet = new HashSet<string>();
+        private static float _flashUntil;
+
+        internal static void Flash(List<string> fileNames)
+        {
+            FlashSet.Clear();
+            for (int i = 0; i < fileNames.Count; i++) { FlashSet.Add(fileNames[i]); Seen.Remove(fileNames[i]); }
+            _flashUntil = Time.unscaledTime + 30f;
+            _flashLogged = false;
+            _q = ""; _filter = 0; _mode = 0; _merging = false; _viewKey = "";
+            _selected = null;
+            SettingsOpen = false;
+            BtcJump.Target("replay", "flash");
+        }
+
+        private static bool InFlash(BtcReplay.Data d)
+        {
+            if (FlashSet.Count == 0) return false;
+            if (Time.unscaledTime > _flashUntil) { FlashSet.Clear(); return false; }
+            if (FlashSet.Contains(d.FileName)) return true;
+            BtcReplayChain.Match m = BtcReplayChain.Of(d);
+            if (m != null) for (int k = 0; k < m.Nodes.Count; k++) if (FlashSet.Contains(m.Nodes[k].D.FileName)) return true;
+            return false;
+        }
+
+        private static void FlashMark(Rect r, BtcReplay.Data d)
+        {
+            if (!InFlash(d)) return;
+            BtcJump.Row("replay", "flash", r);
+            if (!_flashLogged && Event.current.type == EventType.Repaint) { _flashLogged = true; BtcLog.Info("ReplayLib", "added replay shown: " + d.FileName + " at y " + r.y.ToString("0")); }
+        }
+
+        private static bool _flashLogged;
+
+        private static bool Flashing(Grp g)
+        {
+            if (FlashSet.Count == 0) return false;
+            for (int i = 0; i < g.Items.Count; i++) if (InFlash(g.Items[i])) return true;
+            return false;
         }
 
         private static bool HasFresh(Grp g) { for (int i = 0; i < g.Items.Count; i++) if (IsFresh(g.Items[i])) return true; return false; }
@@ -95,6 +141,8 @@ namespace BetterThanCastle
         {
             if (Time.unscaledTime < _nextScan) return;
             _nextScan = Time.unscaledTime + 2f;
+            try { if (BtcReplayChain.ImportPending()) { BtcReplayUI.Refresh(); _viewKey = ""; return; } }
+            catch (Exception ex) { BtcLog.Warn("ReplayLib", "match import: " + ex.Message); }
             try
             {
                 string dir = BtcReplay.ReplaysDir;
@@ -324,10 +372,11 @@ namespace BetterThanCastle
 
         private static Info InfoOf(BtcReplay.Data d)
         {
-            string key = d.FilePath + "|" + d.FileBytes;
+            BtcReplayChain.Match match = BtcReplayChain.Of(d);
+            string key = d.FilePath + "|" + d.FileBytes + (match != null ? "|m" + BtcReplayChain.Version : "");
             Info inf;
             if (InfoCache.TryGetValue(key, out inf)) return inf;
-            inf = new Info { Pl = ParsePlayers(d) };
+            inf = new Info { Pl = match != null ? MatchPlayers(match) : ParsePlayers(d) };
             inf.Format = FormatOf(inf.Pl);
             InfoCache[key] = inf;
             return inf;
@@ -435,6 +484,7 @@ namespace BetterThanCastle
 
         private static bool Matches(BtcReplay.Data d)
         {
+            if (BtcReplayChain.Hidden(d)) return false;   // later sessions of a match: the match card stands for them
             if (_mode == 1 && !d.Multiplayer) return false;
             if (_mode == 2 && d.Multiplayer) return false;
             Meta m = M(d);
@@ -459,7 +509,7 @@ namespace BetterThanCastle
 
         private static void Rebuild()
         {
-            string key = _filter + "|" + _sort + "|" + _group + "|" + _mode + "|" + _q + "|" + BtcReplayUI.list.Count + "|" + Folders.Count + "|" + (BtcReplayUI.list.Count > 0 ? BtcReplayUI.list[0].FileName : "") + "|" + Tt("a", "b") + "|" + Seen.Count;
+            string key = _filter + "|" + _sort + "|" + _group + "|" + _mode + "|" + _q + "|" + BtcReplayUI.list.Count + "|" + Folders.Count + "|" + (BtcReplayUI.list.Count > 0 ? BtcReplayUI.list[0].FileName : "") + "|" + Tt("a", "b") + "|" + Seen.Count + "|" + BtcReplayChain.Version;
             if (key == _viewKey) return;
             _viewKey = key;
             List<BtcReplay.Data> flat = new List<BtcReplay.Data>();
@@ -468,7 +518,7 @@ namespace BetterThanCastle
             switch (_sort)
             {
                 case 1: cmp = delegate (BtcReplay.Data a, BtcReplay.Data b) { return a.Ticks.CompareTo(b.Ticks); }; break;
-                case 2: cmp = delegate (BtcReplay.Data a, BtcReplay.Data b) { return b.Duration.CompareTo(a.Duration); }; break;
+                case 2: cmp = delegate (BtcReplay.Data a, BtcReplay.Data b) { return DurOf(b).CompareTo(DurOf(a)); }; break;
                 case 3: cmp = delegate (BtcReplay.Data a, BtcReplay.Data b) { int c = string.Compare(MapOf(a), MapOf(b), StringComparison.OrdinalIgnoreCase); return c != 0 ? c : b.Ticks.CompareTo(a.Ticks); }; break;
                 case 4: cmp = delegate (BtcReplay.Data a, BtcReplay.Data b) { int c = b.Players.Count.CompareTo(a.Players.Count); return c != 0 ? c : b.Ticks.CompareTo(a.Ticks); }; break;
                 default: cmp = delegate (BtcReplay.Data a, BtcReplay.Data b) { return b.Ticks.CompareTo(a.Ticks); }; break;
@@ -587,6 +637,8 @@ namespace BetterThanCastle
             if (Icon(new Rect(x, ty, ib, ib), BtcReplayIcons.Folder, false, Tt("Open the replays folder", "Открыть папку с реплеями"))) BtcReplayUI.OpenFolder();
             x -= ib + 3f;
             if (Icon(new Rect(x, ty, ib, ib), BtcReplayIcons.Refresh, false, Tt("Refresh the list", "Обновить список"))) { BtcReplayUI.Refresh(); BtcReplayPreview.Reset(); _viewKey = ""; }
+            x -= ib + 3f;
+            if (Icon(new Rect(x, ty, ib, ib), BtcReplayIcons.Link, _merging, _merging ? Tt("Cancel merging", "Отменить склейку") : Tt("Merge replays into one match (a game continued from saves)", "Склеить реплеи в одну катку (игра, продолженная с сейвов)"))) ToggleMerge();
             bool anyFresh = false;
             for (int i = 0; i < BtcReplayUI.list.Count && !anyFresh; i++) anyFresh = IsFresh(BtcReplayUI.list[i]);
             if (anyFresh)
@@ -611,6 +663,7 @@ namespace BetterThanCastle
             if (Icon(new Rect(x, ty, ib, ib), BtcReplayIcons.Group, _group != 0, groups[_group])) { _group = (_group + 1) % groups.Length; Dirty(true); }
             float toolbarBottom = y0 + ib + fs * 0.6f;
             y = toolbarBottom;
+            if (_merging) y = DrawMergeBar(e, y, w, fs, pad);
 
             // ---- search + mode + expand/collapse
             Rect sr = new Rect(pad, y, Mathf.Min(w * 0.42f, fs * 22f), ib);
@@ -686,6 +739,7 @@ namespace BetterThanCastle
             {
                 Grp g = Groups[gi];
                 bool open = _group == 0 || filtering || (HasFresh(g) && !ClosedFresh.Contains(_group + ":" + g.Key)) || Open.Contains(_group + ":" + g.Key);
+                if (!open && Flashing(g)) { open = true; Open.Add(_group + ":" + g.Key); ClosedFresh.Remove(_group + ":" + g.Key); }
                 if (_group != 0)
                 {
                     Rect hr = new Rect(pad, y, w - pad * 2f, fs * 2.1f);
@@ -739,21 +793,24 @@ namespace BetterThanCastle
                     if (_viewMode == 0) DrawCard(e, r, d, fs);
                     else if (_viewMode == 1) DrawRow(e, r, d, fs);
                     else DrawLine(e, r, d, fs);
+                    if (_merging) PickMark(r, d, fs);
+                    FlashMark(r, d);
                     if (d.FileName == _selected) sel = true;
                 }
                 y += itemH + (_viewMode == 2 ? 2f : gap);
-                if (sel) y = DrawDetails(e, y, w, fs, pad);
+                if (sel && !_merging) y = DrawDetails(e, y, w, fs, pad);
             }
             return y;
         }
 
-        private static string Dur(BtcReplay.Data d) { return d.Error != null ? "!" : (d.Complete ? BtcReplayUI.Clock(d.Duration) : Tt("incomplete", "не завершён")); }
+        private static string Dur(BtcReplay.Data d) { return d.Error != null ? "!" : (d.Complete ? BtcReplayUI.Clock(DurOf(d)) : Tt("incomplete", "не завершён")); }
 
         private static void Click(Event e, Rect r, BtcReplay.Data d)
         {
+            if (_merging) { if (BtcSfx.Btn(r, "", BtcReplayUI.sBtn)) TogglePick(d); return; }
             if (BtcSfx.Btn(r, "", BtcReplayUI.sBtn))
             {
-                if (e.clickCount >= 2 && d.Error == null && d.Complete && d.SnapBytes > 0) { Seen.Add(d.FileName); BtcReplay.StartReplay(d); ResourcePackManager.CloseMenu(); return; }
+                if (e.clickCount >= 2 && d.Error == null && d.Complete && d.SnapBytes > 0) { Seen.Add(d.FileName); PlayItem(d); return; }
                 _selected = _selected == d.FileName ? null : d.FileName;
                 _confirmDelete = null;
             }
@@ -838,6 +895,7 @@ namespace BetterThanCastle
             x += fs * 2.4f;
             Txt(new Rect(x, r.y, fs * 4.2f, h), InfoOf(d).Format, _lbl, new Color(1f, 0.92f, 0.6f, 1f));
             x += fs * 4.4f;
+            x = SessionsBadge(new Rect(x, r.y + h * 0.15f, 0f, h * 0.7f), d, fs);
             float col1 = Mathf.Min(r.width * 0.26f, fs * 14f);
             Txt(new Rect(x, r.y, col1, h), Title(d), _lbl, Color.white);
             x += col1 + fs * 0.4f;
@@ -859,6 +917,8 @@ namespace BetterThanCastle
             BtcReplay.Data d = null;
             foreach (BtcReplay.Data x in BtcReplayUI.list) if (x.FileName == _selected) { d = x; break; }
             if (d == null) return y;
+            BtcReplayChain.Match match = BtcReplayChain.Of(d);
+            if (match != null) return DrawMatchDetails(e, y, w, fs, pad, d, match);
             Meta m = M(d);
             List<Pl> pl = Players(d);
             float rowH = fs * 1.7f;

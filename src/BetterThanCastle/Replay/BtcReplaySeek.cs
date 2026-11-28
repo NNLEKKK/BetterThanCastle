@@ -21,7 +21,7 @@ namespace BetterThanCastle
         internal const long SlotMs = 10000L;
         private const int MaxBytes = 512 * 1024 * 1024;
 
-        private sealed class Obj
+        internal sealed class Obj
         {
             public uint Id;
             public Vector3 Pos;
@@ -38,7 +38,7 @@ namespace BetterThanCastle
             public float[] AnimParams;
         }
 
-        private sealed class Pk
+        internal sealed class Pk
         {
             public int Slot;
             public long Ms;
@@ -67,6 +67,12 @@ namespace BetterThanCastle
         private static bool _cfg, _enabled = true, _preprocess = true;
 
         internal static bool Preprocessing { get { return _state == 1; } }
+
+        /// <summary>The keyframes of the open file are in place (cache loaded or the first pass finished); a match switch may jump now.</summary>
+        internal static bool Ready { get { return _state == 2; } }
+
+        /// <summary>No keyframe pass will run for the open file (disabled, failed, short replay): a match switch must not wait for one.</summary>
+        internal static bool WillNotPrepare { get { EnsureCfg(); return !_enabled || _failed || !_preprocess || DevNoPreprocess || BtcReplay.PlayTotal < 20f; } }
         /// <summary>DEV: suspend jumps (legacy seek) without touching the config.</summary>
         internal static bool DevNoJump;
         internal static bool DevNoPreprocess;
@@ -112,7 +118,7 @@ namespace BetterThanCastle
         // ---------------- recording of the stream (spawn messages) ----------------
 
         // recorded stats messages (msg 101) with stream ms: after a jump the stats store is rebuilt from them (the jump only feeds the last <10 s)
-        private struct StatsRec { internal long Ms; internal byte[] Raw; }
+        internal struct StatsRec { internal long Ms; internal byte[] Raw; }
         private static readonly List<StatsRec> StatsMsgs = new List<StatsRec>();
         private static long _statsLastMs = -1;
 
@@ -124,6 +130,9 @@ namespace BetterThanCastle
             _statsLastMs = ms;
             StatsMsgs.Add(new StatsRec { Ms = ms, Raw = copy });
         }
+
+        /// <summary>Match playback: rebuild the stats store as of now (BtcChainStats laid earlier sessions under the open one).</summary>
+        internal static void RestoreStatsNow() { if (StatsMsgs.Count > 0) RestoreStats(BtcReplay.FeedMs); else BtcMatchStats.OnReplayStart(); }
 
         /// <summary>Rebuild the replay stats store as of stream time ms (everything recorded before it).</summary>
         private static void RestoreStats(long ms)
@@ -226,7 +235,9 @@ namespace BetterThanCastle
             pk.Hash = HashObjs(pk.Objs);
             long bytes = 0;
             for (int i = 0; i < pk.Objs.Length; i++) bytes += pk.Objs[i].Payload.Length + 48;
+            double tObj = sw.Elapsed.TotalMilliseconds;
             byte[] terr = BtcReplayAnchor.TerrainBlob();
+            double tTer = sw.Elapsed.TotalMilliseconds;
             pk.Terrain = Same(terr, _lastTerrain) ? _lastTerrain : terr;
             if (pk.Terrain != _lastTerrain && terr != null) bytes += terr.Length;
             _lastTerrain = pk.Terrain;
@@ -234,7 +245,9 @@ namespace BetterThanCastle
             pk.Nature = Same(nat, _lastNature) ? _lastNature : nat;
             if (pk.Nature != _lastNature && nat != null) bytes += nat.Length;
             _lastNature = pk.Nature;
+            double tNat = sw.Elapsed.TotalMilliseconds;
             pk.Debloc = DeblocState();
+            double tDeb = sw.Elapsed.TotalMilliseconds;
             pk.Visuals = BtcSeekVisuals.Snap();
             _bytes += bytes;
             Pks[slot] = pk;
@@ -244,7 +257,8 @@ namespace BetterThanCastle
             if (_capN <= 3 || _capN % 30 == 0)
             {
                 BtcLog.Info("ReplaySeek", "pk slot " + slot + " at " + (ms / 1000f).ToString("0.0") + " s: objs " + pk.Objs.Length + ", " + bytes + " B, "
-                    + el.ToString("0.0") + " ms (total " + Pks.Count + " pks, " + (_bytes / 1024) + " KB, avg " + (_capMs / _capN).ToString("0.0") + " ms)");
+                    + el.ToString("0.0") + " ms (objs " + tObj.ToString("0") + " terrain " + (tTer - tObj).ToString("0") + " nature " + (tNat - tTer).ToString("0")
+                    + " debloc " + (tDeb - tNat).ToString("0") + " visuals " + (el - tDeb).ToString("0") + "; total " + Pks.Count + " pks, " + (_bytes / 1024) + " KB, avg " + (_capMs / _capN).ToString("0.0") + " ms)");
             }
         }
 
@@ -442,7 +456,7 @@ namespace BetterThanCastle
                         if (want.ContainsKey(kv.Key.Value)) _ghosts.Add(kv.Key);
                         continue;
                     }
-                    if (!want.ContainsKey(kv.Key.Value)) _ids.Add(kv.Key.Value);
+                    if (!want.ContainsKey(kv.Key.Value) && !_keep.Contains(kv.Value)) _ids.Add(kv.Key.Value);
                 }
                 for (int i = 0; i < _ghosts.Count; i++) ClientScene.objects.Remove(_ghosts[i]);
                 ghosts = _ghosts.Count;
@@ -690,6 +704,7 @@ namespace BetterThanCastle
             {
                 GameObject go = _orphans[i];
                 if (go == null || !go.activeInHierarchy || reg.Contains(go)) continue;
+                if (go.scene.name == "DontDestroyOnLoad") continue;   // objects living across scenes ("Persistent Game Parameters") are never leftovers
                 NetworkIdentity ni = go.GetComponent<NetworkIdentity>();
                 if (ni == null || ni.netId.IsEmpty()) continue;
                 // a unit is hidden only when its live copy is confirmed (its netId is registered to another live object; names are not unique): a lone unit UNET
@@ -838,9 +853,22 @@ namespace BetterThanCastle
             }
         }
 
+        // Animator.parameters allocates a new array + names per call (every unit of every keyframe): one copy per controller
+        private static readonly Dictionary<int, AnimatorControllerParameter[]> _paramCache = new Dictionary<int, AnimatorControllerParameter[]>();
+
+        private static AnimatorControllerParameter[] Params(Animator a)
+        {
+            RuntimeAnimatorController c = a.runtimeAnimatorController;
+            if (c == null) return a.parameters;
+            AnimatorControllerParameter[] ps;
+            int key = c.GetInstanceID();
+            if (!_paramCache.TryGetValue(key, out ps)) { ps = a.parameters; _paramCache[key] = ps; }
+            return ps;
+        }
+
         internal static float[] ReadParams(Animator a)
         {
-            AnimatorControllerParameter[] ps = a.parameters;
+            AnimatorControllerParameter[] ps = Params(a);
             float[] v = new float[ps.Length];
             for (int i = 0; i < ps.Length; i++)
             {
@@ -857,7 +885,7 @@ namespace BetterThanCastle
         internal static void WriteParams(Animator a, float[] v)
         {
             if (v == null) return;
-            AnimatorControllerParameter[] ps = a.parameters;
+            AnimatorControllerParameter[] ps = Params(a);
             for (int i = 0; i < ps.Length && i < v.Length; i++)
             {
                 switch (ps[i].type)
@@ -1132,9 +1160,37 @@ namespace BetterThanCastle
             catch (Exception) { return false; }
         }
 
-        private static string CachePath()
+        private static string CachePath() { return CachePathOf(BtcReplay.FeedFile, true); }
+
+        /// <summary>Match playback (BtcChainStats): the recorded stats messages (stream ms, raw msg 101) of another session, read from its keyframe cache; null without a cache.</summary>
+        internal static List<KeyValuePair<long, byte[]>> ReadCachedStats(string replayFile)
         {
-            string f = BtcReplay.FeedFile;
+            string path;
+            try { path = CachePathOf(replayFile, false); }
+            catch (Exception) { return null; }
+            if (path == null || !System.IO.File.Exists(path)) return null;
+            try
+            {
+                List<KeyValuePair<long, byte[]>> r = new List<KeyValuePair<long, byte[]>>();
+                using (System.IO.FileStream fs = new System.IO.FileStream(path, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read))
+                using (System.IO.Compression.DeflateStream ds = new System.IO.Compression.DeflateStream(fs, System.IO.Compression.CompressionMode.Decompress))
+                using (System.IO.BinaryReader br = new System.IO.BinaryReader(ds))
+                {
+                    if (br.ReadInt32() != CacheMagic || br.ReadInt32() != CacheVersion) return null;
+                    int nb = br.ReadInt32();
+                    for (int i = 0; i < nb; i++) br.ReadBytes(br.ReadInt32());
+                    int ns = br.ReadInt32();
+                    for (int i = 0; i < ns; i++) { br.ReadUInt32(); br.ReadBytes(br.ReadInt32()); }
+                    int nst = br.ReadInt32();
+                    for (int i = 0; i < nst; i++) { long ms = br.ReadInt64(); r.Add(new KeyValuePair<long, byte[]>(ms, br.ReadBytes(br.ReadInt32()))); }
+                }
+                return r;
+            }
+            catch (Exception e) { BtcLog.Warn("ReplaySeek", "cached stats of " + System.IO.Path.GetFileName(replayFile) + ": " + e.Message); return null; }
+        }
+
+        private static string CachePathOf(string f, bool create)
+        {
             if (string.IsNullOrEmpty(f) || !System.IO.File.Exists(f)) return null;
             System.IO.FileInfo fi = new System.IO.FileInfo(f);
             string name = System.IO.Path.GetFileNameWithoutExtension(f);
@@ -1142,7 +1198,7 @@ namespace BetterThanCastle
             for (int i = 0; i < bad.Length; i++) name = name.Replace(bad[i], '_');
             if (name.Length > 60) name = name.Substring(0, 60);
             string dir = System.IO.Path.Combine(BtcPaths.Root, "cash");
-            System.IO.Directory.CreateDirectory(dir);
+            if (create) System.IO.Directory.CreateDirectory(dir);
             return System.IO.Path.Combine(dir, name + "_" + fi.Length.ToString("x") + "_" + fi.LastWriteTimeUtc.Ticks.ToString("x") + ".btcs");
         }
 
@@ -1237,6 +1293,25 @@ namespace BetterThanCastle
                 Dictionary<uint, byte[]> spawns = new Dictionary<uint, byte[]>();
                 List<StatsRec> stats = new List<StatsRec>();
                 long bytes = 0;
+                if (!ReadCacheFile(path, pks, spawns, stats, ref bytes)) return false;
+                Pks.Clear();
+                foreach (KeyValuePair<int, Pk> kv in pks) Pks[kv.Key] = kv.Value;
+                foreach (KeyValuePair<uint, byte[]> kv in spawns) SpawnMsgs[kv.Key] = kv.Value;
+                StatsMsgs.Clear(); StatsMsgs.AddRange(stats); _statsLastMs = stats.Count > 0 ? stats[stats.Count - 1].Ms : -1;
+                _bytes = bytes;
+                BtcLog.Info("ReplaySeek", "cache loaded in " + sw.ElapsedMilliseconds + " ms: " + Pks.Count + " pks, " + (bytes / 1024) + " KB, " + spawns.Count + " spawn msgs");
+                return true;
+            }
+            catch (Exception e)
+            {
+                BtcLog.Warn("ReplaySeek", "cache load failed (rebuilding): " + e.Message);
+                return false;
+            }
+        }
+
+        private static bool ReadCacheFile(string path, Dictionary<int, Pk> pks, Dictionary<uint, byte[]> spawns, List<StatsRec> stats, ref long bytes)
+        {
+            {
                 using (System.IO.FileStream fs = new System.IO.FileStream(path, System.IO.FileMode.Open, System.IO.FileAccess.Read))
                 using (System.IO.Compression.DeflateStream ds = new System.IO.Compression.DeflateStream(fs, System.IO.Compression.CompressionMode.Decompress))
                 using (System.IO.BinaryReader br = new System.IO.BinaryReader(ds))
@@ -1281,19 +1356,291 @@ namespace BetterThanCastle
                         pks[p.Slot] = p;
                     }
                 }
-                Pks.Clear();
-                foreach (KeyValuePair<int, Pk> kv in pks) Pks[kv.Key] = kv.Value;
-                foreach (KeyValuePair<uint, byte[]> kv in spawns) SpawnMsgs[kv.Key] = kv.Value;
-                StatsMsgs.Clear(); StatsMsgs.AddRange(stats); _statsLastMs = stats.Count > 0 ? stats[stats.Count - 1].Ms : -1;
-                _bytes = bytes;
-                BtcLog.Info("ReplaySeek", "cache loaded in " + sw.ElapsedMilliseconds + " ms: " + Pks.Count + " pks, " + (bytes / 1024) + " KB, " + spawns.Count + " spawn msgs");
                 return true;
+            }
+        }
+
+        private static readonly FieldInfo NetIdField = typeof(NetworkIdentity).GetField("m_NetId", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly HashSet<NetworkIdentity> _keep = new HashSet<NetworkIdentity>();   // SwapSession: old scene objects the jump must not destroy
+
+        /// <summary>A loaded keyframe cache of another session (match playback, seamless joint).</summary>
+        internal sealed class SessionCache
+        {
+            internal string File;
+            internal Dictionary<int, Pk> Pks = new Dictionary<int, Pk>();
+            internal List<StatsRec> Stats = new List<StatsRec>();
+            internal Dictionary<uint, byte[]> Spawns = new Dictionary<uint, byte[]>();
+            internal long Bytes;
+        }
+
+        internal static SessionCache ReadSession(string replayFile)
+        {
+            string p = CachePathOf(replayFile, false);
+            if (p == null || !System.IO.File.Exists(p)) return null;
+            SessionCache c = new SessionCache { File = replayFile };
+            try { if (!ReadCacheFile(p, c.Pks, c.Spawns, c.Stats, ref c.Bytes) || c.Pks.Count == 0) return null; }
+            catch (Exception e) { BtcLog.Warn("ReplaySeek", "session cache " + System.IO.Path.GetFileName(replayFile) + ": " + e.Message); return null; }
+            return c;
+        }
+
+        /// <summary>SwapSession: a live scene object may take the new session's object only if its state has the same size (another scene object
+        /// would make the payload read fail: lab chain-seam2, Rules vs Persistent Game Parameters).</summary>
+        private static bool Fits(NetworkIdentity ni, Obj o, NetworkWriter w)
+        {
+            try { byte[] now = Serialize(ni, w); return now != null && o.Payload != null && now.Length == o.Payload.Length; }
+            catch (Exception) { return false; }
+        }
+
+        /// <summary>SwapSession: how different a live object's state is from the new session's object (bytes that differ + length gap; serialized once per object).</summary>
+        private static int PayloadDiff(NetworkIdentity ni, Obj o, NetworkWriter w, Dictionary<NetworkIdentity, byte[]> cache)
+        {
+            byte[] now;
+            if (!cache.TryGetValue(ni, out now))
+            {
+                try { now = Serialize(ni, w); } catch (Exception) { now = null; }
+                cache[ni] = now;
+            }
+            if (now == null || o.Payload == null) return int.MaxValue / 2;
+            int n = Mathf.Min(now.Length, o.Payload.Length), d = Mathf.Abs(now.Length - o.Payload.Length) * 4;
+            for (int i = 0; i < n; i++) if (now[i] != o.Payload[i]) d++;
+            return d;
+        }
+
+        /// <summary>Last result of SwapSession (lab / log).</summary>
+        internal static string LastSwap = "";
+
+        /// <summary>
+        /// Seamless joint of a match: the world of the open session becomes the next session without a reload. The next session has its own
+        /// netIds (they never overlap, lab chain-compare), so the live objects are first re-keyed to it: scene objects by scene id, the rest by
+        /// asset + nearest position (the save holds the same objects at the same places); the rest is left to the keyframe jump (destroy what the
+        /// keyframe lacks, spawn what is missing, every payload in place). Then the feed continues in the new file at its first keyframe.
+        /// False = nothing was changed in a way that matters (the caller reloads instead).
+        /// </summary>
+        internal static bool SwapSession(BtcReplay.Data d, SessionCache c, byte[] stream, byte[] pov, out float atSec)
+        {
+            atSec = 0f;
+            if (c == null || stream == null || NetIdField == null || _state == 1 || BtcReplay.Seeking) return false;
+            Stopwatch sw = Stopwatch.StartNew();
+            Pk first = null;
+            foreach (Pk p in c.Pks.Values) if (first == null || p.Ms < first.Ms) first = p;
+            if (first == null) return false;
+            // 1. live objects of the old session by kind
+            Dictionary<string, List<NetworkIdentity>> live = new Dictionary<string, List<NetworkIdentity>>();
+            Dictionary<uint, NetworkIdentity> liveScene = new Dictionary<uint, NetworkIdentity>();
+            int liveN = 0;
+            foreach (KeyValuePair<NetworkInstanceId, NetworkIdentity> kv in ClientScene.objects)
+            {
+                NetworkIdentity ni = kv.Value;
+                if (ni == null || IsGhost(kv.Key.Value, ni)) continue;
+                liveN++;
+                if (!ni.sceneId.IsEmpty()) { liveScene[ni.sceneId.Value] = ni; continue; }
+                string k = "a" + ni.assetId.ToString();
+                List<NetworkIdentity> l;
+                if (!live.TryGetValue(k, out l)) { l = new List<NetworkIdentity>(); live[k] = l; }
+                l.Add(ni);
+            }
+            // 2. pair every object of the new keyframe with a live one (parents first, nearest of the same kind)
+            List<KeyValuePair<NetworkIdentity, uint>> pairs = new List<KeyValuePair<NetworkIdentity, uint>>();
+            HashSet<NetworkIdentity> used = new HashSet<NetworkIdentity>();
+            List<uint> leftScene = new List<uint>(), leftUnknown = new List<uint>();
+            NetworkWriter sw0 = new NetworkWriter();
+            Dictionary<NetworkIdentity, byte[]> payloads = new Dictionary<NetworkIdentity, byte[]>();
+            int byScene = 0, byPos = 0, byPersist = 0, unmatched = 0;
+            foreach (Obj o in first.Objs)
+            {
+                byte[] m;
+                string k = c.Spawns.TryGetValue(o.Id, out m) ? SpawnKey(m) : "?";
+                NetworkIdentity hit = null;
+                if (k.StartsWith("s"))
+                {
+                    uint sid;
+                    if (uint.TryParse(k.Substring(1), out sid) && liveScene.TryGetValue(sid, out hit) && !used.Contains(hit) && Fits(hit, o, sw0)) byScene++;
+                    else hit = null;
+                }
+                else
+                {
+                    List<NetworkIdentity> l;
+                    if (live.TryGetValue(k, out l))
+                    {
+                        // nearest within 3 units (a unit walking in the first seconds of the new session may have moved a bit); objects that sit
+                        // at the same place (factions, users at 0,0,0) are told apart by how alike their state is (name, colour, id)
+                        float best = 9f;
+                        int bestDiff = int.MaxValue;
+                        for (int i = 0; i < l.Count; i++)
+                        {
+                            NetworkIdentity ni = l[i];
+                            if (ni == null || used.Contains(ni)) continue;
+                            float dd = (ni.transform.position - o.Pos).sqrMagnitude;
+                            if (dd >= 9f) continue;
+                            bool tie = hit != null && Mathf.Abs(Mathf.Sqrt(dd) - Mathf.Sqrt(best)) < 0.25f;
+                            if (!tie && dd >= best) continue;
+                            int diff = PayloadDiff(ni, o, sw0, payloads);
+                            if (tie && diff >= bestDiff) continue;
+                            best = Mathf.Min(best, dd); hit = ni; bestDiff = diff;
+                        }
+                        if (hit != null) byPos++;
+                    }
+                }
+                if (hit == null) { unmatched++; if (k.StartsWith("s")) leftScene.Add(o.Id); else if (k == "?") leftUnknown.Add(o.Id); continue; }
+                used.Add(hit);
+                pairs.Add(new KeyValuePair<NetworkIdentity, uint>(hit, o.Id));
+            }
+            // scene objects without a scene id match (the persistent ones live across scenes, "Persistent Game Parameters"): pair the leftovers in
+            // scene id order; any old scene object still left is never destroyed (a scene object cannot be spawned again once it is gone)
+            List<NetworkIdentity> leftLive = new List<NetworkIdentity>();
+            foreach (NetworkIdentity ni in liveScene.Values) if (!used.Contains(ni)) leftLive.Add(ni);
+            if (leftScene.Count > leftLive.Count)
+            {
+                // the new session lists an object living across scenes ("Persistent Game Parameters", DontDestroyOnLoad) as a scene object,
+                // the old one as a spawned or unlisted object: the same GameObject, take it
+                // only one UNET no longer lists (a listed one has its own pair; a wrong pair breaks the payload read)
+                HashSet<NetworkIdentity> listed = new HashSet<NetworkIdentity>();
+                foreach (NetworkIdentity ni in ClientScene.objects.Values) if (ni != null) listed.Add(ni);
+                foreach (NetworkIdentity ni in UnityEngine.Object.FindObjectsOfType<NetworkIdentity>())
+                    if (ni != null && !listed.Contains(ni) && !used.Contains(ni) && !leftLive.Contains(ni) && ni.gameObject.scene.name == "DontDestroyOnLoad") leftLive.Add(ni);
+            }
+            leftLive.Sort(delegate (NetworkIdentity x, NetworkIdentity y) { return x.sceneId.Value.CompareTo(y.sceneId.Value); });
+            leftScene.Sort();
+            _keep.Clear();
+            for (int i = 0; i < leftScene.Count; i++)
+            {
+                Obj so = null;
+                foreach (Obj x in first.Objs) if (x.Id == leftScene[i]) { so = x; break; }
+                if (so == null) continue;
+                for (int j = 0; j < leftLive.Count; j++)
+                {
+                    if (used.Contains(leftLive[j]) || !Fits(leftLive[j], so, sw0)) continue;
+                    used.Add(leftLive[j]); pairs.Add(new KeyValuePair<NetworkIdentity, uint>(leftLive[j], leftScene[i])); unmatched--; byScene++;
+                    break;
+                }
+            }
+            for (int j = 0; j < leftLive.Count; j++) if (!used.Contains(leftLive[j])) _keep.Add(leftLive[j]);   // a scene object cannot be spawned again: never destroy one
+            // objects that live across scenes (DontDestroyOnLoad, e.g. "Persistent Game Parameters") have no spawn message in the new session's
+            // record: pair the unknown leftovers with them in netId order, and never destroy one
+            List<NetworkIdentity> persist = new List<NetworkIdentity>();
+            foreach (List<NetworkIdentity> l in live.Values)
+                for (int i = 0; i < l.Count; i++)
+                    if (l[i] != null && !used.Contains(l[i]) && l[i].gameObject.scene.name == "DontDestroyOnLoad") persist.Add(l[i]);
+            persist.Sort(delegate (NetworkIdentity x, NetworkIdentity y) { return x.netId.Value.CompareTo(y.netId.Value); });
+            leftUnknown.Sort();
+            if (leftUnknown.Count == persist.Count)
+                for (int i = 0; i < persist.Count; i++) { used.Add(persist[i]); pairs.Add(new KeyValuePair<NetworkIdentity, uint>(persist[i], leftUnknown[i])); unmatched--; byPersist++; }
+            else for (int i = 0; i < persist.Count; i++) _keep.Add(persist[i]);
+            try
+            {
+                // 3. re-key: drop every old key of a paired object first, then list it under its new netId
+                for (int i = 0; i < pairs.Count; i++) ClientScene.objects.Remove(pairs[i].Key.netId);
+                for (int i = 0; i < pairs.Count; i++)
+                {
+                    NetworkInstanceId nid = new NetworkInstanceId(pairs[i].Value);
+                    NetIdField.SetValue(pairs[i].Key, nid);
+                    ClientScene.objects[nid] = pairs[i].Key;
+                }
+                // 4. the keyframe set of the new session
+                Pks.Clear();
+                foreach (KeyValuePair<int, Pk> kv in c.Pks) Pks[kv.Key] = kv.Value;
+                SpawnMsgs.Clear();
+                foreach (KeyValuePair<uint, byte[]> kv in c.Spawns) SpawnMsgs[kv.Key] = kv.Value;
+                StatsMsgs.Clear(); StatsMsgs.AddRange(c.Stats); _statsLastMs = c.Stats.Count > 0 ? c.Stats[c.Stats.Count - 1].Ms : -1;
+                _bytes = c.Bytes;
+                _state = 2;
+                BtcReplay.ChainSwapFeed(d, stream, pov);
             }
             catch (Exception e)
             {
-                BtcLog.Warn("ReplaySeek", "cache load failed (rebuilding): " + e.Message);
+                LastSwap = "swap failed before the jump: " + e.Message;
+                BtcLog.Error("ReplaySeek", LastSwap);
+                _failed = true;
                 return false;
             }
+            // 5. one keyframe jump puts the exact state of the new session on the re-keyed world
+            // what the jump will destroy / has to spawn (names), for the log
+            Dictionary<string, int> gone = new Dictionary<string, int>();
+            foreach (List<NetworkIdentity> l in live.Values) for (int i = 0; i < l.Count; i++) if (l[i] != null && !used.Contains(l[i]) && !_keep.Contains(l[i])) { string nm = Kind(l[i].name) + (l[i].gameObject.scene.name == "DontDestroyOnLoad" ? "(ddol)" : ""); int n; gone.TryGetValue(nm, out n); gone[nm] = n + 1; }
+            foreach (NetworkIdentity ni in liveScene.Values) if (!used.Contains(ni) && !_keep.Contains(ni)) { string nm = Kind(ni.name) + "(scene)"; int n; gone.TryGetValue(nm, out n); gone[nm] = n + 1; }
+            System.Text.StringBuilder gs = new System.Text.StringBuilder();
+            foreach (KeyValuePair<string, int> kv in gone) gs.Append(kv.Key).Append(' ').Append(kv.Value).Append(", ");
+            BtcLog.Info("ReplaySeek", "seamless joint: old objects without a pair: " + (gs.Length > 0 ? gs.ToString() : "none") + "new ones without a pair: " + unmatched + " (unknown kind " + leftUnknown.Count + ", scene " + Mathf.Max(0, leftScene.Count - leftLive.Count) + ")");
+            bool ok;
+            int keptN = _keep.Count;
+            try { ok = Jump(first, first.Ms, true); }
+            finally { _keep.Clear(); }
+            atSec = first.Ms / 1000f;
+            LastSwap = "seamless joint to " + d.FileName + " @" + atSec.ToString("0.0") + " s: live " + liveN + ", keyframe objs " + first.Objs.Length + ", re-keyed " + pairs.Count
+                + " (scene " + byScene + ", by position " + byPos + ", persistent " + byPersist + "), kept " + keptN + ", left to the jump " + unmatched + ", jump " + (ok ? "ok" : "FAILED") + ", " + sw.ElapsedMilliseconds + " ms";
+            BtcLog.Info("ReplaySeek", LastSwap);
+            return ok;
+        }
+
+        private static string SpawnKey(byte[] m)
+        {
+            try
+            {
+                NetworkReader r = new NetworkReader(m);
+                r.ReadUInt16();
+                short type = (short)r.ReadUInt16();
+                r.ReadNetworkId();
+                if (type == MsgType.ObjectSpawn) return "a" + r.ReadNetworkHash128().ToString();
+                return "s" + r.ReadSceneId().Value;
+            }
+            catch (Exception) { return "?"; }
+        }
+
+        /// <summary>Match playback research: how far session B at its first keyframe is from session A at time msA (the joint).
+        /// Same netId = same kind of object? Same objects by kind + position? Same terrain and trees? Reads only the two caches.</summary>
+        internal static string CompareSessions(string fileA, long msA, string fileB)
+        {
+            Dictionary<int, Pk> pa = new Dictionary<int, Pk>(), pb = new Dictionary<int, Pk>();
+            Dictionary<uint, byte[]> sa = new Dictionary<uint, byte[]>(), sb = new Dictionary<uint, byte[]>();
+            List<StatsRec> st = new List<StatsRec>();
+            long by = 0;
+            string ca = CachePathOf(fileA, false), cb = CachePathOf(fileB, false);
+            if (ca == null || cb == null || !System.IO.File.Exists(ca) || !System.IO.File.Exists(cb)) return "no cache";
+            if (!ReadCacheFile(ca, pa, sa, st, ref by) || !ReadCacheFile(cb, pb, sb, st, ref by)) return "cache read failed";
+            Pk a = null, b = null;
+            foreach (Pk p in pa.Values) if (p.Ms <= msA && (a == null || p.Ms > a.Ms)) a = p;
+            foreach (Pk p in pb.Values) if (b == null || p.Ms < b.Ms) b = p;
+            if (a == null || b == null) return "no pk";
+            Dictionary<uint, Obj> ia = new Dictionary<uint, Obj>(), ib = new Dictionary<uint, Obj>();
+            foreach (Obj o in a.Objs) ia[o.Id] = o;
+            foreach (Obj o in b.Objs) ib[o.Id] = o;
+            int both = 0, sameKind = 0, sameKindPos = 0, onlyA = 0, onlyB = 0, scene = 0;
+            // by kind: positions of A, to find B objects that exist in A under any netId
+            Dictionary<string, List<Vector3>> posA = new Dictionary<string, List<Vector3>>();
+            foreach (Obj o in a.Objs)
+            {
+                byte[] m; string k = sa.TryGetValue(o.Id, out m) ? SpawnKey(m) : "?";
+                List<Vector3> l; if (!posA.TryGetValue(k, out l)) { l = new List<Vector3>(); posA[k] = l; }
+                l.Add(o.Pos);
+                if (!ib.ContainsKey(o.Id)) onlyA++;
+            }
+            int matchedAnywhere = 0;
+            Dictionary<string, int> miss = new Dictionary<string, int>();
+            foreach (Obj o in b.Objs)
+            {
+                if (o.Scene) scene++;
+                byte[] m; string kb = sb.TryGetValue(o.Id, out m) ? SpawnKey(m) : "?";
+                Obj oa;
+                if (ia.TryGetValue(o.Id, out oa))
+                {
+                    both++;
+                    byte[] ma; string ka = sa.TryGetValue(o.Id, out ma) ? SpawnKey(ma) : "?";
+                    if (ka == kb) { sameKind++; if ((oa.Pos - o.Pos).sqrMagnitude < 1f) sameKindPos++; }
+                }
+                else onlyB++;
+                List<Vector3> l; bool found = false;
+                if (posA.TryGetValue(kb, out l)) for (int i = 0; i < l.Count && !found; i++) found = (l[i] - o.Pos).sqrMagnitude < 2.25f;
+                if (found) matchedAnywhere++;
+                else { int n; miss.TryGetValue(kb, out n); miss[kb] = n + 1; }
+            }
+            System.Text.StringBuilder ms = new System.Text.StringBuilder();
+            int shown = 0;
+            foreach (KeyValuePair<string, int> kv in miss) { if (shown++ >= 6) break; ms.Append(kv.Key.Length > 9 ? kv.Key.Substring(0, 9) : kv.Key).Append('x').Append(kv.Value).Append(' '); }
+            return "A pk " + a.Slot + " @" + (a.Ms / 1000f).ToString("0.0") + " s objs " + a.Objs.Length + ", B pk " + b.Slot + " @" + (b.Ms / 1000f).ToString("0.0") + " s objs " + b.Objs.Length
+                + " | same netId " + both + " (same kind " + sameKind + ", same kind+pos " + sameKindPos + "), only A " + onlyA + ", only B " + onlyB + ", scene objs in B " + scene
+                + " | B objs found in A by kind+pos (any netId) " + matchedAnywhere + "/" + b.Objs.Length + (ms.Length > 0 ? " not found: " + ms : "")
+                + " | terrain " + (Same(a.Terrain, b.Terrain) ? "same" : "differs (" + (a.Terrain != null ? a.Terrain.Length : -1) + "/" + (b.Terrain != null ? b.Terrain.Length : -1) + " B)")
+                + ", nature " + (Same(a.Nature, b.Nature) ? "same" : "differs");
         }
 
         // ---------------- helpers ----------------

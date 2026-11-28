@@ -1,0 +1,23 @@
+# Online micro duel lab, host side (run with -Clients 1): both games see each other, host challenges, client accepts the card,
+# host hosts the duel lobby, both go ready by themselves, the duel loads on the empty map. Round 1: host walks to the mid (space control),
+# both press "next round", round 2: client gives up (instant reset) -> round 3 starts. Check "[Cmd] online dstate" + DuelPvp/DuelNet lines.
+duelunits 4 3 3
+duelarena 1
+hostreadyfile
+wait 40
+online dump
+online duel
+waitduel 300
+wait 3
+online dstate
+duelpmove 0.5
+waitduelover 60
+wait 2
+online dstate
+online dnext
+wait 14
+online dstate
+wait 12
+online dstate
+wait 6
+quit

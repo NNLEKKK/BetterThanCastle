@@ -1,0 +1,14 @@
+# chain-seam2: like chain-seam without the reference part (BTClogs/ws/ref35.txt from chain-seam is reused).
+wait 15
+chain seamless 1
+chain play 50
+wait 45
+speed 8
+playto 35 200
+worldsig seam35 ref35
+chain seek 30
+wait 6
+chain seek 99.3
+wait 6
+worldsig back35 ref35
+quit

@@ -108,7 +108,9 @@ namespace BetterThanCastle
                     bool ok = Detour(loco, target.Voxel);
                     if (ok) Detoured++;
                     else Failed++;
+#if DEV
                     if (Found <= 40) BtcLog.Info("Detour", loco.name + " blocked " + (n - index) + " ahead at " + node.Voxel + " -> " + (ok ? "detour" : "no detour"));
+#endif
                     return;
                 }
                 prev = node;

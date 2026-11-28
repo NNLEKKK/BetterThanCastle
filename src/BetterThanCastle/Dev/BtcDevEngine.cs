@@ -77,7 +77,8 @@ namespace BetterThanCastle.Dev
             catch (Exception e) { BtcLog.Error("Engine", "init: " + e.Message); }
         }
 
-        internal static void ResetProf() { ProfAcc.Clear(); }
+        internal static void ResetProf() { ProfAcc.Clear(); PhSpikes.Clear(); }
+        private static readonly System.Collections.Generic.List<string> PhSpikes = new System.Collections.Generic.List<string>();
 
         // ---------- phase stamps ----------
         private static void OnPreCull(Camera c) { _camStart = Stopwatch.GetTimestamp(); }
@@ -96,6 +97,9 @@ namespace BetterThanCastle.Dev
                 double upd = (_u1 - _u0) * TickMs, anim = (_l0 - _u1) * TickMs, late = (_l1 - _l0) * TickMs;
                 Add(Meas, dt, upd, anim, late);
                 Add(ProfAcc, dt, upd, anim, late);
+                if (dt > 25f && PhSpikes.Count < 300)
+                    PhSpikes.Add(Time.realtimeSinceStartup.ToString("0.00") + " dt=" + dt.ToString("0") + " upd=" + upd.ToString("0.0") + " anim=" + anim.ToString("0.0") + " late=" + late.ToString("0.0")
+                        + " rend=" + _rendAcc.ToString("0.0") + " fixed=" + _fixedCount + " other=" + Math.Max(0.0, dt - upd - anim - late - _rendAcc).ToString("0.0"));
                 Frames[_ringN % Ring] = dt; _ringN++;
                 if (_measuring && dt > 100f && Spikes.Count < 40)
                 {
@@ -167,6 +171,11 @@ namespace BetterThanCastle.Dev
         {
             sb.AppendLine(PhaseText(ProfAcc));
             sb.Append("eng: ").AppendLine(_counters);
+            if (PhSpikes.Count > 0)
+            {
+                sb.AppendLine("PHASE SPIKES (realtime dt>25ms, first 300; other = between LateUpdate end and next Update minus camera render: physics, canvases, present)");
+                for (int i = 0; i < PhSpikes.Count && i < 60; i++) sb.AppendLine(PhSpikes[i]);
+            }
         }
 
         internal static void SampleCounters()

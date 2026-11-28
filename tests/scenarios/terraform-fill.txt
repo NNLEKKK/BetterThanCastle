@@ -1,0 +1,21 @@
+# terraform-fill (2026-11-28, own fill BtcTerraformFill): pit 6x6x1 dug with stone kept + mound 3x3x3 filled; progress every 30 s
+newgame
+waitgame 240
+wait 5
+tfmound 3 3
+wait 3
+tfdump t0
+tfhire
+wait 30
+tfdump t30
+wait 30
+tfdump t60
+wait 30
+tfdump t90
+wait 30
+tfdump t120
+wait 30
+tfdump t150
+wait 30
+tfdump t180
+quit

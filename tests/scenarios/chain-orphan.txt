@@ -1,0 +1,30 @@
+# chain-orphan: match chain playback with session switches, then a normal game and leave to the menu, 30 s in the menu.
+# Bug 2026-11-27: a leftover NetworkClient kept NetworkClient.active true -> main menu reloaded every ~1.5 s after leaving a game.
+# Check agent.log / replay_log: "fake client still listed after the replay" or "[Net] client still active after Disconnect".
+recsp 1
+newgame
+waitgame 240
+wait 40
+phantom save chorph
+wait 15
+leave
+wait 15
+phantom load chorph
+waitgame 240
+wait 40
+leave
+wait 20
+chain play 0
+wait 90
+chain seek 60
+wait 60
+chain seek 10
+wait 60
+leave
+wait 15
+newgame
+waitgame 240
+wait 20
+leave
+wait 30
+quit

@@ -82,7 +82,7 @@ namespace BetterThanCastle
             Conns.Clear();
             Items.Clear();
             IconCache.Clear();
-            _pop = null; _lyt = null; _sel = null; _op = null; _type = T_NONE;
+            _pop = null; _lyt = null; _sel = null; _op = null; _bp = null; _type = T_NONE;
             BtcGhModes.RaisePriority = null; BtcGhModes.LowerPriority = null; BtcGhModes.DeleteTask = null; BtcGhModes.ToggleLoop = null;
             BtcGhModes.ClearQueue = null; BtcGhModes.BlueprintMgmt = null; BtcGhModes.QueueSlot = null; BtcGhModes.TaskActionSlot = null;
         }
@@ -204,7 +204,7 @@ namespace BetterThanCastle
         private static bool IsTunnelSel() { return OfType(T_TUNNEL); }
         private static bool IsHarvestSel() { return OfType(T_HARVEST); }
         private static bool IsCleanSel() { return OfType(T_CLEAN); }
-        private static bool IsIdleNoOp() { return OfType(T_IDLE) && _op == null && !TerraPlacing(); }
+        private static bool IsIdleNoOp() { return OfType(T_IDLE) && _op == null && _bp == null && !TerraPlacing(); }
         private static bool IsNotBuildNotIdle() { return NotIdle() && _type != T_BUILD; }
         private static bool IsBuildNotIdle() { return NotIdle() && _type == T_BUILD; }
         private static bool Selecting() { return InputModeController.IsSelectingBlueprints(); }
@@ -291,7 +291,7 @@ namespace BetterThanCastle
                 Root = BtcGhKit.Box(Layouts.Horizontal, _lyt, "", 2, 2, 2, 2, 1f, TextAnchor.LowerLeft);
                 BtcGhKit.Le(Root, -1f, 72f, -1f, 72f, -1f, -1f, false);
                 _fill(this);
-                string text = _labelKey == null ? "" : _labelKey.StartsWith("##") ? BtcGameHud.Loc(_labelKey) : BtcLang.Tr(_labelKey);
+                string text = _labelKey == null ? "" : _labelKey.StartsWith("##") ? BtcGameHud.Loc(_labelKey) : BtcLang.TrG(_labelKey);
                 if (!string.IsNullOrEmpty(text))
                 {
                     _label = BtcGhKit.Make(Texts.Default, Root, "");
@@ -354,6 +354,7 @@ namespace BetterThanCastle
             internal Action OnAction;
             internal Func<int> Highlight;
             internal Func<string> Tip;
+            internal bool DeferOnDrag;   // inside a scrolling strip: click decided at drag end
 
             private BtcGhButton _b;
             private Image _fg;
@@ -413,7 +414,7 @@ namespace BetterThanCastle
                     _b.Silent = true;
                 }
                 _b.HoverBg = hoverBg; _b.HotkeyLabel = hotkey; _b.Icon = _fg; _b.HoverColor = HoverColor;
-                _b.HotkeyFn = Hotkey; _b.OnAction = OnAction; _b.Highlight = Highlight; _b.Tip = Tip;
+                _b.HotkeyFn = Hotkey; _b.OnAction = OnAction; _b.Highlight = Highlight; _b.Tip = Tip; _b.DeferOnDrag = DeferOnDrag;
                 if (IconColorFn != null) _b.IconColor = IconColorFn;
                 NoRaycast(p, btnRt);
             }

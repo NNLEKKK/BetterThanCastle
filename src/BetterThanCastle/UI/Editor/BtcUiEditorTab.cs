@@ -27,7 +27,7 @@ namespace BetterThanCastle
         private static int Page { get { return BtcMenuState.Int("uiedit:page", 0); } set { BtcMenuState.SetInt("uiedit:page", value); } }
         private static string Sel { get { return BtcMenuState.Get("uiedit:sel", "launcher"); } set { BtcMenuState.Set("uiedit:sel", value); } }
         private static bool Snap { get { return BtcMenuState.Bool("uiedit:snap", true); } set { BtcMenuState.SetBool("uiedit:snap", value); } }
-        private static bool NoOverlap { get { return BtcMenuState.Bool("uiedit:nooverlap", true); } set { BtcMenuState.SetBool("uiedit:nooverlap", value); } }
+        private static bool NoOverlap { get { return BtcMenuState.Bool("uiedit:nooverlap2", false); } set { BtcMenuState.SetBool("uiedit:nooverlap2", value); } }
         private static bool ShowGrid { get { return BtcMenuState.Bool("uiedit:grid", true); } set { BtcMenuState.SetBool("uiedit:grid", value); } }
 
         private Vector2 _scroll, _propScroll;
@@ -46,7 +46,6 @@ namespace BetterThanCastle
         private float _dragNx, _dragNy, _dragScale;
         private string _dragBefore;
         private readonly List<float> _guideX = new List<float>(), _guideY = new List<float>();
-        private bool _dragOverlap;
 
         // ------------------------------------------------------------------ styles / frame
         private void Styles(int fs)
@@ -78,6 +77,15 @@ namespace BetterThanCastle
         private static int PageIcon(int p)
         {
             switch (p) { case PLayout: return BtcReplayIcons.Layout; case PReplay: return BtcReplayIcons.Play; case PSetup: return BtcReplayIcons.Share; case PMenu: return BtcReplayIcons.Palette; case PPresets: return BtcReplayIcons.Star; default: return BtcReplayIcons.Grid; }
+        }
+
+        /// <summary>Link jump (tab:12:&lt;key&gt;): "uisound" opens the Menu look page and pulses the sound row; an element id selects it on the Layout page.</summary>
+        internal void Jump(string key)
+        {
+            if (key == "uisound") { Page = PMenu; BtcUi.SetOpen("uie:sound", true); BtcJump.Target(Scope, key); return; }
+            int p;
+            if (int.TryParse(key, out p)) { Page = p; return; }
+            if (BtcUiEdit.ElemOf(key) != null) { Page = PLayout; Sel = key; }
         }
 
         /// <summary>Runs a change with an undo step: the whole editor state before the change is restored by Ctrl+Z.</summary>
@@ -136,6 +144,7 @@ namespace BetterThanCastle
             else
             {
                 float vw = body.width - (_h > body.height ? 14f : 0f);
+                BtcJump.Scroll(ref _scroll, body.height);
                 _scroll = GUI.BeginScrollView(body, _scroll, new Rect(0f, 0f, vw, _h));
                 float cy = fs * 0.2f;
                 switch (Page)
@@ -236,6 +245,7 @@ namespace BetterThanCastle
         private void DrawLayout(Rect body, int fs)
         {
             Event e = Event.current;
+            BtcInterface.Touch();   // keep finding the game's HUD panels while the layout is open
             float pad = fs, gap = fs;
             float propsW = Mathf.Clamp(body.width * 0.34f, fs * 17f, fs * 25f);
             Rect avail = new Rect(body.x + pad, body.y + fs * 0.2f, body.width - propsW - pad * 2f - gap, body.height - fs * 1.2f);
@@ -294,22 +304,20 @@ namespace BetterThanCastle
             BtcUiEdit.E s = BtcUiEdit.Get(el.Id);
             Rect r = ToCanvas(BtcUiEdit.ScreenRect(el, s, true), canvas);
             bool selected = el.Id == Sel, hover = r.Contains(e.mousePosition) && (_dragId == null || _dragId == el.Id);
-            string with;
-            bool bad = s.En && Overlaps(el.Id, BtcUiEdit.ScreenRect(el, s, true), out with);
+            // overlapping is allowed (user rule 2026-11-26): no red marking
             if (e.type == EventType.Repaint)
             {
                 float a = s.En ? Mathf.Lerp(0.35f, 1f, s.Alpha) : 0.18f;
                 BtcReplayUI.Fill(r, new Color(BtcHud.Panel.r, BtcHud.Panel.g, BtcHud.Panel.b, a));
-                Color ac = bad ? new Color(1f, 0.4f, 0.38f, 1f) : BtcMenu.Accent;
+                Color ac = BtcMenu.Accent;
                 BtcReplayUI.Fill(new Rect(r.x, r.y, 3f, r.height), new Color(ac.r, ac.g, ac.b, s.En ? 1f : 0.35f));
                 if (hover || selected) BtcReplayUI.Fill(r, new Color(1f, 1f, 1f, selected ? 0.07f : 0.05f));
                 if (selected)
                 {
-                    Color oc = bad ? new Color(1f, 0.4f, 0.38f, 1f) : BtcMenu.Accent;
+                    Color oc = BtcMenu.Accent;
                     BtcReplayUI.Fill(new Rect(r.x - 1f, r.y - 1f, r.width + 2f, 1f), oc); BtcReplayUI.Fill(new Rect(r.x - 1f, r.yMax, r.width + 2f, 1f), oc);
                     BtcReplayUI.Fill(new Rect(r.x - 1f, r.y, 1f, r.height), oc); BtcReplayUI.Fill(new Rect(r.xMax, r.y, 1f, r.height), oc);
                 }
-                else if (bad) { Color oc = new Color(1f, 0.4f, 0.38f, 0.8f); BtcReplayUI.Fill(new Rect(r.x, r.yMax - 1f, r.width, 1f), oc); }
                 float g = Mathf.Min(r.height * 0.7f, fs * 1.3f);
                 if (r.width > g * 2f) BtcReplayIcons.Glyph(el.Icon, new Rect(r.x + Mathf.Min(fs * 0.5f, r.width * 0.1f), r.center.y - g * 0.5f, g, g), new Color(ac.r, ac.g, ac.b, s.En ? 1f : 0.35f));
                 if (r.width > g * 4f && r.height > fs * 0.9f) BtcVisualRows.Txt(new Rect(r.x + g + fs * 0.9f, r.y, r.width - g - fs * 1.1f, r.height), Tt(el.En, el.Ru), _tiny, new Color(1f, 1f, 1f, s.En ? 0.85f : 0.3f));
@@ -324,96 +332,6 @@ namespace BetterThanCastle
 
         private static Rect HandleRect(Rect r, int fs) { float h = Mathf.Max(8f, fs * 0.55f); return new Rect(r.xMax - h * 0.5f, r.yMax - h * 0.5f, h, h); }
 
-        private void HandleCanvasMouse(Rect canvas, Event e)
-        {
-            float k = canvas.width / Screen.width, H = Screen.height, W = Screen.width;
-            if (e.type == EventType.MouseDown && e.button == 0 && canvas.Contains(e.mousePosition) && _dragId == null)
-            {
-                // topmost block under the pointer: the selected one first, then reverse order
-                string hit = null; int mode = 1;
-                string sel = Sel;
-                BtcUiEdit.Elem se = BtcUiEdit.ElemOf(sel);
-                if (se != null)
-                {
-                    BtcUiEdit.E ss = BtcUiEdit.Get(sel);
-                    Rect sr = ToCanvas(BtcUiEdit.ScreenRect(se, ss, true), canvas);
-                    if (ss.En && HandleRect(sr, _fs).Contains(e.mousePosition)) { hit = sel; mode = 2; }
-                    else if (sr.Contains(e.mousePosition)) hit = sel;
-                }
-                if (hit == null)
-                    for (int i = BtcUiEdit.Elems.Length - 1; i >= 0; i--)
-                    {
-                        BtcUiEdit.Elem el = BtcUiEdit.Elems[i];
-                        if (ToCanvas(BtcUiEdit.ScreenRect(el, BtcUiEdit.Get(el.Id), true), canvas).Contains(e.mousePosition)) { hit = el.Id; break; }
-                    }
-                if (hit != null)
-                {
-                    Sel = hit;
-                    BtcUiEdit.E s = BtcUiEdit.Get(hit);
-                    _dragId = hit; _dragMode = mode; _dragStart = e.mousePosition;
-                    _dragNx = s.Nx; _dragNy = s.Ny; _dragScale = s.Scale;
-                    _dragBefore = BtcUiEdit.Serialize();
-                    BtcSfx.Tick();
-                    e.Use();
-                }
-            }
-            else if (_dragId != null && e.type == EventType.MouseDrag)
-            {
-                BtcUiEdit.Elem el = BtcUiEdit.ElemOf(_dragId);
-                BtcUiEdit.E s = BtcUiEdit.Get(_dragId);
-                Vector2 d = (e.mousePosition - _dragStart) / k;      // screen pixels
-                _guideX.Clear(); _guideY.Clear();
-                if (_dragMode == 1)
-                {
-                    s.Nx = _dragNx + d.x / H; s.Ny = _dragNy + d.y / H;
-                    Rect r = BtcUiEdit.ScreenRect(el, s, true);
-                    if (Snap)
-                    {
-                        float th = 7f / k;
-                        List<float> xs = new List<float> { 0f, W * 0.5f, W }, ys = new List<float> { 0f, H * 0.5f, H };
-                        for (int i = 0; i < BtcUiEdit.Elems.Length; i++)
-                        {
-                            BtcUiEdit.Elem o = BtcUiEdit.Elems[i];
-                            if (o.Id == _dragId) continue;
-                            BtcUiEdit.E eo = BtcUiEdit.Get(o.Id);
-                            if (!eo.En) continue;
-                            Rect ro = BtcUiEdit.ScreenRect(o, eo, true);
-                            xs.Add(ro.x); xs.Add(ro.xMax); xs.Add(ro.center.x); ys.Add(ro.y); ys.Add(ro.yMax); ys.Add(ro.center.y);
-                        }
-                        float bx = th, byv = th, sx = 0f, sy = 0f; float gx = -1f, gy = -1f;
-                        float[] mine = { r.x, r.center.x, r.xMax };
-                        for (int a = 0; a < 3; a++) for (int i = 0; i < xs.Count; i++) { float dd = xs[i] - mine[a]; if (Mathf.Abs(dd) < bx) { bx = Mathf.Abs(dd); sx = dd; gx = xs[i]; } }
-                        float[] mineY = { r.y, r.center.y, r.yMax };
-                        for (int a = 0; a < 3; a++) for (int i = 0; i < ys.Count; i++) { float dd = ys[i] - mineY[a]; if (Mathf.Abs(dd) < byv) { byv = Mathf.Abs(dd); sy = dd; gy = ys[i]; } }
-                        if (gx >= 0f) { s.Nx += sx / H; _guideX.Add(gx); }
-                        if (gy >= 0f) { s.Ny += sy / H; _guideY.Add(gy); }
-                    }
-                    ClampToScreen(el, s);
-                }
-                else
-                {
-                    Rect r0 = BtcUiEdit.ScreenRect(el, new BtcUiEdit.E { Scale = _dragScale, Nx = _dragNx, Ny = _dragNy }, true);
-                    float f = r0.width > 1f ? (r0.width + d.x) / r0.width : 1f;
-                    s.Scale = Mathf.Clamp(_dragScale * f, 0.4f, 2.5f);
-                }
-                string w;
-                _dragOverlap = Overlaps(_dragId, BtcUiEdit.ScreenRect(el, s, true), out w);
-                BtcUiEdit.Apply();
-                e.Use();
-            }
-            else if (_dragId != null && (e.type == EventType.MouseUp || e.rawType == EventType.MouseUp))
-            {
-                BtcUiEdit.Elem el = BtcUiEdit.ElemOf(_dragId);
-                BtcUiEdit.E s = BtcUiEdit.Get(_dragId);
-                if (NoOverlap) ResolveOverlap(_dragId); else ClampToScreen(el, s);
-                string before = _dragBefore;
-                BtcUiEdit.Changed();
-                if (before != BtcUiEdit.Serialize())
-                    BtcUndo.Push(Scope, Tt("Moved: ", "Перемещено: ") + Tt(el.En, el.Ru), delegate { BtcUiEdit.Restore(before); });
-                _dragId = null; _guideX.Clear(); _guideY.Clear();
-                if (e.type == EventType.MouseUp) e.Use();
-            }
-        }
 
         // ------------------------------------------------------------------ property panel
         private void DrawProps(Rect props, int fs)
@@ -421,11 +339,27 @@ namespace BetterThanCastle
             float vw = props.width - (_propH > props.height ? 14f : 0f);
             _propScroll = GUI.BeginScrollView(props, _propScroll, new Rect(0f, 0f, vw, _propH));
             float y = fs * 0.4f, w = vw;
+            bool inMatch = false;
+            try { inMatch = Brix.Engine.Architecte.commence && BtcReplay.Mode != BtcReplay.State.Playing; } catch (Exception) { }
+            if (inMatch && BtcUi.Action(ref y, w, fs, BtcReplayIcons.Layout, Tt("Edit on the real screen", "Править на настоящем экране"), Tt("F7 in a match opens it directly", "F7 в матче открывает сразу его")))
+                ResourcePackManager.StartUiEditorLive();
             BtcUi.Section(ref y, w, fs, Tt("Elements", "Элементы"));
             Event e = Event.current;
-            for (int i = 0; i < BtcUiEdit.Elems.Length; i++)
+            BtcUiEdit.Elem[] all = BtcUiEdit.Elems;
+            bool vanOpen = true, vanHead = false;
+            for (int i = 0; i < all.Length; i++)
             {
-                BtcUiEdit.Elem el = BtcUiEdit.Elems[i];
+                BtcUiEdit.Elem el = all[i];
+                if (el.Anchor == 5 && !vanHead)
+                {
+                    // the game's own HUD panels (found in this match): one foldable group, they can be many
+                    vanHead = true;
+                    y += fs * 0.2f;
+                    int cnt = 0;
+                    for (int k = i; k < all.Length; k++) if (all[k].Anchor == 5) cnt++;
+                    vanOpen = BtcUi.Fold(ref y, w, fs, "uiedit:vanilla", Tt("Game HUD panels", "Панели HUD игры"), cnt);
+                }
+                if (el.Anchor == 5 && !vanOpen) continue;
                 BtcUiEdit.E s = BtcUiEdit.Get(el.Id);
                 Rect row = new Rect(fs * 0.5f, y, w - fs, fs * 2f);
                 bool on = el.Id == Sel, hover = row.Contains(e.mousePosition);
@@ -447,6 +381,7 @@ namespace BetterThanCastle
                 if (BtcSfx.Btn(row, "", BtcReplayUI.sBtn)) Sel = el.Id;
                 y += fs * 2f + 3f;
             }
+            if (!vanHead) BtcUi.Note(ref y, w, fs, Tt("Panels of the game HUD (minimap, chat, bars...) appear here during a match.", "Панели HUD игры (миникарта, чат, полосы...) появляются здесь во время матча."));
             y += fs * 0.4f;
 
             BtcUiEdit.Elem cur = BtcUiEdit.ElemOf(Sel) ?? BtcUiEdit.Elems[0];
@@ -471,10 +406,13 @@ namespace BetterThanCastle
             y += fs * 0.4f;
             BtcUi.Section(ref y, w, fs, Tt("Helpers", "Помощники"));
             if (BtcUi.Toggle(ref y, w, fs, Tt("Snap to edges and other blocks", "Прилипание к краям и блокам"), Snap, null)) Snap = !Snap;
-            if (BtcUi.Toggle(ref y, w, fs, Tt("Never leave blocks overlapping", "Не оставлять блоки наложенными"), NoOverlap, Tt("After a drop the block is pushed aside", "После отпускания блок отодвигается")) ) NoOverlap = !NoOverlap;
+            if (BtcUi.Toggle(ref y, w, fs, Tt("Push blocks apart after a drop", "Расталкивать блоки после отпускания"), NoOverlap, Tt("Off: blocks may lie on top of each other", "Выкл.: блоки можно класть друг на друга")) ) NoOverlap = !NoOverlap;
             if (BtcUi.Toggle(ref y, w, fs, Tt("Show grid", "Показывать сетку"), ShowGrid, null)) ShowGrid = !ShowGrid;
-            BtcUi.Section(ref y, w, fs, Tt("Loading screen", "Экран загрузки"));
-            if (BtcUi.Toggle(ref y, w, fs, Tt("Cancel cross while a map loads", "Крестик отмены во время загрузки карты"), BtcConfig.LoadCancel.Value, Tt("Bottom right; aborts the load and returns to the main menu", "Справа снизу; прерывает загрузку и возвращает в главное меню"))) BtcConfig.LoadCancel.Value = !BtcConfig.LoadCancel.Value;
+            BtcUi.Section(ref y, w, fs, Tt("Chat", "Чат"));
+            BtcVisualRows.Prefix = "chat";
+            float yy = y;
+            BtcGameChatFade.DrawSettings((l, on) => BtcVisualRows.Check(ref yy, w, fs, l, on), (string l, int id, float v, float mn, float mx, float st, string fmt, string suf) => BtcVisualRows.SliderCb(ref yy, w, fs, l, id, v, mn, mx, st, fmt, suf));
+            y = yy;
             _propH = y + fs;
             GUI.EndScrollView();
         }
@@ -488,6 +426,21 @@ namespace BetterThanCastle
 
         private void PageMenu(ref float y, float w, int fs)
         {
+            if (BtcUi.Fold(ref y, w, fs, "uie:sound", Tt("Interface sounds", "Звуки интерфейса"), 1))
+            {
+                int lvl = BtcSfx.Level;
+                string[] names = { Tt("Off", "Выкл"), Tt("Low", "Тихо"), Tt("Medium", "Средне"), Tt("High", "Громко") };
+                float y0 = y;
+                int c = BtcVisualRows.Choice(ref y, w, fs, 0, Tt("Clicks, hover ticks and switches of the mod menu", "Клики, тики наведения и переключатели меню мода"), lvl, names, null, null);
+                BtcJump.Row(Scope, "uisound", new Rect(fs * 0.5f, y0, w - fs, y - y0));
+                if (c >= 0 && c != lvl)
+                {
+                    BtcSfx.Level = c;
+                    BtcSfx.Tick();
+                    BtcUndo.Push(Scope, Tt("Interface sounds", "Звуки интерфейса"), delegate { BtcSfx.Level = lvl; });
+                }
+                y += fs * 0.5f;
+            }
             if (BtcUi.Fold(ref y, w, fs, "uie:size", Tt("Sizes", "Размеры"), 0))
             {
                 BtcUi.Note(ref y, w, fs, Tt("Menu size scales this whole window (text, buttons, icons) and applies when you release the slider. HUD size scales the on-screen elements (plates, cards, ping, BTC button) on top of the per-element size.", "Размер меню масштабирует всё это окно (текст, кнопки, иконки) и применяется, когда вы отпускаете ползунок. Размер HUD масштабирует элементы на экране (плашки, карточки, пинг, кнопку BTC) поверх размера каждого элемента."));

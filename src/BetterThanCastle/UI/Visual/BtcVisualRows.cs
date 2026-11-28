@@ -144,6 +144,7 @@ namespace BetterThanCastle
         {
             Styles(fs);
             bool open = BtcUi.IsOpen(key);
+            if (BtcSearchHarvest.Fold(key, text)) open = true;
             float pad = fs;
             Rect r = new Rect(pad, y, w - pad * 2f, fs * 1.9f);
             bool hover = r.Contains(Event.current.mousePosition);
@@ -174,6 +175,7 @@ namespace BetterThanCastle
             float pad = fs + indent * fs * 1.2f;
             float h = fs * 2.1f + (string.IsNullOrEmpty(hint) ? 0f : fs * 1.1f);
             Rect row = new Rect(pad, y, w - pad - fs, h);
+            BtcSearchHarvest.Row(label, hint, row);
             bool hover = row.Contains(e.mousePosition);
             BtcReplayUI.Fill(row, new Color(1f, 1f, 1f, hover ? 0.07f : 0.03f));
             if (indent > 0) BtcReplayUI.Fill(new Rect(row.x - fs * 0.6f, row.y, 1f, row.height), BtcMenu.Line);
@@ -211,6 +213,7 @@ namespace BetterThanCastle
             float pad = fs + indent * fs * 1.2f;
             float h = fs * 2.1f;
             Rect row = new Rect(pad, y, w - pad - fs, h);
+            BtcSearchHarvest.Row(label, null, row);
             bool hover = row.Contains(e.mousePosition);
             BtcReplayUI.Fill(row, new Color(1f, 1f, 1f, hover || _dragId == id ? 0.07f : 0.03f));
             if (indent > 0) BtcReplayUI.Fill(new Rect(row.x - fs * 0.6f, row.y, 1f, row.height), BtcMenu.Line);
@@ -255,6 +258,7 @@ namespace BetterThanCastle
             float pad = fs + indent * fs * 1.2f;
             float h = fs * 2.1f;
             Rect row = new Rect(pad, y, w - pad - fs, h);
+            BtcSearchHarvest.Row(label, null, row);
             BtcReplayUI.Fill(row, new Color(1f, 1f, 1f, 0.03f));
             Txt(new Rect(row.x + fs * 0.6f, row.y, row.width * 0.45f, h), label, _lbl, new Color(1f, 1f, 1f, 0.85f));
             int n = icons != null ? icons.Length : texts.Length;
@@ -279,8 +283,9 @@ namespace BetterThanCastle
         internal static bool Setting(ref float y, float w, int fs, BtcVisualSetting s)
         {
             bool pinned = BtcJump.Pinned("vis", s.Key);   // a jump from the search shows the row even when Simple mode or a parent switch hides it
-            if (!pinned && !IgnoreVis && s.Vis != null && !s.Vis()) return false;
-            if (!pinned && s.Expert && !Expert) return false;
+            bool harvest = BtcSearchHarvest.Active;
+            if (!pinned && !harvest && !IgnoreVis && s.Vis != null && !s.Vis()) return false;
+            if (!pinned && !harvest && s.Expert && !Expert) return false;
             float y0 = y;
             bool r = SettingRow(ref y, w, fs, s);
             BtcJump.Row("vis", s.Key, new Rect(fs * 0.5f, y0, w - fs, y - y0));
@@ -391,6 +396,7 @@ namespace BetterThanCastle
             float pad = fs + lvl * fs * 1.2f;
             float h = fs * 2.1f;
             Rect row = new Rect(pad, y, w - pad - fs, h);
+            BtcSearchHarvest.Row(name, null, row);
             bool hover = row.Contains(e.mousePosition);
             BtcReplayUI.Fill(row, new Color(1f, 1f, 1f, hover ? 0.07f : 0.03f));
             if (lvl > 0) BtcReplayUI.Fill(new Rect(row.x - fs * 0.6f, row.y, 1f, row.height), BtcMenu.Line);
@@ -408,7 +414,7 @@ namespace BetterThanCastle
         /// <summary>Callback "slider".</summary>
         internal static float SliderCb(ref float y, float w, int fs, string label, int id, float v, float mn, float mx, float st, string fmt, string suf)
         {
-            if (!Expert) return v;
+            if (!Expert && !BtcSearchHarvest.Active) return v;
             int lvl; string text;
             Depth(Tr(label), out lvl, out text);
             string key = Prefix + "|f|" + label;
@@ -427,9 +433,10 @@ namespace BetterThanCastle
         /// <summary>Callback "colour".</summary>
         internal static void ColorCb(ref float y, float w, int fs, string label, int id)
         {
-            if (!Expert || ColorGet == null) return;
+            if ((!Expert && !BtcSearchHarvest.Active) || ColorGet == null) return;
             int lvl; string text;
             Depth(Tr(label), out lvl, out text);
+            BtcSearchHarvest.Row(text, null, new Rect(fs * 0.5f, y, w - fs, fs * 2.1f));
             int cid = id;
             BtcVisualColor.Row(ref y, w, fs, "cb" + id, text, lvl, ColorGet(id), delegate (Color c) { ColorSet(cid, c); }, null);
         }

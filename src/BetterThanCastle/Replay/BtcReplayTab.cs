@@ -17,6 +17,7 @@ namespace BetterThanCastle
         {
             BtcReplayUI.Ensure(fs);
             Rect view = new Rect(0f, 0f, area.width - (_h > area.height ? 14f : 0f), _h);
+            BtcJump.Scroll(ref _scroll, area.height);
             _scroll = GUI.BeginScrollView(area, _scroll, view);
             BtcReplayUI.Draw(Event.current, view.width, fs * 2f, fs, GUI.color);
             GUI.EndScrollView();

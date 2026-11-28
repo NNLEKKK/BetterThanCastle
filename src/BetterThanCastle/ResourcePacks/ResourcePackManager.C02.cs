@@ -632,7 +632,7 @@ public partial class ResourcePackManager : MonoBehaviour
 		}
 	}
 
-	internal static readonly int[] TabOrder = { 0, 1, 2, 3, 4, 11, 5, 6, 7, 8, 14, 9, 10, 12, 13 };
+	internal static readonly int[] TabOrder = { 0, 1, 2, 3, 4, 11, 5, 6, 7, 8, 14, 9, 10, 12, 13, 15, 16 };
 
 	private int[] tabIds = new int[0];
 
@@ -659,7 +659,9 @@ public partial class ResourcePackManager : MonoBehaviour
 			BtcReplayUI.T("Statistics", "Статистика"),
 				BtcReplayUI.T("UI editor", "UI редактор"),
 				BtcReplayUI.T("Notifications", "Уведомления"),
-				BtcReplayUI.T("Performance", "Производительность")
+				BtcReplayUI.T("Performance", "Производительность"),
+				BtcReplayUI.T("General", "Общее"),
+				BtcReplayUI.T("Online", "Онлайн")
 		};
 		int num = BtcReplay.FeatureOn ? this.tabNames.Length : (this.tabNames.Length - 1);
 		this.tabIds = new int[num];
@@ -739,7 +741,7 @@ public partial class ResourcePackManager : MonoBehaviour
 			this.pickNum = false;
 			this.pickExtra = 0;
 			int lastTab = BtcMenuState.Int("tab", 0);   // reopen where the menu was closed
-			if (lastTab > 0 && lastTab <= 14 && ResourcePackManager.TabEnabledFn(lastTab)) this.SelectTab(lastTab);
+			if (lastTab > 0 && lastTab <= 15 && ResourcePackManager.TabEnabledFn(lastTab)) this.SelectTab(lastTab);
 		}
 	}
 
@@ -898,6 +900,12 @@ public partial class ResourcePackManager : MonoBehaviour
 			else
 			{
 				GUI.depth = -1001;
+				if (BtcUiEditorTab.Live && BtcMenu.CurrentId == 12)
+				{
+					// UI editor live mode: a see-through overlay over the real screen instead of the menu window
+					BtcUiEditorTab.Instance.DrawLive(num);
+					if (BtcUiEditorTab.Live) return;
+				}
 				Color color = GUI.color;
 				bool flag32 = current.type == EventType.Repaint;
 				bool flag33 = flag32;
@@ -933,7 +941,7 @@ public partial class ResourcePackManager : MonoBehaviour
 					GUI.color = color;
 				}
 				Rect rect2 = new Rect(rect.x + num4, rect.y + num9 + num4 * 0.5f, rect.width - num4 * 2f, num3);
-				int num11 = BtcMenu.CurrentId == 14 ? 14 : BtcMenu.CurrentId == 13 ? 13 : BtcMenu.CurrentId == 12 ? 12 : BtcMenu.CurrentId == 11 ? 11 : BtcChangelogTab.TabActive ? 10 : BtcReportTab.TabActive ? 9 : BtcDuelUI.TabActive ? 8 : BtcReplayUI.TabActive ? 7 : (BtcNick.TabActive ? 6 : (BtcShareUI.TabActive ? 5 : (BtcGameplayUI.TabActive ? 4 : (BtcHotkeysUI.TabActive ? 3 : (this.menuBc ? 2 : (this.menuHp ? 1 : 0))))));
+				int num11 = BtcMenu.CurrentId == 16 ? 16 : BtcMenu.CurrentId == 15 ? 15 : BtcMenu.CurrentId == 14 ? 14 : BtcMenu.CurrentId == 13 ? 13 : BtcMenu.CurrentId == 12 ? 12 : BtcMenu.CurrentId == 11 ? 11 : BtcChangelogTab.TabActive ? 10 : BtcReportTab.TabActive ? 9 : BtcDuelUI.TabActive ? 8 : BtcReplayUI.TabActive ? 7 : (BtcNick.TabActive ? 6 : (BtcShareUI.TabActive ? 5 : (BtcGameplayUI.TabActive ? 4 : (BtcHotkeysUI.TabActive ? 3 : (this.menuBc ? 2 : (this.menuHp ? 1 : 0))))));
 				BtcMenu.DrawHeader(rect, num, num11 >= 0 && num11 < this.tabNames.Length ? this.tabNames[num11] : "");
 				int railClick = BtcMenu.DrawRail(new Rect(0f, 0f, railW, (float)Screen.height), num, this.tabIds, this.tabNames, num11, ResourcePackManager.TabEnabledFn);
 				int cornerClick = BtcMenu.DrawCorner(rect, num, num11, this.tabNames);
@@ -943,96 +951,6 @@ public partial class ResourcePackManager : MonoBehaviour
 				{
 					this.SelectTab(railClick);
 					return;
-				}
-				bool flag78 = num8 > 0f;
-				bool flag79 = flag78;
-				bool flag80 = flag79;
-				bool flag81 = flag80;
-				bool flag82 = flag81;
-				bool flag83 = flag82;
-				bool flag84 = flag83;
-				bool flag85 = flag84;
-				bool flag86 = flag85;
-				bool flag87 = flag86;
-				if (flag87)
-				{
-					float num13 = rect.y + num9 + num3 + num4 * 0.5f;
-					float num14 = (float)num * 1.1f;
-					bool flag88 = this.hpCfg != null;
-					bool flag89 = flag88;
-					bool flag90 = flag89;
-					bool flag91 = flag90;
-					bool flag92 = flag91;
-					bool flag93 = flag92;
-					bool flag94 = flag93;
-					bool flag95 = flag94;
-					bool flag96 = flag95;
-					bool flag97 = flag96;
-					if (flag97)
-					{
-						Rect rect3 = new Rect(rect.x, num13, rect.width, num2);
-						this.DrawRowBackground(current, rect3, this.coloredHp, color);
-						bool flag98 = current.type == EventType.Repaint;
-						bool flag99 = flag98;
-						bool flag100 = flag99;
-						bool flag101 = flag100;
-						bool flag102 = flag101;
-						bool flag103 = flag102;
-						bool flag104 = flag103;
-						bool flag105 = flag104;
-						bool flag106 = flag105;
-						bool flag107 = flag106;
-						if (flag107)
-						{
-							this.DrawCheckbox(new Rect(rect3.x + (float)num, rect3.y + (num2 - num14) * 0.5f, num14, num14), this.coloredHp);
-						}
-						bool flag108 = GUI.Button(rect3, BtcLang.Tr("Colored HP (master switch)"), this.menuHatItemStyle);
-						bool flag109 = flag108;
-						bool flag110 = flag109;
-						bool flag111 = flag110;
-						bool flag112 = flag111;
-						bool flag113 = flag112;
-						bool flag114 = flag113;
-						bool flag115 = flag114;
-						bool flag116 = flag115;
-						bool flag117 = flag116;
-						if (flag117)
-						{
-							this.SetColoredHp(!this.coloredHp);
-						}
-						num13 += num2;
-					}
-					Rect rect4 = new Rect(rect.x, num13, rect.width, num2);
-					this.DrawRowBackground(current, rect4, this.discordOn, color);
-					bool flag118 = current.type == EventType.Repaint;
-					bool flag119 = flag118;
-					bool flag120 = flag119;
-					bool flag121 = flag120;
-					bool flag122 = flag121;
-					bool flag123 = flag122;
-					bool flag124 = flag123;
-					bool flag125 = flag124;
-					bool flag126 = flag125;
-					bool flag127 = flag126;
-					if (flag127)
-					{
-						this.DrawCheckbox(new Rect(rect4.x + (float)num, rect4.y + (num2 - num14) * 0.5f, num14, num14), this.discordOn);
-					}
-					bool flag128 = GUI.Button(rect4, BtcLang.Tr("Discord Rich Presence"), this.menuHatItemStyle);
-					bool flag129 = flag128;
-					bool flag130 = flag129;
-					bool flag131 = flag130;
-					bool flag132 = flag131;
-					bool flag133 = flag132;
-					bool flag134 = flag133;
-					bool flag135 = flag134;
-					bool flag136 = flag135;
-					bool flag137 = flag136;
-					if (flag137)
-					{
-						this.SetDiscord(!this.discordOn);
-					}
-					this.DrawDisplayHeader(current, rect4.y + num2, rect, num2, num, num14, color);
 				}
 				if (BtcGlobalSearch.Active) { BtcGlobalSearch.DrawResults(new Rect(rect.x, rect.y + num9, rect.width, rect.height - num9), num); BtcReplayIcons.DrawTip(num, rect.xMax, false); GUI.color = color; return; }
 				BtcMenuTab nt = BtcMenu.ActiveTab();
@@ -1044,158 +962,8 @@ public partial class ResourcePackManager : MonoBehaviour
 					GUI.color = color;
 					return;
 				}
-				Rect position2 = new Rect(rect.x, rect.y + num9 + num3 + num4 * 0.5f + num8, rect.width, rect.height - num9 - num3 - num4 * 1.5f - num8);
-				Rect viewRect = new Rect(0f, 0f, position2.width - ((num7 > position2.height) ? 16f : 0f), num7);
-				this.menuScroll = GUI.BeginScrollView(position2, this.menuScroll, viewRect);
-				bool flag138 = this.menuHp;
-				bool flag139 = flag138;
-				bool flag140 = flag139;
-				bool flag141 = flag140;
-				bool flag142 = flag141;
-				bool flag143 = flag142;
-				bool flag144 = flag143;
-				bool flag145 = flag144;
-				bool flag146 = flag145;
-				bool flag147 = flag146;
-				if (flag147)
-				{
-					this.DrawHpRows(current, viewRect.width, num2, num, color);
-				}
-				else
-				{
-					bool flag148 = false;
-					bool flag149 = flag148;
-					bool flag150 = flag149;
-					bool flag151 = flag150;
-					bool flag152 = flag151;
-					bool flag153 = flag152;
-					bool flag154 = flag153;
-					bool flag155 = flag154;
-					bool flag156 = flag155;
-					bool flag157 = flag156;
-					if (flag157)
-					{
-					}
-					else
-					{
-						bool flag158 = this.menuBc;
-						bool flag159 = flag158;
-						bool flag160 = flag159;
-						bool flag161 = flag160;
-						bool flag162 = flag161;
-						bool flag163 = flag162;
-						bool flag164 = flag163;
-						bool flag165 = flag164;
-						bool flag166 = flag165;
-						bool flag167 = flag166;
-						if (flag167)
-						{
-							this.DrawBcRows(current, viewRect.width, num2, num, color);
-						}
-						else
-						{
-							bool flag168 = this.menuDbg;
-							bool flag169 = flag168;
-							bool flag170 = flag169;
-							bool flag171 = flag170;
-							bool flag172 = flag171;
-							bool flag173 = flag172;
-							bool flag174 = flag173;
-							bool flag175 = flag174;
-							bool flag176 = flag175;
-							bool flag177 = flag176;
-							if (flag177)
-							{
-								this.DrawDbgRows(current, viewRect.width, num2, num, color);
-							}
-							else
-							{
-								bool tabActive = BtcHotkeysUI.TabActive;
-								bool flag178 = tabActive;
-								bool flag179 = flag178;
-								bool flag180 = flag179;
-								bool flag181 = flag180;
-								bool flag182 = flag181;
-								bool flag183 = flag182;
-								if (flag183)
-								{
-									// migrated: BtcHotkeysTab draws through BtcMenu.ActiveTab()
-								}
-								else
-								{
-									bool tabActive2 = BtcReplayUI.TabActive || BtcDuelUI.TabActive;
-									bool flag184 = tabActive2;
-									bool flag185 = flag184;
-									bool flag186 = flag185;
-									bool flag187 = flag186;
-									bool flag188 = flag187;
-									if (flag188)
-									{
-										bool flag189 = BtcDuelUI.TabActive ? BtcDuelUI.DrawTab(current, viewRect.width, num2, num, color) : BtcReplayUI.Draw(current, viewRect.width, num2, num, color);
-										bool flag190 = flag189;
-										bool flag191 = flag190;
-										bool flag192 = flag191;
-										bool flag193 = flag192;
-										bool flag194 = flag193;
-										if (flag194)
-										{
-											this.menuOpen = false;
-										}
-									}
-									else
-									{
-										bool tabActive3 = BtcGameplayUI.TabActive;
-										bool flag195 = tabActive3;
-										bool flag196 = flag195;
-										bool flag197 = flag196;
-										if (flag197)
-										{
-											BtcGameplayUI.Draw(current, viewRect.width, num2, num, color);
-										}
-										else
-										{
-											bool tabActive4 = BtcNick.TabActive;
-											bool flag198 = tabActive4;
-											if (flag198)
-											{
-												BtcNick.Draw(current, viewRect.width, num2, num, color);
-											}
-											else
-											{
-												bool tabActive5 = BtcShareUI.TabActive;
-												bool flag199 = tabActive5;
-												if (flag199)
-												{
-													BtcShareUI.Draw(current, viewRect.width, num2, num, color);
-												}
-												else
-												{
-													this.DrawPackTab(current, viewRect.width, num2, num, color);
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-				GUI.EndScrollView();
+				// every tab is a BtcMenuTab now (the legacy tab chain was removed 2026-11-26)
 				GUI.color = color;
-				bool flag200 = current.type == EventType.MouseDown && rect.Contains(current.mousePosition);
-				bool flag201 = flag200;
-				bool flag202 = flag201;
-				bool flag203 = flag202;
-				bool flag204 = flag203;
-				bool flag205 = flag204;
-				bool flag206 = flag205;
-				bool flag207 = flag206;
-				bool flag208 = flag207;
-				bool flag209 = flag208;
-				if (flag209)
-				{
-					current.Use();
-				}
 			}
 		}
 	}

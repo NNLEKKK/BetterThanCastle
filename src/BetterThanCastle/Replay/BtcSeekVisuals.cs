@@ -19,15 +19,25 @@ namespace BetterThanCastle
         private static readonly FieldInfo LastProg = typeof(CrystalVisuals).GetField("lastCaptureProgress", Any);
         private static readonly FieldInfo TimeInc = typeof(CrystalVisuals).GetField("timeAtLastIncrement", Any);
 
+        private static readonly List<CrystalVisuals> CvBuf = new List<CrystalVisuals>();
+
         internal static byte[] Snap()
         {
-            CrystalVisuals[] all = UnityEngine.Object.FindObjectsOfType<CrystalVisuals>();
-            List<KeyValuePair<uint, CrystalVisuals>> l = new List<KeyValuePair<uint, CrystalVisuals>>(all.Length);
-            for (int i = 0; i < all.Length; i++)
+            // walk the networked objects instead of FindObjectsOfType (a whole-scene scan, ~25 ms per keyframe = ~6 s of a long
+            // replay's first-open preprocess); same set: active visuals whose nearest NetworkIdentity is that object
+            List<KeyValuePair<uint, CrystalVisuals>> l = new List<KeyValuePair<uint, CrystalVisuals>>();
+            foreach (KeyValuePair<NetworkInstanceId, NetworkIdentity> kv in ClientScene.objects)
             {
-                NetworkIdentity ni = all[i].GetComponentInParent<NetworkIdentity>();
-                if (ni != null) l.Add(new KeyValuePair<uint, CrystalVisuals>(ni.netId.Value, all[i]));
+                NetworkIdentity owner = kv.Value;
+                if (owner == null || !owner.gameObject.activeInHierarchy) continue;
+                owner.GetComponentsInChildren<CrystalVisuals>(false, CvBuf);
+                for (int i = 0; i < CvBuf.Count; i++)
+                {
+                    CrystalVisuals cv = CvBuf[i];
+                    if (cv.GetComponentInParent<NetworkIdentity>() == owner) l.Add(new KeyValuePair<uint, CrystalVisuals>(owner.netId.Value, cv));
+                }
             }
+            CvBuf.Clear();
             if (l.Count == 0) return null;
             l.Sort((a, b) => a.Key.CompareTo(b.Key));
             MemoryStream ms = new MemoryStream();

@@ -188,6 +188,12 @@ namespace BetterThanCastle
             RSlider(ref y, w, fs, "bs", Tt("Size", "Размер"), BtcReplayLayout.BarScale, 0.6f, 1.6f, 0.05f, "0.00", "x", delegate (float nv) { BtcReplayLayout.BarScale = nv; });
             y += fs * 0.4f;
 
+            BtcUi.Section(ref y, w, fs, Tt("Match of several sessions", "Катка из нескольких сессий"));
+            RToggle(ref y, w, fs, Tt("Branch lines under the timeline", "Линии веток под таймлайном"), BtcReplayLayout.ChainBranches, delegate (bool nv) { BtcReplayLayout.ChainBranches = nv; });
+            RToggle(ref y, w, fs, Tt("Joints between sessions", "Стыки между сессиями"), BtcReplayLayout.ChainJoints, delegate (bool nv) { BtcReplayLayout.ChainJoints = nv; });
+            RToggle(ref y, w, fs, Tt("Marks of the other sessions", "Метки других сессий"), BtcReplayLayout.ChainMarks, delegate (bool nv) { BtcReplayLayout.ChainMarks = nv; });
+            y += fs * 0.4f;
+
             BtcUi.Section(ref y, w, fs, Tt("In the world", "В мире"));
             RSlider(ref y, w, fs, "mk", Tt("Marks size", "Размер меток"), BtcReplayLayout.MarkScale, 0.4f, 3f, 0.05f, "0.00", "x", delegate (float nv) { BtcReplayLayout.MarkScale = nv; });
             RSlider(ref y, w, fs, "cs", Tt("Cursor size", "Размер курсора"), BtcReplayLayout.CursorScale, 0.4f, 3f, 0.05f, "0.00", "x", delegate (float nv) { BtcReplayLayout.CursorScale = nv; });

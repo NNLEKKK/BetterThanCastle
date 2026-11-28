@@ -9,6 +9,7 @@ using Brix.Input;
 using Brix.Lua;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.SceneManagement;
 
 namespace BetterThanCastle
 {
@@ -40,17 +41,42 @@ namespace BetterThanCastle
         private float _rulesAcc, _healAcc, _snapAcc;
         public const float HealStep = 1f, HealPerStep = 10f;
         private int _nextId;
-        private readonly int[] _hits = new int[2], _skips = new int[2], _kills = new int[2];
+        private readonly int[] _hits = new int[2], _skips = new int[2];
+        private int[] _kills { get { return Kills; } }
         private readonly StringBuilder _sb = new StringBuilder(512);
         private IDuelBot _bot, _botP;
         internal readonly float[] AvgDmg = { 32f, 32f };
         private Vector2 _scroll;
 
+        /// <summary>The match runs on the duel's empty map: 1-block slab over the void instead of the plateau.</summary>
+        internal bool VoidMap;
+        private float _loadAt, _sweepAt;
+        /// <summary>Round results so far (host counts, clients mirror it: a new number = a new result to record).</summary>
+        internal int ResultSeq;
+        /// <summary>Result of the last finished round (a give-up starts the next round at once, so Winner is already reset when the message goes out).</summary>
+        internal int LastWinner = -1, LastK0, LastK1;
+        internal string LastReason = "";
+        internal float LastTime;
+        private int _seqSeen = -1;
+        internal readonly int[] Kills = new int[2];
+        // client mirror: arena geometry from the host
+        private int _gCx, _gCz, _gScale = 1, _bCx = int.MinValue, _bCz, _bScale;
+        private bool _clientLooked;
+
         internal void BeginLoad()
         {
             State = BtcDuelState.Loading;
-            _readySince = -1f; _builtAt = -1f;
+            _readySince = -1f; _builtAt = -1f; _loadAt = Time.realtimeSinceStartup;
             Units.Clear(); BtcDuel.ById.Clear();
+            MatchNo = 0; ResultSeq = 0; _seqSeen = -1;
+        }
+
+        internal void BeginClient()
+        {
+            State = BtcDuelState.Loading;
+            Units.Clear(); BtcDuel.ById.Clear();
+            _bCx = int.MinValue; _clientLooked = false; _seqSeen = -1;
+            _bot = null; _botP = null;
         }
 
         // ================= update =================
@@ -59,6 +85,7 @@ namespace BetterThanCastle
             if (!BtcDuel.Active) return;
             try
             {
+                if (BtcDuel.IsClient) { ClientTick(); return; }
                 switch (State)
                 {
                     case BtcDuelState.Loading: TickLoading(); break;
@@ -68,34 +95,75 @@ namespace BetterThanCastle
                         break;
                     case BtcDuelState.Fight: TickFight(Time.deltaTime); break;
                 }
-                if (State != BtcDuelState.Loading && State != BtcDuelState.Idle && !NetworkServer.active) Deactivate("session ended");
+                if (State == BtcDuelState.Loading && BtcDuel.Pvp && !NetworkServer.active && Time.realtimeSinceStartup - _loadAt > 30f) Deactivate("duel host session gone");
+                if (State != BtcDuelState.Loading && State != BtcDuelState.Idle)
+                {
+                    if (!NetworkServer.active) { Deactivate("session ended"); return; }
+                    if (Time.unscaledTime > _sweepAt) { _sweepAt = Time.unscaledTime + 3f; SweepStrays(); CheckOpponent(); }
+                    if (BtcDuel.Pvp) { BtcDuelNet.HostTick(); if (_gone && State != BtcDuelState.Over) OpponentGone(); }
+                }
             }
             catch (Exception e) { BtcLog.Error("Duel", "Update", e); }
         }
 
         private void TickLoading()
         {
-            if (!Ready()) { _readySince = -1f; return; }
+            if (!Ready())
+            {
+                _readySince = -1f;
+                // the empty map gave no faction: remember it, the next start uses the default map (same guard as the aim trainer)
+                if (VoidMap && !BtcDuel.Pvp && Time.realtimeSinceStartup - _loadAt > 25f && Architecte.commence && Architecte.physicsReady && (User.LocalUser == null || User.LocalUser.faction == null))
+                {
+                    BtcDuelConfig.EmptyMap = false;
+                    BtcLog.Warn("Duel", "empty map: no local faction after 25 s, switching to the default map");
+                    BtcHud.Notice(BtcGameplay.T("The empty map does not work here: press Start again (the default map will be used)", "Пустая карта тут не работает: нажми Старт ещё раз (будет обычная карта)"), BtcReplayIcons.Swords, BtcHud.Warn);
+                    ExitToMenu();
+                }
+                if (BtcDuel.Pvp && Time.realtimeSinceStartup - _loadAt > 180f) { BtcHud.Notice(BtcGameplay.T("The opponent did not load", "Соперник не загрузился"), BtcReplayIcons.Cross, BtcHud.Warn); Deactivate("pvp load timeout"); }
+                return;
+            }
             if (_readySince < 0f) _readySince = Time.realtimeSinceStartup;
-            if (Time.realtimeSinceStartup - _readySince < 2f) return;
+            if (Time.realtimeSinceStartup - _readySince < (VoidMap ? 0.5f : 2f)) return;
             if (_builtAt >= 0f) { SettleStep(); return; }
-            Vector3 anchor = Anchor();
-            BtcDuelMap.SetScale(BtcDuelConfig.ArenaScale);
-            if (!BtcDuelMap.Build(anchor)) { BtcLog.Error("Duel", "arena build failed, mode aborted"); Deactivate("arena build failed"); return; }
-            BtcLog.Info("Duel", "arena " + BtcDuelMap.Describe());
             if (!FindFactions()) { Deactivate("no second faction"); return; }
+            BtcDuelMap.SetScale(BtcDuelConfig.ArenaScale);
+            bool ok;
+            if (VoidMap) { Vector3 c = WorldCentre(); ok = BtcDuelMap.BuildVoid(Mathf.RoundToInt(c.x), Mathf.RoundToInt(c.z)); }
+            else ok = BtcDuelMap.Build(Anchor());
+            if (!ok) { BtcLog.Error("Duel", "arena build failed, mode aborted"); Deactivate("arena build failed"); return; }
+            BtcLog.Info("Duel", "arena " + BtcDuelMap.Describe());
             ClearForeignUnits();
             LookAtArena();
             _builtAt = Time.realtimeSinceStartup; _calmSince = -1f;
         }
 
-        /// <summary>Terrain/navigation rebuild after the arena edit is heavy: wait until the frame rate recovers (max 90 s) before the countdown.</summary>
+        /// <summary>No home crystal near the arena on the empty map: the middle of the camera bounds (same as the aim trainer).</summary>
+        private static Vector3 WorldCentre()
+        {
+            // the camera bounds are not always set when the arena is built (seen: centre 0,0 = arena half outside the voxel grid)
+            try
+            {
+                CameraScript cs = FindObjectOfType<CameraScript>();
+                if (cs != null)
+                {
+                    Bounds b = cs.BoundsLimit;
+                    if (b.min.x >= 0f && b.min.z >= 0f && b.size.x > BtcDuelMap.Len + 40f && b.size.z > BtcDuelMap.Wid + 40f) return b.center;
+                    BtcLog.Info("Duel", "camera bounds unusable (" + b.min + ".." + b.max + "): world centre");
+                }
+            }
+            catch (Exception) { }
+            return new Vector3(512f, 0f, 512f);   // the stock Void heightmap is 1024 x 1024
+        }
+
+        /// <summary>Terrain/navigation rebuild after the arena edit: wait until the frame rate recovers before the countdown
+        /// (plateau: 3 s calm, max 90 s; the thin void slab: 0.5 s calm, max 5 s).</summary>
         private void SettleStep()
         {
             float now = Time.realtimeSinceStartup;
             bool calm = Time.unscaledDeltaTime < 0.03f;
             if (!calm) _calmSince = -1f; else if (_calmSince < 0f) _calmSince = now;
-            if ((_calmSince >= 0f && now - _calmSince > 3f) || now - _builtAt > 90f)
+            float need = BtcDuelMap.OnVoid ? 0.5f : 3f, max = BtcDuelMap.OnVoid ? 5f : 90f;
+            if ((_calmSince >= 0f && now - _calmSince > need) || now - _builtAt > max)
             {
                 BtcLog.Info("Duel", "arena settled after " + (now - _builtAt).ToString("0.0") + " s");
                 _builtAt = -1f;
@@ -103,15 +171,48 @@ namespace BetterThanCastle
             }
         }
 
-        private static bool Ready()
+        private bool Ready()
         {
             try
             {
-                if (!Architecte.commence || !Architecte.physicsReady) return false;
+                if (!Architecte.commence || !Architecte.physicsReady || !VoxelEngine.Ready) return false;
                 User u = User.LocalUser;
-                return u != null && u.faction != null && Anchor() != Vector3.zero;
+                if (u == null || u.faction == null) return false;
+                if (BtcDuel.Pvp && OpponentFaction() == null) return false;
+                return VoidMap || Anchor() != Vector3.zero;
             }
             catch (Exception) { return false; }
+        }
+
+        /// <summary>PvP: the faction of the other playing user (not a spectator, not the replay recorder).</summary>
+        private static Faction OpponentFaction()
+        {
+            foreach (User u in BtcRegistry.UsersArray())
+            {
+                if (u == null || u == User.LocalUser || u.faction == null || u.faction.IsSpectator || u.Network_screenName == "REC") continue;
+                try { if (BtcReplay.IsRec(u.connectionToClient)) continue; } catch (Exception) { }
+                return u.faction;
+            }
+            return null;
+        }
+
+        private bool _gone;
+
+        /// <summary>PvP host: the opponent's user disappeared (left / dropped).</summary>
+        internal void CheckOpponent()
+        {
+            if (!BtcDuel.Pvp || BtcDuel.IsClient || Fac[1] == null) return;
+            bool found = false;
+            foreach (User u in BtcRegistry.UsersArray()) if (u != null && u.faction == Fac[1]) { found = true; break; }
+            _gone = !found;
+        }
+
+        private void OpponentGone()
+        {
+            BtcLog.Info("Duel", "opponent left");
+            if (State == BtcDuelState.Fight) Finish(0, "opponent left");
+            else { State = BtcDuelState.Over; Winner = -1; Reason = "opponent left"; }
+            BtcHud.Notice(BtcGameplay.T(BtcDuel.GuestNick + " left the duel", BtcDuel.GuestNick + " покинул дуэль"), BtcReplayIcons.Cross, BtcHud.Warn);
         }
 
         private static Vector3 Anchor()
@@ -139,13 +240,15 @@ namespace BetterThanCastle
             Fac[0] = User.LocalUser.faction;
             Fac[1] = null;
             List<Faction> all = Faction.GetAllFactions();
-            for (int i = 0; i < all.Count; i++)
-            {
-                Faction f = all[i];
-                if (f == null || f == Fac[0] || f.HasOwner() || f.IsSpectator || f.isAI || f == Faction.DefaultNeutral) continue;
-                Fac[1] = f; break;
-            }
-            if (Fac[1] == null) { BtcLog.Error("Duel", "no free faction for the bot (factions=" + all.Count + ")"); return false; }
+            if (BtcDuel.Pvp) Fac[1] = OpponentFaction();
+            else
+                for (int i = 0; i < all.Count; i++)
+                {
+                    Faction f = all[i];
+                    if (f == null || f == Fac[0] || f.HasOwner() || f.IsSpectator || f.isAI || f == Faction.DefaultNeutral) continue;
+                    Fac[1] = f; break;
+                }
+            if (Fac[1] == null) { BtcLog.Error("Duel", "no faction for side 1 (pvp=" + BtcDuel.Pvp + " factions=" + all.Count + ")"); return false; }
             bool enemy = false;
             try
             {
@@ -173,6 +276,21 @@ namespace BetterThanCastle
             BtcLog.Info("Duel", "removed start units: " + n);
         }
 
+        /// <summary>Every 3 s: units of both sides that are not duel units (workers the home crystal hands out) are removed.</summary>
+        private void SweepStrays()
+        {
+            if (Fac[0] == null || Fac[1] == null) return;
+            Labor[] ls = FindObjectsOfType<Labor>();
+            int n = 0;
+            for (int i = 0; i < ls.Length; i++)
+            {
+                Labor l = ls[i];
+                if (l == null || BtcDuel.ById.ContainsKey(l.gameObject.GetInstanceID())) continue;
+                if (Fac[0].IsSame(l.gameObject) || Fac[1].IsSame(l.gameObject)) { BtcDuel.Despawn(l.gameObject); n++; }
+            }
+            if (n > 0) BtcLog.Info("Duel", "stray units removed: " + n);
+        }
+
         private static void LookAtArena()
         {
             try
@@ -193,11 +311,14 @@ namespace BetterThanCastle
             _hits[0] = _hits[1] = _skips[0] = _skips[1] = _kills[0] = _kills[1] = 0;
             FightTime = 0f; _rulesAcc = _healAcc = _snapAcc = 0f;
             BtcDuel.SkipAnims = BtcDuelConfig.SkipAnims;
+            BtcDuel.WantNext[0] = BtcDuel.WantNext[1] = false;
             State = BtcDuelState.Countdown;
             CountdownLeft = CountdownSec;
+            if (BtcDuel.Pvp) { BtcDuel.SetupLine = BtcDuelPvp.SettingsLine(); BtcDuelNet.SendNow(); }
             BtcDuelLog.Begin();
             BtcDuelLog.Line("CFG", "match=" + MatchNo + " diff=" + BtcDuelConfig.Difficulty + " skip=" + BtcDuelConfig.SkipAnims + " heal=" + BtcDuelConfig.InfiniteHeal +
-                " player=" + Fmt(BtcDuelConfig.PlayerCount) + " bot=" + Fmt(BtcDuelConfig.BotCount) + " arenaX0=" + BtcDuelMap.X0 + " Z0=" + BtcDuelMap.Z0 + " floor=" + BtcDuelMap.Floor);
+                " player=" + Fmt(BtcDuelConfig.PlayerCount) + " bot=" + Fmt(BtcDuelConfig.BotCount) + " arenaX0=" + BtcDuelMap.X0 + " Z0=" + BtcDuelMap.Z0 + " floor=" + BtcDuelMap.Floor +
+                " void=" + BtcDuelMap.OnVoid + (BtcDuel.Pvp ? " pvp host=" + BtcDuel.HostNick.Replace(' ', '_') + " guest=" + BtcDuel.GuestNick.Replace(' ', '_') : ""));
         }
 
         private static string Fmt(int[] c)
@@ -218,16 +339,18 @@ namespace BetterThanCastle
             if (Units.Count == 0) { BtcLog.Warn("Duel", "no units configured"); }
             AvgDmg[0] = AvgDmg[1] = 32f;
             int tier = (int)BtcDuelConfig.Difficulty;
-            if (BtcDuelConfig.Difficulty == BtcDuelDifficulty.BreaktronZero && BtcDuelBotLuminaZero.EnsureLoaded()) _bot = new BtcDuelBotLuminaZero(this, 1);
+            if (BtcDuel.Pvp) _bot = null;   // a human plays side 1
+            else if (BtcDuelConfig.Difficulty == BtcDuelDifficulty.BreaktronZero && BtcDuelBotLuminaZero.EnsureLoaded()) _bot = new BtcDuelBotLuminaZero(this, 1);
             else
             {
                 if (BtcDuelConfig.Difficulty == BtcDuelDifficulty.BreaktronZero) { tier = (int)BtcDuelDifficulty.Chosen; BtcDuelLog.Line("MODE", "BreaktronZero (B0) has no policy: plays as Chosen"); }
                 _bot = new BtcDuelBot(this, 1, tier == 0 ? 0 : 1, tier, true);
             }
-            _botP = BtcDuel.AutoPlayerLevel < 0 ? null : BtcDuel.AutoPlayerKind == 9 && BtcDuelBotLuminaZero.EnsureLoaded() ? new BtcDuelBotLuminaZero(this, 0) : ((BtcDuel.AutoPlayerKind >= 3 && BtcDuel.AutoPlayerKind <= 7) || BtcDuel.AutoPlayerKind == 10 || BtcDuel.AutoPlayerKind == 11 ? (IDuelBot)new BtcDuelHunter(this, 0, BtcDuel.AutoPlayerKind == 4, BtcDuel.AutoPlayerKind == 5, BtcDuel.AutoPlayerKind) : BtcDuel.AutoPlayerKind >= 2 ? (IDuelBot)new BtcDuelBot(this, 0, BtcDuel.AutoPlayerLevel, BtcDuel.AutoPlayerTier, true) : new BtcDuelBotV2(this, 0, BtcDuel.AutoPlayerLevel, BtcDuel.AutoPlayerTier, BtcDuel.AutoPlayerKind == 1));
+            _botP = BtcDuel.AutoPlayerLevel < 0 || BtcDuel.Pvp ? null : BtcDuel.AutoPlayerKind == 9 && BtcDuelBotLuminaZero.EnsureLoaded() ? new BtcDuelBotLuminaZero(this, 0) : ((BtcDuel.AutoPlayerKind >= 3 && BtcDuel.AutoPlayerKind <= 7) || BtcDuel.AutoPlayerKind == 10 || BtcDuel.AutoPlayerKind == 11 ? (IDuelBot)new BtcDuelHunter(this, 0, BtcDuel.AutoPlayerKind == 4, BtcDuel.AutoPlayerKind == 5, BtcDuel.AutoPlayerKind) : BtcDuel.AutoPlayerKind >= 2 ? (IDuelBot)new BtcDuelBot(this, 0, BtcDuel.AutoPlayerLevel, BtcDuel.AutoPlayerTier, true) : new BtcDuelBotV2(this, 0, BtcDuel.AutoPlayerLevel, BtcDuel.AutoPlayerTier, BtcDuel.AutoPlayerKind == 1));
             State = BtcDuelState.Fight;
             BtcDuelLog.Line("START", "units=" + Units.Count);
             LookAtArena();
+            if (BtcDuel.Pvp) BtcDuelNet.SendNow();
         }
 
         private void SpawnSide(int side, int[] counts)
@@ -271,7 +394,8 @@ namespace BetterThanCastle
                 // another arena size: rebuild the plateau in place, then wait for the engine to settle
                 DespawnAll();
                 BtcDuelMap.SetScale(BtcDuelConfig.ArenaScale);
-                if (!BtcDuelMap.Build(Vector3.zero)) { Deactivate("arena rebuild failed"); return; }
+                bool ok = BtcDuelMap.OnVoid ? BtcDuelMap.BuildVoid(BtcDuelMap.CenterXi, BtcDuelMap.CenterZi) : BtcDuelMap.Build(Vector3.zero);
+                if (!ok) { Deactivate("arena rebuild failed"); return; }
                 State = BtcDuelState.Loading; _readySince = Time.realtimeSinceStartup - 5f; _builtAt = Time.realtimeSinceStartup; _calmSince = -1f;
                 LookAtArena();
                 return;
@@ -285,15 +409,93 @@ namespace BetterThanCastle
             try { Architecte.QuitToMainMenu(); } catch (Exception e) { BtcLog.Error("Duel", "quit", e); }
         }
 
+        // ================= PvP round control =================
+        /// <summary>PvP: side wants the next round; it starts when both sides pressed it (host only; the opponent's press arrives as msg 136).</summary>
+        internal void WantNextRound(int side)
+        {
+            if (BtcDuel.IsClient || side < 0 || side > 1) return;
+            if (State != BtcDuelState.Over) return;
+            if (BtcDuel.WantNext[side]) return;
+            BtcDuel.WantNext[side] = true;
+            BtcDuelLog.Line("MODE", "next round wanted by s" + side);
+            if (_gone) { BtcDuel.WantNext[side] = false; return; }
+            if (BtcDuel.WantNext[0] && BtcDuel.WantNext[1]) Rematch();
+            else BtcDuelNet.SendNow();
+        }
+
+        /// <summary>Instant reset: the side that pressed it loses the running round (counted only once the fight started), a new round starts at once.</summary>
+        internal void Surrender(int side)
+        {
+            if (BtcDuel.IsClient || side < 0 || side > 1) return;
+            if (State != BtcDuelState.Fight && State != BtcDuelState.Countdown && State != BtcDuelState.Over) return;
+            string who = side == 0 ? (BtcDuel.Pvp ? BtcDuel.HostNick : "player") : (BtcDuel.Pvp ? BtcDuel.GuestNick : "bot");
+            BtcDuelLog.Line("MODE", "reset by s" + side);
+            if (State == BtcDuelState.Fight) Finish(1 - side, "surrender (" + who + ")");
+            if (_gone) return;
+            Rematch();
+        }
+
         private void Deactivate(string why)
         {
             BtcLog.Info("Duel", "deactivate: " + why);
             BtcDuelLog.Line("END", "deactivate " + why);
             BtcDuelLog.End();
             BtcDuel.Active = false;
+            BtcDuel.ClearPvp();
             State = BtcDuelState.Idle;
             Units.Clear(); BtcDuel.ById.Clear();
-            _bot = null; _botP = null;
+            _bot = null; _botP = null; _gone = false;
+        }
+
+        // ================= client mode (PvP opponent / spectator) =================
+        /// <summary>State message from the host (BtcDuelNet). Fields mirror the host's match.</summary>
+        internal void ApplyState(BtcDuelState st, float countdown, int winner, string reason, float c0, float c1, bool e0, bool e1, int matchNo, float fightTime,
+            int k0, int k1, int cx, int cz, int scale, bool w0, bool w1, int seq, int lastWinner, string lastReason, float lastTime, int lastK0, int lastK1)
+        {
+            State = st; CountdownLeft = countdown; Winner = winner; Reason = reason; Ctrl[0] = c0; Ctrl[1] = c1; Escaping[0] = e0; Escaping[1] = e1;
+            MatchNo = matchNo; FightTime = fightTime; Kills[0] = k0; Kills[1] = k1;
+            _gCx = cx; _gCz = cz; _gScale = scale;
+            BtcDuel.WantNext[0] = w0; BtcDuel.WantNext[1] = w1;
+            if (_seqSeen < 0) _seqSeen = seq;   // results before this game joined are not ours to count
+            else if (seq > _seqSeen)
+            {
+                _seqSeen = seq;
+                LastWinner = lastWinner; LastReason = lastReason; LastTime = lastTime; LastK0 = lastK0; LastK1 = lastK1;
+                if (BtcDuel.LocalSide >= 0 && lastWinner >= 0) { if (lastWinner == BtcDuel.LocalSide) BtcDuel.Wins++; else BtcDuel.Losses++; }
+                BtcDuelPvp.RoundOver(lastWinner, lastReason, lastTime, lastK0, lastK1);
+            }
+        }
+
+        private void ClientTick()
+        {
+            if (!NetworkClient.active || SceneManager.GetActiveScene().buildIndex != 2) { Deactivate("client session ended"); return; }
+            if (State == BtcDuelState.Countdown) CountdownLeft -= Time.deltaTime;
+            if (State == BtcDuelState.Fight) FightTime += Time.deltaTime;
+            if (_gScale < 1 || (_bCx == _gCx && _bCz == _gCz && _bScale == _gScale)) return;
+            try { if (!VoxelEngine.Ready || !Architecte.commence) return; } catch (Exception) { return; }
+            BtcDuelMap.SetScale(_gScale);
+            if (!BtcDuelMap.BuildVoid(_gCx, _gCz)) { _bCx = _gCx; _bCz = _gCz; _bScale = _gScale; return; }   // logged; do not retry every frame
+            _bCx = _gCx; _bCz = _gCz; _bScale = _gScale;
+            ClientRelations();
+            if (!_clientLooked) { _clientLooked = true; LookAtArena(); }
+        }
+
+        /// <summary>Client: the two playing factions are enemies on this side too (attack orders on the other player's units).</summary>
+        private static void ClientRelations()
+        {
+            try
+            {
+                Faction a = null, b = null;
+                foreach (User u in BtcRegistry.UsersArray())
+                {
+                    if (u == null || u.faction == null || u.faction.IsSpectator || u.Network_screenName == "REC") continue;
+                    if (a == null) a = u.faction; else if (u.faction != a) { b = u.faction; break; }
+                }
+                if (a == null || b == null) return;
+                a.SetFactionRelation(b, Affiliation.Relation.Enemy);
+                b.SetFactionRelation(a, Affiliation.Relation.Enemy);
+            }
+            catch (Exception e) { BtcLog.Warn("Duel", "client relation: " + e.Message); }
         }
 
         // ================= fight tick =================
@@ -354,6 +556,14 @@ namespace BetterThanCastle
                 BtcDuelUnitRef u = Units[i];
                 if (u.Dead) continue;
                 if (u.Go == null || u.Tf == null || u.Dr == null) { MarkDead(u, null, "vanished"); continue; }
+                if (BtcDuelMap.OnVoid && u.Tf.position.y < BtcDuelMap.Floor - 6f)
+                {
+                    // walked off the slab: falling into the void = death (the other side gets the kill)
+                    MarkDead(u, null, "fell off the arena");
+                    BtcDuel.Despawn(u.Go); u.Go = null;
+                    if (Winner >= 0) return;
+                    continue;
+                }
                 BtcDuelZone z = BtcDuelMap.ZoneAt(u.Tf.position.x, u.Tf.position.z);
                 { Vector3 pp = u.Tf.position; float ivl = Mathf.Max(0.02f, dt); u.Vel = Vector3.Lerp(u.Vel, (pp - u.PrevPos) / ivl, 0.5f); u.PrevPos = pp; if (u.Vel.sqrMagnitude > 0.25f) u.MovedAt = Time.time; }
                 if (z != u.Zone) { BtcDuelLog.Line("ZONE", "u" + u.Id + " s" + u.Side + " " + u.Zone + "->" + z); u.Zone = z; }
@@ -415,9 +625,9 @@ namespace BetterThanCastle
                 u.OrdAt = Time.time;
                 Vector3 od = Vector3.zero; u.OrdHasDest = t == null && TryOrderDest(task, out od); if (u.OrdHasDest) u.OrdDest = od;
             }
-            if (u.Side != 0 || BtcDuel.AutoPlayerLevel >= 0) return;
+            if ((u.Side != 0 && !BtcDuel.Pvp) || BtcDuel.AutoPlayerLevel >= 0) return;
             Vector3 p = u.Tf.position;
-            BtcDuelLog.Line("ORD", "u" + u.Id + " " + (task != null ? task.Description : "?") + (t != null ? " >u" + t.Id : "") + " at=" + p.x.ToString("0.0") + "," + p.z.ToString("0.0") + " hp=" + (int)u.Dr.CurrentHP + OrderDest(task));
+            BtcDuelLog.Line("ORD", "u" + u.Id + (BtcDuel.Pvp ? " s" + u.Side : "") + " " + (task != null ? task.Description : "?") + (t != null ? " >u" + t.Id : "") + " at=" + p.x.ToString("0.0") + "," + p.z.ToString("0.0") + " hp=" + (int)u.Dr.CurrentHP + OrderDest(task));
         }
 
         /// <summary>" to=x,z" for position-based orders (Task.InitialPackage value is a Location), else empty.</summary>
@@ -497,10 +707,19 @@ namespace BetterThanCastle
         {
             if (Winner >= 0 || State != BtcDuelState.Fight) return;
             Winner = winner; Reason = why; State = BtcDuelState.Over;
+            if (winner == 0) BtcDuel.Wins++; else if (winner == 1) BtcDuel.Losses++;   // session score (Online tab / Discord status)
             BtcDuelLog.Line("END", "winner=" + (winner < 0 ? "none" : (winner == 0 ? "player" : "bot")) + " reason=" + why + " t=" + FightTime.ToString("0.0") +
                 " hits=" + _hits[0] + "/" + _hits[1] + " skips=" + _skips[0] + "/" + _skips[1] + " kills=" + _kills[0] + "/" + _kills[1]);
             BtcDuelLog.End();
             BtcLog.Info("Duel", "match " + MatchNo + " over: " + (winner < 0 ? "draw" : (winner == 0 ? "player" : "bot")) + " (" + why + ") log=" + BtcDuelLog.CurrentPath);
+            if (BtcDuel.Pvp)
+            {
+                LastWinner = winner; LastReason = why; LastTime = FightTime; LastK0 = _kills[0]; LastK1 = _kills[1];
+                ResultSeq++;
+                BtcDuel.WantNext[0] = BtcDuel.WantNext[1] = false;
+                BtcDuelPvp.RoundOver(winner, why, FightTime, _kills[0], _kills[1]);
+                BtcDuelNet.SendNow();
+            }
         }
 
         // ================= HUD =================
@@ -516,30 +735,68 @@ namespace BetterThanCastle
                 _small = new GUIStyle(GUI.skin.label); _small.alignment = TextAnchor.MiddleCenter; _small.fontSize = 15; _small.normal.textColor = new Color(1f, 1f, 1f, 0.9f);
             }
             float w = Screen.width, cx = w * 0.5f;
+            bool pvp = BtcDuel.Pvp;
+            int me = pvp ? BtcDuel.LocalSide : 0;          // -1 = spectator: names instead of "you"
+            int view = me < 0 ? 0 : me, other = 1 - view;
+            string nameV = pvp ? (view == 0 ? BtcDuel.HostNick : BtcDuel.GuestNick) : "", nameO = pvp ? (other == 0 ? BtcDuel.HostNick : BtcDuel.GuestNick) : BtcGameplay.T("Bot", "Бот");
             string head = "";
             switch (State)
             {
                 case BtcDuelState.Loading: head = BtcGameplay.T("Preparing the arena...", "Подготовка арены..."); break;
                 case BtcDuelState.Countdown: head = Mathf.CeilToInt(Mathf.Max(0f, CountdownLeft)).ToString(); break;
                 case BtcDuelState.Over:
-                    head = Winner < 0 ? BtcGameplay.T("Draw", "Ничья") : (Winner == 0 ? BtcGameplay.T("You won", "Победа") : BtcGameplay.T("Bot won", "Победил бот"));
+                    if (Winner < 0) head = BtcGameplay.T("Draw", "Ничья");
+                    else if (me < 0) head = (Winner == 0 ? BtcDuel.HostNick : BtcDuel.GuestNick) + BtcGameplay.T(" won", " победил");
+                    else head = Winner == me ? BtcGameplay.T("You won", "Победа") : (pvp ? nameO + BtcGameplay.T(" won", " победил") : BtcGameplay.T("Bot won", "Победил бот"));
                     break;
             }
-            if (head.Length > 0) GUI.Label(new Rect(cx - 250f, 70f, 500f, 50f), head, _big);
-            if (State == BtcDuelState.Over) GUI.Label(new Rect(cx - 300f, 118f, 600f, 26f), Reason, _small);
+            float y0 = 70f;
+            if (pvp)
+            {
+                // "Host 2 : 1 Guest" (session) + the players' own score line
+                GUI.Label(new Rect(cx - 350f, 40f, 700f, 26f), BtcDuel.HostNick + "   vs   " + BtcDuel.GuestNick + (MatchNo > 0 ? "   ·   " + BtcGameplay.T("round ", "раунд ") + MatchNo : ""), _small);
+                y0 = 96f;
+            }
+            if (head.Length > 0) GUI.Label(new Rect(cx - 250f, y0, 500f, 50f), head, _big);
+            if (State == BtcDuelState.Over) GUI.Label(new Rect(cx - 300f, y0 + 48f, 600f, 26f), Reason, _small);
             if (State == BtcDuelState.Fight)
             {
-                string info = Escaping[0] ? BtcGameplay.T("You are escaping", "Ты уходишь (kill & escape)") : (Escaping[1] ? BtcGameplay.T("Bot is escaping: kill someone!", "Бот уходит: убей кого-нибудь!") : "");
-                if (Ctrl[0] > 0f) info = BtcGameplay.T("Space control: ", "Контроль мида: ") + Ctrl[0].ToString("0.0") + "/10";
-                else if (Ctrl[1] > 0f) info = BtcGameplay.T("Enemy space control: ", "Бот держит мид: ") + Ctrl[1].ToString("0.0") + "/10";
-                if (info.Length > 0) GUI.Label(new Rect(cx - 300f, 70f, 600f, 30f), info, _small);
+                string a = me < 0 ? nameV : BtcGameplay.T("You", "Ты"), b = nameO;
+                string info = Escaping[view] ? (me < 0 ? a + BtcGameplay.T(" is escaping", " уходит (kill & escape)") : BtcGameplay.T("You are escaping", "Ты уходишь (kill & escape)"))
+                    : (Escaping[other] ? b + BtcGameplay.T(" is escaping", " уходит") + (me < 0 ? "" : BtcGameplay.T(": kill someone!", ": убей кого-нибудь!")) : "");
+                if (Ctrl[view] > 0f) info = (me < 0 ? a + ": " : "") + BtcGameplay.T("Space control: ", "Контроль мида: ") + Ctrl[view].ToString("0.0") + "/10";
+                else if (Ctrl[other] > 0f) info = b + BtcGameplay.T(" holds the middle: ", " держит мид: ") + Ctrl[other].ToString("0.0") + "/10";
+                if (info.Length > 0) GUI.Label(new Rect(cx - 300f, y0, 600f, 30f), info, _small);
             }
-            float bw = 110f, bh = 28f, by = 8f;
-            if (State != BtcDuelState.Loading)
+            if (pvp && me >= 0)
+            {
+                string sc = BtcDuelPvp.ScoreLine();
+                if (sc.Length > 0) GUI.Label(new Rect(cx - 350f, Screen.height - 64f, 700f, 24f), sc, _small);
+            }
+            float bw = 150f, bh = 28f, by = 8f;
+            if (State == BtcDuelState.Loading) return;
+            if (!pvp)
             {
                 if (GUI.Button(new Rect(cx - bw - 4f, by, bw, bh), BtcGameplay.T("Rematch", "Реванш"))) Rematch();
                 if (GUI.Button(new Rect(cx + 4f, by, bw, bh), BtcGameplay.T("Exit", "Выход"))) ExitToMenu();
+                return;
             }
+            if (me < 0)
+            {
+                if (GUI.Button(new Rect(cx - bw * 0.5f, by, bw, bh), BtcGameplay.T("Exit", "Выход"))) ExitToMenu();
+                return;
+            }
+            if (State == BtcDuelState.Over)
+            {
+                int n = (BtcDuel.WantNext[0] ? 1 : 0) + (BtcDuel.WantNext[1] ? 1 : 0);
+                string lbl = BtcDuel.WantNext[me] ? BtcGameplay.T("Waiting ", "Ждём ") + n + "/2" : BtcGameplay.T("Next round ", "Ещё раунд ") + n + "/2";
+                if (GUI.Button(new Rect(cx - bw - 4f, by, bw, bh), lbl) && !BtcDuel.WantNext[me]) { if (BtcDuel.IsClient) BtcDuelNet.SendAction("next"); else WantNextRound(0); }
+            }
+            else if (GUI.Button(new Rect(cx - bw - 4f, by, bw, bh), BtcGameplay.T("Give up + reset", "Сдаться и заново")))
+            {
+                if (BtcDuel.IsClient) BtcDuelNet.SendAction("reset"); else Surrender(0);
+            }
+            if (GUI.Button(new Rect(cx + 4f, by, bw, bh), BtcGameplay.T("Exit", "Выход"))) ExitToMenu();
         }
     }
 }

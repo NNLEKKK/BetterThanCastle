@@ -194,6 +194,8 @@ namespace BetterThanCastle
             internal LandscapeGoalProvider Provider;   // host: the task's goal provider (Kick)
             internal float PendingAt;
             internal int PendingDig, PendingAll;
+            internal List<XYZ> FillReady;   // host: fill cells workable now (BtcTerraformFill.Ready)
+            internal float FillReadyAt;
             internal bool Empty { get { return Dig.Count + Fill.Count + Ladders.Count == 0; } }
             internal int Cells { get { return Dig.Count + Fill.Count + Ladders.Count; } }
 
@@ -391,14 +393,18 @@ namespace BetterThanCastle
                 if (p != null) { p.AutoRefreshDelay = 0.5f; p.AutoRefreshFrameBudget = 0.03f; }
                 s.Provider = p;
                 OnBound(go, netId, s);
+                Patches.TerraformVanillaUiPatch.Refresh(go);
             }
         }
 
         private const string MetaName = "BtcTerraformMeta";
 
         /// <summary>Beacon icon / name: vanilla takes them from the SHARED LandscapeBeaconMeta prefab (Beacon.Meta, BeaconDriver.beaconMeta),
-        /// so the task gets its own inactive BeaconMeta child with our sprite; off = back to the prefab one (pooled task objects).</summary>
-        private static void BeaconLook(GameObject go, bool on)
+        /// so the task gets its own inactive BeaconMeta child with our sprite; off = back to the prefab one (pooled task objects).
+        /// Also used by the bear traps task (BtcTrapTask) with its own sprite and name.</summary>
+        private static void BeaconLook(GameObject go, bool on) { BeaconLook(go, on, BtcTerraformIcon.Get(), BtcLang.TrG("Terraform")); }
+
+        internal static void BeaconLook(GameObject go, bool on, Sprite sprite, string name)
         {
             try
             {
@@ -417,8 +423,8 @@ namespace BetterThanCastle
                         m = h.AddComponent<Brix.Game.Beacons.BeaconMeta>();
                         Brix.Game.Beacons.BeaconMeta src = b.Meta ?? (d != null ? d.beaconMeta : null);
                         if (src != null) m.sound = src.sound;
-                        HarmonyLib.Traverse.Create(m).Field("spriteOverride").SetValue(BtcTerraformIcon.Get());
-                        m.displayName = BtcLang.Tr("Terraforming");
+                        HarmonyLib.Traverse.Create(m).Field("spriteOverride").SetValue(sprite);
+                        m.displayName = name;
                     }
                     else m = t.GetComponent<Brix.Game.Beacons.BeaconMeta>();
                 }
@@ -454,6 +460,7 @@ namespace BetterThanCastle
         internal static void ClearAll()
         {
             ByObj.Clear(); ByNet.Clear(); _pending = null;
+            BtcTerraformFill.ClearAll();
             _rx.Clear();
         }
 
@@ -507,6 +514,9 @@ namespace BetterThanCastle
             {
                 if (_kicks.Count > 0) RunKicks();
                 if (ByNet.Count == 0 && _pending == null) return;
+#if DEV
+                BtcTerraformFill.DevWatch();
+#endif
                 float now = Time.unscaledTime;
                 if (now < _nextPrune) return;
                 _nextPrune = now + 1f;

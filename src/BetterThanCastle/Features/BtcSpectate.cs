@@ -1042,7 +1042,9 @@ public static class BtcSpectate
 		{
 			throw new Exception("Asset_Map.Disk_Save not found");
 		}
-		method.Invoke(asset_Map, null);
+		BtcReplayChain.InSnapshot = true;
+		try { method.Invoke(asset_Map, null); }
+		finally { BtcReplayChain.InSnapshot = false; }
 		FieldInfo fieldInfo2 = BtcSpectate.FindField(asset_Map.GetType(), "_stagePath");
 		string text = (fieldInfo2 != null) ? ((string)fieldInfo2.GetValue(asset_Map)) : null;
 		bool flag5 = string.IsNullOrEmpty(text) || !Directory.Exists(text);
@@ -1535,7 +1537,9 @@ public static class BtcSpectate
 		try
 		{
 			BtcSpectate._heldScene = nm.ReadMessage<BtcSpectate.SceneStrMsg>().value;
-			string text = (!string.IsNullOrEmpty(Neo.multiplayerName)) ? Neo.multiplayerName : "Spectator";
+			// a full rejoin says the name the host knows us by (LocalPlayerName was wiped by ResetToDefault on the way out)
+			string text = BtcNetManager.RejoinName;
+			if (string.IsNullOrEmpty(text)) text = (!string.IsNullOrEmpty(Neo.multiplayerName)) ? Neo.multiplayerName : "Spectator";
 #if DEV
 			text = BetterThanCastle.Dev.BtcDevNet.NickOverride(text);
 #endif

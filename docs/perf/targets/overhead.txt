@@ -1,0 +1,9 @@
+# Unit overheads (icons/name tags over heads), 2026-11-27 camera-move cost hunt
+OverheadDisplay:BrixUpdate  # sortingOrder by camera distance, every unit every frame
+OverheadDisplay:ShowOrHide  # Slinq Any + GetComponent + reposition, on state changes
+OverheadDisplay:ShowLine  # per line, RepositionOverheads
+OverheadDisplayDriver:BrixUpdate  # CheckCloseEnough + BtcUnitPlates.Apply postfix
+TransformConstraint:BrixUpdate  # WorldToScreenPoint + RectTransform.position per shown overhead
+BehindCameraDetector:BrixUpdate  # Vector3.Angle per unit
+BricktronOverheadDisplayDriver:SetIcon  # on every CharacterState network update
+BtcUnitPlates:Apply  # mod: writes plate/icon scales every frame when non-default

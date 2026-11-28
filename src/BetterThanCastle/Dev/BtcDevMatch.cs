@@ -232,6 +232,8 @@ namespace BetterThanCastle.Dev
         internal static void Pump(int perFrame)
         {
             WalkTick();
+            BtcDevOverhead.Tick();
+            BtcDevRecorder.Tick();
             if (Jobs.Count == 0) return;
             Vector3 anchor = Anchor();
             if (anchor == Vector3.zero) return;

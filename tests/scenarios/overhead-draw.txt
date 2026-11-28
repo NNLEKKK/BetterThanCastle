@@ -1,0 +1,41 @@
+# Mod-drawn overheads (Performance/FastOverheads) vs vanilla in one run (2026-11-27): 50 units, all shown, camera pans.
+prof start
+engine counters off
+newgame
+waitgame 240
+daytime 12
+engine vsync off
+spawn bricktron 50
+waitspawn 120
+wait 10
+ohead plates 1 1
+nrec on
+ohead pan 10 6
+ohead showall 1
+wait 3
+ohead dump
+prof reset
+wait 15
+dump dfast
+nrec dump pan-fast
+ohead fast 0
+wait 1
+prof reset
+wait 15
+dump dvan
+nrec dump pan-vanilla
+ohead fast 1
+wait 1
+ohead dump
+prof reset
+wait 15
+dump dfast2
+nrec dump pan-fast2
+ohead showall 0
+wait 3
+prof reset
+wait 15
+dump dhidden
+nrec dump pan-fast-hidden
+ohead dump
+quit

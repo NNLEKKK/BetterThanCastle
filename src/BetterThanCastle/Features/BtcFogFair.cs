@@ -48,6 +48,8 @@ namespace BetterThanCastle
 		internal static bool IsForeignPlan(GameObject go)
 		{
 			if (go == null || User.LocalUser == null || User.LocalUser.faction == null) return false;
+			// units and anything with its own vision are never "plans" (vision decides for them; a unit hover must stay pickable)
+			if (go.GetComponentInParent<Labor>() != null || go.GetComponentInParent<LocalFactionVision>() != null) return false;
 			Blueprint bp = go.GetComponent<Blueprint>();
 			if (bp == null) bp = go.GetComponentInParent<Blueprint>();
 			Project pr = bp != null ? bp.Project : null;

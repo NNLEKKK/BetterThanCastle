@@ -177,10 +177,14 @@ namespace BetterThanCastle.Dev
                 case "profiletest": ResourcePackManager.DevProfile((int)F(p, 1, 0f)); break;
                 case "uitest": BtcMenuState.SetInt("uiedit:page", (int)F(p, 1, 0f)); ResourcePackManager.GoTab(12); break;
                 case "gsearch": BtcGlobalSearch.DevSet(p.Length > 1 ? p[1] : ""); break;
+                case "uilive": ResourcePackManager.StartUiEditorLive(); break;   // UI editor live overlay over the real screen
+                case "uiliveoff": ResourcePackManager.CloseMenu(); break;
                 case "gameplaytest": BtcGameplayTab.UseLegacy = false; BtcGameplayTab.Page = (int)F(p, 1, 0f); ResourcePackManager.GoTab(4); break;
                 case "gameplayrec": BtcMenuState.SetInt("gameplay:rec:g", (int)F(p, 1, -1f)); BtcMenuState.SetInt("gameplay:rec:k", (int)F(p, 2, -1f)); break;
                 case "updtest": BtcUpdater.DevShow((int)F(p, 1, 1f)); break;
                 case "camdump": BtcDevMultiCam.Dump(); break;
+                case "ohead": BtcDevOverhead.Cmd(p); break;
+                case "nrec": BtcDevRecorder.Cmd(p); break;
                 case "mc": BtcDevMultiCam.Cmd(p); break;
                 case "tabtest":
                     {
@@ -271,6 +275,9 @@ namespace BetterThanCastle.Dev
                         break;
                     }
                 case "skipmenu": Patches.LuaMenuComponentLoadPatch.DevSkipGameMenu = F(p, 1, 1f) > 0.5f; break;
+                case "menutree": BtcDevUiDump.Tree(p.Length > 1 ? p[1] : "x", (int)F(p, 2, 4f)); break;
+                case "quickhost": BtcQuickHost.Host(); break;
+                case "quickhostvis": BtcLog.Info("QuickHost", "visible=" + BtcQuickHost.Visible + " root=" + BtcMainMenuScreen.IsRoot); break;
                 case "uidump": BtcDevUiDump.Run(p.Length > 1 ? p[1].Replace('_', ' ') : "Menu:", p.Length > 2 ? p[2] : "x"); break;
                 case "ghproto": BtcDevGhProto.Run(); break;
                 case "gh": BtcDevGhProto.Cmd(p); break;
@@ -326,6 +333,7 @@ namespace BetterThanCastle.Dev
                 case "crystaldump": BtcDevCrystal.Dump(); break;
                 case "chopdump": BtcDevChopDump.Dump(p); break;
                 case "stationdump": BtcDevChopDump.Stations(); break;
+                case "bp": BtcDevBpPreset.Run(p); break;
                 case "rackinfo": BtcDevRack.Info(); break;
                 case "rackhostset": BtcDevRack.HostSet(p.Length > 1 ? p[1] : "Any"); break;
                 case "rackgate": BtcConfig.BetterConnection.Value = p.Length < 2 || p[1] != "off"; break;
@@ -335,6 +343,10 @@ namespace BetterThanCastle.Dev
                 case "rackfill": BtcDevRack.Fill(p.Length > 1 ? p[1] : "Knight"); break;
                 case "rackcheck": BtcDevRack.Check(p.Length > 1 ? p[1] : "x"); break;
                 case "rackclear": BtcDevRack.Clear(); break;
+                case "kitfill": BtcDevKitArm.Fill(p.Length > 1 ? p[1] : "Archer", (int)F(p, 2, 1f)); break;
+                case "kitarm": BtcKitArm.Press((int)F(p, 1, 2f)); break;
+                case "kitvanilla": BtcGhRightBar.CallToArms(); break;
+                case "kitdump":BtcDevKitArm.Dump(p.Length > 1 ? p[1] : "x"); break;
                 case "jumpsetup": BtcDevJump.Setup((int)F(p, 1, 8f)); break;
                 case "jumpgo": BtcDevJump.Go(p.Length > 1 ? p[1] : "on"); break;
                 case "jumpdump": BtcDevJump.Dump(p.Length > 1 ? p[1] : "x"); break;
@@ -351,6 +363,7 @@ namespace BetterThanCastle.Dev
                 case "pov": BtcPov.Cycle(1); break;
                 case "dots": BtcConfig.ReplayUnitDots.Value = (int)F(p, 1, 2f); break;
                 case "taskspawn": BtcDevTasks.Spawn(); break;
+                case "pickprobe": BtcDevPick.Probe(p.Length > 1 ? p[1] : "x"); break;
                 case "itemlab":
                     switch (p.Length > 1 ? p[1] : "")
                     {
@@ -363,6 +376,8 @@ namespace BetterThanCastle.Dev
                 case "whl": BtcDevWorkHl.Cmd(p); break;
                 case "tfspawn": BtcDevTerraform.Spawn((int)F(p, 1, 7f)); break;
                 case "tfrows": BtcDevTerraform.Rows((int)F(p, 1, 0f), (int)F(p, 2, 12f)); break;
+                case "tfmound": BtcDevTerraform.Mound((int)F(p, 1, 3f), (int)F(p, 2, 3f)); break;
+                case "brainbreak": BtcDevBrainBreak.Run(p.Length > 1 ? p[1] : "report"); break;
                 case "tfhire": BtcDevTerraform.Hire(); break;
                 case "tfdump": BtcDevTerraform.Dump(p.Length > 1 ? p[1] : "x"); break;
                 case "tfladder": BtcDevTerraform.Ladders((int)F(p, 1, 7f)); break;
@@ -398,6 +413,7 @@ namespace BetterThanCastle.Dev
                     }
                 case "pingdump": BtcLog.Info("Cmd", "pingdump active=" + BtcPing.ActiveCount + " show=" + BtcPing.ShowOthers + " bc=" + BtcNetworkGate.Enabled); break;
                 case "mark": File.WriteAllText(Path.Combine(BtcDevPaths.LogDir, "mark-" + (p.Length > 1 ? p[1] : "x") + ".txt"), DateTime.Now.ToString("o")); break; // scenario.ps1 net plan triggers on these
+                case "hostreadyfile": File.WriteAllText(Path.Combine(BtcDevPaths.LogDir, "host-ready.txt"), "127.0.0.1 0"); break; // let scenario.ps1 launch the clients (labs whose host starts later by itself)
                 case "netcap": BtcLog.Info("Cmd", "netcap " + BtcDevNet.CapText() + " | " + BtcNetManager.StatusText()); break;
                 case "netstat": BtcLog.Info("Cmd", "netstat " + BtcNetManager.StatusText()); break;
                 case "mmdump": BtcDevSpecMap.MiniMapDump(); break;
@@ -405,6 +421,31 @@ namespace BetterThanCastle.Dev
                 // client: leave the game/lobby on purpose (menu "Quit to menu" path); host: list users + lobby slots
                 case "leave": { Brix.Network.UNetManager lm = UnityEngine.Networking.NetworkManager.singleton as Brix.Network.UNetManager; BtcLog.Info("Cmd", "leave (manager " + (lm != null) + ")"); if (lm != null) lm.Disconnect(); break; }
                 case "users": BtcLog.Info("Cmd", "users " + BtcDevNet.UsersText()); break;
+                // Online tab lab: online dump | chat <text> | dm <nick> <text> | invite | accept | joinfirst
+                case "online":
+                    {
+                        string sub = p.Length > 1 ? p[1] : "dump";
+                        string rest = p.Length > 2 ? string.Join(" ", p, 2, p.Length - 2) : "";
+                        string why = null;
+                        if (sub == "chat") BtcPresence.SendChat("all", rest.Length > 0 ? rest : "hello", out why);
+                        else if (sub == "dm" && p.Length > 3)
+                        {
+                            foreach (BtcPresence.Peer op in BtcPresence.Peers.Values) if (op.Online && op.Nick.Contains(p[2])) { BtcPresence.SendChat(op.Id, string.Join(" ", p, 3, p.Length - 3), out why); break; }
+                        }
+                        else if (sub == "invite") why = "invited " + BtcPresence.InviteAll();
+                        else if (sub == "accept") why = "accept " + BtcPresence.AcceptInvite();
+                        else if (sub == "joinfirst") why = "joinfirst " + BtcPresence.JoinFirst();
+                        else if (sub == "duel") why = "duel " + BtcPresence.DuelFirst();
+                        else if (sub == "dacc") why = "dacc " + BtcPresence.AcceptDuelNewest();
+                        else if (sub == "dnext") { if (BtcDuel.Match != null) { if (BtcDuel.IsClient) BtcDuelNet.SendAction("next"); else BtcDuel.Match.WantNextRound(0); } why = "dnext"; }
+                        else if (sub == "dreset") { if (BtcDuel.Match != null) { if (BtcDuel.IsClient) BtcDuelNet.SendAction("reset"); else BtcDuel.Match.Surrender(0); } why = "dreset"; }
+                        else if (sub == "dstate") why = "duel active=" + BtcDuel.Active + " pvp=" + BtcDuel.Pvp + " client=" + BtcDuel.IsClient + " side=" + BtcDuel.LocalSide +
+                            " state=" + (BtcDuel.Match != null ? BtcDuel.Match.State.ToString() : "-") + " round=" + (BtcDuel.Match != null ? BtcDuel.Match.MatchNo : 0) +
+                            " units=" + (BtcDuel.Match != null ? BtcDuel.Match.Units.Count : 0) + " built=" + BtcDuelMap.Built + " void=" + BtcDuelMap.OnVoid + " X0=" + BtcDuelMap.X0 + " Z0=" + BtcDuelMap.Z0 +
+                            " score=" + BtcDuel.Wins + ":" + BtcDuel.Losses + " | " + BtcDuelPvp.ScoreLine();
+                        BtcLog.Info("Cmd", "online " + sub + (why != null ? " (" + why + ")" : "") + " :: " + BtcPresence.DumpText());
+                        break;
+                    }
                 // host: kick the lobby player whose nick contains the argument (vanilla lobby kick)
                 case "kick":
                     {

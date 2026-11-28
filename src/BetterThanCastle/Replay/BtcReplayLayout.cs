@@ -29,6 +29,8 @@ namespace BetterThanCastle
         internal static float ApmHeight = 1f, ApmAlpha = 0.95f, ApmFill = 0.07f, ApmWidth = 1.5f;
         internal static bool ApmLabel = true, ApmGrid = true;
         internal static int ApmMarks = 4;
+        // match of several sessions (BtcReplayChainUI): branch lanes under the line, joint notches, marks of the sessions that are not open
+        internal static bool ChainBranches = true, ChainJoints = true, ChainMarks = true;
         /// <summary>Changes whenever a look setting that needs the graph texture rebuilt changes.</summary>
         internal static int ApmSig { get { return (int)(ApmAlpha * 100f) * 7 + (int)(ApmFill * 1000f) * 131 + (int)(ApmWidth * 10f) * 977 + (ApmGrid ? 1 : 0); } }
 
@@ -72,7 +74,7 @@ namespace BetterThanCastle
         {
             for (int i = 0; i < N; i++) { Scale[i] = 1f; Ox[i] = 0f; Oy[i] = 0f; Vis[i] = true; }
             MarkScale = 0.701f; CursorScale = 1.009f; LabelScale = BarScale = 1f; ConeAlpha = 0.43f;
-            ApmHeight = 1f; ApmAlpha = 0.95f; ApmFill = 0.07f; ApmWidth = 1.5f; ApmLabel = ApmGrid = true; ApmMarks = 4;
+            ApmHeight = 1f; ApmAlpha = 0.95f; ApmFill = 0.07f; ApmWidth = 1.5f; ApmLabel = ApmGrid = true; ApmMarks = 4; ChainBranches = ChainJoints = ChainMarks = true;
             _dirty = true;
         }
 
@@ -92,7 +94,8 @@ namespace BetterThanCastle
                 sb.Append("m").Append(i).Append('=').Append(F(Scale[i])).Append(',').Append(F(Ox[i])).Append(',').Append(F(Oy[i])).Append(',').Append(Vis[i] ? 1 : 0).Append(';');
             sb.Append("mk=").Append(F(MarkScale)).Append(";cs=").Append(F(CursorScale)).Append(";ls=").Append(F(LabelScale)).Append(";ca=").Append(F(ConeAlpha)).Append(";bs=").Append(F(BarScale));
             sb.Append(";ah=").Append(F(ApmHeight)).Append(";aa=").Append(F(ApmAlpha)).Append(";af=").Append(F(ApmFill)).Append(";aw=").Append(F(ApmWidth))
-              .Append(";al=").Append(ApmLabel ? 1 : 0).Append(";ag=").Append(ApmGrid ? 1 : 0).Append(";am=").Append(ApmMarks);
+              .Append(";al=").Append(ApmLabel ? 1 : 0).Append(";ag=").Append(ApmGrid ? 1 : 0).Append(";am=").Append(ApmMarks)
+              .Append(";cb=").Append(ChainBranches ? 1 : 0).Append(";cj=").Append(ChainJoints ? 1 : 0).Append(";cm=").Append(ChainMarks ? 1 : 0);
             return sb.ToString();
         }
 
@@ -133,6 +136,9 @@ namespace BetterThanCastle
                 else if (key == "al") ApmLabel = val != "0";
                 else if (key == "ag") ApmGrid = val != "0";
                 else if (key == "am") ApmMarks = Mathf.Clamp((int)P(val, 4f), 0, 7);
+                else if (key == "cb") ChainBranches = val != "0";
+                else if (key == "cj") ChainJoints = val != "0";
+                else if (key == "cm") ChainMarks = val != "0";
             }
         }
 

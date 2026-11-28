@@ -17,9 +17,14 @@ namespace BetterThanCastle
             public string TitleEn, TitleRu, WhereEn, WhereRu, Hay;
             public string Title { get { return BtcLang.Russian ? TitleRu : TitleEn; } }
             public string Where { get { return BtcLang.Russian ? WhereRu : WhereEn; } }
-            public int Icon, Kind;      // kind: 0 tab, 1 curated, 2 hotkey, 3 visual setting, 4 gameplay rule
+            public int Icon, Kind;      // kind: 0 tab, 1 curated, 2 hotkey, 3 visual setting, 4 gameplay rule, 5 row found in a tab (BtcSearchHarvest)
             public Action Go;
+            public BtcVisualSetting Vs;  // visual on/off setting: switched right in the results
         }
+
+        // result groups in this order: tabs, features, settings found in tabs, hotkeys, visual settings, rules
+        private static int Weight(int kind) { return kind == 5 ? 2 : (kind >= 2 ? kind + 1 : kind); }
+        private static bool _builtRu;
 
         private static string _q = "";
         private static readonly List<Item> Index = new List<Item>();
@@ -54,8 +59,8 @@ namespace BetterThanCastle
         {
             _built = true;
             Index.Clear();
-            int[] ids = { 0, 1, 2, 3, 4, 11, 5, 6, 7, 8, 14, 9, 10, 12, 13 };
-            int[] icons = { BtcReplayIcons.Blueprint, BtcReplayIcons.Eye, BtcReplayIcons.Wave, BtcReplayIcons.Keys, BtcReplayIcons.Gear, BtcReplayIcons.Chart, BtcReplayIcons.Share, BtcReplayIcons.Group, BtcReplayIcons.Play, BtcReplayIcons.Swords, BtcReplayIcons.Bolt, BtcReplayIcons.Bug, BtcReplayIcons.News, BtcReplayIcons.Layout, BtcReplayIcons.Chat };
+            int[] ids = { 0, 1, 2, 3, 4, 11, 5, 6, 7, 8, 14, 9, 10, 12, 13, 15 };
+            int[] icons = { BtcReplayIcons.Blueprint, BtcReplayIcons.Eye, BtcReplayIcons.Wave, BtcReplayIcons.Keys, BtcReplayIcons.Gear, BtcReplayIcons.Chart, BtcReplayIcons.Share, BtcReplayIcons.Group, BtcReplayIcons.Play, BtcReplayIcons.Swords, BtcReplayIcons.Bolt, BtcReplayIcons.Bug, BtcReplayIcons.News, BtcReplayIcons.Layout, BtcReplayIcons.Chat, BtcReplayIcons.Monitor };
             for (int i = 0; i < ids.Length; i++)
             {
                 int id = ids[i];
@@ -79,14 +84,19 @@ namespace BetterThanCastle
             Add(1, BtcReplayIcons.Map, "World overlays", "Оверлеи мира", V, VR, Link("tab:1:1"), "routes explosion block highlight маршруты взрыв подсветка блоков");
             Add(1, BtcReplayIcons.Plate, "Unit plates and HUD panels", "Плашки юнитов и панели HUD", V, VR, Link("tab:1:2"), "damage counter crystal timer chat счётчик урона таймер кристалла чат");
             Add(1, BtcReplayIcons.Chart, "Match statistics bar", "Полоса статистики матча", V, VR, Link("tab:1:3"), "bar panel полоса панель");
-            Add(1, BtcReplayIcons.Monitor, "Screen: window mode, intro, brightness", "Экран: оконный режим, интро, яркость", V, VR, Link("tab:1:4"), "gamma fullscreen window skip intro гамма окно");
+            Add(1, BtcReplayIcons.Monitor, "Screen: brightness, menu", "Экран: яркость, меню", V, VR, Link("tab:1:4"), "gamma brightness гамма яркость");
             Add(1, BtcReplayIcons.Star, "Visual profiles", "Профили визуала", V, VR, Link("tab:1:5"), "preset copy paste пресет копировать");
             Add(1, BtcReplayIcons.Chart, "APM / EPM graph", "График APM / EPM", R, RR, Link("tab:12"), "actions per minute apm epm graph действия в минуту график");
             Add(1, BtcReplayIcons.Layout, "Replay bar, keys and minimap layout", "Расположение полосы, клавиш и миникарты реплея", R, RR, Link("tab:12"), "timeline bar f7 таймлайн полоса");
             Add(1, BtcReplayIcons.Play, "Replay library", "Библиотека реплеев", R, RR, Link("tab:7"), "folders favourites sorting thumbnails папки избранное сортировка");
             Add(1, BtcReplayIcons.Gif, "GIF clips", "GIF-клипы", R, RR, Link("tab:7"), "clip gif клип");
-            Add(1, BtcReplayIcons.Speaker, "UI sounds volume", "Громкость звуков интерфейса", "Menu header", "Шапка меню", Link("tab:0"), "sound volume speaker звук громкость динамик");
-            Add(1, BtcReplayIcons.Globe, "Language", "Язык", "Menu header", "Шапка меню", Link("tab:0"), "english russian английский русский");
+            Add(1, BtcReplayIcons.Speaker, "UI sounds volume", "Громкость звуков интерфейса", E, ER, Link("tab:12:uisound"), "sound volume speaker click звук громкость динамик клик");
+            Add(1, BtcReplayIcons.Globe, "Language", "Язык", "General", "Общее", Link("tab:15:lang"), "english russian английский русский");
+            Add(1, BtcReplayIcons.Monitor, "Window mode, skip intro, loading curtain", "Режим окна, пропуск интро, шторка загрузки", "General", "Общее", Link("tab:15:WindowMode"), "fullscreen windowed borderless intro curtain полный экран окно без рамки интро шторка");
+            Add(1, BtcReplayIcons.Monitor, "Update check", "Проверка обновлений", "General", "Общее", Link("tab:15:CheckOnStart"), "update version github обновление версия");
+            Add(1, BtcReplayIcons.Monitor, "Discord Rich Presence", "Discord Rich Presence", "General", "Общее", Link("tab:15:discord"), "discord status статус");
+            Add(1, BtcReplayIcons.Layout, "Game HUD panels: minimap, chat, bars", "Панели HUD игры: миникарта, чат, полосы", E, ER, Link("tab:12:0"), "minimap chat unit panel move hide миникарта чат панель юнитов передвинуть скрыть");
+            Add(1, BtcReplayIcons.Layout, "REC indicator, statistics bar, load timer", "Индикатор REC, полоса статистики, таймер загрузки", E, ER, Link("tab:12:0"), "rec record stats bar load timer cancel запись статистика таймер загрузки отмена");
             Add(1, BtcReplayIcons.Palette, "Accent colour of the menu", "Цвет акцента меню", E, ER, Link("tab:12"), "theme colour green тема цвет");
             Add(1, BtcReplayIcons.Layout, "Menu and page buttons: icons or words", "Кнопки меню и страниц: иконки или слова", E, ER, Link("tab:12"), "rail icons text words иконки слова текст подвкладки");
             Add(1, BtcReplayIcons.Layout, "BTC button position", "Положение кнопки BTC", E, ER, Link("tab:12"), "launcher button кнопка");
@@ -125,6 +135,7 @@ namespace BetterThanCastle
                     int pi = Array.IndexOf(pages, s.Page);
                     if (pi < 0) continue;
                     Add(3, BtcReplayIcons.Eye, s.En, s.Ru, V + " > " + pn[pi], VR + " > " + pnr[pi], new JumpVisual { S = s }.Open, s.Key);
+                    if (s.Kind == VKind.Bool) Index[Index.Count - 1].Vs = s;
                 }
             }
             catch (Exception e) { BtcLog.Error("GlobalSearch", "visual: " + e.Message); }
@@ -138,6 +149,41 @@ namespace BetterThanCastle
                 }
             }
             catch (Exception e) { BtcLog.Error("GlobalSearch", "gameplay: " + e.Message); }
+            // every other row of every tab, found by drawing the tabs once (labels are in the current language)
+            try
+            {
+                HashSet<string> known = new HashSet<string>();
+                for (int i = 0; i < Index.Count; i++) { known.Add(Index[i].TitleEn.ToLowerInvariant()); known.Add(Index[i].TitleRu.ToLowerInvariant()); }
+                List<BtcSearchHarvest.Entry> rows = BtcSearchHarvest.Run(Mathf.Max(12, _fs));
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    BtcSearchHarvest.Entry en = rows[i];
+                    if (known.Contains(en.Label.ToLowerInvariant())) continue;
+                    string tab = en.Tab >= 0 && en.Tab < BtcChangelog.TabNameEn.Length ? Tt(BtcChangelog.TabNameEn[en.Tab], BtcChangelog.TabNameRu[en.Tab]) : "";
+                    string where = en.FoldLabel != null ? tab + " > " + en.FoldLabel : tab;
+                    BtcSearchHarvest.Entry jump = en;
+                    Add(5, en.IsFold ? BtcReplayIcons.List : BtcReplayIcons.Gear, en.Label, en.Label, where, where, delegate { BtcSearchHarvest.Jump(jump); }, en.Hint ?? "");
+                }
+            }
+            catch (Exception e) { BtcLog.Error("GlobalSearch", "harvest: " + e.Message); }
+        }
+
+        // ------------------------------------------------------------------ wrong keyboard layout ("gbyu" typed for "пинг" and back)
+        private const string LatKeys = "qwertyuiop[]asdfghjkl;'zxcvbnm,.`";
+        private const string CyrKeys = "йцукенгшщзхъфывапролджэячсмитьбюё";
+
+        private static string SwapLayout(string s)
+        {
+            char[] c = s.ToCharArray();
+            bool changed = false;
+            for (int i = 0; i < c.Length; i++)
+            {
+                int a = LatKeys.IndexOf(c[i]);
+                if (a >= 0) { c[i] = CyrKeys[a]; changed = true; continue; }
+                int b = CyrKeys.IndexOf(c[i]);
+                if (b >= 0) { c[i] = LatKeys[b]; changed = true; }
+            }
+            return changed ? new string(c) : null;
         }
 
         // a click opens the exact row and pulses it (BtcJump); the search field of the tab is never filled
@@ -232,21 +278,29 @@ namespace BetterThanCastle
         {
             if (_hitsFor == _q) return;
             _hitsFor = _q;
-            if (!_built) Build();
+            if (!_built || _builtRu != BtcLang.Russian) { _builtRu = BtcLang.Russian; Build(); }
             Hits.Clear();
             string[] tok = _q.Trim().ToLowerInvariant().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (tok.Length == 0) return;
+            string[] alt = new string[tok.Length];   // the same word typed with the other keyboard layout
+            for (int t = 0; t < tok.Length; t++) alt[t] = SwapLayout(tok[t]);
             List<KeyValuePair<int, Item>> scored = new List<KeyValuePair<int, Item>>();
             for (int i = 0; i < Index.Count; i++)
             {
                 Item it = Index[i];
-                bool all = true;
-                for (int t = 0; t < tok.Length && all; t++) if (it.Hay.IndexOf(tok[t], StringComparison.Ordinal) < 0) all = false;
+                bool all = true, swapped = false;
+                for (int t = 0; t < tok.Length && all; t++)
+                {
+                    if (it.Hay.IndexOf(tok[t], StringComparison.Ordinal) >= 0) continue;
+                    if (alt[t] != null && it.Hay.IndexOf(alt[t], StringComparison.Ordinal) >= 0) { swapped = true; continue; }
+                    all = false;
+                }
                 if (!all) continue;
-                int score = it.Kind * 10;
+                int score = Weight(it.Kind) * 10 + (swapped ? 4 : 0);
                 string title = it.Title.ToLowerInvariant();
-                if (title.StartsWith(tok[0], StringComparison.Ordinal)) score -= 6;
-                else if (title.Contains(tok[0])) score -= 3;
+                string first = swapped && alt[0] != null && title.Contains(alt[0]) ? alt[0] : tok[0];
+                if (title.StartsWith(first, StringComparison.Ordinal)) score -= 6;
+                else if (title.Contains(first)) score -= 3;
                 scored.Add(new KeyValuePair<int, Item>(score, it));
             }
             scored.Sort(delegate (KeyValuePair<int, Item> a, KeyValuePair<int, Item> b) { return a.Key.CompareTo(b.Key); });
@@ -255,7 +309,7 @@ namespace BetterThanCastle
 
         private static string KindName(int k)
         {
-            switch (k) { case 0: return Tt("Tabs", "Вкладки"); case 1: return Tt("Features", "Функции"); case 2: return Tt("Hotkeys", "Хоткеи"); case 3: return Tt("Visual settings", "Настройки визуала"); default: return Tt("Gameplay rules", "Правила геймплея"); }
+            switch (k) { case 0: return Tt("Tabs", "Вкладки"); case 1: return Tt("Features", "Функции"); case 2: return Tt("Hotkeys", "Хоткеи"); case 3: return Tt("Visual settings", "Настройки визуала"); case 5: return Tt("Settings in the tabs", "Настройки во вкладках"); default: return Tt("Gameplay rules", "Правила геймплея"); }
         }
 
         /// <summary>Draws the results over the tab content area.</summary>
@@ -290,7 +344,22 @@ namespace BetterThanCastle
                 float ig = fs * 1.3f;
                 BtcReplayIcons.Glyph(it.Icon, new Rect(r.x + fs * 0.6f, r.center.y - ig * 0.5f, ig, ig), hover ? BtcMenu.Accent : new Color(1f, 1f, 1f, 0.6f));
                 BtcVisualRows.Txt(new Rect(r.x + fs * 2.4f, r.y, r.width * 0.55f, r.height), it.Title, st, Color.white);
-                BtcVisualRows.Txt(new Rect(r.x + r.width * 0.55f, r.y, r.width * 0.45f - fs * 0.6f, r.height), it.Where, _dim, new Color(1f, 1f, 1f, 0.55f));
+                float swW = it.Vs != null ? fs * 3.4f : 0f;
+                BtcVisualRows.Txt(new Rect(r.x + r.width * 0.55f, r.y, r.width * 0.45f - fs * 0.6f - swW, r.height), it.Where, _dim, new Color(1f, 1f, 1f, 0.55f));
+                if (it.Vs != null)
+                {
+                    // on/off right in the results (drawn before the row button so it gets the click)
+                    BtcVisualSetting vs = it.Vs;
+                    bool on = vs.GetB();
+                    Rect sw = new Rect(r.xMax - fs * 3.1f, r.y + (r.height - fs * 1.2f) * 0.5f, fs * 2.4f, fs * 1.2f);
+                    if (BtcUi.HeaderSwitch(sw, on, on ? Tt("On (click to turn off)", "Вкл. (клик выключит)") : Tt("Off (click to turn on)", "Выкл. (клик включит)")))
+                    {
+                        vs.SetB(!on);
+                        Action<bool> set = vs.SetB;
+                        BtcUndo.Push(BtcVisualRows.Scope, vs.Label, delegate { set(on); });
+                        BtcMenu.Toast(vs.Label + ": " + (on ? Tt("off", "выкл") : Tt("on", "вкл")) + Tt(" (Ctrl+Z in Visuals undoes)", " (Ctrl+Z во «Визуале» отменит)"), -1);
+                    }
+                }
                 if (BtcSfx.Btn(r, "", BtcReplayUI.sBtn)) go = it;
                 y += r.height + 2f;
             }

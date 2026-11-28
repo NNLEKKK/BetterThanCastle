@@ -1,0 +1,22 @@
+# client of edit-mp: editor actions go to the host
+waitfile BTClogs/host/host-ready.txt 300
+join 127.0.0.1
+waitlobby 120
+ready 420
+waitgame 300
+wait 15
+gh devcount
+gh devfac 1
+gh devdo __btcSpawn(fy_Bricktron)
+wait 2
+gh devfac 2
+gh devdo __btcSpawn(fy_Bricktron, {fy_BowProp, fy_ArcherCapProp, fy_QuiverProp})
+wait 2
+gh devdo __btcRaid({fy_Minitron, fy_Minitron, fy_Corruptron})
+wait 2
+gh devdo os.exit()
+gh devexp
+wait 5
+gh devcount
+wait 10
+quit

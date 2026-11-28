@@ -154,6 +154,49 @@ namespace BetterThanCastle
             return live.ToArray();
         }
 
+        // Tool racks, crafting stations, bear traps (Better Workbenches, kit assembly, traps task walked the scene every 1-2 s: 3-4 walks).
+        // Registered at Start (no subclass overrides it); pooled objects keep their instance, so readers only skip inactive ones.
+        private static readonly List<ToolRack> Racks = new List<ToolRack>();
+        private static readonly List<CraftingStation> Stations = new List<CraftingStation>();
+        private static readonly List<BearTrapTrigger> Traps = new List<BearTrapTrigger>();
+        private static readonly HashSet<int> RackIds = new HashSet<int>(), StationIds = new HashSet<int>(), TrapIds = new HashSet<int>();
+        private static int _walkSceneR = -1, _walkSceneT = -1, _walkSceneB = -1;
+
+        internal static void Add(ToolRack r) { if (r != null && RackIds.Add(r.GetInstanceID())) Racks.Add(r); }
+        internal static void Add(CraftingStation s) { if (s != null && StationIds.Add(s.GetInstanceID())) Stations.Add(s); }
+        internal static void Add(BearTrapTrigger t) { if (t != null && TrapIds.Add(t.GetInstanceID())) Traps.Add(t); }
+
+        private static T[] Live<T>(List<T> l, HashSet<int> ids, ref int scene) where T : Component
+        {
+            for (int i = l.Count - 1; i >= 0; i--) if (l[i] == null) { l.RemoveAt(i); }
+            if (l.Count != ids.Count) { ids.Clear(); for (int i = 0; i < l.Count; i++) ids.Add(l[i].GetInstanceID()); }
+            if (l.Count == 0 && FirstWalk(ref scene))
+            {
+                // objects started before the patches (should not happen): one walk per scene
+                T[] all = UnityEngine.Object.FindObjectsOfType<T>();
+                for (int i = 0; i < all.Length; i++) if (all[i] != null && ids.Add(all[i].GetInstanceID())) l.Add(all[i]);
+            }
+            int n = 0;
+            for (int i = 0; i < l.Count; i++) if (l[i].gameObject.activeInHierarchy) n++;
+            T[] r = new T[n];
+            n = 0;
+            for (int i = 0; i < l.Count; i++) if (l[i].gameObject.activeInHierarchy) r[n++] = l[i];
+            return r;
+        }
+
+        /// What FindObjectsOfType gave (active objects), without the scene walk.
+        internal static ToolRack[] RacksArray() { return Live(Racks, RackIds, ref _walkSceneR); }
+        internal static CraftingStation[] StationsArray() { return Live(Stations, StationIds, ref _walkSceneT); }
+        internal static BearTrapTrigger[] TrapsArray() { return Live(Traps, TrapIds, ref _walkSceneB); }
+
+        internal static Labor[] LaborsArray()
+        {
+            LabTmp.Clear();
+            CollectLabors(LabTmp);
+            return LabTmp.ToArray();
+        }
+        private static readonly List<Labor> LabTmp = new List<Labor>();
+
         internal static void CollectPallets(List<Recepteur> into)
         {
             Prune(Pallets);
@@ -224,6 +267,36 @@ namespace BetterThanCastle
         {
             try { BtcRegistry.AddUser(__instance); }
             catch (Exception e) { BtcLog.Error("Hook", "RegistryUser: " + e.Message); }
+        }
+    }
+
+    [HarmonyPatch(typeof(ToolRack), "Start")]
+    internal static class RegistryRackPatch
+    {
+        private static void Postfix(ToolRack __instance)
+        {
+            try { BtcRegistry.Add(__instance); }
+            catch (Exception e) { BtcLog.Error("Hook", "RegistryRack: " + e.Message); }
+        }
+    }
+
+    [HarmonyPatch(typeof(CraftingStation), "Start")]
+    internal static class RegistryStationPatch
+    {
+        private static void Postfix(CraftingStation __instance)
+        {
+            try { BtcRegistry.Add(__instance); }
+            catch (Exception e) { BtcLog.Error("Hook", "RegistryStation: " + e.Message); }
+        }
+    }
+
+    [HarmonyPatch(typeof(BearTrapTrigger), "Start")]
+    internal static class RegistryTrapPatch
+    {
+        private static void Postfix(BearTrapTrigger __instance)
+        {
+            try { BtcRegistry.Add(__instance); }
+            catch (Exception e) { BtcLog.Error("Hook", "RegistryTrap: " + e.Message); }
         }
     }
 

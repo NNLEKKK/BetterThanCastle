@@ -1,0 +1,6 @@
+# Early patch classes: single player new game.
+wait 25
+newgame
+waitgame 240
+wait 3
+quit

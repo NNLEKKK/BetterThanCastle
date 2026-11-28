@@ -1,0 +1,38 @@
+# Which part of a shown overhead costs while the camera pans (2026-11-27): all shown + pan, then freeze positions,
+# animators off, own overhead camera off, overhead canvases off. 15 s each.
+prof start
+engine counters off
+newgame
+waitgame 240
+daytime 12
+engine vsync off
+spawn bricktron 50
+waitspawn 120
+wait 15
+ohead plates 1 1
+ohead pan 10 6
+ohead showall 1
+wait 2
+prof reset
+wait 15
+dump sbase
+ohead freeze 1
+prof reset
+wait 15
+dump sfreeze
+ohead freeze 0
+ohead anim 0
+prof reset
+wait 15
+dump snoanim
+ohead anim 1
+ohead camoff 1
+prof reset
+wait 15
+dump scamoff
+ohead camoff 0
+ohead canvasoff 1
+prof reset
+wait 15
+dump scanvasoff
+quit

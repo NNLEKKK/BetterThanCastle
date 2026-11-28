@@ -341,12 +341,29 @@ namespace BetterThanCastle
         {
             bool click = Pressing && Hovering && e.button == UnityEngine.EventSystems.PointerEventData.InputButton.Left;
             Pressing = false;
-            if (click && OnAction != null)
-            {
-                Play("Main_Menu_Select");
-                try { OnAction(); } catch (System.Exception ex) { BtcLog.Error("GameHud", "button action: " + ex); }
-            }
+            // DeferOnDrag (scrolling queue strip): the input module sends pointer up at DRAG START (a few px of movement); the click is decided at
+            // the end of the drag instead (EndDrag: fires only when the mouse barely moved). Every other button clicks as before, also at drag start.
+            if (click && DeferOnDrag && e.dragging) { _dragPending = this; click = false; }
+            if (click) Fire();
             RefreshBg();
+        }
+
+        internal bool DeferOnDrag;
+        private static BtcGhButton _dragPending;
+
+        private void Fire()
+        {
+            if (OnAction == null) return;
+            Play("Main_Menu_Select");
+            try { OnAction(); } catch (System.Exception ex) { BtcLog.Error("GameHud", "button action: " + ex); }
+        }
+
+        /// The drag of a scrolling strip ended: a press that moved less than 12 px is still a click on its button.
+        internal static void EndDrag(UnityEngine.EventSystems.PointerEventData e)
+        {
+            BtcGhButton b = _dragPending;
+            _dragPending = null;
+            if (b != null && b.isActiveAndEnabled && (e.position - e.pressPosition).sqrMagnitude <= 144f) b.Fire();
         }
 
         private void OnDisable() { Hovering = false; Pressing = false; if (_tipOwner == this) _tipOwner = null; }

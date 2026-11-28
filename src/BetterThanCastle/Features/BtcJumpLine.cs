@@ -27,6 +27,8 @@ public static class BtcJumpLine
 
 	public static void AddRows()
 	{
+		// Group jump disabled (broken, user order 2026-11-26): row not registered, On stays false, jump orders are vanilla.
+		return;
 		BtcGameplay.Add("mov.jumpLine", "mov", "Group jump: each unit to its own block in a line", "Групповой прыжок: каждый на свой блок в линию", 1f, 0f, 1f, 1f, true, "When several units are ordered to jump, each one jumps to its own block; the blocks form a line through the target, across the direction of the group.", "Когда прыжок приказан нескольким юнитам, каждый прыгает на свой блок; блоки образуют линию через цель поперёк направления группы.");
 	}
 
