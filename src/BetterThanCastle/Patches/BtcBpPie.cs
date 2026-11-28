@@ -64,6 +64,13 @@ namespace BetterThanCastle.Patches
             return null;
         }
 
+        /// vanilla pie name ("##..." key) of a stockpile resource code, null if unknown
+        internal static string NameOfCode(string code)
+        {
+            if (_excl != null) for (int i = 0; i < _excl.Count; i++) if (_excl[i].Code == code) return _excl[i].Name;
+            return null;
+        }
+
         internal static string Buttons(string vanilla)
         {
             StringBuilder b = new StringBuilder(12000);

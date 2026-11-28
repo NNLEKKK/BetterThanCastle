@@ -43,9 +43,9 @@ namespace BetterThanCastle.Patches
                 if (p.EndsWith("/PieMenu_Buttons.txt"))
                 {
                     string n = text.Replace("\r\n", "\n");
-                    return Back(n + RackButtons() + WormButtons() + BtcBpPie.Buttons(n), crlf);
+                    return Back(n + RackButtons() + WormButtons() + BtcBpPie.Buttons(n) + BtcTakeItem.Buttons(), crlf);
                 }
-                if (p.EndsWith("/PieMenu_Menus.txt")) return Back(BtcBpPie.Menus(PatchWormMenus(PatchMenus(text.Replace("\r\n", "\n")))), crlf);
+                if (p.EndsWith("/PieMenu_Menus.txt")) return Back(BtcBpPie.Menus(PatchTakeMenus(PatchWormMenus(PatchMenus(text.Replace("\r\n", "\n"))))), crlf);
             }
             catch (Exception e) { BtcLog.Error("Livre", "inject failed: " + e); }
             return text;
@@ -121,6 +121,14 @@ namespace BetterThanCastle.Patches
                 return text;
             }
             return text.Substring(0, h) + with + text.Substring(h + "\tHole\n".Length);
+        }
+
+        // "Take item..." hub (BtcTakeItem): workers selected + hovering a crafting station or a stockpile
+        private static string PatchTakeMenus(string text)
+        {
+            text = ReplaceHole(text, "BuilderCrafting", "Button: Crafting_TakeResource", BtcTakeItem.MenuSlot(), "take item (stations)");
+            text = ReplaceHole(text, "BuilderStockpile", "Button: Take From", BtcTakeItem.MenuSlot(), "take item (stockpile)");
+            return text;
         }
 
         private static string PatchWormMenus(string text)

@@ -352,13 +352,18 @@ namespace BetterThanCastle
                 if (mat < 0) continue;
                 int start = e.Pos.Count;
                 float tr = tint.r, tg = tint.g, tb = tint.b, ta = tint.a * alpha;
+                // the game runs in Linear colour space: the canvas converts UI vertex colours from gamma to linear, a mesh
+                // does not (dark grey 0.125 backgrounds of the carried item pill showed as light grey, user 2026-11-28)
+                bool lin = QualitySettings.activeColorSpace == ColorSpace.Linear;
                 for (int v = 0; v < Stream.Count; v++)
                 {
                     UIVertex u = Stream[v];
                     Vector3 w = m.MultiplyPoint3x4(u.position);
                     e.Pos.Add(new Vector3(w.x - park.x, w.y - park.y, 0f));
                     Color32 c = u.color;
-                    e.Col.Add(new Color32((byte)(c.r * tr), (byte)(c.g * tg), (byte)(c.b * tb), (byte)(c.a * ta)));
+                    float r = c.r * tr / 255f, gg = c.g * tg / 255f, b = c.b * tb / 255f;
+                    if (lin) { r = Mathf.GammaToLinearSpace(r); gg = Mathf.GammaToLinearSpace(gg); b = Mathf.GammaToLinearSpace(b); }
+                    e.Col.Add(new Color32((byte)(r * 255f + 0.5f), (byte)(gg * 255f + 0.5f), (byte)(b * 255f + 0.5f), (byte)(c.a * ta)));
                     e.Uv.Add(u.uv0);
                 }
                 Item last = e.Items.Count > 0 ? e.Items[e.Items.Count - 1] : null;

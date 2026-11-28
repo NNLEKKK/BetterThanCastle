@@ -43,6 +43,7 @@ public partial class ResourcePackManager : MonoBehaviour
 			GameObject gameObject = new GameObject("ResourcePackManager");
 			UnityEngine.Object.DontDestroyOnLoad(gameObject);
 			ResourcePackManager.instance = gameObject.AddComponent<ResourcePackManager>();
+			gameObject.AddComponent<BtcMenuHost>();
 		}
 	}
 
@@ -947,22 +948,25 @@ public partial class ResourcePackManager : MonoBehaviour
 		}
 		this.DrawCenters();
 		this.DrawExplosionDist();
-		bool flag46 = this.menuOpen;
-		bool flag47 = flag46;
-		bool flag48 = flag47;
-		bool flag49 = flag48;
-		bool flag50 = flag49;
-		bool flag51 = flag50;
-		bool flag52 = flag51;
-		bool flag53 = flag52;
-		bool flag54 = flag53;
-		if (flag54)
-		{
-			this.DrawMenu();
-			BtcMenu.DrawTip();
-			BtcTour.Draw(BtcUiEdit.MenuFs);
-		}
+		// the menu itself is drawn by BtcMenuHost: its own OnGUI in front of every overlay (see MenuGUI)
 		this.DrawMessage();
+	}
+
+	/// <summary>Called from BtcMenuHost.OnGUI (own script, GUI.depth in front of all mod overlays). Own script = own
+	/// control ID sequence, so in-game overlays drawn before it can no longer shift the menu's text field ids (lost
+	/// typing in a match); in front = it sees every click first and swallows input over the full-screen menu, so the
+	/// Ready panel / HUD cards behind it can no longer be clicked through it.</summary>
+	internal static void HostMenuGUI() { if (ResourcePackManager.instance != null) ResourcePackManager.instance.MenuGUI(); }
+
+	private void MenuGUI()
+	{
+		if (!this.menuOpen) return;
+		this.DrawMenu();
+		BtcMenu.DrawTip();
+		BtcTour.Draw(BtcUiEdit.MenuFs);
+		Event e = Event.current;
+		if (!this.menuOpen || (BtcUiEditorTab.Live && BtcMenu.CurrentId == 12)) return;   // live UI editor works over the real screen
+		if (e.isMouse || e.isKey || e.type == EventType.ScrollWheel || e.type == EventType.ContextClick) e.Use();
 	}
 
 	public ResourcePackManager()

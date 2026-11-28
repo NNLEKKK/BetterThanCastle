@@ -1,0 +1,5 @@
+# Rule gen.noCycle (default ON): the host stops the sun at match start (2026-11-28)
+newgame
+waitgame 240
+wait 10
+quit

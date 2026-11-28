@@ -31,7 +31,8 @@ namespace BetterThanCastle
                     }
                     BtcLog.Info("Ohead", "showall " + a + " n=" + n);
                     break;
-                case "dump": Dump(); BtcLog.Info("Ohead", "draw " + BtcOverheadDraw.Info()); BtcLog.Info("Ohead", BtcOverheadDraw.Check()); break;
+                case "gfx": Gfx(); break;
+                case "dump": Dump();BtcLog.Info("Ohead", "draw " + BtcOverheadDraw.Info()); BtcLog.Info("Ohead", BtcOverheadDraw.Check()); break;
                 case "fast": BtcConfig.FastOverheads.Value = a > 0.5f; break;
                 case "nosort": NoSort = a > 0.5f; break;
                 case "trim":
@@ -103,6 +104,33 @@ namespace BetterThanCastle
                 foreach (Canvas c in d.GetComponentsInChildren<Canvas>(true)) sb.Append(" [").Append(c.name).Append(" ov=").Append(c.overrideSorting).Append(" pix=").Append(c.pixelPerfect).Append(']');
             }
             BtcLog.Info("Ohead", "dump " + sb);
+        }
+
+        /// <summary>Every Graphic of the first overhead: path, active, colour, CanvasRenderer colour/alpha, material, shader, texture.</summary>
+        private static void Gfx()
+        {
+            OverheadDisplay[] ds = Object.FindObjectsOfType<OverheadDisplay>();
+            if (ds.Length == 0) { BtcLog.Info("Ohead", "gfx: no displays"); return; }
+            OverheadDisplay d = ds[0];
+            foreach (UnityEngine.UI.Graphic g in d.GetComponentsInChildren<UnityEngine.UI.Graphic>(true))
+            {
+                string path = g.name; Transform t = g.transform.parent;
+                while (t != null && t != d.transform) { path = t.name + "/" + path; t = t.parent; }
+                Material m = g.materialForRendering;
+                Texture tex = g.mainTexture;
+                Texture2D t2 = tex as Texture2D;
+                UnityEngine.UI.Image im = g as UnityEngine.UI.Image;
+                System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                sb.Append("gfx ").Append(path).Append(" act=").Append(g.isActiveAndEnabled).Append(" type=").Append(g.GetType().Name)
+                  .Append(" col=").Append(g.color).Append(" cr=").Append(g.canvasRenderer.GetColor()).Append(" a=").Append(g.canvasRenderer.GetAlpha())
+                  .Append(" mat=").Append(m != null ? m.name : "-").Append(" sh=").Append(m != null && m.shader != null ? m.shader.name : "-")
+                  .Append(" tex=").Append(tex != null ? tex.name : "-").Append(" fmt=").Append(t2 != null ? t2.format.ToString() : "-");
+                if (m != null && m.HasProperty("_Color")) sb.Append(" _Color=").Append(m.GetColor("_Color"));
+                if (im != null) sb.Append(" sprite=").Append(im.sprite != null ? im.sprite.name : "-").Append(" imtype=").Append(im.type);
+                foreach (CanvasGroup cg in g.GetComponentsInParent<CanvasGroup>(true)) sb.Append(" cg:").Append(cg.name).Append('=').Append(cg.alpha);
+                BtcLog.Info("Ohead", sb.ToString());
+            }
+            BtcLog.Info("Ohead", "gfx colorSpace=" + QualitySettings.activeColorSpace);
         }
 
         private static float Parse(string s, float d)

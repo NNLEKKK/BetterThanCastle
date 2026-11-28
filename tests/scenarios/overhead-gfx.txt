@@ -1,0 +1,10 @@
+# Dump every Graphic of an overhead (carried resource background colour/material check, 2026-11-28)
+newgame
+waitgame 240
+spawn bricktron 3
+waitspawn 120
+wait 5
+ohead showall 1
+wait 2
+ohead gfx
+quit

@@ -156,9 +156,9 @@ namespace BetterThanCastle
                     Tt("You do not hear what your side cannot see through the fog of war (in vanilla the host hears every unit on the map). Only on your side; at once.",
                        "Вы не слышите то, чего ваша сторона не видит сквозь туман войны (в ванили хост слышит всех юнитов на карте). Только у вас; сразу."),
                     BtcBc.BcSetFogSounds);
-                SyncRow(ref y, w, fs, "own", Tt("Own transport (experimental)", "Свой транспорт (эксперимент)"), BtcBc.BcOwnTransport,
-                    Tt("Reliable game data travels through the mod's own delivery instead of the UNET reliable channel: a dead link never drops the game (it freezes and catches up when the network is back), and terrain, files and chat no longer hold up units and damage. Only when both sides have it on; applies from the next connection.",
-                       "Надёжные игровые данные идут через собственную доставку мода вместо надёжного канала UNET: обрыв связи не выкидывает из игры (она замирает и догоняет, когда сеть вернётся), а ландшафт, файлы и чат больше не задерживают юнитов и урон. Только если включено у обоих; действует со следующего подключения."),
+                SyncRow(ref y, w, fs, "own", Tt("Own transport", "Свой транспорт"), BtcBc.BcOwnTransport,
+                    Tt("Reliable game data travels through the mod's own delivery instead of the UNET reliable channel: a dead link never drops the game (it freezes and catches up when the network is back), and terrain, files and chat no longer hold up units and damage. The host decides: its setting is used for the whole game, whatever clients have; applies from the next connection.",
+                       "Надёжные игровые данные идут через собственную доставку мода вместо надёжного канала UNET: обрыв связи не выкидывает из игры (она замирает и догоняет, когда сеть вернётся), а ландшафт, файлы и чат больше не задерживают юнитов и урон. Решает хост: на всю игру действует его настройка, что бы ни стояло у клиентов; действует со следующего подключения."),
                     BtcBc.BcSetOwnTransport);
                 y += fs * 0.4f;
             }

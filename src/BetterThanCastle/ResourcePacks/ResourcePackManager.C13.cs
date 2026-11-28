@@ -710,7 +710,7 @@ public partial class ResourcePackManager : MonoBehaviour
 		ResourcePackManager.HpConfig hpConfig = this.hpCfg;
 		try
 		{
-			this.ApplyMenuInputLock((this.menuOpen && hpConfig != null && hpConfig.menuBlockInput) || BtcMatchStatsUI.PanelOpen || BtcTimer.MouseOver || BtcMultiCam.MouseOverUi || BtcStationRadius.MouseBusy);
+			this.ApplyMenuInputLock(this.menuOpen ||BtcMatchStatsUI.PanelOpen || BtcTimer.MouseOver || BtcMultiCam.MouseOverUi || BtcStationRadius.MouseBusy);
 			this.ApplyMenuPause(this.menuOpen && hpConfig != null && hpConfig.menuPause);
 		}
 		catch (Exception ex)
@@ -753,6 +753,8 @@ public partial class ResourcePackManager : MonoBehaviour
 			{
 				if (instance != null)
 				{
+					// the open menu owns the keyboard: a focused vanilla chat line would get the same keys
+					if (this.menuOpen && ControlContext.ContextIsActive("Chat")) { try { ControlContext.SetContext("Chat", false); } catch (Exception) { } }
 					bool flag = ControlContext.ContextIsActive("Chat");
 					if (!flag)
 					{
@@ -773,6 +775,7 @@ public partial class ResourcePackManager : MonoBehaviour
 			else if (unscaledTime >= this.menuInputCheckAt)
 			{
 				this.menuInputCheckAt = unscaledTime + 0.25f;
+				if (this.menuOpen && instance != null && ControlContext.ContextIsActive("Chat")) { try { ControlContext.SetContext("Chat", false); } catch (Exception) { } }
 				if (!ControlContext.ContextIsActive("Chat") && instance != null)
 				{
 					try { instance.ChangeInputToMenu(); } catch (Exception) { }

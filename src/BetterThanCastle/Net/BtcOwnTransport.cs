@@ -9,7 +9,7 @@ using UnityEngine.Networking.NetworkSystem;
 namespace BetterThanCastle
 {
     /// <summary>
-    /// Own reliable transport (BC ON + Network/OwnTransport on both sides, negotiated per connection).
+    /// Own reliable transport (BC ON on both sides; the HOST setting Network/OwnTransport2 decides, clients always offer it).
     /// Why: the UNET reliable channel gives up after ~5-10 s without a single ack (100% loss) and the host drops the link with
     /// BadMessage, while 99% loss lives forever; and everything reliable shares one ordered pipe, so one lost packet holds HP,
     /// deaths, orders, terrain, files and chat alike until the LLAPI resend.
@@ -156,7 +156,8 @@ namespace BetterThanCastle
                 Reg(MsgSwitch, OnSwitch, false);
                 Reg(MsgFrame, OnFrame, false);
                 Runner(m);
-                if (!Wanted || !Init()) { BtcLog.Info("OwnNet", "client: own transport off (config)"); return; }
+                // the host decides (its Network/OwnTransport2): a BC client always offers it, the host switches or ignores the hello
+                if (!Init()) { BtcLog.Info("OwnNet", "client: own transport unavailable"); return; }
                 Link l = Add(c.connection);
                 l.LastHeard = Time.realtimeSinceStartup;
                 c.Send(MsgHello, new IntegerMessage(Proto));

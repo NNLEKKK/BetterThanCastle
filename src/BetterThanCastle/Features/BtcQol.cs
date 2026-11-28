@@ -43,6 +43,8 @@ public static class BtcQol
 		BtcIdleStill.AddRows();
 		BtcHealRules.AddRows();
 		BtcShootRules.AddRows();
+		BtcWallShot.AddRows();
+		BtcNoDayCycle.AddRows();
 		BtcTrapFix.AddRows();
 		BtcFogFair.AddRows();
 		BtcChopBlock1x1.AddRows();
@@ -59,6 +61,7 @@ public static class BtcQol
 		BtcKitAssemble.AddRows();
 		BtcTrapTask.AddRows();
 		BtcFlattenHigh.AddRows();
+		BtcFlattenFix.AddRows();
 		BtcDigStore.AddRows();
 		BtcTaskRadius.AddRows();
 		BtcShootDown.AddRows();
